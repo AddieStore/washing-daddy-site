@@ -1,0 +1,388 @@
+{
+ "updated": "2026-10-14",
+ "source": "snapshot",
+ "washers": [
+  "Chotte",
+  "Shahrukh"
+ ],
+ "cars": [
+  {
+   "car": "Altroz",
+   "num": "DL 9209",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 800,
+   "owes": 800,
+   "paidTo": "2026-09-10",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Amaze",
+   "num": "number pending",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 1000,
+   "owes": 0,
+   "paidTo": "2026-10-31",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Baleno",
+   "num": "DL 9325",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 500,
+   "owes": 500,
+   "paidTo": "2026-09-30",
+   "level": "Legacy ₹500",
+   "status": "Active"
+  },
+  {
+   "car": "Baleno",
+   "num": "DL 9473",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 1000,
+   "owes": 0,
+   "paidTo": "2026-11-05",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Brezza",
+   "num": "DL 6592",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 800,
+   "owes": 0,
+   "paidTo": null,
+   "level": "WD Standard",
+   "status": "Unknown"
+  },
+  {
+   "car": "BYD",
+   "num": "DL 9436",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 1000,
+   "owes": 1000,
+   "paidTo": "2026-10-03",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Creta",
+   "num": "DL 9459",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 500,
+   "owes": 500,
+   "paidTo": "2026-09-20",
+   "level": "Legacy ₹500",
+   "status": "Active"
+  },
+  {
+   "car": "Fortuner",
+   "num": "DL 2822",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 2000,
+   "owes": 2000,
+   "paidTo": "2026-10-02",
+   "level": "WD Pro",
+   "status": "Active"
+  },
+  {
+   "car": "Ignis",
+   "num": "DL 2886",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 500,
+   "owes": 0,
+   "paidTo": "2026-10-29",
+   "level": "Legacy ₹500",
+   "status": "Active"
+  },
+  {
+   "car": "INNOVA Hycross",
+   "num": "DL 0013",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 2100,
+   "owes": 2100,
+   "paidTo": "2026-10-05",
+   "level": "WD Pro",
+   "status": "Active"
+  },
+  {
+   "car": "Kia Seltos",
+   "num": "DL 5661",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 850,
+   "owes": 0,
+   "paidTo": "2026-10-20",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Nexon",
+   "num": "DL 5667",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 999,
+   "owes": 999,
+   "paidTo": "2026-09-17",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Punch",
+   "num": "DL 5986",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 500,
+   "owes": 0,
+   "paidTo": "2026-10-28",
+   "level": "Legacy ₹500",
+   "status": "Active"
+  },
+  {
+   "car": "ScorpioN",
+   "num": "HR 3245",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 1000,
+   "owes": 0,
+   "paidTo": "2026-10-14",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Tata Tigor",
+   "num": "DL 1CW 5586",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 800,
+   "owes": 0,
+   "paidTo": "2026-10-14",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Thar",
+   "num": "DL 3343",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 600,
+   "owes": 600,
+   "paidTo": "2026-10-02",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Vinfast",
+   "num": "DL 8318",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 999,
+   "owes": 999,
+   "paidTo": "2026-09-17",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "XUV 300",
+   "num": "UK 0009",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 900,
+   "owes": 900,
+   "paidTo": "2026-10-03",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "XUV 700",
+   "num": "DL 2985",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 1000,
+   "owes": 1000,
+   "paidTo": "2026-09-30",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "XUV 700",
+   "num": "DL 6158",
+   "washer": "Chotte",
+   "area": "GH-9",
+   "fee": 999,
+   "owes": 999,
+   "paidTo": "2026-09-17",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Creta Black",
+   "num": "DL 6643",
+   "washer": "Shahrukh",
+   "area": "GH-9",
+   "fee": 900,
+   "owes": 0,
+   "paidTo": "2026-10-29",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Fronx",
+   "num": "DL 1832",
+   "washer": "Shahrukh",
+   "area": "GH-9",
+   "fee": 900,
+   "owes": 0,
+   "paidTo": "2026-11-02",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Rapid",
+   "num": "DL 1538",
+   "washer": "Shahrukh",
+   "area": "GH-9",
+   "fee": 1000,
+   "owes": 0,
+   "paidTo": "2026-10-09",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Fronx",
+   "num": "DL 5197",
+   "washer": "Shahrukh",
+   "area": "GH-14",
+   "fee": 500,
+   "owes": 500,
+   "paidTo": "2026-09-24",
+   "level": "Legacy ₹500",
+   "status": "Active"
+  },
+  {
+   "car": "BMW 530i",
+   "num": "UK 0087",
+   "washer": "Shahrukh",
+   "area": "Meera Bagh",
+   "fee": 900,
+   "owes": 900,
+   "paidTo": "2026-09-15",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "I20",
+   "num": "DL 0802",
+   "washer": "Shahrukh",
+   "area": "Meera Bagh",
+   "fee": 900,
+   "owes": 0,
+   "paidTo": "2026-10-14",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "INNOVA Hycross",
+   "num": "DL 0902",
+   "washer": "Shahrukh",
+   "area": "Meera Bagh",
+   "fee": 900,
+   "owes": 900,
+   "paidTo": "2026-09-15",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Nexon",
+   "num": "DL 9672",
+   "washer": "Shahrukh",
+   "area": "Meera Bagh",
+   "fee": 500,
+   "owes": 0,
+   "paidTo": "2026-10-28",
+   "level": "Legacy ₹500",
+   "status": "Active"
+  },
+  {
+   "car": "Mercedes GLS",
+   "num": "GA 0025",
+   "washer": "Shahrukh",
+   "area": "Guru Hari",
+   "fee": 1000,
+   "owes": 0,
+   "paidTo": "2026-11-02",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Harrier",
+   "num": "DL 9413",
+   "washer": "Shahrukh",
+   "area": "Sundar Vihar",
+   "fee": 1000,
+   "owes": 0,
+   "paidTo": "2026-11-02",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Honda Jazz",
+   "num": "DL 5488",
+   "washer": "Shahrukh",
+   "area": "Sundar Vihar",
+   "fee": 800,
+   "owes": 0,
+   "paidTo": "2026-11-02",
+   "level": "WD Standard",
+   "status": "Active"
+  },
+  {
+   "car": "Kia Seltos",
+   "num": "HR 7007",
+   "washer": "Shahrukh",
+   "area": "Sundar Vihar",
+   "fee": 1620,
+   "owes": 1620,
+   "paidTo": "2026-10-06",
+   "level": "WD Pro",
+   "status": "Active"
+  },
+  {
+   "car": "MG Hector",
+   "num": "DL 8686",
+   "washer": "Shahrukh",
+   "area": "Sundar Vihar",
+   "fee": 1620,
+   "owes": 1620,
+   "paidTo": "2026-10-06",
+   "level": "WD Pro",
+   "status": "Active"
+  },
+  {
+   "car": "XUV 700",
+   "num": "DL 9054",
+   "washer": "Shahrukh",
+   "area": "Sundar Vihar",
+   "fee": 1000,
+   "owes": 0,
+   "paidTo": "2026-10-23",
+   "level": "WD Standard",
+   "status": "Active"
+  }
+ ],
+ "today": {
+  "log": []
+ },
+ "history": []
+}

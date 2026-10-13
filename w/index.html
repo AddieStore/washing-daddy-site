@@ -127,6 +127,17 @@ button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit
   border-radius:999px;padding:16px;font-family:var(--shout);font-size:22px;text-align:center;
   box-shadow:5px 5px 0 var(--violet-ink)}
 .done-note{text-align:center;font-weight:700;font-size:14px;opacity:.8;margin-top:10px}
+.addjob{display:block;width:100%;background:transparent;color:var(--cream);border:3px dashed var(--gold);
+  border-radius:999px;padding:14px;font-family:var(--shout);font-size:19px;letter-spacing:.02em;text-align:center;margin-bottom:12px}
+.od{background:var(--cream);color:var(--ink);border:3px solid var(--ink);border-radius:18px;padding:14px;
+  margin-top:16px;box-shadow:5px 5px 0 var(--violet-ink)}
+.od label{display:block;font-weight:800;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;
+  color:#5B4A7A;margin:12px 0 5px}
+.od input,.od select{width:100%;font-family:var(--body);font-size:16px;font-weight:600;color:var(--ink);
+  background:#fff;border:2.5px solid var(--ink);border-radius:12px;padding:11px 12px}
+.od .pays{display:flex;gap:8px;margin-top:6px}
+.od .pays button{flex:1;border:2.5px solid var(--ink);border-radius:12px;padding:10px 6px;font-weight:800;font-size:14px;background:#fff}
+.od .pays button[aria-pressed="true"]{background:var(--gold)}
 
 /* ---------- queue / toast ---------- */
 .q{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--violet-ink);
@@ -169,6 +180,7 @@ button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit
   </div>
   <div class="wrap" id="list"></div>
   <div class="wrap finish">
+    <button class="addjob" id="addjob">+ Naya kaam (on-demand)</button>
     <button class="btn" id="finish">Duty khatam karo</button>
     <p class="done-note" id="fin-note"></p>
   </div>
@@ -199,6 +211,48 @@ button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit
       <button class="big" id="d-shoot">📷 Photo lo</button>
       <button class="big go" id="d-done" disabled>Ho gaya ✓</button>
       <button class="ghost" id="d-skip">Car nahi mili / wash nahi hui</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== on-demand job ===== -->
+<section class="sheet" id="odsheet" hidden>
+  <div class="top wrap">
+    <button id="od-back">&larr; Wapas</button>
+    <span style="margin-left:auto;font-weight:800;font-size:13px;opacity:.8">On-demand kaam</span>
+  </div>
+  <div class="body wrap">
+    <h2>Naya kaam</h2>
+    <p class="where">Jo car monthly list mein nahi hai, uska ek baar ka wash.</p>
+    <div class="od">
+      <label for="od-svc">Kaunsa wash</label>
+      <select id="od-svc">
+        <option value="WD Standard|500">WD Standard — ₹500</option>
+        <option value="WD Pro|1200">WD Pro — ₹1,200</option>
+        <option value="WD Exclusive|2100">WD Exclusive — ₹2,100</option>
+        <option value="Custom|0">Kuch aur — khud likho</option>
+      </select>
+      <label for="od-car">Car</label>
+      <input id="od-car" type="text" placeholder="Swift, Creta, Fortuner" autocomplete="off">
+      <label for="od-num">Car number</label>
+      <input id="od-num" type="text" placeholder="DL 1234" autocomplete="off">
+      <label for="od-area">Area</label>
+      <input id="od-area" type="text" placeholder="GH-9, Meera Bagh" autocomplete="off">
+      <label for="od-amt">Kitne paise</label>
+      <input id="od-amt" type="number" inputmode="numeric" min="0" step="50" value="500">
+      <label>Paise aaye?</label>
+      <div class="pays" id="od-pay">
+        <button type="button" data-pay="Cash" aria-pressed="true">Cash</button>
+        <button type="button" data-pay="UPI" aria-pressed="false">UPI</button>
+        <button type="button" data-pay="Baaki" aria-pressed="false">Baaki hai</button>
+      </div>
+    </div>
+    <div class="shot">
+      <div class="frame" id="od-frame">Wash ke baad ki photo lo</div>
+      <img id="od-img" hidden alt="On-demand wash ke baad ki photo">
+      <input type="file" id="od-file" accept="image/*" capture="environment" hidden>
+      <button class="big" id="od-shoot">📷 Photo lo</button>
+      <button class="big go" id="od-save" disabled>Kaam save karo ✓</button>
     </div>
   </div>
 </section>
@@ -546,6 +600,57 @@ $("d-skip").addEventListener("click", function(){
   markDone(S.open, true, why || "wajah nahi batayi");
 });
 $("finish").addEventListener("click", finishRound);
+
+/* ---------- on-demand kaam ---------- */
+var odPhoto = null, odPay = "Cash";
+$("addjob").addEventListener("click", function(){
+  odPhoto = null;
+  $("od-img").hidden = true; $("od-frame").hidden = false;
+  $("od-save").disabled = true; $("od-shoot").textContent = "\ud83d\udcf7 Photo lo";
+  $("odsheet").hidden = false; document.body.style.overflow = "hidden";
+});
+$("od-back").addEventListener("click", function(){
+  $("odsheet").hidden = true; document.body.style.overflow = "";
+});
+$("od-svc").addEventListener("change", function(){
+  var amt = this.value.split("|")[1];
+  if(Number(amt) > 0) $("od-amt").value = amt;
+});
+Array.prototype.forEach.call($("od-pay").querySelectorAll("button"), function(b){
+  b.addEventListener("click", function(){
+    odPay = b.dataset.pay;
+    Array.prototype.forEach.call($("od-pay").querySelectorAll("button"), function(x){
+      x.setAttribute("aria-pressed", x === b ? "true" : "false");
+    });
+  });
+});
+$("od-shoot").addEventListener("click", function(){ $("od-file").click(); });
+$("od-file").addEventListener("change", function(){
+  var f = this.files && this.files[0]; if(!f) return;
+  $("od-shoot").textContent = "Photo ready kar rahe hain\u2026";
+  shrink(f).then(function(d){
+    odPhoto = d; $("od-img").src = d; $("od-img").hidden = false; $("od-frame").hidden = true;
+    $("od-save").disabled = false; $("od-shoot").textContent = "\ud83d\udcf7 Dobara photo lo";
+  }).catch(function(){ $("od-shoot").textContent = "\ud83d\udcf7 Photo lo"; toast("Photo nahi khuli"); });
+  this.value = "";
+});
+$("od-save").addEventListener("click", function(){
+  var car = ($("od-car").value || "").trim();
+  if(!car){ toast("Car ka naam likho"); $("od-car").focus(); return; }
+  var svc = $("od-svc").value.split("|")[0];
+  var now = new Date();
+  S.queue.push({
+    washer: S.washer, car: car, num: ($("od-num").value || "").trim(),
+    area: ($("od-area").value || "").trim() || "On-demand",
+    level: svc, services: [svc + " (one-time)"], at: now.toISOString(), roundDate: S.day,
+    minutes: null, skipped: false, reason: "", onDemand: true,
+    amount: Number($("od-amt").value) || 0, payment: odPay, photo: odPhoto
+  });
+  save(); flush();
+  toast("On-demand kaam save ho gaya");
+  $("od-car").value = ""; $("od-num").value = ""; $("od-area").value = "";
+  $("odsheet").hidden = true; document.body.style.overflow = "";
+});
 window.addEventListener("online", flush);
 
 function start(washer){
