@@ -78,32 +78,32 @@ img{max-width:100%; display:block}
 
 /* ---------- hero ---------- */
 .hero{position:relative; overflow:hidden}
-.hero .wrap{display:grid; grid-template-columns:1.05fr 1.2fr .9fr; gap:10px; align-items:end;
-  padding-top:28px; min-height:440px}
-.pocha{min-width:0; align-self:center; transform:rotate(-9deg) skew(-6deg); transform-origin:left center; padding-bottom:30px}
-.pocha span{display:block; font-family:var(--shout); font-size:clamp(46px,6.4vw,82px); line-height:.95;
+.hero .wrap{display:grid; grid-template-columns:1fr 1.25fr .95fr; gap:clamp(14px,2.2vw,34px); align-items:center;
+  padding-top:34px; padding-bottom:34px; min-height:460px}
+.pocha{min-width:0; align-self:center; transform:rotate(-9deg) skew(-6deg); transform-origin:left center}
+.pocha span{display:block; font-family:var(--shout); font-size:clamp(38px,5.2vw,70px); line-height:.96;
   color:var(--cream); text-transform:uppercase;
   text-shadow:4px 4px 0 var(--orange), 8px 8px 0 var(--sky), 12px 12px 0 var(--violet-ink)}
-.howabout{min-width:0; align-self:center; text-align:center; padding-bottom:30px}
-.howabout .q{font-family:var(--body); font-weight:800; font-size:clamp(22px,2.6vw,32px); color:var(--cream); line-height:1}
-.howabout h1{font-family:var(--slab); font-weight:400; font-size:clamp(34px,5.6vw,76px); line-height:.98;
-  color:var(--gold); text-shadow:4px 4px 0 var(--ink); margin-top:6px}
+.howabout{min-width:0; align-self:center; text-align:center}
+.howabout .q{font-family:var(--body); font-weight:800; font-size:clamp(19px,2.1vw,27px); color:var(--cream); line-height:1}
+.howabout h1{font-family:var(--slab); font-weight:400; font-size:clamp(30px,4.1vw,58px); line-height:1.02;
+  color:var(--gold); text-shadow:4px 4px 0 var(--ink); margin-top:10px}
 .howabout .every{display:inline-block; font-family:var(--body); font-style:italic; font-weight:800;
-  font-size:clamp(42px,6.6vw,92px); line-height:1; color:#FFFFFF; transform:rotate(-7deg);
-  margin-top:10px; text-shadow:3px 3px 0 var(--violet-ink)}
-.hero .cta{display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin-top:28px}
-.herophoto{position:relative; margin:0 0 34px; align-self:center; justify-self:end; width:100%; max-width:360px; min-width:0;
+  font-size:clamp(36px,4.6vw,66px); line-height:1; color:#FFFFFF; transform:rotate(-6deg);
+  margin-top:14px; text-shadow:3px 3px 0 var(--violet-ink)}
+.hero .cta{display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin-top:34px}
+.herophoto{position:relative; margin:0; align-self:center; justify-self:end; width:100%; max-width:330px; min-width:0;
   transform:rotate(3deg); border:10px solid var(--cream); border-radius:22px; background:var(--cream);
   box-shadow:10px 10px 0 var(--ink)}
 .herophoto img{border-radius:12px; width:100%; height:auto}
-.sticker{position:absolute; left:-34px; bottom:-26px; transform:rotate(-8deg); background:var(--gold); color:var(--ink);
+.sticker{position:absolute; right:-22px; bottom:-26px; transform:rotate(-6deg); background:var(--gold); color:var(--ink);
   border:3px solid var(--ink); border-radius:16px; padding:10px 16px; font-family:var(--body); font-weight:700;
   font-size:15px; line-height:1.05; box-shadow:4px 4px 0 var(--ink); text-align:center}
 .sticker b{display:block; font-family:var(--shout); font-weight:400; font-size:38px; line-height:1}
 @media(max-width:980px){
   .hero .wrap{grid-template-columns:1fr; min-height:0; text-align:center; gap:24px}
   .pocha{transform:rotate(-5deg) skew(-4deg); transform-origin:center; padding-bottom:0; justify-self:center}
-  .herophoto{justify-self:center; max-width:300px; margin-bottom:40px} .sticker{left:-14px}
+  .herophoto{justify-self:center; max-width:280px; margin-bottom:34px} .sticker{right:-10px; bottom:-22px}
 }
 
 /* ---------- toggle ---------- */
