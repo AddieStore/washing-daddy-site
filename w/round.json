@@ -1,0 +1,247 @@
+{
+ "updated": "2026-10-14",
+ "washers": {
+  "Chotte": [
+   {
+    "car": "Altroz",
+    "num": "DL 9209",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Amaze",
+    "num": "number pending",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": "House 317"
+   },
+   {
+    "car": "Baleno",
+    "num": "DL 9325",
+    "area": "GH-9",
+    "level": "Legacy ₹500",
+    "note": ""
+   },
+   {
+    "car": "Baleno",
+    "num": "DL 9473",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Brezza",
+    "num": "DL 6592",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "BYD",
+    "num": "DL 9436",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Creta",
+    "num": "DL 9459",
+    "area": "GH-9",
+    "level": "Legacy ₹500",
+    "note": ""
+   },
+   {
+    "car": "Fortuner",
+    "num": "DL 2822",
+    "area": "GH-9",
+    "level": "WD Pro",
+    "note": ""
+   },
+   {
+    "car": "Ignis",
+    "num": "DL 2886",
+    "area": "GH-9",
+    "level": "Legacy ₹500",
+    "note": ""
+   },
+   {
+    "car": "INNOVA Hycross",
+    "num": "DL 0013",
+    "area": "GH-9",
+    "level": "WD Pro",
+    "note": "Interior roz jaisa — premium car"
+   },
+   {
+    "car": "Kia Seltos",
+    "num": "DL 5661",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Nexon",
+    "num": "DL 5667",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Punch",
+    "num": "DL 5986",
+    "area": "GH-9",
+    "level": "Legacy ₹500",
+    "note": ""
+   },
+   {
+    "car": "ScorpioN",
+    "num": "HR 3245",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Tata Tigor",
+    "num": "DL 1CW 5586",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Thar",
+    "num": "DL 3343",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Vinfast",
+    "num": "DL 8318",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "XUV 300",
+    "num": "UK 0009",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "XUV 700",
+    "num": "DL 2985",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "XUV 700",
+    "num": "DL 6158",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   }
+  ],
+  "Shahrukh": [
+   {
+    "car": "Creta Black",
+    "num": "DL 6643",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Fronx",
+    "num": "DL 1832",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Rapid",
+    "num": "DL 1538",
+    "area": "GH-9",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Fronx",
+    "num": "DL 5197",
+    "area": "GH-14",
+    "level": "Legacy ₹500",
+    "note": ""
+   },
+   {
+    "car": "BMW 530i",
+    "num": "UK 0087",
+    "area": "Meera Bagh",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "I20",
+    "num": "DL 0802",
+    "area": "Meera Bagh",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "INNOVA Hycross",
+    "num": "DL 0902",
+    "area": "Meera Bagh",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Nexon",
+    "num": "DL 9672",
+    "area": "Meera Bagh",
+    "level": "Legacy ₹500",
+    "note": ""
+   },
+   {
+    "car": "Mercedes GLS",
+    "num": "GA 0025",
+    "area": "Guru Hari",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Harrier",
+    "num": "DL 9413",
+    "area": "Sundar Vihar",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Honda Jazz",
+    "num": "DL 5488",
+    "area": "Sundar Vihar",
+    "level": "WD Standard",
+    "note": ""
+   },
+   {
+    "car": "Kia Seltos",
+    "num": "HR 7007",
+    "area": "Sundar Vihar",
+    "level": "WD Pro",
+    "note": ""
+   },
+   {
+    "car": "MG Hector",
+    "num": "DL 8686",
+    "area": "Sundar Vihar",
+    "level": "WD Pro",
+    "note": ""
+   },
+   {
+    "car": "XUV 700",
+    "num": "DL 9054",
+    "area": "Sundar Vihar",
+    "level": "WD Standard",
+    "note": "11/364 Sundar Vihar"
+   }
+  ]
+ }
+}

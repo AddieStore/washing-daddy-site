@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#5409DA">
+<meta name="robots" content="noindex,nofollow">
+<title>Washing Daddy — Duty</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;600;700;800&display=swap">
+<style>
+:root{
+  --violet:#5409DA; --violet-deep:#4207B5; --violet-ink:#2A0478;
+  --gold:#FFBA08; --cream:#FFF6E9; --ink:#1A0A33;
+  --green:#19A34A; --red:#E5484D; --sky:#2E8BFF;
+  --shout:'Anton','Impact',sans-serif;
+  --body:'Poppins','Helvetica Neue',Arial,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--violet);color:var(--cream);font-family:var(--body);font-size:16px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;overscroll-behavior-y:contain;overflow-x:hidden}
+[hidden]{display:none!important}
+button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding:0 14px}
+
+/* ---------- top bar ---------- */
+.bar{position:sticky;top:0;z-index:30;background:var(--violet);
+  padding:10px 0 0;box-shadow:0 6px 18px rgba(16,2,50,.35)}
+.bar .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.logo{font-family:var(--shout);font-size:18px;letter-spacing:.02em;color:var(--gold);line-height:1;margin:0;min-width:0}
+.logo small{display:block;font-family:var(--body);font-weight:700;font-size:10.5px;letter-spacing:.14em;color:var(--cream);opacity:.75}
+.who{margin-left:auto;display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;flex:none}
+.who .pill{background:var(--gold);color:var(--ink);border-radius:999px;padding:4px 12px;font-weight:800}
+.who button{font-size:12.5px;text-decoration:underline;opacity:.8}
+.track{height:10px;background:var(--violet-ink);border-radius:999px;overflow:hidden;margin:10px 0 6px}
+.track i{display:block;height:100%;width:0;background:var(--gold);transition:width .3s ease}
+.count{display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-bottom:10px}
+.count b{font-family:var(--shout);font-weight:400;font-size:17px;letter-spacing:.02em}
+.count .left{color:var(--gold)}
+
+/* ---------- pick washer ---------- */
+.pick{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:28px 14px}
+.pick h1{font-family:var(--shout);font-weight:400;font-size:clamp(34px,10vw,52px);line-height:1;margin:0;
+  text-transform:uppercase;text-shadow:3px 3px 0 var(--violet-ink)}
+.pick p{margin:0;opacity:.85}
+.pick .btn{display:block;width:100%;background:var(--gold);color:var(--ink);border:3px solid var(--ink);
+  border-radius:20px;padding:22px;font-family:var(--shout);font-size:30px;letter-spacing:.02em;text-align:left;
+  box-shadow:6px 6px 0 var(--violet-ink)}
+.pick .btn span{display:block;font-family:var(--body);font-weight:700;font-size:14px;letter-spacing:0;opacity:.7}
+.pick .btn:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--violet-ink)}
+
+/* ---------- area heading ---------- */
+.area{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
+.area h2{font-family:var(--shout);font-weight:400;font-size:21px;letter-spacing:.04em;text-transform:uppercase;margin:0;color:var(--gold)}
+.area .line{flex:1;height:3px;background:var(--violet-ink);border-radius:2px}
+.area .n{font-size:12.5px;font-weight:700;opacity:.7}
+
+/* ---------- car card ---------- */
+.card{width:100%;text-align:left;background:var(--cream);color:var(--ink);border:3px solid var(--ink);
+  border-radius:18px;padding:13px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;
+  box-shadow:4px 4px 0 var(--violet-ink)}
+.card:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--violet-ink)}
+.card .mark{flex:none;width:34px;height:34px;border-radius:50%;border:3px solid var(--ink);
+  display:grid;place-items:center;font-weight:800;font-size:15px;background:#fff}
+.card{min-width:0}
+.card > div{min-width:0;flex:1}
+.card .nm{font-weight:800;font-size:18px;line-height:1.15;word-break:break-word}
+.card .rg{font-size:13.5px;font-weight:700;color:#5B4A7A;letter-spacing:.02em}
+.card .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.chip{font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:999px;border:2px solid var(--ink);
+  background:#fff;letter-spacing:.01em;white-space:nowrap}
+.chip.wash{background:var(--sky);color:#fff;border-color:#13407F}
+.chip.int{background:#19A34A;color:#fff;border-color:#0C5527}
+.chip.pol{background:var(--gold);color:var(--ink)}
+.chip.foam{background:#A855F7;color:#fff;border-color:#4C1D95}
+.chip.det{background:#FF6A1A;color:#fff;border-color:#7A2E00}
+.card .note{margin-top:7px;font-size:12.5px;font-weight:700;background:var(--gold);border:2px solid var(--ink);
+  border-radius:9px;padding:3px 8px;display:inline-block}
+.card.done{opacity:.55;background:#D9EFE1}
+.card.done .mark{background:var(--green);color:#fff;border-color:#0C5527}
+.card.done .nm{text-decoration:line-through}
+.card.skip{opacity:.55;background:#F4DADB}
+.card.skip .mark{background:var(--red);color:#fff;border-color:#7A1216}
+.card .when{margin-left:auto;flex:none;font-size:12px;font-weight:800;color:#5B4A7A;text-align:right}
+
+/* ---------- detail sheet ---------- */
+.sheet{position:fixed;inset:0;z-index:60;background:var(--violet);display:flex;flex-direction:column}
+.sheet .top{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:4px solid var(--gold);max-width:none;width:100%}
+.sheet .top > *{max-width:560px}
+.sheet .top button{font-size:15px;font-weight:800}
+.sheet .body{flex:1;overflow-y:auto;padding:16px 14px 20px;-webkit-overflow-scrolling:touch}
+.sheet h2{font-family:var(--shout);font-weight:400;font-size:clamp(30px,8.5vw,42px);line-height:1;margin:0;
+  text-transform:uppercase;text-shadow:3px 3px 0 var(--violet-ink)}
+.sheet .reg{font-weight:800;font-size:17px;color:var(--gold);letter-spacing:.03em;margin-top:4px}
+.sheet .where{font-size:14px;opacity:.85;margin-top:2px}
+.todo{background:var(--cream);color:var(--ink);border:3px solid var(--ink);border-radius:18px;padding:14px;
+  margin-top:16px;box-shadow:5px 5px 0 var(--violet-ink)}
+.todo h3{font-family:var(--shout);font-weight:400;font-size:18px;letter-spacing:.04em;margin:0 0 10px;text-transform:uppercase}
+.todo ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.todo li{display:flex;align-items:flex-start;gap:10px;font-weight:700;font-size:16px;line-height:1.25}
+.todo li .dot{flex:none;width:22px;height:22px;border-radius:50%;border:2.5px solid var(--ink);margin-top:1px}
+.todo li small{display:block;font-weight:600;font-size:12.5px;color:#5B4A7A}
+.todo .nope{font-size:13.5px;font-weight:800;color:#8A2B2F;background:#FBE4E5;border:2px solid #E5B6B8;border-radius:10px;margin-top:12px;padding:8px 10px}
+.lvl{display:inline-block;font-size:12px;font-weight:800;padding:3px 10px;border-radius:999px;
+  background:var(--violet-ink);color:var(--cream);margin-top:8px}
+
+.shot{margin-top:16px}
+.shot .frame{width:100%;aspect-ratio:4/3;border:3px dashed var(--cream);border-radius:18px;display:grid;
+  place-items:center;text-align:center;padding:16px;font-weight:700;opacity:.85}
+.shot img{width:100%;aspect-ratio:4/3;object-fit:cover;border:3px solid var(--gold);border-radius:18px;display:block}
+.big{display:block;width:100%;background:var(--gold);color:var(--ink);border:3px solid var(--ink);border-radius:999px;
+  padding:17px;font-family:var(--shout);font-size:23px;letter-spacing:.02em;text-align:center;margin-top:14px;
+  box-shadow:5px 5px 0 var(--violet-ink)}
+.big:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--violet-ink)}
+.big[disabled]{opacity:.45}
+.big.go{background:var(--green);color:#fff;border-color:#0C5527}
+.ghost{display:block;width:100%;text-align:center;margin-top:12px;font-weight:800;font-size:14.5px;
+  text-decoration:underline;opacity:.85;padding:8px}
+
+/* ---------- finish ---------- */
+.finish{margin:26px 0 40px}
+.finish .btn{display:block;width:100%;background:var(--cream);color:var(--ink);border:3px solid var(--ink);
+  border-radius:999px;padding:16px;font-family:var(--shout);font-size:22px;text-align:center;
+  box-shadow:5px 5px 0 var(--violet-ink)}
+.done-note{text-align:center;font-weight:700;font-size:14px;opacity:.8;margin-top:10px}
+
+/* ---------- queue / toast ---------- */
+.q{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--violet-ink);
+  padding:9px 14px calc(9px + env(safe-area-inset-bottom,0px));font-size:13px;font-weight:700;
+  display:flex;align-items:center;gap:9px}
+.q .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);flex:none}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:72px;z-index:70;background:var(--ink);
+  color:var(--cream);padding:11px 18px;border-radius:999px;font-weight:700;font-size:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:92vw;text-align:center}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ===== pick washer ===== -->
+<section class="pick wrap" id="pick">
+  <div>
+    <p class="logo">WASHING DADDY<small>DUTY APP</small></p>
+  </div>
+  <h1>Aap kaun<br>ho?</h1>
+  <p>Apna naam dabao. Phone yaad rakh lega.</p>
+  <button class="btn" data-washer="Chotte">Chotte<span>GH-9 Paschim Vihar</span></button>
+  <button class="btn" data-washer="Shahrukh">Shahrukh<span>GH-14, Meera Bagh, Sundar Vihar, Guru Hari</span></button>
+</section>
+
+<!-- ===== round ===== -->
+<main id="round" hidden>
+  <div class="bar">
+    <div class="wrap">
+      <div class="row">
+        <p class="logo">WASHING DADDY<small>AAJ KI DUTY</small></p>
+        <div class="who"><span class="pill" id="who-name">—</span><button id="switch">badlo</button></div>
+      </div>
+      <div class="track"><i id="prog"></i></div>
+      <div class="count">
+        <span><b id="n-done">0</b> / <b id="n-all">0</b> ho gaye</span>
+        <span class="left" id="n-left">—</span>
+      </div>
+    </div>
+  </div>
+  <div class="wrap" id="list"></div>
+  <div class="wrap finish">
+    <button class="btn" id="finish">Duty khatam karo</button>
+    <p class="done-note" id="fin-note"></p>
+  </div>
+</main>
+
+<!-- ===== car detail ===== -->
+<section class="sheet" id="sheet" hidden>
+  <div class="top wrap">
+    <button id="back">&larr; Wapas</button>
+    <span style="margin-left:auto;font-weight:800;font-size:13px;opacity:.8" id="pos"></span>
+  </div>
+  <div class="body wrap">
+    <h2 id="d-car">—</h2>
+    <p class="reg" id="d-reg">—</p>
+    <p class="where" id="d-where">—</p>
+    <span class="lvl" id="d-lvl"></span>
+
+    <div class="todo">
+      <h3>Aaj is car pe kya karna hai</h3>
+      <ul id="d-tasks"></ul>
+      <p class="nope" id="d-nope" hidden></p>
+    </div>
+
+    <div class="shot">
+      <div class="frame" id="d-frame">Wash ke baad ki photo lo<br><small style="font-weight:600;opacity:.8">Poori car dikhni chahiye</small></div>
+      <img id="d-img" hidden alt="Wash ke baad li gayi photo">
+      <input type="file" id="d-file" accept="image/*" capture="environment" hidden>
+      <button class="big" id="d-shoot">📷 Photo lo</button>
+      <button class="big go" id="d-done" disabled>Ho gaya ✓</button>
+      <button class="ghost" id="d-skip">Car nahi mili / wash nahi hui</button>
+    </div>
+  </div>
+</section>
+
+<div class="q" id="queue" hidden><span class="dot"></span><span id="q-text"></span></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= config ================= */
+var N8N   = "https://n8n.washingdaddy.com/webhook";
+var OWNER = "917701808924";
+var LS    = "wd.washer.v1";
+
+/* ================= plan rules =================
+   Har service level ke liye: hafte mein kitni baar.
+   999 = roz. 0 = kabhi nahi. m1/m2 = mahine mein 1 / 2 baar. */
+var RULES = {
+  "Legacy ₹500":  { wash:999, interior:1, polish:0,   foam:0,   detail:0  },
+  "WD Standard":  { wash:999, interior:1, polish:2,   foam:1,   detail:0  },
+  "WD Pro":       { wash:999, interior:2, polish:999, foam:2,   detail:"m1" },
+  "WD Exclusive": { wash:999, interior:3, polish:999, foam:4,   detail:"m2" },
+  "WD Reserve":   { wash:999, interior:999, polish:999, foam:999, detail:4 }
+};
+var LABEL = {
+  wash:     ["Pressure wash",     "Poori car, foam ke bina bhi roz",   "wash"],
+  interior: ["Interior cleaning", "Andar vacuum aur wipe",             "int"],
+  polish:   ["Tyre & trim polish","Tyre aur black trim",               "pol"],
+  foam:     ["Foam wash",         "Pehle foam, phir pressure rinse",   "foam"],
+  detail:   ["Detailing",         "Poora detail — time lagta hai",     "det"]
+};
+var SERVICE_NAME = { wash:"Pressure wash", interior:"Interior", polish:"Tyre & trim polish", foam:"Foam wash", detail:"Detailing" };
+
+function seedOf(s){ var h=0,i; for(i=0;i<s.length;i++){ h=(h*31 + s.charCodeAt(i))>>>0; } return h; }
+
+/* n baar/hafta -> aaj due hai ya nahi (car ke hisaab se din alag alag) */
+function dueWeekly(n, seed, dow){
+  if(!n) return false;
+  if(n>=7) return true;
+  var i, d;
+  for(i=0;i<n;i++){
+    d = (Math.floor(i*7/n) + seed) % 7;
+    if(d===dow) return true;
+  }
+  return false;
+}
+function dueMonthly(times, seed, dom){
+  if(!times) return false;
+  var i, d;
+  for(i=0;i<times;i++){
+    d = ((seed + i*14) % 28) + 1;
+    if(d===dom) return true;
+  }
+  return false;
+}
+function tasksFor(car, date){
+  var lvl = RULES[car.level] ? car.level : "WD Standard";
+  var r = RULES[lvl], seed = seedOf(car.num + car.car), dow = date.getDay(), dom = date.getDate();
+  var on = [], off = [], k, v, due;
+  ["wash","interior","polish","foam","detail"].forEach(function(k){
+    v = r[k];
+    if(v === "m1")      due = dueMonthly(1, seed, dom);
+    else if(v === "m2") due = dueMonthly(2, seed, dom);
+    else                due = dueWeekly(v, seed, dow);
+    if(due) on.push(k); else if(v) off.push(k);
+  });
+  return { level: lvl, on: on, off: off };
+}
+
+/* ================= state ================= */
+var S = { washer:null, cars:[], state:{}, day:todayKey(), queue:[], open:null, photo:null, lastAt:null };
+
+function todayKey(){
+  var d = new Date();
+  return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+}
+function pad(n){ return (n<10?"0":"")+n; }
+function hhmm(iso){ var d=new Date(iso); return pad(d.getHours())+":"+pad(d.getMinutes()); }
+
+function save(){
+  try{ localStorage.setItem(LS, JSON.stringify({
+    washer:S.washer, day:S.day, state:S.state, queue:S.queue, cars:S.cars, lastAt:S.lastAt
+  })); }catch(e){}
+}
+function load(){
+  try{
+    var raw = localStorage.getItem(LS); if(!raw) return;
+    var o = JSON.parse(raw);
+    S.washer = o.washer || null;
+    S.cars   = o.cars || [];
+    S.queue  = o.queue || [];
+    if(o.day === S.day){ S.state = o.state || {}; S.lastAt = o.lastAt || null; }
+    else { S.state = {}; S.lastAt = null; }
+  }catch(e){}
+}
+
+/* ================= dom ================= */
+var $ = function(id){ return document.getElementById(id); };
+function el(tag, cls, txt){ var n=document.createElement(tag); if(cls) n.className=cls; if(txt!=null) n.textContent=txt; return n; }
+
+/* ================= round data =================
+   Pehle local list dikhate hain (turant), phir n8n se live list
+   aaye to usse badal dete hain. Network slow ho to bhi kaam rukta nahi. */
+function localRound(washer){
+  return fetch("round.json", {cache:"no-store"})
+    .then(function(r){ return r.json(); })
+    .then(function(j){ return (j.washers && j.washers[washer]) || []; });
+}
+function liveRound(washer){
+  var ctl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  if(ctl) setTimeout(function(){ ctl.abort(); }, 6000);
+  return fetch(N8N + "/wd-round?washer=" + encodeURIComponent(washer),
+               { cache:"no-store", signal: ctl ? ctl.signal : undefined })
+    .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    .then(function(j){
+      var list = j.cars || (j.washers && j.washers[washer]);
+      if(!list || !list.length) throw 0;
+      return list;
+    });
+}
+
+/* ================= render ================= */
+function keyOf(c){ return c.num + "|" + c.car; }
+
+function render(){
+  var list = $("list"); list.innerHTML = "";
+  var date = new Date(), area = null, done = 0, i, c, st, grouped = {}, order = [];
+
+  S.cars.forEach(function(c){
+    if(!grouped[c.area]){ grouped[c.area] = []; order.push(c.area); }
+    grouped[c.area].push(c);
+  });
+
+  order.forEach(function(a){
+    var head = el("div","area");
+    head.appendChild(el("h2", null, a));
+    head.appendChild(el("span","line"));
+    var left = grouped[a].filter(function(c){ return !S.state[keyOf(c)]; }).length;
+    head.appendChild(el("span","n", left ? left + " bache" : "poora"));
+    list.appendChild(head);
+
+    grouped[a].forEach(function(c){
+      var st = S.state[keyOf(c)];
+      var t  = tasksFor(c, date);
+      var b  = el("button","card" + (st ? (st.skipped ? " skip" : " done") : ""));
+      b.type = "button";
+      var mark = el("span","mark", st ? (st.skipped ? "✕" : "✓") : String(S.cars.indexOf(c)+1));
+      b.appendChild(mark);
+      var mid = el("div");
+      mid.appendChild(el("p","nm", c.car));
+      mid.appendChild(el("p","rg", c.num));
+      if(!st){
+        var chips = el("div","chips");
+        t.on.forEach(function(k){
+          chips.appendChild(el("span","chip " + LABEL[k][2], LABEL[k][0]));
+        });
+        mid.appendChild(chips);
+        if(c.note) mid.appendChild(el("span","note", c.note));
+      }
+      b.appendChild(mid);
+      if(st) b.appendChild(el("span","when", hhmm(st.at)));
+      b.addEventListener("click", function(){ openCar(c); });
+      list.appendChild(b);
+    });
+  });
+
+  done = S.cars.filter(function(c){ return S.state[keyOf(c)]; }).length;
+  $("n-done").textContent = done;
+  $("n-all").textContent  = S.cars.length;
+  $("n-left").textContent = (S.cars.length - done) + " bache";
+  $("prog").style.width   = (S.cars.length ? (done/S.cars.length*100) : 0) + "%";
+  $("who-name").textContent = S.washer || "—";
+  showQueue();
+}
+
+/* ================= car sheet ================= */
+function openCar(c){
+  S.open = c; S.photo = null;
+  var t = tasksFor(c, new Date());
+  $("d-car").textContent   = c.car;
+  $("d-reg").textContent   = c.num;
+  $("d-where").textContent = c.area + (c.note ? " — " + c.note : "");
+  $("d-lvl").textContent   = t.level;
+  $("pos").textContent     = "Car " + (S.cars.indexOf(c)+1) + " / " + S.cars.length;
+
+  var ul = $("d-tasks"); ul.innerHTML = "";
+  t.on.forEach(function(k){
+    var li = el("li");
+    li.appendChild(el("span","dot"));
+    var d = el("div");
+    d.appendChild(document.createTextNode(LABEL[k][0]));
+    d.appendChild(el("small", null, LABEL[k][1]));
+    li.appendChild(d);
+    ul.appendChild(li);
+  });
+  var nope = $("d-nope");
+  if(t.off.length){
+    nope.hidden = false;
+    nope.textContent = "Aaj NAHI karna: " + t.off.map(function(k){ return LABEL[k][0]; }).join(", ");
+  } else { nope.hidden = true; }
+
+  var st = S.state[keyOf(c)];
+  $("d-img").hidden = true; $("d-frame").hidden = false;
+  $("d-done").disabled = true;
+  $("d-done").textContent = st ? "Pehle ho chuka ✓" : "Ho gaya ✓";
+  $("d-shoot").hidden = !!st;
+  $("d-skip").hidden = !!st;
+  if(st && st.photo){ $("d-img").src = st.photo; $("d-img").hidden = false; $("d-frame").hidden = true; }
+
+  $("sheet").hidden = false;
+  document.body.style.overflow = "hidden";
+  $("sheet").querySelector(".body").scrollTop = 0;
+}
+function closeCar(){
+  $("sheet").hidden = true; document.body.style.overflow = ""; S.open = null; S.photo = null; render();
+}
+
+/* ================= photo ================= */
+function shrink(file){
+  return new Promise(function(res, rej){
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function(){
+      var max = 1100, w = img.width, h = img.height, s = Math.min(1, max/Math.max(w,h));
+      var cv = document.createElement("canvas");
+      cv.width = Math.round(w*s); cv.height = Math.round(h*s);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      res(cv.toDataURL("image/jpeg", 0.62));
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); rej(); };
+    img.src = url;
+  });
+}
+
+/* ================= send / queue ================= */
+function markDone(c, skipped, reason){
+  var now = new Date(), mins = null;
+  if(S.lastAt){ mins = Math.round((now - new Date(S.lastAt)) / 60000); if(mins > 180) mins = null; }
+  var t = tasksFor(c, now);
+  var rec = {
+    washer: S.washer, car: c.car, num: c.num, area: c.area, level: t.level,
+    services: t.on.map(function(k){ return SERVICE_NAME[k]; }),
+    at: now.toISOString(), roundDate: S.day,
+    minutes: mins, skipped: !!skipped, reason: reason || "",
+    photo: skipped ? null : S.photo
+  };
+  S.state[keyOf(c)] = { at: rec.at, skipped: rec.skipped, photo: rec.photo };
+  S.lastAt = rec.at;
+  S.queue.push(rec);
+  save(); flush();
+  toast(skipped ? "Skip note ho gaya" : "Shabash — " + c.car + " done");
+  closeCar();
+}
+
+var sending = false;
+function flush(){
+  if(sending || !S.queue.length || !navigator.onLine){ showQueue(); return; }
+  sending = true;
+  var rec = S.queue[0];
+  fetch(N8N + "/wd-wash", {
+    method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(rec)
+  }).then(function(r){
+    if(!r.ok) throw 0;
+    S.queue.shift(); save(); sending = false; showQueue();
+    if(S.queue.length) setTimeout(flush, 300);
+  }).catch(function(){
+    sending = false; showQueue(); setTimeout(flush, 20000);
+  });
+}
+function showQueue(){
+  var q = $("queue"), n = S.queue.length;
+  if(!n){ q.hidden = true; return; }
+  q.hidden = false;
+  $("q-text").textContent = navigator.onLine
+    ? n + " car bhej rahe hain…"
+    : n + " car phone mein rukhi hain — network aate hi chali jayengi";
+}
+
+function toast(msg){
+  var t = el("div","toast", msg);
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 2200);
+}
+
+/* ================= finish ================= */
+function finishRound(){
+  var done = [], skipped = [];
+  S.cars.forEach(function(c){
+    var st = S.state[keyOf(c)];
+    if(!st) return;
+    (st.skipped ? skipped : done).push(c.car + " " + c.num + " — " + hhmm(st.at));
+  });
+  var missed = S.cars.filter(function(c){ return !S.state[keyOf(c)]; });
+  if(missed.length && !confirm(missed.length + " car abhi baaki hain. Phir bhi duty khatam karein?")) return;
+
+  var msg = "*Washing Daddy — " + S.washer + " ki duty*\n" + S.day + "\n\n"
+    + "Ho gaye: " + done.length + " / " + S.cars.length + "\n"
+    + done.map(function(l){ return "✓ " + l; }).join("\n");
+  if(skipped.length) msg += "\n\nNahi hui:\n" + skipped.map(function(l){ return "✕ " + l; }).join("\n");
+  if(missed.length)  msg += "\n\nChhoot gayi:\n" + missed.map(function(c){ return "• " + c.car + " " + c.num; }).join("\n");
+
+  fetch(N8N + "/wd-round-done", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ washer:S.washer, roundDate:S.day, done:done.length, total:S.cars.length,
+                           skipped:skipped.length, missed:missed.length, summary:msg })
+  }).catch(function(){});
+
+  window.open("https://wa.me/" + OWNER + "?text=" + encodeURIComponent(msg), "_blank");
+  $("fin-note").textContent = "Duty bhej di gayi. Shabash!";
+}
+
+/* ================= wiring ================= */
+Array.prototype.forEach.call(document.querySelectorAll("[data-washer]"), function(b){
+  b.addEventListener("click", function(){ start(b.dataset.washer); });
+});
+$("switch").addEventListener("click", function(){
+  S.washer = null; S.cars = []; save();
+  $("round").hidden = true; $("pick").hidden = false;
+});
+$("back").addEventListener("click", closeCar);
+$("d-shoot").addEventListener("click", function(){ $("d-file").click(); });
+$("d-file").addEventListener("change", function(){
+  var f = this.files && this.files[0]; if(!f) return;
+  $("d-shoot").textContent = "Photo ready kar rahe hain…";
+  shrink(f).then(function(data){
+    S.photo = data;
+    $("d-img").src = data; $("d-img").hidden = false; $("d-frame").hidden = true;
+    $("d-done").disabled = false;
+    $("d-shoot").textContent = "📷 Dobara photo lo";
+  }).catch(function(){
+    $("d-shoot").textContent = "📷 Photo lo";
+    toast("Photo nahi khuli — dobara koshish karo");
+  });
+  this.value = "";
+});
+$("d-done").addEventListener("click", function(){
+  if(!S.open || !S.photo) return;
+  markDone(S.open, false, "");
+});
+$("d-skip").addEventListener("click", function(){
+  if(!S.open) return;
+  var why = prompt("Kyun nahi hui? (car nahi thi, gate band tha, owner ne mana kiya)");
+  if(why === null) return;
+  markDone(S.open, true, why || "wajah nahi batayi");
+});
+$("finish").addEventListener("click", finishRound);
+window.addEventListener("online", flush);
+
+function start(washer){
+  S.washer = washer; save();
+  $("pick").hidden = true; $("round").hidden = false;
+  $("who-name").textContent = washer;
+  if(!S.cars.length){
+    $("list").innerHTML = '<p style="opacity:.8;font-weight:700;padding:20px 0">Aaj ki list laa rahe hain…</p>';
+  }
+  localRound(washer).then(function(cars){
+    if(cars.length && !S.cars.length){ S.cars = cars; save(); render(); }
+  }).catch(function(){}).then(function(){
+    return liveRound(washer).then(function(cars){
+      S.cars = cars; save(); render();
+    }).catch(function(){});
+  }).then(function(){
+    if(!S.cars.length){
+      $("list").innerHTML = '<p style="opacity:.9;font-weight:700;padding:20px 0">List nahi aayi. Network check karke page refresh karo.</p>';
+    }
+  });
+}
+
+load();
+var asked = (location.search.match(/[?&]as=([^&]+)/) || [])[1];
+if(asked){
+  asked = decodeURIComponent(asked);
+  asked = asked.charAt(0).toUpperCase() + asked.slice(1).toLowerCase();
+  if(asked === "Chotte" || asked === "Shahrukh"){
+    if(S.washer !== asked){ S.state = {}; S.lastAt = null; S.cars = []; }
+    S.washer = asked;
+  }
+}
+if(S.washer){
+  $("pick").hidden = true; $("round").hidden = false;
+  if(S.cars.length){ render(); }
+  start(S.washer);
+}
+flush();
+})();
+</script>
+</body>
+</html>
