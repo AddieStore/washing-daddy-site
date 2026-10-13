@@ -141,11 +141,11 @@ tr:last-child td{border-bottom:0}
   <div>
     <p class="brand" style="font-size:16px">WASHING DADDY<small>BOSS BOARD</small></p>
   </div>
-  <h1>PIN daalo</h1>
-  <p>Yeh board sirf aapke liye hai. Link kisi ko mat bhejna.</p>
+  <h1>Enter PIN</h1>
+  <p>This board is only for you. Don&rsquo;t forward the link.</p>
   <input id="pin" type="tel" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="4 digit PIN">
   <p class="err" id="pin-err"></p>
-  <button id="pin-go">Kholo</button>
+  <button id="pin-go">Open</button>
 </section>
 
 <!-- ===== board ===== -->
@@ -164,36 +164,36 @@ tr:last-child td{border-bottom:0}
 <main class="wrap">
 
   <section>
-    <div class="shead"><h2>Abhi</h2><span class="sub" id="live-sub">aaj ka round</span><span class="line"></span></div>
+    <div class="shead"><h2>Right now</h2><span class="sub" id="live-sub">today&rsquo;s round</span><span class="line"></span></div>
     <div class="tiles" id="live-tiles"></div>
     <div class="washers" id="washer-cards" style="margin-top:12px"></div>
   </section>
 
   <section>
-    <div class="shead"><h2>Paisa</h2><span class="sub">kitaab ke hisaab se</span><span class="line"></span></div>
+    <div class="shead"><h2>Money</h2><span class="sub">straight from the book</span><span class="line"></span></div>
     <div class="tiles" id="money-tiles"></div>
     <div class="card">
-      <h3>Bina paise ke dhul rahi cars</h3>
+      <h3>Cars being washed unpaid</h3>
       <div class="scroll"><table id="unpaid"><thead><tr>
-        <th>Car</th><th>Washer</th><th>Area</th><th class="num">Din</th><th class="num">Baaki</th><th class="num">Roz ka</th>
+        <th>Car</th><th>Washer</th><th>Area</th><th class="num">Days over</th><th class="num">Owes</th><th class="num">Per day</th>
       </tr></thead><tbody></tbody></table></div>
     </div>
   </section>
 
   <section>
-    <div class="shead"><h2>Trend</h2><span class="sub">pichhle 30 din</span><span class="line"></span></div>
+    <div class="shead"><h2>Trends</h2><span class="sub">last 30 days</span><span class="line"></span></div>
     <div class="charts" id="charts"></div>
   </section>
 
   <section>
-    <div class="shead"><h2>Area</h2><span class="sub">kahan kitni cars aur kitna paisa</span><span class="line"></span></div>
+    <div class="shead"><h2>Areas</h2><span class="sub">cars and revenue by area</span><span class="line"></span></div>
     <div class="card"><table id="areas"><thead><tr>
-      <th>Area</th><th>Washer</th><th class="num">Cars</th><th class="num">Mahine ka</th><th class="num">Baaki</th>
+      <th>Area</th><th>Washer</th><th class="num">Cars</th><th class="num">Per month</th><th class="num">Owed</th>
     </tr></thead><tbody></tbody></table></div>
   </section>
 
-  <p class="foot">Live data n8n se aata hai. Jab tak workflow import nahi hota, kitaab wala hissa
-    <code>board.json</code> se dikhta hai aur round khali rahega.</p>
+  <p class="foot">Live figures come from n8n. Until that workflow is imported, the money and area
+    sections read from <code>board.json</code> and the round stays empty.</p>
 </main>
 </div>
 
@@ -203,7 +203,7 @@ tr:last-child td{border-bottom:0}
 (function(){
 "use strict";
 
-var PIN  = "5550";                                   /* badalna ho to yahin badlo */
+var PIN  = "5550";                                   /* change the PIN here */
 var N8N  = "https://n8n.washingdaddy.com/webhook";
 var KEY  = "wd.boss.v1";
 var DATA = null;
@@ -213,7 +213,7 @@ function el(t,c,x){ var n=document.createElement(t); if(c)n.className=c; if(x!=n
 function rs(n){ return "₹" + Math.round(n).toLocaleString("en-IN"); }
 function pad(n){ return (n<10?"0":"")+n; }
 
-/* aaj ki date, India ke hisaab se */
+/* today's date, India time */
 function istToday(){
   var s = new Date().toLocaleDateString("en-CA", { timeZone:"Asia/Kolkata" });
   return s;
@@ -234,7 +234,7 @@ function tryPin(){
     try{ localStorage.setItem(KEY, "1"); }catch(e){}
     unlock();
   } else {
-    $("pin-err").textContent = "Galat PIN";
+    $("pin-err").textContent = "Wrong PIN";
     $("pin").value = "";
   }
 }
@@ -257,7 +257,7 @@ function draw(){
   var cars = DATA.cars || [], log = (DATA.today && DATA.today.log) || [], hist = DATA.history || [];
   var today = istToday();
 
-  $("src-txt").textContent = DATA.source === "live" ? "live" : "kitaab snapshot";
+  $("src-txt").textContent = DATA.source === "live" ? "live" : "book snapshot";
   $("src-dot").className   = "dot" + (DATA.source === "live" ? "" : " stale");
   $("now").textContent     = new Date().toLocaleTimeString("en-IN", {hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Asia/Kolkata"}) + " IST";
 
@@ -290,12 +290,12 @@ function draw(){
 
   /* --- live tiles --- */
   var t = $("live-tiles"); t.innerHTML = "";
-  t.appendChild(tile("Washer kaam pe", active + " / " + W.length, active ? "round chal raha hai" : "aaj abhi koi tick nahi"));
-  t.appendChild(tile("Cars ho gayi", doneCars + " / " + totalCars, (totalCars - doneCars) + " baaki"));
-  t.appendChild(tile("On-demand kaam", String(onDemand.length),
-    onDemand.length ? rs(onDemand.reduce(function(s,e){ return s + (Number(e.amount)||0); },0)) + " ka" : "aaj koi nahi"));
+  t.appendChild(tile("Washers working", active + " / " + W.length, active ? "round in progress" : "nothing ticked off yet"));
+  t.appendChild(tile("Cars done", doneCars + " / " + totalCars, (totalCars - doneCars) + " still to go"));
+  t.appendChild(tile("On-demand jobs", String(onDemand.length),
+    onDemand.length ? rs(onDemand.reduce(function(s,e){ return s + (Number(e.amount)||0); },0)) + " taken" : "none today"));
   var skipped = log.filter(function(e){ return e.skipped; }).length;
-  t.appendChild(tile("Nahi hui", String(skipped), skipped ? "wajah neeche log mein" : "sab theek", skipped ? "warn" : ""));
+  t.appendChild(tile("Not washed", String(skipped), skipped ? "reasons in the log" : "all clear", skipped ? "warn" : ""));
   $("live-sub").textContent = today;
 
   /* --- washer cards --- */
@@ -322,7 +322,7 @@ function draw(){
     }
     wc.appendChild(c);
   });
-  if(!W.length) wc.appendChild(el("p", null, "Koi washer nahi mila."));
+  if(!W.length) wc.appendChild(el("p", null, "No washers on the book yet."));
 
   /* --- money --- */
   var mrr   = cars.reduce(function(s,c){ return s + (Number(c.fee)||0); }, 0);
@@ -335,10 +335,10 @@ function draw(){
   var bleed = unpaid.reduce(function(s,x){ return s + x.daily; }, 0);
 
   var mt = $("money-tiles"); mt.innerHTML = "";
-  mt.appendChild(tile("Mahine ki kamai", rs(mrr), cars.length + " cars kitaab mein"));
-  mt.appendChild(tile("Bakaya", rs(owed), owed ? "vasooli baaki" : "sab clear", owed ? "bad" : ""));
-  mt.appendChild(tile("Bina paise dhul rahi", String(unpaid.length), "cars", unpaid.length ? "warn" : ""));
-  mt.appendChild(tile("Roz ka nuksaan", rs(bleed), "jab tak paise nahi aate", bleed ? "bad" : ""));
+  mt.appendChild(tile("Monthly revenue", rs(mrr), cars.length + " cars on the book"));
+  mt.appendChild(tile("Outstanding", rs(owed), owed ? "still to collect" : "all collected", owed ? "bad" : ""));
+  mt.appendChild(tile("Washed unpaid", String(unpaid.length), "cars past their paid-up date", unpaid.length ? "warn" : ""));
+  mt.appendChild(tile("Costing you", rs(bleed) + " a day", "until those cars pay", bleed ? "bad" : ""));
 
   var ub = $("unpaid").querySelector("tbody"); ub.innerHTML = "";
   unpaid.forEach(function(x){
@@ -347,14 +347,14 @@ function draw(){
     tr.appendChild(el("td", null, x.c.washer || "—"));
     tr.appendChild(el("td", null, x.c.area || "—"));
     var d = el("td","num");
-    if(x.days === null){ d.appendChild(el("span","tag y","pata nahi")); }
-    else { d.appendChild(el("span","tag " + (x.days > 20 ? "r" : "y"), x.days + " din")); }
+    if(x.days === null){ d.appendChild(el("span","tag y","never paid")); }
+    else { d.appendChild(el("span","tag " + (x.days > 20 ? "r" : "y"), x.days + " days")); }
     tr.appendChild(d);
     tr.appendChild(el("td","num", x.c.owes ? rs(x.c.owes) : "—"));
     tr.appendChild(el("td","num", rs(x.daily)));
     ub.appendChild(tr);
   });
-  if(!unpaid.length) ub.appendChild(el("tr")).appendChild(el("td", null, "Sab cars paid hain.")).colSpan = 6;
+  if(!unpaid.length) ub.appendChild(el("tr")).appendChild(el("td", null, "Every car is paid up.")).colSpan = 6;
 
   /* --- areas --- */
   var A = {};
@@ -386,10 +386,10 @@ function rank(w){
   return 2;
 }
 function status(w){
-  if(w.total && w.done >= w.total) return ["done","Khatam"];
-  if(w.done === 0) return ["none","Shuru nahi"];
-  if(w.idle != null && w.idle > 30) return ["idle","Ruka " + w.idle + " min"];
-  return ["go","Chal raha"];
+  if(w.total && w.done >= w.total) return ["done","Finished"];
+  if(w.done === 0) return ["none","Not started"];
+  if(w.idle != null && w.idle > 30) return ["idle","Idle " + w.idle + " min"];
+  return ["go","Working"];
 }
 function tile(k, v, n, cls){
   var d = el("div","tile" + (cls ? " " + cls : ""));
@@ -411,14 +411,14 @@ function hideTip(){ tip.style.opacity = "0"; }
 
 function drawCharts(hist, W){
   var box = $("charts"); box.innerHTML = "";
-  box.appendChild(lineChart("Roz kitni cars dhuli", "pichhle 30 din",
+  box.appendChild(lineChart("Cars washed per day", "last 30 days",
     hist.map(function(h){ return { x:h.date, y:Number(h.cars)||0 }; }),
     "var(--series-1)", function(d){ return d.y + " cars"; }));
-  box.appendChild(barChart("Har washer ka min/car", "aaj ke round se",
+  box.appendChild(barChart("Minutes per car, by washer", "from today's round",
     W.filter(function(w){ return w.avg != null; })
      .sort(function(a,b){ return b.avg - a.avg; })
      .map(function(w){ return { k:w.name, v:w.avg }; }), " min"));
-  box.appendChild(lineChart("On-demand kamai", "pichhle 30 din",
+  box.appendChild(lineChart("On-demand earnings", "last 30 days",
     hist.map(function(h){ return { x:h.date, y:Number(h.onDemand)||0 }; }),
     "var(--series-2)", function(d){ return rs(d.y); }));
 }
@@ -435,7 +435,7 @@ function emptyNote(c, msg){ c.appendChild(el("p","empty", msg)); return c; }
 
 function lineChart(title, sub, data, stroke, fmt){
   var c = shell(title, sub);
-  if(!data.length) return emptyNote(c, "Abhi koi record nahi — pehla round hote hi yahan dikhega.");
+  if(!data.length) return emptyNote(c, "Nothing logged yet — this fills in after the first round.");
   var W0 = 520, H = 190, P = { l:34, r:14, t:14, b:24 };
   var max = Math.max.apply(null, data.map(function(d){ return d.y; })).toFixed(0) * 1 || 1;
   max = niceMax(max);
@@ -484,7 +484,7 @@ function lineChart(title, sub, data, stroke, fmt){
 
 function barChart(title, sub, rows, unit){
   var c = shell(title, sub);
-  if(!rows.length) return emptyNote(c, "Abhi min/car nikalne ke liye ticks nahi hain.");
+  if(!rows.length) return emptyNote(c, "No ticks yet to work minutes per car from.");
   var rowH = 30, W0 = 520, P = { l:96, r:52, t:8 };
   var H = P.t + rows.length * rowH + 10;
   var max = niceMax(Math.max.apply(null, rows.map(function(r){ return r.v; })));
@@ -497,7 +497,7 @@ function barChart(title, sub, rows, unit){
       fill:"var(--series-1)" }));
     svg.appendChild(svgText(P.l + Math.max(3, w) + 7, y + 17, r.v + unit, "lbl", "start"));
     var hit = svgEl("rect", { x:P.l, y:y, width:W0-P.l-P.r, height:rowH, "class":"hit" });
-    hit.addEventListener("mousemove", function(e){ showTip(e, "<b>" + r.k + "</b><br>" + r.v + unit + " har car"); });
+    hit.addEventListener("mousemove", function(e){ showTip(e, "<b>" + r.k + "</b><br>" + r.v + unit + " per car"); });
     hit.addEventListener("mouseleave", hideTip);
     svg.appendChild(hit);
   });

@@ -1,4 +1,4 @@
-# Boss board
+# Boss board (English)
 
 Secret address with a PIN. Don't forward the link.
 
