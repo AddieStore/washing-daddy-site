@@ -1,0 +1,52 @@
+name: Build washer APK
+
+# Shell app sirf tab badalta hai jab android/ ka code badle.
+# Website ka kaam APK ke bina hi update ho jaata hai.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build the APK
+        working-directory: android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Put it where the washers can download it
+        run: |
+          mkdir -p app
+          cp android/app/build/outputs/apk/debug/app-debug.apk app/washing-daddy.apk
+          ls -lh app/washing-daddy.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: washing-daddy-apk
+          path: app/washing-daddy.apk
+
+      - name: Commit it to the site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f app/washing-daddy.apk
+          git diff --staged --quiet || git commit -m "Build washer APK [skip ci]"
+          git push
