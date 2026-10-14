@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#5409DA">
+<title>Pay — Washing Daddy</title>
+<meta name="description" content="Pay for your Washing Daddy car wash plan or a one-time wash. UPI, cards and netbanking.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Alfa+Slab+One&family=Poppins:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --violet:#5409DA; --violet-deep:#4207B5; --violet-ink:#2A0478;
+  --gold:#FFBA08; --cream:#FFF6E9; --ink:#1A0A33;
+  --green:#19A34A; --red:#D03B3B;
+  --shout:'Anton','Impact',sans-serif;
+  --slab:'Alfa Slab One','Rockwell',Georgia,serif;
+  --body:'Poppins',system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--violet);color:var(--cream);font-family:var(--body);
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+[hidden]{display:none!important}
+button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px}
+h1,h2,h3,p{margin:0}
+
+header{border-bottom:var(--bar,10px) solid var(--gold);background:var(--violet);
+  background-image:radial-gradient(circle, rgba(255,246,233,.12) 1.3px, transparent 1.5px);
+  background-size:14px 14px}
+header .wrap{display:flex;align-items:center;gap:12px;padding-block:14px}
+.logo{font-family:var(--shout);font-size:21px;letter-spacing:.03em;color:var(--gold);line-height:1;
+  text-shadow:2px 2px 0 var(--violet-ink)}
+.logo small{display:block;font-family:var(--body);font-weight:700;font-size:10.5px;letter-spacing:.15em;color:var(--cream);opacity:.75}
+header a{margin-left:auto;font-weight:700;font-size:13.5px;color:var(--cream);text-decoration:underline}
+
+.hero{padding:26px 0 6px}
+.hero h1{font-family:var(--shout);font-weight:400;font-size:clamp(32px,8.5vw,46px);line-height:1;
+  text-transform:uppercase;text-shadow:3px 3px 0 var(--violet-ink)}
+.hero p{margin-top:8px;font-weight:500;opacity:.92;font-size:15px}
+
+.tabs{display:flex;gap:8px;margin:20px 0 4px;flex-wrap:wrap}
+.tabs button{flex:1;min-width:104px;font-family:var(--shout);font-size:16px;letter-spacing:.03em;
+  text-transform:uppercase;padding:11px 8px;border-radius:999px;border:3px solid var(--cream);
+  background:transparent;color:var(--cream)}
+.tabs button[aria-selected="true"]{background:var(--gold);color:var(--ink);border-color:var(--ink);
+  box-shadow:3px 3px 0 var(--ink)}
+
+.plans{display:grid;gap:10px;margin-top:16px}
+.plan{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--cream);color:var(--ink);
+  border:3px solid var(--ink);border-radius:16px;padding:13px 15px;box-shadow:4px 4px 0 var(--violet-ink)}
+.plan:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--violet-ink)}
+.plan[aria-pressed="true"]{background:var(--gold)}
+.plan .nm{font-weight:800;font-size:17px;line-height:1.15}
+.plan .ds{font-size:12.5px;color:#5B4A7A;font-weight:600;margin-top:2px}
+.plan[aria-pressed="true"] .ds{color:#4A3A00}
+.plan .pr{margin-left:auto;font-family:var(--shout);font-weight:400;font-size:26px;white-space:nowrap}
+.plan .pr small{font-family:var(--body);font-weight:700;font-size:11px;display:block;text-align:right;margin-top:-3px}
+
+.card{background:var(--cream);color:var(--ink);border:3px solid var(--ink);border-radius:18px;
+  padding:16px;margin-top:16px;box-shadow:5px 5px 0 var(--violet-ink)}
+label{display:block;font-weight:800;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+  color:#5B4A7A;margin:12px 0 5px}
+input{width:100%;font-family:var(--body);font-size:16px;font-weight:600;color:var(--ink);background:#fff;
+  border:2.5px solid var(--ink);border-radius:12px;padding:12px 13px}
+input::placeholder{color:#9A8DB5;font-weight:500}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:430px){ .row{grid-template-columns:1fr} }
+
+.big{display:block;width:100%;background:var(--gold);color:var(--ink);border:3px solid var(--ink);
+  border-radius:999px;padding:17px;font-family:var(--shout);font-size:22px;letter-spacing:.02em;
+  text-align:center;margin-top:18px;box-shadow:5px 5px 0 var(--violet-ink)}
+.big:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--violet-ink)}
+.big[disabled]{opacity:.5}
+.big.ghost{background:var(--cream)}
+
+.found{background:#fff;border:2.5px dashed var(--ink);border-radius:14px;padding:12px 14px;margin-top:12px}
+.found .c{font-weight:800;font-size:16px}
+.found .d{font-size:13px;color:#5B4A7A;font-weight:600;margin-top:2px}
+.msg{font-weight:700;font-size:14px;margin-top:12px;padding:10px 13px;border-radius:12px;border:2px solid currentColor}
+.msg.bad{color:#8A2B2F;background:#FBE4E5}
+.msg.ok{color:#0A6B0A;background:#DFF3DF}
+
+.trust{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:center;margin:22px 0 8px;
+  font-size:12.5px;font-weight:600;opacity:.85}
+.foot{padding:26px 0 44px;text-align:center;font-size:13px;opacity:.8}
+.foot a{color:var(--gold)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a href="/" style="margin-left:0;text-decoration:none"><p class="logo">WASHING DADDY<small>PAYMENTS</small></p></a>
+    <a href="/">Back to site</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <h1>Pay for your wash</h1>
+    <p>UPI, card or netbanking. You&rsquo;ll get a confirmation the moment it goes through.</p>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="t-bill"    aria-selected="true"  data-tab="bill">My bill</button>
+    <button role="tab" id="t-monthly" aria-selected="false" data-tab="monthly">New plan</button>
+    <button role="tab" id="t-once"    aria-selected="false" data-tab="once">One wash</button>
+  </div>
+
+  <!-- ===== pay my bill ===== -->
+  <section id="p-bill">
+    <div class="card">
+      <p style="font-weight:700;font-size:14.5px">Already with us? Put in your car number and we&rsquo;ll find what&rsquo;s due.</p>
+      <label for="b-num">Car number</label>
+      <input id="b-num" type="text" placeholder="DL 9209" autocomplete="off" autocapitalize="characters">
+      <button class="big ghost" id="b-find">Find my car</button>
+      <div id="b-found" hidden></div>
+    </div>
+  </section>
+
+  <!-- ===== monthly ===== -->
+  <section id="p-monthly" hidden>
+    <div class="plans" id="monthly-list"></div>
+  </section>
+
+  <!-- ===== one-time ===== -->
+  <section id="p-once" hidden>
+    <div class="plans" id="once-list"></div>
+  </section>
+
+  <!-- ===== details ===== -->
+  <section id="details" hidden>
+    <div class="card">
+      <p style="font-weight:800;font-size:15px" id="sum">—</p>
+      <div class="row">
+        <div><label for="f-name">Your name</label><input id="f-name" type="text" autocomplete="name"></div>
+        <div><label for="f-phone">Phone</label><input id="f-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10 digits" autocomplete="tel"></div>
+      </div>
+      <div class="row">
+        <div><label for="f-car">Car</label><input id="f-car" type="text" placeholder="Swift, Creta"></div>
+        <div><label for="f-num">Car number</label><input id="f-num" type="text" placeholder="DL 9209" autocapitalize="characters"></div>
+      </div>
+      <label for="f-area">Area</label>
+      <input id="f-area" type="text" placeholder="GH-9 Paschim Vihar, Meera Bagh, Sundar Vihar">
+      <label for="f-amt">Amount</label>
+      <input id="f-amt" type="number" inputmode="numeric" min="1" max="50000" step="1">
+      <p class="msg bad" id="err" hidden></p>
+      <button class="big" id="pay">Pay now</button>
+      <button class="big ghost" id="back" style="margin-top:10px">Change</button>
+    </div>
+  </section>
+
+  <p class="trust">
+    <span>🔒 Payments handled by Cashfree</span>
+    <span>📱 UPI · Card · Netbanking</span>
+  </p>
+
+  <p class="foot">
+    Trouble paying? WhatsApp us on <a href="https://wa.me/917701808924">7701808924</a>.<br>
+    Washing Daddy, New Delhi.
+  </p>
+</main>
+
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============ config ============ */
+var N8N     = "https://n8n.washingdaddy.com/webhook";
+var CF_MODE = "sandbox";          /* live hone par "production" kar dena */
+
+var MONTHLY = [
+  { id:"std",  nm:"WD Standard",  pr:999,  ds:"Daily pressure wash · interior weekly · tyre polish 2× · foam weekly" },
+  { id:"pro",  nm:"WD Pro",       pr:1800, ds:"Interior 2× a week · tyre polish daily · foam 2× · detailing monthly" },
+  { id:"exc",  nm:"WD Exclusive", pr:2500, ds:"Interior 3× · foam 4× · detailing twice a month · car perfume" },
+  { id:"res",  nm:"WD Reserve",   pr:5555, ds:"Everything daily · partnered stores across Delhi NCR" }
+];
+var ONCE = [
+  { id:"o-std", nm:"Standard wash",  pr:500,  ds:"Foam, pressure wash and hand dry" },
+  { id:"o-pro", nm:"Pro wash",       pr:1200, ds:"Standard plus interior and tyre polish" },
+  { id:"o-exc", nm:"Exclusive wash", pr:2100, ds:"Full detail inside and out" }
+];
+
+var $ = function(id){ return document.getElementById(id); };
+function el(t,c,x){ var n=document.createElement(t); if(c)n.className=c; if(x!=null)n.textContent=x; return n; }
+function rs(n){ return "₹" + Number(n).toLocaleString("en-IN"); }
+
+var picked = null;   /* { kind, label, amount } */
+
+/* ============ tabs ============ */
+Array.prototype.forEach.call(document.querySelectorAll("[data-tab]"), function(b){
+  b.addEventListener("click", function(){
+    Array.prototype.forEach.call(document.querySelectorAll("[data-tab]"), function(x){
+      x.setAttribute("aria-selected", x === b ? "true" : "false");
+    });
+    ["bill","monthly","once"].forEach(function(k){ $("p-" + k).hidden = (k !== b.dataset.tab); });
+    $("details").hidden = true;
+  });
+});
+
+/* ============ plan lists ============ */
+function planList(host, rows, kind, unit){
+  rows.forEach(function(p){
+    var b = el("button","plan"); b.type = "button";
+    var d = el("div");
+    d.appendChild(el("p","nm", p.nm));
+    d.appendChild(el("p","ds", p.ds));
+    b.appendChild(d);
+    var pr = el("span","pr", rs(p.pr));
+    if(unit) pr.appendChild(el("small", null, unit));
+    b.appendChild(pr);
+    b.addEventListener("click", function(){ choose(kind, p.nm, p.pr); });
+    host.appendChild(b);
+  });
+}
+planList($("monthly-list"), MONTHLY, "Monthly plan", "per month");
+planList($("once-list"), ONCE, "One-time wash", "one wash");
+
+function choose(kind, label, amount){
+  picked = { kind:kind, label:label, amount:amount };
+  $("sum").textContent = label + " — " + rs(amount);
+  $("f-amt").value = amount;
+  $("err").hidden = true;
+  $("details").hidden = false;
+  $("details").scrollIntoView({ behavior:"smooth", block:"start" });
+}
+$("back").addEventListener("click", function(){ $("details").hidden = true; });
+
+/* ============ find my car ============ */
+$("b-find").addEventListener("click", function(){
+  var q = ($("b-num").value || "").trim();
+  if(q.length < 3){ return showFound(null, "Poora car number likhiye, jaise DL 9209."); }
+  $("b-find").textContent = "Looking…"; $("b-find").disabled = true;
+  fetch(N8N + "/wd-pay-lookup?car=" + encodeURIComponent(q), { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    .then(function(j){
+      $("b-find").textContent = "Find my car"; $("b-find").disabled = false;
+      if(!j || !j.found) return showFound(null, "That car isn't on our book. Use New plan, or WhatsApp us.");
+      showFound(j);
+    })
+    .catch(function(){
+      $("b-find").textContent = "Find my car"; $("b-find").disabled = false;
+      showFound(null, "Couldn't check right now. Pick an amount below or WhatsApp us.");
+    });
+});
+function showFound(j, msg){
+  var box = $("b-found"); box.innerHTML = ""; box.hidden = false;
+  if(!j){
+    box.appendChild(el("p","msg bad", msg));
+    return;
+  }
+  var d = el("div","found");
+  d.appendChild(el("p","c", j.car + " " + j.num));
+  var due = j.owes > 0 ? rs(j.owes) + " outstanding" : "nothing outstanding";
+  d.appendChild(el("p","d", j.area + " · " + rs(j.fee) + " a month · " + due));
+  box.appendChild(d);
+  var amount = j.owes > 0 ? j.owes : j.fee;
+  var b = el("button","big", "Pay " + rs(amount));
+  b.addEventListener("click", function(){
+    choose("Monthly bill", j.car + " " + j.num, amount);
+    $("f-car").value = j.car; $("f-num").value = j.num; $("f-area").value = j.area || "";
+    if(j.name) $("f-name").value = j.name;
+  });
+  box.appendChild(b);
+}
+
+/* ============ pay ============ */
+$("pay").addEventListener("click", function(){
+  var name  = ($("f-name").value || "").trim();
+  var phone = ($("f-phone").value || "").replace(/\D/g, "").slice(-10);
+  var car   = ($("f-car").value || "").trim();
+  var numb  = ($("f-num").value || "").trim();
+  var area  = ($("f-area").value || "").trim();
+  var amt   = Math.round(Number($("f-amt").value) || 0);
+
+  if(!name)             return bad("Please put your name in.");
+  if(phone.length !== 10) return bad("Phone number should be 10 digits.");
+  if(amt < 1 || amt > 50000) return bad("That amount doesn't look right.");
+  if(!picked)           return bad("Pick a plan first.");
+
+  $("err").hidden = true;
+  $("pay").disabled = true; $("pay").textContent = "Opening…";
+
+  fetch(N8N + "/wd-pay-order", {
+    method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      amount: amt, name: name, phone: phone, car: car, num: numb, area: area,
+      kind: picked.kind, label: picked.label,
+      page: location.origin + location.pathname
+    })
+  })
+  .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw j; return j; }); })
+  .then(function(j){
+    if(!j.paymentSessionId) throw j;
+    var cf = Cashfree({ mode: CF_MODE });
+    return cf.checkout({ paymentSessionId: j.paymentSessionId, redirectTarget: "_self" });
+  })
+  .catch(function(e){
+    $("pay").disabled = false; $("pay").textContent = "Pay now";
+    bad((e && e.message) ? e.message : "Couldn't start the payment. Try again, or WhatsApp us on 7701808924.");
+  });
+});
+function bad(m){ $("err").textContent = m; $("err").hidden = false; $("err").scrollIntoView({ block:"nearest" }); }
+
+/* ============ came back from checkout ============ */
+var back = (location.search.match(/[?&]order_id=([^&]+)/) || [])[1];
+if(back){
+  var box = el("p","msg ok", "Thanks — we're confirming your payment. You'll get a WhatsApp from us shortly.");
+  document.querySelector("main .hero").appendChild(box);
+}
+})();
+</script>
+</body>
+</html>
