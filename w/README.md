@@ -15,6 +15,23 @@ whole round never lands on one morning.
 Tap a car, take an after photo, tap **Ho gaya**. The photo and the record go
 to n8n; if there's no signal they queue on the phone and go when it returns.
 
+## Time per car
+
+Every car is 10 minutes, or 12 when three or more jobs fall due that day, plus
+2 minutes to get to the next one. From the round's start time the app works out
+a slot for each car and shows it on the card — `07:36 · 10 min` — and marks the
+card red when that slot has already passed.
+
+Opening a car starts a timer that counts up. It turns amber for the last fifth
+of the time, then red at the limit with three beeps and a buzz. The washer can
+restart the timer if they opened the car by mistake.
+
+The real minutes spent go to the Wash Log, so **Minutes On Car** on the board is
+measured rather than inferred.
+
+The start time sits above the list and each washer sets their own; it defaults
+to 07:00 and is remembered on that phone.
+
 ## Where the data comes from
 
 1. `round.json` in this folder — loads instantly so the app is never blank.
