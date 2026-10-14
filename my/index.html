@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#5409DA">
+<title>My Washing Daddy</title>
+<meta name="description" content="See today's wash, your plan and your bill.">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="/my/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/w/icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --violet:#5409DA; --violet-deep:#4207B5; --violet-ink:#2A0478;
+  --gold:#FFBA08; --cream:#FFF6E9; --ink:#1A0A33;
+  --green:#19A34A; --red:#D03B3B; --muted:#5B4A7A;
+  --shout:'Anton',Impact,sans-serif;
+  --body:'Poppins',system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--violet);color:var(--cream);font-family:var(--body);
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+[hidden]{display:none!important}
+button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+.wrap{max-width:540px;margin:0 auto;padding:0 16px}
+
+.bar{background:var(--violet);border-bottom:9px solid var(--gold);
+  background-image:radial-gradient(circle, rgba(255,246,233,.12) 1.3px, transparent 1.5px);
+  background-size:14px 14px}
+.bar .wrap{display:flex;align-items:center;gap:12px;padding-block:13px}
+.logo{font-family:var(--shout);font-size:20px;letter-spacing:.03em;color:var(--gold);line-height:1;
+  text-shadow:2px 2px 0 var(--violet-ink)}
+.logo small{display:block;font-family:var(--body);font-weight:700;font-size:10px;
+  letter-spacing:.15em;color:var(--cream);opacity:.75}
+.bar .out{margin-left:auto;font-size:13px;font-weight:700;text-decoration:underline;opacity:.9}
+
+.card{background:var(--cream);color:var(--ink);border:3px solid var(--ink);border-radius:18px;
+  padding:16px;margin-top:14px;box-shadow:5px 5px 0 var(--violet-ink)}
+.big{display:block;width:100%;background:var(--gold);color:var(--ink);border:3px solid var(--ink);
+  border-radius:999px;padding:16px;font-family:var(--shout);font-size:21px;letter-spacing:.02em;
+  text-align:center;margin-top:16px;box-shadow:5px 5px 0 var(--violet-ink);text-decoration:none}
+.big:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--violet-ink)}
+.big[disabled]{opacity:.5}
+.big.ghost{background:var(--cream)}
+label{display:block;font-weight:800;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin:12px 0 5px}
+input{width:100%;font-family:var(--body);font-size:17px;font-weight:600;color:var(--ink);background:#fff;
+  border:2.5px solid var(--ink);border-radius:12px;padding:12px 13px}
+input::placeholder{color:#9A8DB5;font-weight:500}
+.msg{font-weight:700;font-size:14px;margin-top:12px;padding:10px 13px;border-radius:12px;border:2px solid currentColor}
+.msg.bad{color:#8A2B2F;background:#FBE4E5}
+.msg.ok{color:#0A6B0A;background:#DFF3DF}
+
+/* ---- sign in ---- */
+.hero{padding:30px 0 2px}
+.hero h1{font-family:var(--shout);font-weight:400;font-size:clamp(32px,9vw,44px);line-height:1;
+  text-transform:uppercase;text-shadow:3px 3px 0 var(--violet-ink)}
+.hero p{margin-top:9px;font-weight:500;opacity:.92;font-size:15px}
+.phone-row{display:flex;gap:8px;align-items:stretch}
+.phone-row .pre{display:flex;align-items:center;padding:0 13px;background:#fff;color:var(--ink);
+  border:2.5px solid var(--ink);border-radius:12px;font-weight:800}
+
+/* ---- car ---- */
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:16px 0 2px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;font-weight:800;font-size:13.5px;padding:9px 15px;border-radius:999px;
+  border:2.5px solid var(--cream);white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--gold);color:var(--ink);border-color:var(--ink);
+  box-shadow:3px 3px 0 var(--ink)}
+
+.shot{width:100%;aspect-ratio:4/3;object-fit:cover;background:#E6DCCB;
+  border:3px solid var(--ink);border-radius:14px;display:block}
+.shot-wrap{position:relative}
+.stamp{position:absolute;left:10px;bottom:10px;background:var(--ink);color:var(--cream);
+  font-weight:800;font-size:12px;padding:5px 11px;border-radius:999px}
+.head{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.head h2{font-family:var(--shout);font-weight:400;font-size:27px;line-height:1;text-transform:uppercase}
+.head .reg{font-weight:800;color:var(--muted);font-size:14px}
+.sub{font-size:13px;color:var(--muted);font-weight:600;margin-top:3px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.chip{font-size:12px;font-weight:800;padding:5px 11px;border-radius:999px;border:2px solid var(--ink);
+  background:#DCEBFF}
+.chip.i{background:#D9F2E2} .chip.t{background:#FFF0C2} .chip.f{background:#EADCFF} .chip.d{background:#FFE2CC}
+.rowline{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:2px dashed #D9CDBA;
+  font-size:14.5px;font-weight:600}
+.rowline:first-of-type{border-top:0}
+.rowline b{font-weight:800}
+.due{color:#8A2B2F} .clear{color:#0A6B0A}
+.strip{display:flex;gap:8px;overflow-x:auto;margin-top:11px;padding-bottom:4px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.strip figure{flex:none;width:92px;margin:0}
+.strip img{width:92px;height:70px;object-fit:cover;border:2.5px solid var(--ink);border-radius:10px;
+  display:block;background:#E6DCCB}
+.strip figcaption{font-size:11px;font-weight:700;color:var(--muted);margin-top:4px;text-align:center}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.two button{background:var(--cream);color:var(--ink);border:3px solid var(--ink);border-radius:14px;
+  padding:13px 10px;font-weight:800;font-size:14px;box-shadow:4px 4px 0 var(--violet-ink)}
+.two button:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--violet-ink)}
+.sec{font-family:var(--shout);font-weight:400;font-size:15px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--gold);margin:22px 0 0}
+
+/* ---- join ---- */
+.plan{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--cream);
+  color:var(--ink);border:3px solid var(--ink);border-radius:16px;padding:13px 15px;margin-top:10px;
+  box-shadow:4px 4px 0 var(--violet-ink)}
+.plan[aria-pressed="true"]{background:var(--gold)}
+.plan .nm{font-weight:800;font-size:16.5px;line-height:1.15}
+.plan .ds{font-size:12px;color:var(--muted);font-weight:600;margin-top:2px}
+.plan[aria-pressed="true"] .ds{color:#4A3A00}
+.plan .pr{margin-left:auto;font-family:var(--shout);font-size:24px;white-space:nowrap}
+.foot{padding:26px 0 44px;text-align:center;font-size:13px;opacity:.82}
+.foot a{color:var(--gold)}
+.spin{width:30px;height:30px;border:4px solid rgba(255,246,233,.3);border-top-color:var(--gold);
+  border-radius:50%;animation:sp .8s linear infinite;margin:40px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="wrap">
+    <a href="/" style="text-decoration:none"><p class="logo">WASHING DADDY<small>MY CAR</small></p></a>
+    <button class="out" id="signout" hidden>Sign out</button>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <!-- ============ sign in ============ -->
+  <section id="s-in">
+    <div class="hero">
+      <h1>Your car, every day</h1>
+      <p>See today&rsquo;s wash with the photo, what was done, and what you owe.</p>
+    </div>
+
+    <div class="card" id="box-phone">
+      <label for="ph">Your mobile number</label>
+      <div class="phone-row">
+        <span class="pre">+91</span>
+        <input id="ph" type="tel" inputmode="numeric" maxlength="10" placeholder="10 digits" autocomplete="tel">
+      </div>
+      <p class="sub" style="margin-top:9px">Use the number we have on your account.</p>
+      <button class="big" id="send">Send me a code</button>
+      <p class="msg bad" id="e1" hidden></p>
+    </div>
+
+    <div class="card" id="box-otp" hidden>
+      <label for="otp">Enter the 6 digit code</label>
+      <input id="otp" type="tel" inputmode="numeric" maxlength="6" placeholder="------" autocomplete="one-time-code">
+      <p class="sub" style="margin-top:9px" id="sent-to"></p>
+      <button class="big" id="verify">Check code</button>
+      <button class="big ghost" id="again" style="margin-top:10px">Use a different number</button>
+      <p class="msg bad" id="e2" hidden></p>
+    </div>
+    <div id="recaptcha"></div>
+  </section>
+
+  <!-- ============ loading ============ -->
+  <section id="s-load" hidden><div class="spin"></div></section>
+
+  <!-- ============ my cars ============ -->
+  <section id="s-me" hidden>
+    <div class="tabs" id="tabs"></div>
+    <div id="car"></div>
+  </section>
+
+  <!-- ============ join ============ -->
+  <section id="s-join" hidden>
+    <div class="hero">
+      <h1>Start your plan</h1>
+      <p id="join-note">That number isn&rsquo;t on our book yet &mdash; let&rsquo;s set you up.</p>
+    </div>
+    <div id="plans"></div>
+    <div class="card">
+      <label for="j-name">Your name</label>
+      <input id="j-name" type="text" autocomplete="name">
+      <label for="j-car">Car</label>
+      <input id="j-car" type="text" placeholder="Swift, Creta">
+      <label for="j-num">Car number</label>
+      <input id="j-num" type="text" placeholder="DL 9209" autocapitalize="characters">
+      <label for="j-area">Where is it parked?</label>
+      <input id="j-area" type="text" placeholder="GH-9 Paschim Vihar, tower and flat">
+      <p class="msg bad" id="e3" hidden></p>
+      <button class="big" id="join">Send my request</button>
+      <p class="sub" style="margin-top:11px">We&rsquo;ll call to confirm we cover your street, then start the next morning.</p>
+    </div>
+  </section>
+
+  <p class="foot">
+    Need a person? WhatsApp <a href="https://wa.me/917701808924">7701808924</a>.<br>
+    Washing Daddy, New Delhi.
+  </p>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+/* ================= config =================
+   Firebase console se bharna hai. Project settings > Your apps > Web app. */
+const FIREBASE = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  appId: ""
+};
+const N8N = "https://n8n.washingdaddy.com/webhook";
+
+const PLANS = [
+  { id:"std", nm:"WD Standard",  pr:999,  ds:"Daily pressure wash, interior weekly, tyre polish twice" },
+  { id:"pro", nm:"WD Pro",       pr:1800, ds:"Interior twice a week, tyre polish daily, monthly detail" },
+  { id:"exc", nm:"WD Exclusive", pr:2500, ds:"Interior 3x, foam 4x, detailing twice a month" },
+  { id:"res", nm:"WD Reserve",   pr:5555, ds:"Everything, every day" }
+];
+const CHIP = { "Pressure wash":"", "Interior":"i", "Tyre & trim polish":"t", "Foam wash":"f", "Detailing":"d" };
+
+const $ = (id) => document.getElementById(id);
+const rs = (n) => "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN");
+const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
+const show = (id) => ["s-in","s-load","s-me","s-join"].forEach(k => $(k).hidden = (k !== id));
+function dayName(iso){
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00+05:30");
+  return d.toLocaleDateString("en-GB", { day:"numeric", month:"short", timeZone:"Asia/Kolkata" });
+}
+function clock(iso){
+  if (!iso) return "";
+  return new Date(iso).toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit", timeZone:"Asia/Kolkata" });
+}
+function bad(id, m){ const n = $(id); n.textContent = m; n.hidden = false; }
+
+/* ================= firebase ================= */
+let auth = null, confirmer = null, verifier = null;
+const configured = !!FIREBASE.apiKey;
+
+if (configured) {
+  const app = initializeApp(FIREBASE);
+  auth = getAuth(app);
+  auth.languageCode = "en";
+  onAuthStateChanged(auth, (user) => { if (user) load(user); });
+} else {
+  $("box-phone").innerHTML =
+    '<p style="font-weight:800;font-size:15px">Sign-in isn’t switched on yet.</p>' +
+    '<p class="sub" style="margin-top:8px">The Firebase keys still need filling in. ' +
+    'Until then, WhatsApp us on 7701808924 and we’ll send your photos.</p>';
+}
+
+$("send").addEventListener("click", async () => {
+  const phone = ($("ph").value || "").replace(/\D/g, "").slice(-10);
+  if (phone.length !== 10) return bad("e1", "That doesn’t look like a 10 digit number.");
+  $("e1").hidden = true;
+  $("send").disabled = true; $("send").textContent = "Sending…";
+  try {
+    if (!verifier) {
+      verifier = new RecaptchaVerifier(auth, "recaptcha", { size: "invisible" });
+      await verifier.render();
+    }
+    confirmer = await signInWithPhoneNumber(auth, "+91" + phone, verifier);
+    $("sent-to").textContent = "Sent to +91 " + phone;
+    $("box-phone").hidden = true; $("box-otp").hidden = false;
+    $("otp").focus();
+  } catch (err) {
+    bad("e1", friendly(err));
+    try { verifier.clear(); } catch (e) {}
+    verifier = null;
+  }
+  $("send").disabled = false; $("send").textContent = "Send me a code";
+});
+
+$("verify").addEventListener("click", async () => {
+  const code = ($("otp").value || "").replace(/\D/g, "");
+  if (code.length !== 6) return bad("e2", "The code is 6 digits.");
+  $("e2").hidden = true;
+  $("verify").disabled = true; $("verify").textContent = "Checking…";
+  try {
+    await confirmer.confirm(code);           // onAuthStateChanged load() chala dega
+  } catch (err) {
+    bad("e2", friendly(err));
+    $("verify").disabled = false; $("verify").textContent = "Check code";
+  }
+});
+
+$("again").addEventListener("click", () => {
+  $("box-otp").hidden = true; $("box-phone").hidden = false;
+  $("e1").hidden = true; $("e2").hidden = true;
+});
+
+$("signout").addEventListener("click", async () => {
+  if (auth) await signOut(auth);
+  location.reload();
+});
+
+function friendly(err){
+  const c = (err && err.code) || "";
+  if (c.includes("invalid-phone-number")) return "That number doesn’t look right.";
+  if (c.includes("invalid-verification-code")) return "That code didn’t match. Try again.";
+  if (c.includes("code-expired")) return "That code expired. Ask for a new one.";
+  if (c.includes("too-many-requests")) return "Too many tries. Please wait a few minutes.";
+  if (c.includes("quota-exceeded")) return "Too many codes sent today. WhatsApp us instead.";
+  return "Something went wrong. Try again, or WhatsApp us on 7701808924.";
+}
+
+/* ================= my data ================= */
+let DATA = null, idx = 0, TOKEN = null;
+
+async function load(user){
+  show("s-load");
+  try {
+    TOKEN = await user.getIdToken();
+    const r = await fetch(N8N + "/wd-my", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: TOKEN, action: "me" })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error("");
+    DATA = j;
+    $("signout").hidden = false;
+    if (!j.cars || !j.cars.length) { buildJoin(); show("s-join"); return; }
+    buildTabs(); paint(0); show("s-me");
+  } catch (e) {
+    show("s-in");
+    $("box-otp").hidden = true; $("box-phone").hidden = false;
+    bad("e1", "Couldn’t load your account. Try again, or WhatsApp us on 7701808924.");
+  }
+}
+
+function buildTabs(){
+  const t = $("tabs"); t.innerHTML = "";
+  if (DATA.cars.length < 2) return;
+  DATA.cars.forEach((c, i) => {
+    const b = el("button", null, c.car);
+    b.setAttribute("aria-selected", i === 0 ? "true" : "false");
+    b.addEventListener("click", () => {
+      [...t.children].forEach((x, k) => x.setAttribute("aria-selected", k === i ? "true" : "false"));
+      paint(i);
+    });
+    t.appendChild(b);
+  });
+}
+
+function paint(i){
+  idx = i;
+  const c = DATA.cars[i];
+  const host = $("car"); host.innerHTML = "";
+
+  /* ---- today ---- */
+  const today = el("div", "card");
+  const h = el("div", "head");
+  h.appendChild(el("h2", null, c.car));
+  h.appendChild(el("span", "reg", c.num));
+  today.appendChild(h);
+  today.appendChild(el("p", "sub", c.area + " · " + c.level));
+
+  if (c.today) {
+    const w = el("div", "shot-wrap"); w.style.marginTop = "12px";
+    const img = el("img", "shot");
+    img.alt = "Today's wash";
+    img.loading = "lazy";
+    img.src = c.today.photo ? (N8N + "/wd-photo?id=" + encodeURIComponent(c.today.photo))
+                            : "/w/icons/icon-512.png";
+    w.appendChild(img);
+    w.appendChild(el("span", "stamp", "Washed " + clock(c.today.at)));
+    today.appendChild(w);
+
+    const chips = el("div", "chips");
+    (c.today.services || []).forEach(s => chips.appendChild(el("span", "chip " + (CHIP[s] || ""), s)));
+    today.appendChild(chips);
+    if (c.today.washer) today.appendChild(el("p", "sub", "Done by " + c.today.washer));
+  } else {
+    const n = el("p", "msg ok");
+    n.style.marginTop = "12px";
+    n.textContent = c.slot ? ("Not washed yet today — due around " + c.slot + ".")
+                           : "Not washed yet today.";
+    today.appendChild(n);
+  }
+  host.appendChild(today);
+
+  /* ---- money ---- */
+  host.appendChild(el("p", "sec", "Your plan"));
+  const m = el("div", "card");
+  const line = (k, v, cls) => {
+    const r = el("div", "rowline");
+    r.appendChild(el("span", null, k));
+    r.appendChild(el("b", cls || null, v));
+    m.appendChild(r);
+  };
+  line("Plan", c.level);
+  line("Monthly", rs(c.fee));
+  line("Paid up to", c.paidTo ? dayName(c.paidTo) : "—");
+  if (c.owes > 0) line("You owe", rs(c.owes), "due");
+  else line("Balance", "All clear", "clear");
+  host.appendChild(m);
+
+  if (c.owes > 0 || c.overdue) {
+    const pay = el("a", "big", "Pay " + rs(c.owes > 0 ? c.owes : c.fee));
+    pay.href = "/pay/?car=" + encodeURIComponent(c.num);
+    host.appendChild(pay);
+  }
+
+  /* ---- history ---- */
+  if (c.recent && c.recent.length) {
+    host.appendChild(el("p", "sec", "Last few days"));
+    const hc = el("div", "card");
+    const strip = el("div", "strip");
+    c.recent.forEach(r => {
+      const f = el("figure");
+      const im = el("img");
+      im.loading = "lazy";
+      im.alt = r.day;
+      im.src = r.photo ? (N8N + "/wd-photo?id=" + encodeURIComponent(r.photo)) : "/w/icons/icon-192.png";
+      f.appendChild(im);
+      f.appendChild(el("figcaption", null, dayName(r.day)));
+      strip.appendChild(f);
+    });
+    hc.appendChild(strip);
+    host.appendChild(hc);
+  }
+
+  /* ---- actions ---- */
+  const two = el("div", "two");
+  const b1 = el("button", null, "Something wasn’t right");
+  b1.addEventListener("click", () => act("problem", c));
+  const b2 = el("button", null, "Skip my car tomorrow");
+  b2.addEventListener("click", () => act("skip", c));
+  two.appendChild(b1); two.appendChild(b2);
+  host.appendChild(two);
+  const note = el("p", "msg ok", "");
+  note.id = "act-note"; note.hidden = true;
+  host.appendChild(note);
+}
+
+async function act(kind, c){
+  let text = "";
+  if (kind === "problem") {
+    text = prompt("What went wrong? We'll look into it today.");
+    if (!text) return;
+  } else {
+    if (!confirm("Skip " + c.car + " tomorrow?")) return;
+    text = "Skip tomorrow";
+  }
+  const n = $("act-note");
+  n.hidden = false; n.className = "msg ok"; n.textContent = "Sending…";
+  try {
+    const r = await fetch(N8N + "/wd-my", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: TOKEN, action: kind, num: c.num, car: c.car, text: text })
+    });
+    if (!r.ok) throw 0;
+    n.textContent = kind === "skip"
+      ? "Noted — we’ll skip tomorrow."
+      : "Thanks, we’ve told the team. Someone will call you.";
+  } catch (e) {
+    n.className = "msg bad";
+    n.textContent = "Couldn’t send that. Please WhatsApp us on 7701808924.";
+  }
+}
+
+/* ================= join ================= */
+let picked = PLANS[0];
+function buildJoin(){
+  const host = $("plans"); host.innerHTML = "";
+  PLANS.forEach((p, i) => {
+    const b = el("button", "plan"); b.type = "button";
+    b.setAttribute("aria-pressed", i === 0 ? "true" : "false");
+    const d = el("div");
+    d.appendChild(el("p", "nm", p.nm));
+    d.appendChild(el("p", "ds", p.ds));
+    b.appendChild(d);
+    b.appendChild(el("span", "pr", rs(p.pr)));
+    b.addEventListener("click", () => {
+      picked = p;
+      [...host.children].forEach((x, k) => x.setAttribute("aria-pressed", k === i ? "true" : "false"));
+    });
+    host.appendChild(b);
+  });
+}
+
+$("join").addEventListener("click", async () => {
+  const name = ($("j-name").value || "").trim();
+  const area = ($("j-area").value || "").trim();
+  if (!name) return bad("e3", "Please tell us your name.");
+  if (!area) return bad("e3", "We need to know where the car is parked.");
+  $("e3").hidden = true;
+  $("join").disabled = true; $("join").textContent = "Sending…";
+  try {
+    const r = await fetch(N8N + "/wd-my", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        idToken: TOKEN, action: "join", name: name, area: area,
+        car: ($("j-car").value || "").trim(), num: ($("j-num").value || "").trim(),
+        plan: picked.nm, amount: picked.pr
+      })
+    });
+    if (!r.ok) throw 0;
+    $("s-join").innerHTML =
+      '<div class="hero"><h1>Got it</h1>' +
+      '<p>We’ll call you today to check we cover your street, then start the next morning.</p></div>';
+  } catch (e) {
+    bad("e3", "Couldn’t send that. Please WhatsApp us on 7701808924.");
+    $("join").disabled = false; $("join").textContent = "Send my request";
+  }
+});
+</script>
+</body>
+</html>
