@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -106,6 +107,14 @@ public class MainActivity extends Activity {
         } catch (IOException e) {
           return null;   // not bundled: let it go to the network
         }
+      }
+
+      // If the page's renderer dies (low memory), Android kills the whole app unless we handle it here.
+      // Start fresh instead: the apps keep their state in localStorage.
+      @Override
+      public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail detail) {
+        if (web == v) { web = null; v.destroy(); recreate(); }
+        return true;
       }
 
       @Override
