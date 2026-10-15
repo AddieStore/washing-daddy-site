@@ -16,7 +16,12 @@ for pair in "customer:com.washingdaddy.customer:washing-daddy-customer.apk" "was
   adb shell am start -W -n "$pkg/com.washingdaddy.app.MainActivity"
   sleep 25
   adb exec-out screencap -p > "$OUT/$name-1-open.png"
-  if [ -z "$(adb shell pidof $pkg)" ]; then echo "CRASHED $name"; fail=1; fi
+  if [ -z "$(adb shell pidof $pkg)" ]; then
+    echo "CRASHED $name"; fail=1
+    echo "--- crash buffer"; adb logcat -d -b crash | tail -n 60
+    echo "--- errors"; adb logcat -d '*:E' | tail -n 60
+  fi
+  echo "--- page console ($name)"; adb logcat -d -s chromium:I | grep -i "console" | tail -n 20
   # tap the phone field and type a test login, so the screenshot shows the app reacting
   adb shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
   adb shell am start -n "$pkg/com.washingdaddy.app.MainActivity" >/dev/null; sleep 3

@@ -5,7 +5,7 @@
    collection(c).where(f,op,v).onSnapshot/get, collection(c).doc(id?), doc(path).set/update/get/onSnapshot.
    Collections: washes, requests, ratings (see .notes/sync-contract.md). */
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged, connectAuthEmulator } from 'firebase/auth';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache,
   connectFirestoreEmulator, collection, doc, query, where, onSnapshot, getDocs, getDoc, setDoc, updateDoc,
@@ -103,11 +103,13 @@ const DEFAULT_CONFIG = {
     if (emu) {
       const [h, p] = emu.split(':');
       connectFirestoreEmulator(fs, h, Number(p));
-    } else {
+    }
+    {
       // Anonymous sign-in, so the security rules can require a signed-in app. Never blocks the app:
       // if it fails (provider off, no signal) the db is still handed over and the rules decide.
       try {
         const auth = getAuth(app);
+        if (emu) connectAuthEmulator(auth, 'http://' + emu.split(':')[0] + ':9099', { disableWarnings: true });
         await Promise.race([
           new Promise(res => { const un = onAuthStateChanged(auth, u => { if (u) { un(); res(u) } }) ; signInAnonymously(auth).catch(() => res(null)) }),
           new Promise(res => setTimeout(res, 4000)),
