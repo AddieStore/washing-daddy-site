@@ -19,8 +19,9 @@ for pair in "customer:com.washingdaddy.customer:washing-daddy-customer.apk" "was
   if [ -z "$(adb shell pidof $pkg)" ]; then
     echo "CRASHED $name"; fail=1
     echo "--- crash buffer"; adb logcat -d -b crash | tail -n 60
-    echo "--- system log for $pkg"; adb logcat -d | grep -iE "$pkg|lowmemorykiller|lmkd|am_kill|am_proc_died|Process .* has died|Force stopping|ANR|cr_|chromium|WebView|renderer" | grep -v "^--" | tail -n 120
+    echo "--- system log for $pkg"; adb logcat -d | grep -iE "WashingDaddy|$pkg|lowmemorykiller|lmkd|am_kill|am_proc_died|Process .* has died|Force stopping|ANR|cr_|chromium|WebView|renderer" | grep -v "^--" | tail -n 120
   fi
+  echo "--- renderer ($name)"; adb logcat -d | grep -E "WashingDaddy|renderer gone|Renderer process" | tail -n 10
   echo "--- page console ($name)"; adb logcat -d -s chromium:I | grep -i "console" | tail -n 20
   # tap the phone field and type a test login, so the screenshot shows the app reacting
   adb shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true

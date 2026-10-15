@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -113,7 +114,13 @@ public class MainActivity extends Activity {
       // Start fresh instead: the apps keep their state in localStorage.
       @Override
       public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail detail) {
-        if (web == v) { web = null; v.destroy(); recreate(); }
+        Log.w("WashingDaddy", "renderer gone, crashed=" + detail.didCrash() + " priority=" + detail.rendererPriorityAtExit());
+        if (web == v) {
+          web = null;
+          ((android.view.ViewGroup) v.getParent()).removeView(v);
+          v.destroy();
+          recreate();
+        }
         return true;
       }
 
