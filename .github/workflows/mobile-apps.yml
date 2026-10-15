@@ -87,6 +87,13 @@ jobs:
         with:
           name: ci-screens
           path: ci-screens/
+      - name: Keep the screenshots on a side branch (readable without artifact downloads)
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan ci-screens-tmp && git rm -rq --cached . && git add -f ci-screens
+          git commit -qm "Emulator screenshots for ${GITHUB_SHA::7} [skip ci]" && git push -f origin HEAD:refs/heads/ci/emulator-screens || true
 
   publish:
     needs: [build, emulator]

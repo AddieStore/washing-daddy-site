@@ -19,7 +19,7 @@ for pair in "customer:com.washingdaddy.customer:washing-daddy-customer.apk" "was
   if [ -z "$(adb shell pidof $pkg)" ]; then
     echo "CRASHED $name"; fail=1
     echo "--- crash buffer"; adb logcat -d -b crash | tail -n 60
-    echo "--- errors"; adb logcat -d '*:E' | tail -n 60
+    echo "--- system log for $pkg"; adb logcat -d | grep -iE "$pkg|lowmemorykiller|lmkd|am_kill|am_proc_died|Process .* has died|Force stopping|ANR|cr_|chromium|WebView|renderer" | grep -v "^--" | tail -n 120
   fi
   echo "--- page console ($name)"; adb logcat -d -s chromium:I | grep -i "console" | tail -n 20
   # tap the phone field and type a test login, so the screenshot shows the app reacting
