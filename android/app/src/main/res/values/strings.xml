@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Dono app ke common string. app_name aur home_url har flavour apni
+     res/values/strings.xml mein deta hai. -->
 <resources>
-  <string name="app_name">Washing Daddy</string>
   <string name="pick_photo">Photo lo</string>
+  <string name="camera_failed">Camera nahi khul paya</string>
+  <string name="link_failed">Yeh link nahi khul paya</string>
   <string name="no_net">Internet nahi hai. App khulte hi aapka kaam dikh jayega — pehle ek baar signal mein kholiye.</string>
 </resources>

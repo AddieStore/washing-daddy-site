@@ -1,25 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Dono app ka common manifest. Camera se judi har cheez washer flavour ke
+     apne manifest mein hai — customer app mein uska naam tak nahi aata. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
   <uses-permission android:name="android.permission.VIBRATE" />
-
-  <!-- Camera ki permission jaan boojh kar nahi maangi.
-       Camera app khud photo leta hai, isliye washer ko ek bhi permission
-       popup nahi dekhna padta. -->
-  <uses-feature android:name="android.hardware.camera" android:required="false" />
-
-  <!-- Android 11+ ko batana padta hai ki hum camera app dhoondhenge -->
-  <queries>
-    <intent>
-      <action android:name="android.media.action.IMAGE_CAPTURE" />
-    </intent>
-    <intent>
-      <action android:name="android.intent.action.GET_CONTENT" />
-      <data android:mimeType="image/*" />
-    </intent>
-  </queries>
 
   <application
       android:allowBackup="true"
@@ -41,15 +27,5 @@
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
     </activity>
-
-    <provider
-        android:name="androidx.core.content.FileProvider"
-        android:authorities="${applicationId}.files"
-        android:exported="false"
-        android:grantUriPermissions="true">
-      <meta-data
-          android:name="android.support.FILE_PROVIDER_PATHS"
-          android:resource="@xml/file_paths" />
-    </provider>
   </application>
 </manifest>

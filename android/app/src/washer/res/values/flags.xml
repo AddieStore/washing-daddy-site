@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Washer photo leta hai, isliye camera chooser chahiye. -->
+  <bool name="enable_camera">true</bool>
+  <!-- Washer app mein koi popup window nahi chahiye. -->
+  <bool name="allow_popups">false</bool>
+  <!-- Timer chalte waqt screen jagti rahe. -->
+  <bool name="keep_screen_on">true</bool>
+</resources>

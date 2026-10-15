@@ -5,11 +5,26 @@ android {
   compileSdk 34
 
   defaultConfig {
-    applicationId "com.washingdaddy.duty"
     minSdk 24
     targetSdk 34
     versionCode 1
     versionName "1.0"
+  }
+
+  // Ek hi code, do app.
+  //   washer   → com.washingdaddy.duty  → washingdaddy.com/w/   (purani app, waisi hi)
+  //   customer → com.washingdaddy.my    → washingdaddy.com/my/  (nayi, customer ke liye)
+  // Dono alag applicationId rakhte hain, isliye ek phone par dono saath reh sakti hain.
+  flavorDimensions += "audience"
+  productFlavors {
+    washer {
+      dimension "audience"
+      applicationId "com.washingdaddy.duty"
+    }
+    customer {
+      dimension "audience"
+      applicationId "com.washingdaddy.my"
+    }
   }
 
   buildTypes {

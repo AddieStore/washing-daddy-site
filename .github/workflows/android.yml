@@ -1,10 +1,14 @@
-name: Build washer APK
+name: Build the APKs
 
 # Shell app sirf tab badalta hai jab android/ ka code badle.
 # Website ka kaam APK ke bina hi update ho jaata hai.
+#
+# Do APK banti hain, ek hi code se:
+#   washer   → app/washing-daddy.apk           (washingdaddy.com/app)
+#   customer → app/washing-daddy-customer.apk  (washingdaddy.com/app/my)
 on:
   push:
-    branches: [main]
+    branches: [main, customer-apk]
     paths:
       - 'android/**'
       - '.github/workflows/android.yml'
@@ -18,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-java@v4
         with:
@@ -26,28 +32,33 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # setup-android@v3 retired 'tools' package maangta hai aur fail ho jaata hai.
+      # Runner mein SDK pehle se hai — Gradle ko seedha wahi dikha dete hain.
       - name: Point Gradle at the runner's Android SDK
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
-      - name: Build the APK
+      - name: Build both APKs
         working-directory: android
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: gradle assembleWasherDebug assembleCustomerDebug --no-daemon --stacktrace
 
-      - name: Put it where the washers can download it
+      - name: Put them where people can download them
         run: |
           mkdir -p app
-          cp android/app/build/outputs/apk/debug/app-debug.apk app/washing-daddy.apk
-          ls -lh app/washing-daddy.apk
+          cp android/app/build/outputs/apk/washer/debug/app-washer-debug.apk app/washing-daddy.apk
+          cp android/app/build/outputs/apk/customer/debug/app-customer-debug.apk app/washing-daddy-customer.apk
+          ls -lh app/washing-daddy.apk app/washing-daddy-customer.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: washing-daddy-apk
-          path: app/washing-daddy.apk
+          name: washing-daddy-apks
+          path: |
+            app/washing-daddy.apk
+            app/washing-daddy-customer.apk
 
-      - name: Commit it to the site
+      - name: Commit them to the site
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f app/washing-daddy.apk
-          git diff --staged --quiet || git commit -m "Build washer APK [skip ci]"
+          git add -f app/washing-daddy.apk app/washing-daddy-customer.apk
+          git diff --staged --quiet || git commit -m "Build the APKs [skip ci]"
           git push

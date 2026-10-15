@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Customer koi photo nahi leta — camera chooser band, aur manifest mein
+       camera ka koi zikr nahi. -->
+  <bool name="enable_camera">false</bool>
+  <!-- Firebase phone OTP ka reCAPTCHA popup window khol sakta hai.
+       Iske bina sign-in chup-chaap atak jaata hai. -->
+  <bool name="allow_popups">true</bool>
+  <!-- Customer sirf dekhta hai; screen ko zabardasti jagana zaroori nahi. -->
+  <bool name="keep_screen_on">false</bool>
+</resources>

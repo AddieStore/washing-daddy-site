@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sirf washer app ke liye: camera chooser aur uski file sharing. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!-- Camera ki permission jaan boojh kar nahi maangi.
+       Camera app khud photo leta hai, isliye washer ko ek bhi permission
+       popup nahi dekhna padta. -->
+  <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+  <!-- Android 11+ ko batana padta hai ki hum camera app dhoondhenge -->
+  <queries>
+    <intent>
+      <action android:name="android.media.action.IMAGE_CAPTURE" />
+    </intent>
+    <intent>
+      <action android:name="android.intent.action.GET_CONTENT" />
+      <data android:mimeType="image/*" />
+    </intent>
+  </queries>
+
+  <application>
+    <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.files"
+        android:exported="false"
+        android:grantUriPermissions="true">
+      <meta-data
+          android:name="android.support.FILE_PROVIDER_PATHS"
+          android:resource="@xml/file_paths" />
+    </provider>
+  </application>
+</manifest>
