@@ -1,0 +1,45 @@
+rules_version = '2';
+// Washing Daddy live sync (customer app <-> washer app). Shape: .notes/sync-contract.md in the project.
+// Apps sign in anonymously, so every rule needs a signed-in app. Logins are still the test OTP (1234):
+// until real phone OTP is wired, anyone with the app can read every car's wash status. Tighten to
+// per-customer and per-washer rules when OTP goes live.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function str(v, n) { return v is string && v.size() <= n; }
+
+    match /washes/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && id == request.resource.data.date + '_' + request.resource.data.reg
+        && str(request.resource.data.washer_id, 40)
+        && request.resource.data.status in ['scheduled', 'on_the_way', 'arrived', 'washing', 'done', 'skipped'];
+      allow delete: if false;
+    }
+
+    match /requests/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && str(request.resource.data.reg, 20)
+        && request.resource.data.kind in ['note', 'rewash', 'skip_tomorrow']
+        && request.resource.data.status == 'open'
+        && (!('text' in request.resource.data) || request.resource.data.text == null || str(request.resource.data.text, 1000));
+      // the washer app only moves the status along
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'seen_at', 'done_at'])
+        && request.resource.data.status in ['open', 'seen', 'done'];
+      allow delete: if false;
+    }
+
+    match /ratings/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn()
+        && request.resource.data.stars is int
+        && request.resource.data.stars >= 1 && request.resource.data.stars <= 5;
+    }
+
+    match /{other=**} {
+      allow read, write: if false;
+    }
+  }
+}

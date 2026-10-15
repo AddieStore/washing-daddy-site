@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "washes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "washer_id", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

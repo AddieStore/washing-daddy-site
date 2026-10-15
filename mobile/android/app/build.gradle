@@ -1,0 +1,49 @@
+plugins { id 'com.android.application' }
+
+// Two apps from one shell. Each bundles its web app (the repo's /customer/ or /washer/ folder,
+// copied into assets/www by the CI workflow) and serves it at https://washingdaddy.com/<app>/,
+// so it opens with no signal and keeps the same origin as the website.
+android {
+  namespace 'com.washingdaddy.app'
+  compileSdk 34
+
+  defaultConfig {
+    minSdk 24
+    targetSdk 34
+    versionCode 1
+    versionName "1.0"
+  }
+
+  buildFeatures { buildConfig true }
+
+  flavorDimensions "app"
+  productFlavors {
+    customer {
+      dimension "app"
+      applicationId "com.washingdaddy.customer"
+      resValue "string", "app_name", "Washing Daddy"
+      resValue "color", "launcher_bg", "#5409DA"
+      buildConfigField "String", "SCOPE", '"/customer/"'
+      buildConfigField "String", "BAR", '"#FFF6E9"'
+      buildConfigField "boolean", "KEEP_SCREEN_ON", "false"
+    }
+    washer {
+      dimension "app"
+      applicationId "com.washingdaddy.washer"
+      resValue "string", "app_name", "WD Washer"
+      resValue "color", "launcher_bg", "#FFBA08"
+      buildConfigField "String", "SCOPE", '"/washer/"'
+      buildConfigField "String", "BAR", '"#5409DA"'
+      buildConfigField "boolean", "KEEP_SCREEN_ON", "true"
+    }
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+dependencies {
+  implementation 'androidx.core:core:1.13.1'
+}
