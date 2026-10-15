@@ -1,8 +1,11 @@
 /* Washer app offline cache.
    HTML hamesha pehle network se — taaki update turant mile.
    Signal na ho to cache se. Icons cache se, woh badalte nahi. */
-var CACHE = "wd-duty-v1";
-var SHELL = ["/w/", "/w/index.html", "/w/round.json",
+/* round.json hata diya gaya — customer data ab sirf n8n se aata hai,
+   aur woh cache nahi hota. Cache ka naam badla hai taaki purani
+   round.json har phone se khud hat jaaye. */
+var CACHE = "wd-duty-v2";
+var SHELL = ["/w/", "/w/index.html",
              "/w/icons/icon-192.png", "/w/icons/icon-512.png"];
 
 self.addEventListener("install", function(e){

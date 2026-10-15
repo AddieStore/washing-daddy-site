@@ -34,11 +34,16 @@ to 07:00 and is remembered on that phone.
 
 ## Where the data comes from
 
-1. `round.json` in this folder — loads instantly so the app is never blank.
-2. `n8n.washingdaddy.com/webhook/wd-round?washer=NAME` — the live list from
-   Notion, which replaces the local one as soon as it answers.
+`n8n.washingdaddy.com/webhook/wd-round?washer=NAME` — the live list from Notion.
+That is the only source.
 
-Keep `round.json` roughly in step with the book, but the live list wins.
+The app is still never blank: the last list it received is kept in the phone's
+own `localStorage` and drawn immediately on open, then replaced when the live
+list answers. Offline, yesterday's list is what the washer sees — same as before.
+
+There used to be a `round.json` in this folder as the instant source. It was
+deleted: it was publicly readable and held every customer's car, registration,
+area, service level and address note. **Do not put it back.**
 
 ## Service rules
 

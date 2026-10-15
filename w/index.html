@@ -448,13 +448,10 @@ var $ = function(id){ return document.getElementById(id); };
 function el(tag, cls, txt){ var n=document.createElement(tag); if(cls) n.className=cls; if(txt!=null) n.textContent=txt; return n; }
 
 /* ================= round data =================
-   Pehle local list dikhate hain (turant), phir n8n se live list
-   aaye to usse badal dete hain. Network slow ho to bhi kaam rukta nahi. */
-function localRound(washer){
-  return fetch("round.json", {cache:"no-store"})
-    .then(function(r){ return r.json(); })
-    .then(function(j){ return (j.washers && j.washers[washer]) || []; });
-}
+   List sirf n8n se aati hai. Pehle is phone par pichli baar ki list
+   dikhate hain (localStorage se, turant), phir live list usse badal deti hai.
+   Pehle `round.json` bhi tha — woh hata diya, kyunki wahi file internet par
+   kisi ko bhi customer ki gaadi ke number de deti thi. */
 function liveRound(washer){
   var ctl = (typeof AbortController !== "undefined") ? new AbortController() : null;
   if(ctl) setTimeout(function(){ ctl.abort(); }, 6000);
@@ -828,13 +825,9 @@ function start(washer){
   if(!S.cars.length){
     $("list").innerHTML = '<p style="opacity:.8;font-weight:700;padding:20px 0">Aaj ki list laa rahe hain…</p>';
   }
-  localRound(washer).then(function(cars){
-    if(cars.length && !S.cars.length){ S.cars = cars; save(); render(); }
+  liveRound(washer).then(function(cars){
+    S.cars = cars; save(); render();
   }).catch(function(){}).then(function(){
-    return liveRound(washer).then(function(cars){
-      S.cars = cars; save(); render();
-    }).catch(function(){});
-  }).then(function(){
     if(!S.cars.length){
       $("list").innerHTML = '<p style="opacity:.9;font-weight:700;padding:20px 0">List nahi aayi. Network check karke page refresh karo.</p>';
     }

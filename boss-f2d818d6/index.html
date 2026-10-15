@@ -157,6 +157,7 @@ tr:last-child td{border-bottom:0}
       <span><span class="dot" id="src-dot"></span> <span id="src-txt">—</span></span>
       <span id="now">—</span>
       <button class="refresh" id="refresh">Refresh</button>
+      <button class="refresh" id="lock">Lock</button>
     </div>
   </div>
 </header>
@@ -192,8 +193,8 @@ tr:last-child td{border-bottom:0}
     </tr></thead><tbody></tbody></table></div>
   </section>
 
-  <p class="foot">Live figures come from n8n. Until that workflow is imported, the money and area
-    sections read from <code>board.json</code> and the round stays empty.</p>
+  <p class="foot">Figures come from n8n only, over <code>POST /webhook/wd-board</code>, which checks
+    the PIN on the server. There is no snapshot file on this site any more.</p>
 </main>
 </div>
 
@@ -203,10 +204,14 @@ tr:last-child td{border-bottom:0}
 (function(){
 "use strict";
 
-var PIN  = "5550";                                   /* change the PIN here */
+/* No PIN lives in this file. The PIN the boss types is sent to n8n and
+   checked there, against a value held in an n8n credential. Anyone reading
+   this page's source learns nothing. */
 var N8N  = "https://n8n.washingdaddy.com/webhook";
-var KEY  = "wd.boss.v1";
+var KEY  = "wd.boss.pin";          /* the typed PIN, kept on this phone only */
 var DATA = null;
+var PIN  = null;
+var TIMER = null;
 
 var $ = function(id){ return document.getElementById(id); };
 function el(t,c,x){ var n=document.createElement(t); if(c)n.className=c; if(x!=null)n.textContent=x; return n; }
@@ -221,33 +226,85 @@ function istToday(){
 function daysBetween(a,b){ return Math.round((new Date(b) - new Date(a)) / 86400000); }
 function agoMin(iso){ return Math.round((Date.now() - new Date(iso)) / 60000); }
 
-/* ================= pin ================= */
+/* ================= pin =================
+   The gate is only the shape of the thing. The real check is that n8n
+   refuses to answer /wd-board without the right PIN, so a wrong PIN —
+   or no PIN — gets no customer data from anywhere. */
 function unlock(){
   $("gate").hidden = true; $("board").hidden = false;
   load();
-  setInterval(load, 90000);
+  if(!TIMER) TIMER = setInterval(load, 90000);
+}
+function lock(msg){
+  PIN = null;
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  if(TIMER){ clearInterval(TIMER); TIMER = null; }
+  DATA = null;
+  $("board").hidden = true; $("gate").hidden = false;
+  $("pin").value = "";
+  $("pin-err").textContent = msg || "";
 }
 $("pin-go").addEventListener("click", tryPin);
+$("lock").addEventListener("click", function(){ lock(""); });
 $("pin").addEventListener("keydown", function(e){ if(e.key === "Enter") tryPin(); });
 function tryPin(){
-  if($("pin").value.trim() === PIN){
-    try{ localStorage.setItem(KEY, "1"); }catch(e){}
+  var v = $("pin").value.trim();
+  if(!v){ $("pin-err").textContent = "Enter the PIN"; return; }
+  PIN = v;
+  $("pin-err").textContent = "Checking…";
+  $("pin-go").disabled = true;
+  fetchBoard().then(function(j){
+    try{ localStorage.setItem(KEY, PIN); }catch(e){}
+    DATA = j;
+    $("pin-err").textContent = "";
+    $("pin-go").disabled = false;
     unlock();
-  } else {
-    $("pin-err").textContent = "Wrong PIN";
+  }).catch(function(e){
+    $("pin-go").disabled = false;
+    PIN = null;
     $("pin").value = "";
-  }
+    $("pin-err").textContent = (e && e.wrongPin)
+      ? "Wrong PIN"
+      : "Can't reach the board right now. Try again in a minute.";
+  });
 }
-try{ if(localStorage.getItem(KEY) === "1"){ unlock(); } }catch(e){}
+/* A PIN remembered on this phone is still checked by n8n every single load. */
+try{
+  var saved = localStorage.getItem(KEY);
+  if(saved){ PIN = saved; unlock(); }
+}catch(e){}
 
-/* ================= data ================= */
+/* ================= data =================
+   One source only: an authenticated n8n webhook. There is deliberately no
+   local fallback file — a file this page could read without a PIN is a file
+   anyone on the internet could read without a PIN. */
+function fetchBoard(){
+  return fetch(N8N + "/wd-board", {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pin: PIN })
+  }).then(function(r){
+    if(r.status === 401 || r.status === 403){
+      var err = new Error("wrong pin"); err.wrongPin = true; throw err;
+    }
+    if(!r.ok) throw new Error("board " + r.status);
+    return r.json();
+  }).then(function(j){ j.source = "live"; return j; });
+}
 function load(){
-  var live = fetch(N8N + "/wd-board", {cache:"no-store"})
-    .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-    .then(function(j){ j.source = "live"; return j; });
-  live.catch(function(){
-    return fetch("board.json", {cache:"no-store"}).then(function(r){ return r.json(); });
-  }).then(function(j){ DATA = j; draw(); });
+  if(!PIN){ lock(""); return; }
+  fetchBoard().then(function(j){
+    DATA = j; draw();
+  }).catch(function(e){
+    if(e && e.wrongPin){ lock("PIN no longer valid. Enter it again."); return; }
+    $("src-txt").textContent = "offline";
+    $("src-dot").className   = "dot stale";
+    if(!DATA){
+      $("live-tiles").innerHTML =
+        '<p style="font-weight:700;color:#FFB3B5">Can\'t reach n8n. Nothing to show — pull to refresh.</p>';
+    }
+  });
 }
 $("refresh").addEventListener("click", load);
 
