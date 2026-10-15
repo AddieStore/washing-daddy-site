@@ -878,7 +878,9 @@ function sampleAccount(){return {
   orders:[],requests:[],bookings:[]}}
 
 /* ---------- state (kept on this phone between visits) ---------- */
-const TODAY=(()=>{const d=new Date();d.setHours(0,0,0,0);return d})();
+// Washes run on IST, whatever the phone's time zone: TODAY is the IST calendar date, held as a local midnight
+const istNow=()=>new Date(Date.now()+5.5*3600e3);
+const TODAY=(()=>{const n=istNow();return new Date(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate())})();
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const parse=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
@@ -1164,7 +1166,7 @@ function replay(){
 function renderAll(){if(!SIM)DOCS={};subscribeCar();renderHome();renderLive();renderLiveDot();renderPlan();renderStore();renderProfile();syncBadges();applyTheme()}
 
 function renderHero(){
-  const c=car(),p=planOf(c),hr=new Date().getHours();
+  const c=car(),p=planOf(c),hr=istNow().getUTCHours();
   $('#greetHi').textContent=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
   $('#greetName').textContent=A().name.split(' ')[0];
   const el=$('#car');
