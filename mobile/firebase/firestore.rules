@@ -8,7 +8,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // Owner and anyone else allowed to approve washers. Full number with +91.
-    function ADMINS() { return ['+91ADMIN_PHONE']; }
+    function ADMINS() { return ['+917701808924']; }
 
     function signedIn() { return request.auth != null && request.auth.token.phone_number is string; }
     function me() { return request.auth.token.phone_number; }
