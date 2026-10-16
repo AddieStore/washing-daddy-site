@@ -31,4 +31,17 @@ for pair in "customer:com.washingdaddy.customer:washing-daddy-customer.apk" "was
   grep -E "FATAL|Uncaught" "$OUT/$name-logcat.txt" && fail=1
   adb shell dumpsys package "$pkg" | grep -E "versionName|targetSdk" > "$OUT/$name-package.txt"
 done
+# the signed release builds the site serves (app/), signed with the release key outside CI
+for pair in "customer:com.washingdaddy.customer:washing-daddy-customer.apk" "washer:com.washingdaddy.washer:wd-washer.apk"; do
+  IFS=: read name pkg apk <<< "$pair"
+  [ -f "app/$apk" ] || continue
+  echo "== $name (signed release)"
+  adb uninstall "$pkg" >/dev/null 2>&1 || true
+  adb install "app/$apk" || { echo "INSTALL FAILED signed $name"; fail=1; continue; }
+  adb shell dumpsys package "$pkg" | grep -E "versionName" | sed 's/^/release /' >> "$OUT/$name-package.txt"
+  adb shell am start -W -n "$pkg/com.washingdaddy.app.MainActivity"
+  sleep 20
+  adb exec-out screencap -p > "$OUT/$name-3-release.png"
+  if [ -z "$(adb shell pidof $pkg)" ]; then echo "CRASHED signed $name"; fail=1; fi
+done
 exit $fail

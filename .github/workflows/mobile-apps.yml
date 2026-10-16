@@ -10,6 +10,7 @@ on:
       - 'customer/**'
       - 'washer/**'
       - 'mobile/android/**'
+      - 'app/*.apk'
       - '.github/workflows/mobile-apps.yml'
   workflow_dispatch:
 
