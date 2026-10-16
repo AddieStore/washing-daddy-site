@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Runs inside the Android emulator job: installs both APKs, opens each, screenshots it,
+# and fails if either app crashes on launch.
+set -u
+OUT=ci-screens; mkdir -p $OUT
+adb wait-for-device
+adb shell settings put global window_animation_scale 0
+adb shell settings put global transition_animation_scale 0
+adb shell settings put global animator_duration_scale 0
+fail=0
+for pair in "customer:com.washingdaddy.customer:washing-daddy-customer.apk" "washer:com.washingdaddy.washer:wd-washer.apk"; do
+  IFS=: read name pkg apk <<< "$pair"
+  echo "== $name"
+  adb install -r "apks/$apk" || { echo "INSTALL FAILED $name"; fail=1; continue; }
+  adb logcat -c
+  adb shell am start -W -n "$pkg/com.washingdaddy.app.MainActivity"
+  sleep 25
+  adb exec-out screencap -p > "$OUT/$name-1-open.png"
+  if [ -z "$(adb shell pidof $pkg)" ]; then
+    echo "CRASHED $name"; fail=1
+    echo "--- crash buffer"; adb logcat -d -b crash | tail -n 60
+    echo "--- system log for $pkg"; adb logcat -d | grep -iE "WashingDaddy|$pkg|lowmemorykiller|lmkd|am_kill|am_proc_died|Process .* has died|Force stopping|ANR|cr_|chromium|WebView|renderer" | grep -v "^--" | tail -n 120
+  fi
+  echo "--- renderer ($name)"; adb logcat -d | grep -E "WashingDaddy|renderer gone|Renderer process" | tail -n 10
+  echo "--- page console ($name)"; adb logcat -d -s chromium:I | grep -i "console" | tail -n 20
+  # tap the phone field and type a test login, so the screenshot shows the app reacting
+  adb shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
+  adb shell am start -n "$pkg/com.washingdaddy.app.MainActivity" >/dev/null; sleep 3
+  adb exec-out screencap -p > "$OUT/$name-2-reopen.png"
+  adb logcat -d -s chromium:I AndroidRuntime:E | tail -n 80 > "$OUT/$name-logcat.txt"
+  grep -E "FATAL|Uncaught" "$OUT/$name-logcat.txt" && fail=1
+  adb shell dumpsys package "$pkg" | grep -E "versionName|targetSdk" > "$OUT/$name-package.txt"
+done
+# the signed release builds the site serves (app/), signed with the release key outside CI
+for pair in "customer:com.washingdaddy.customer:washing-daddy-customer.apk" "washer:com.washingdaddy.washer:wd-washer.apk"; do
+  IFS=: read name pkg apk <<< "$pair"
+  [ -f "app/$apk" ] || continue
+  echo "== $name (signed release)"
+  adb uninstall "$pkg" >/dev/null 2>&1 || true
+  adb install "app/$apk" || { echo "INSTALL FAILED signed $name"; fail=1; continue; }
+  adb shell dumpsys package "$pkg" | grep -E "versionName" | sed 's/^/release /' >> "$OUT/$name-package.txt"
+  adb shell am start -W -n "$pkg/com.washingdaddy.app.MainActivity"
+  sleep 20
+  adb exec-out screencap -p > "$OUT/$name-3-release.png"
+  if [ -z "$(adb shell pidof $pkg)" ]; then echo "CRASHED signed $name"; fail=1; fi
+done
+exit $fail

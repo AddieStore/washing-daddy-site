@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#5409DA">
+<title>WD Approvals</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="/washer/favicon.png">
+<link rel="apple-touch-icon" href="/washer/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Washing Daddy approvals: the owner approves new washers and activates new customers.
+   Same Firebase project as the apps. Access is decided by the Firestore rules (ADMINS list). */
+:root{--violet:#5409DA;--gold:#FFBA08;--cream:#FFF6E9;--ink:#1A0A33;--orange:#FF6A1A;--sky:#2E8BFF;--ok:#0f9d6e;--red:#d23b4b;
+  --bg:#FFF6E9;--card:#fff;--fg:#1A0A33;--fg2:#4b3f63;--fg3:#7d7391;--line:#eadfcd;--tile:#fbf3e6;--f:'Poppins',system-ui,sans-serif;--h:'Anton',Impact,sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#120726;--card:#1d1036;--fg:#FFF6E9;--fg2:#d9cfe9;--fg3:#a497bd;--line:#33244f;--tile:#271846}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.top{background:var(--violet);color:#fff;padding:calc(18px + env(safe-area-inset-top,0px)) 16px 0;position:sticky;top:0;z-index:5}
+.top-in{max-width:760px;margin:0 auto}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand h1{font-family:var(--h);font-weight:400;font-size:30px;letter-spacing:.01em;margin:0;line-height:1}
+.brand h1 span{color:var(--gold)}
+.brand small{display:block;font-size:12px;opacity:.8;font-weight:600;margin-top:4px}
+.who{font-size:12px;font-weight:600;opacity:.9;text-align:right}
+.who button{background:rgba(255,255,255,.16);border:0;border-radius:999px;padding:6px 12px;color:#fff;font-weight:700;font-size:12px;margin-top:4px}
+.tabs{display:flex;gap:6px;margin-top:16px}
+.tab{flex:1;background:transparent;border:0;color:#fff;opacity:.75;padding:12px 6px 14px;font-weight:700;font-size:15px;border-bottom:4px solid transparent;display:flex;align-items:center;justify-content:center;gap:8px}
+.tab.on{opacity:1;border-bottom-color:var(--gold)}
+.badge{background:var(--gold);color:var(--ink);border-radius:999px;font-size:12px;font-weight:800;min-width:22px;padding:2px 7px}
+.badge:empty,.badge[data-n="0"]{display:none}
+main{max-width:760px;margin:0 auto;padding:18px 16px 60px}
+h2{font-family:var(--h);font-weight:400;font-size:22px;letter-spacing:.02em;margin:22px 0 10px;display:flex;align-items:center;gap:10px}
+h2 .n{font-family:var(--f);font-size:13px;font-weight:700;color:var(--fg3)}
+.empty{background:var(--tile);border:2px dashed var(--line);border-radius:18px;padding:18px;color:var(--fg3);font-weight:600;font-size:14px;text-align:center}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 1px 0 rgba(26,10,51,.04)}
+.card.pending{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,186,8,.18)}
+.row{display:flex;align-items:flex-start;gap:12px}
+.av{width:46px;height:46px;border-radius:50%;background:var(--gold);color:var(--violet);display:grid;place-items:center;font-family:var(--h);font-size:22px;flex:none}
+.grow{flex:1;min-width:0}
+.nm{font-weight:800;font-size:17px;line-height:1.25}
+.meta{font-size:13px;color:var(--fg2);font-weight:500;margin-top:2px;line-height:1.5}
+.meta a{color:var(--violet);font-weight:700;text-decoration:none}
+@media (prefers-color-scheme:dark){.meta a{color:var(--gold)}}
+.pill{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:3px 9px;vertical-align:middle}
+.pill.p{background:rgba(255,186,8,.22);color:#8a5a00}.pill.a{background:rgba(15,157,110,.15);color:var(--ok)}.pill.b{background:rgba(210,59,75,.14);color:var(--red)}
+@media (prefers-color-scheme:dark){.pill.p{color:var(--gold)}}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center}
+.btn{border:0;border-radius:14px;padding:12px 16px;font-weight:800;font-size:14px;min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.go{background:var(--violet);color:#fff}.btn.gold{background:var(--gold);color:var(--ink)}
+.btn.ghost{background:var(--tile);color:var(--fg);border:1.5px solid var(--line)}
+.btn.no{background:transparent;color:var(--red);border:1.5px solid rgba(210,59,75,.35)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.wide{width:100%}
+select,.field{border:1.5px solid var(--line);background:var(--tile);border-radius:14px;padding:11px 12px;min-height:46px;font-weight:600;font-size:14px;max-width:100%}
+select{flex:1 1 100%;min-width:0}
+.field{width:100%;outline:none}
+.field:focus,select:focus{border-color:var(--violet)}
+.cars{margin-top:10px;display:grid;gap:6px}
+.car{background:var(--tile);border-radius:12px;padding:9px 12px;font-size:13px;font-weight:600;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.car b{font-weight:800}
+.car.req{border:1.5px dashed var(--gold)}
+.plate{font-family:ui-monospace,Menlo,monospace;font-weight:700;letter-spacing:.03em}
+.search{margin:14px 0 4px}
+.add{margin-top:8px}
+.add summary{list-style:none;cursor:pointer;font-weight:800;color:var(--violet);padding:10px 0}
+@media (prefers-color-scheme:dark){.add summary{color:var(--gold)}}
+.add summary::-webkit-details-marker{display:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:420px){.grid2{grid-template-columns:1fr}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,120px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;font-weight:700;font-size:14px;transition:transform .3s;z-index:20;max-width:calc(100% - 32px)}
+.toast.on{transform:translate(-50%,0)}
+/* sign in */
+.gate{min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--violet)}
+.gate .box{background:var(--bg);color:var(--fg);width:100%;max-width:400px;border-radius:26px;padding:26px 22px}
+.gate h1{font-family:var(--h);font-weight:400;font-size:34px;margin:0 0 4px;color:var(--violet);line-height:1}
+@media (prefers-color-scheme:dark){.gate h1{color:var(--gold)}}
+.gate p{color:var(--fg2);font-size:14px;margin:6px 0 18px;font-weight:500}
+.ph{display:flex;gap:8px}.ph .cc{display:grid;place-items:center;padding:0 12px;background:var(--tile);border:1.5px solid var(--line);border-radius:14px;font-weight:700}
+.err{color:var(--red);font-size:13px;font-weight:600;min-height:20px;margin:8px 0}
+.otp{letter-spacing:.5em;text-align:center;font-size:24px;font-weight:800}
+.link{background:none;border:0;color:var(--violet);font-weight:700;padding:8px 0;font-size:14px}
+@media (prefers-color-scheme:dark){.link{color:var(--gold)}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="box" id="gateBox"></div>
+</div>
+
+<div id="app" hidden>
+  <header class="top"><div class="top-in">
+    <div class="brand">
+      <div><h1>Washing <span>Daddy</span></h1><small>Approvals</small></div>
+      <div class="who"><div id="whoPhone"></div><button id="signOut">Sign out</button></div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab on" data-tab="washers" role="tab">Washers <span class="badge" id="bW"></span></button>
+      <button class="tab" data-tab="customers" role="tab">Customers <span class="badge" id="bC"></span></button>
+    </nav>
+  </div></header>
+  <main>
+    <section id="t-washers"></section>
+    <section id="t-customers" hidden></section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="wd-sync.js"></script>
+<script>
+/* Sign-in and data go through wd-sync.js, the same Firebase layer the two apps use
+   (copied here by mobile/tools/package.js). WDAuth = phone sign-in, claude.use('db') = Firestore. */
+// Rounds a washer can be put on. The keys are the washer app's round ids (route_id).
+const ROUNDS = {
+  chotte: "Chotte's round · GH-9, GH-6",
+  shahrukh: "Shahrukh's round · GH-14, Meera Bagh, Sundar Vihar, Guru Hari",
+};
+const PLANS = { legacy: 'Legacy ₹500', std: 'WD Standard', pro: 'WD Pro', exc: 'WD Exclusive', res: 'WD Reserve' };
+let db = null;
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nowIST = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 19) + '+05:30';
+const nice = p => { const d = String(p || '').replace(/\D/g, '').slice(-10); return d ? '+91 ' + d.slice(0, 5) + ' ' + d.slice(5) : '' };
+const when = iso => { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) };
+const regOf = p => String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const contact = p => { const d = String(p || '').replace(/\D/g, '').slice(-10); return `<a href="tel:+91${d}">${nice(p)}</a> · <a href="https://wa.me/91${d}" target="_blank" rel="noopener">WhatsApp</a>` };
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2600) }
+
+/* ---------------- sign in ---------------- */
+const authMsg = e => (e && e.en) || "Couldn't sign in. Try again.";
+
+function gatePhone(msg) {
+  $('#gateBox').innerHTML = `<h1>Approvals</h1><p>Washing Daddy owner sign-in. We'll text a 6-digit code.</p>
+    <div class="ph"><span class="cc">+91</span><input class="field" id="gPh" inputmode="numeric" autocomplete="tel-national" maxlength="11" placeholder="98765 43210" aria-label="Mobile number"></div>
+    <div class="err" id="gErr">${esc(msg || '')}</div>
+    <button class="btn go wide" id="gGo">Send code</button>`;
+  const ph = $('#gPh'); ph.focus();
+  ph.onkeydown = e => { if (e.key === 'Enter') $('#gGo').click() };
+  $('#gGo').onclick = async () => {
+    const d = ph.value.replace(/\D/g, '').slice(-10);
+    if (!/^[6-9]\d{9}$/.test(d)) { $('#gErr').textContent = 'Enter a 10-digit mobile number.'; return }
+    const b = $('#gGo'); b.disabled = true; b.textContent = 'Sending…';
+    try {
+      await WDAuth.send(d);
+      gateCode(d);
+    } catch (e) { console.warn(e); b.disabled = false; b.textContent = 'Send code'; $('#gErr').textContent = authMsg(e) }
+  };
+}
+function gateCode(d) {
+  $('#gateBox').innerHTML = `<h1>Enter code</h1><p>Sent to ${nice(d)}. <button class="link" id="gBack">Change</button></p>
+    <input class="field otp" id="gOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" aria-label="6-digit code">
+    <div class="err" id="gErr"></div><button class="btn go wide" id="gOk">Sign in</button>`;
+  const o = $('#gOtp'); o.focus();
+  o.oninput = () => { o.value = o.value.replace(/\D/g, '').slice(0, 6); if (o.value.length === 6) $('#gOk').click() };
+  $('#gBack').onclick = () => gatePhone();
+  $('#gOk').onclick = async () => {
+    const b = $('#gOk'); if (b.disabled) return; b.disabled = true; b.textContent = 'Checking…';
+    try { await WDAuth.confirm(o.value); signedIn(WDAuth.user()) } catch (e) { b.disabled = false; b.textContent = 'Sign in'; $('#gErr').textContent = authMsg(e); o.value = ''; o.focus() }
+  };
+}
+
+/* ---------------- data ---------------- */
+let W = [], C = [], tab = 'washers', unsubs = [], q = '';
+function stop() { unsubs.forEach(u => { try { u() } catch (e) {} }); unsubs = [] }
+
+async function signedIn(u) {
+  stop();
+  if (!u) { $('#app').hidden = true; $('#gate').hidden = false; gatePhone(); return }
+  db = db || await window.claude.use('db');
+  $('#whoPhone').textContent = nice(u.phoneNumber);
+  let first = true;
+  unsubs.push(db.collection('washers').onSnapshot(sn => {
+    W = sn.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (first) { first = false; $('#gate').hidden = true; $('#app').hidden = false }
+    render();
+  }, e => {
+    console.warn(e); stop(); WDAuth.signOut();
+    $('#app').hidden = true; $('#gate').hidden = false;
+    gatePhone(e.code === 'invalid_argument' ? `${nice(u.phoneNumber)} is not an approver. Use the owner's number.` : "Couldn't load. Check the internet and sign in again.");
+  }));
+  unsubs.push(db.collection('customers').onSnapshot(sn => { C = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
+}
+WDAuth.ready().then(signedIn);
+$('#signOut').onclick = async () => { stop(); await WDAuth.signOut(); signedIn(null) };
+$$('.tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; $$('.tab').forEach(x => x.classList.toggle('on', x === t)); $('#t-washers').hidden = tab !== 'washers'; $('#t-customers').hidden = tab !== 'customers'; render() });
+
+async function act(btn, fn, ok) {
+  btn.disabled = true;
+  try { await fn(); if (ok) toast(ok) }
+  catch (e) { console.warn(e); toast(e.code === 'invalid_argument' ? 'Not allowed for this number.' : "Didn't save. Check the internet."); btn.disabled = false }
+}
+const roundSelect = (id, cur) => `<select id="${id}" aria-label="Round"><option value="">Choose a round…</option>${Object.entries(ROUNDS).map(([k, v]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>`;
+const byNew = (a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''));
+
+/* ---------------- washers ---------------- */
+function washerCard(w) {
+  const st = w.status || 'pending', k = esc(w.id);
+  const pill = st === 'approved' ? '<span class="pill a">Approved</span>' : st === 'blocked' ? '<span class="pill b">Blocked</span>' : '<span class="pill p">Waiting</span>';
+  let acts = '';
+  if (st === 'pending') acts = `${roundSelect('r-' + k, '')}<button class="btn go" data-a="approve" data-id="${k}">Approve</button><button class="btn no" data-a="block" data-id="${k}">Reject</button>`;
+  else if (st === 'approved') acts = `${roundSelect('r-' + k, w.route_id)}<button class="btn ghost" data-a="round" data-id="${k}">Change round</button><button class="btn no" data-a="block" data-id="${k}">Block</button>`;
+  else acts = `${roundSelect('r-' + k, w.route_id)}<button class="btn go" data-a="approve" data-id="${k}">Approve again</button><button class="btn ghost" data-a="delete" data-id="${k}">Remove</button>`;
+  return `<div class="card ${st === 'pending' ? 'pending' : ''}"><div class="row"><div class="av">${esc((w.name || '?')[0].toUpperCase())}</div><div class="grow">
+    <div class="nm">${esc(w.name || 'No name')} ${pill}</div>
+    <div class="meta">${contact(w.phone || w.id)}</div>
+    <div class="meta">${esc(w.area || '')}${w.area ? ' · ' : ''}${st === 'approved' && ROUNDS[w.route_id] ? esc(ROUNDS[w.route_id]) : st === 'approved' ? '<b style="color:var(--red)">No round yet</b>' : 'Signed up ' + esc(when(w.created_at))}</div>
+    </div></div><div class="acts">${acts}</div></div>`;
+}
+function renderWashers() {
+  const p = W.filter(w => (w.status || 'pending') === 'pending').sort(byNew), a = W.filter(w => w.status === 'approved').sort((x, y) => String(x.name).localeCompare(String(y.name))), b = W.filter(w => w.status === 'blocked');
+  $('#bW').textContent = p.length || ''; $('#bW').dataset.n = p.length;
+  $('#t-washers').innerHTML = `
+    <h2>Waiting for you <span class="n">${p.length}</span></h2>
+    ${p.length ? p.map(washerCard).join('') : '<div class="empty">No new washers waiting. When someone signs up in the WD Washer app, they show up here.</div>'}
+    <h2>Approved <span class="n">${a.length}</span></h2>
+    ${a.length ? a.map(washerCard).join('') : '<div class="empty">Nobody approved yet.</div>'}
+    <details class="add card"><summary>+ Add a washer yourself</summary>
+      <p class="meta" style="margin:0 0 10px">They're approved straight away and can sign in with this number.</p>
+      <div class="grid2"><input class="field" id="nwName" placeholder="Name" maxlength="60"><input class="field" id="nwPhone" inputmode="numeric" placeholder="10-digit mobile" maxlength="11"></div>
+      <div class="acts">${roundSelect('nwRound', '')}<button class="btn gold" data-a="addWasher">Add washer</button></div>
+    </details>
+    ${b.length ? `<h2>Blocked <span class="n">${b.length}</span></h2>${b.map(washerCard).join('')}` : ''}`;
+}
+
+/* ---------------- customers ---------------- */
+function carRow(c, req) {
+  return `<div class="car ${req ? 'req' : ''}"><span><b>${esc((c.make ? c.make + ' ' : '') + (c.name || ''))}</b> · <span class="plate">${esc(c.plate || '')}</span></span><span>${esc(PLANS[c.plan] || c.plan || '')}${req ? ' · wants to add' : ''}</span></div>`;
+}
+function custCard(c) {
+  const st = c.status || 'new', k = esc(c.id), req = c.requested_cars || [];
+  const pill = st === 'active' ? '<span class="pill a">Active</span>' : '<span class="pill p">New</span>';
+  let acts = '';
+  if (st !== 'active') acts = `<button class="btn go" data-a="activate" data-id="${k}">Activate</button><button class="btn no" data-a="cdelete" data-id="${k}">Remove</button>`;
+  else acts = (req.length ? `<button class="btn go" data-a="addcars" data-id="${k}">Add ${req.length > 1 ? req.length + ' cars' : 'their new car'}</button><button class="btn ghost" data-a="dropcars" data-id="${k}">Ignore</button>` : '') + `<button class="btn ghost" data-a="deactivate" data-id="${k}">Pause account</button>`;
+  return `<div class="card ${st !== 'active' || req.length ? 'pending' : ''}"><div class="row"><div class="av">${esc((c.name || '?')[0].toUpperCase())}</div><div class="grow">
+    <div class="nm">${esc(c.name || 'No name')} ${pill}</div>
+    <div class="meta">${contact(c.phone || c.id)}</div>
+    <div class="meta">${esc(c.area || '')}${c.created_at ? ' · signed up ' + esc(when(c.created_at)) : ''}</div>
+    <div class="cars">${(c.cars || []).map(x => carRow(x)).join('')}${req.map(x => carRow(x, true)).join('')}</div>
+    </div></div><div class="acts">${acts}</div></div>`;
+}
+function renderCustomers() {
+  const match = c => !q || [c.name, c.phone, c.area, ...(c.regs || [])].join(' ').toLowerCase().includes(q.toLowerCase().trim())
+    || String(c.phone || '').includes(q.replace(/\D/g, '') || '~')
+    || (c.cars || []).some(x => regOf(x.plate).includes(regOf(q)));
+  const n = C.filter(c => (c.status || 'new') !== 'active').sort(byNew), r = C.filter(c => c.status === 'active' && (c.requested_cars || []).length);
+  const a = C.filter(c => c.status === 'active' && match(c)).sort((x, y) => String(x.name).localeCompare(String(y.name)));
+  const due = n.length + r.length;
+  $('#bC').textContent = due || ''; $('#bC').dataset.n = due;
+  $('#t-customers').innerHTML = `
+    <h2>New sign-ups <span class="n">${n.length}</span></h2>
+    <p class="meta" style="margin:-4px 0 10px">Check the car and number, then activate. Until then they can't see live wash updates.</p>
+    ${n.length ? n.map(custCard).join('') : '<div class="empty">No new customers waiting.</div>'}
+    ${r.length ? `<h2>Want to add a car <span class="n">${r.length}</span></h2>${r.map(custCard).join('')}` : ''}
+    <h2>Active <span class="n">${C.filter(c => c.status === 'active').length}</span></h2>
+    <input class="field search" id="cq" placeholder="Search name, number or plate" value="${esc(q)}">
+    ${a.length ? a.map(custCard).join('') : '<div class="empty">No active customers' + (q ? ' match.' : ' yet.') + '</div>'}`;
+  const s = $('#cq'); s.oninput = () => { q = s.value; const pos = s.selectionStart; renderCustomers(); const t = $('#cq'); t.focus(); t.setSelectionRange(pos, pos) };
+}
+function render() { if (tab === 'washers') renderWashers(); else renderCustomers(); const p = W.filter(w => (w.status || 'pending') === 'pending').length; $('#bW').textContent = p || ''; }
+
+/* ---------------- actions ---------------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const id = b.dataset.id, a = b.dataset.a, w = W.find(x => x.id === id), c = C.find(x => x.id === id);
+  const round = () => { const s = document.getElementById('r-' + id); return s ? s.value : '' };
+  if (a === 'approve') {
+    const r = round(); if (!r) { toast('Choose a round first'); document.getElementById('r-' + id)?.focus(); return }
+    act(b, () => db.doc('washers/' + id).update({ status: 'approved', route_id: r, decided_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }), `${w?.name || 'Washer'} approved. Their app opens now.`);
+  } else if (a === 'round') {
+    const r = round(); if (!r) { toast('Choose a round'); return }
+    act(b, () => db.doc('washers/' + id).update({ route_id: r, updated_at: nowIST() }), 'Round changed');
+  } else if (a === 'block') {
+    if (!confirm(`${w?.status === 'pending' ? 'Reject' : 'Block'} ${w?.name || 'this washer'}? They won't be able to use the washer app.`)) return;
+    act(b, () => db.doc('washers/' + id).update({ status: 'blocked', decided_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }), 'Done');
+  } else if (a === 'delete') {
+    if (!confirm(`Remove ${w?.name || 'this washer'}? If they sign in again they'll be asked to sign up.`)) return;
+    act(b, () => db.doc('washers/' + id).delete(), 'Removed');
+  } else if (a === 'addWasher') {
+    const name = $('#nwName').value.trim(), d = $('#nwPhone').value.replace(/\D/g, '').slice(-10), r = $('#nwRound').value;
+    if (!name) { toast('Add their name'); return } if (!/^[6-9]\d{9}$/.test(d)) { toast('Add a 10-digit mobile number'); return } if (!r) { toast('Choose a round'); return }
+    act(b, async () => {
+      const ref = db.doc('washers/+91' + d), ex = await ref.get();
+      if (ex.exists) await ref.update({ name, status: 'approved', route_id: r, decided_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() });
+      else await ref.set({ phone: '+91' + d, name, area: '', status: 'approved', route_id: r, created_at: nowIST(), decided_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() });
+    }, `${name} added. They can sign in now.`);
+  } else if (a === 'activate') {
+    act(b, () => db.doc('customers/' + id).update({ status: 'active', regs: (c.cars || []).map(x => regOf(x.plate)), activated_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }), `${c?.name || 'Customer'} is active. Live updates are on for them.`);
+  } else if (a === 'deactivate') {
+    if (!confirm(`Pause ${c?.name || 'this account'}? They stop seeing live wash updates until you activate again.`)) return;
+    act(b, () => db.doc('customers/' + id).update({ status: 'new', updated_at: nowIST() }), 'Paused');
+  } else if (a === 'cdelete') {
+    if (!confirm(`Remove ${c?.name || 'this sign-up'}?`)) return;
+    act(b, () => db.doc('customers/' + id).delete(), 'Removed');
+  } else if (a === 'addcars') {
+    const add = (c.requested_cars || []).map((x, i) => ({ id: 'c' + ((c.cars || []).length + i), name: x.name, make: x.make || '', plate: x.plate, plan: x.plan, parking: (x.area || c.area || '') + ', parking spot to be confirmed', window: 'Before 7:30 AM', keys: "I'll unlock it" }));
+    const cars = (c.cars || []).concat(add);
+    act(b, () => db.doc('customers/' + id).update({ cars, regs: cars.map(x => regOf(x.plate)), requested_cars: [], updated_at: nowIST() }), 'Car added');
+  } else if (a === 'dropcars') {
+    act(b, () => db.doc('customers/' + id).update({ requested_cars: [], updated_at: nowIST() }), 'Ignored');
+  }
+});
+</script>
+</body>
+</html>

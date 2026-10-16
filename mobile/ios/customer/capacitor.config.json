@@ -1,0 +1,6 @@
+{
+  "appId": "com.washingdaddy.customer",
+  "appName": "Washing Daddy",
+  "webDir": "../../../customer",
+  "ios": { "contentInset": "never", "backgroundColor": "#FFF6E9", "scheme": "WashingDaddy" }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "/admin/",
+  "name": "WD Approvals",
+  "short_name": "WD Approvals",
+  "description": "Approve new washers and activate new customers.",
+  "start_url": "/admin/",
+  "scope": "/admin/",
+  "display": "standalone",
+  "background_color": "#5409DA",
+  "theme_color": "#5409DA",
+  "icons": [
+    { "src": "/washer/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/washer/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
