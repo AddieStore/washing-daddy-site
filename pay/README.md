@@ -33,3 +33,17 @@ isn't on the book it creates a Lead instead and tells you.
 
 The amount is checked server-side before the order is created, so the page
 can't be used to pay an amount we didn't set.
+
+## The customer app pays through the same endpoints
+
+From the Android app, the pay button calls `wd-pay-order` the same way this page does, then
+opens Cashfree in a modal so the app is not thrown away. The app never marks itself paid: it
+shows "we're checking it with the bank" and waits for the book to change.
+
+**Still missing for the app:** the `wd-pay-hook` webhook moves `Service Paid Up To` in Notion,
+but the app reads the car's `till` from Firestore (`customers/{+91number}.cars[]`). Until the
+webhook also writes that date to Firestore, a customer who pays in the app sees no change.
+Add that write to workflow 8 before turning app payments on.
+
+Going live in the app is a third flag: `PAY_LIVE = true` in the customer app source
+(`/mnt/project-files/customer-app/index.html`), on top of the two above.
