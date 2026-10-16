@@ -812,6 +812,24 @@ const IMG={scorpio:"data:image/webp;base64,UklGRrjZAABXRUJQVlA4WAoAAAAQAAAASwQAi
    ===================================================================== */
 const LIVE=false;                       // flip once the webhooks below exist
 const N8N='https://n8n.washingdaddy.com/webhook';
+// Payments. PAY_LIVE stays false until the Cashfree account is live: see pay/README.md.
+// Going live is two flags, this one and SANDBOX in the n8n order node, or it quietly stays in test mode.
+const CF_MODE='sandbox', PAY_LIVE=false;
+const PAYREAL=()=>PAY_LIVE&&REALACCT();
+let cfSdk=null;
+// loaded only when a real payment starts, so the test build pulls no third-party script
+function loadCashfree(){
+  if(cfSdk)return cfSdk;
+  cfSdk=new Promise((res,rej)=>{
+    if(window.Cashfree)return res(window.Cashfree);
+    const s=document.createElement('script');
+    s.src='https://sdk.cashfree.com/js/v3/cashfree.js';
+    s.onload=()=>window.Cashfree?res(window.Cashfree):rej(new Error('sdk'));
+    s.onerror=()=>{cfSdk=null;rej(new Error('sdk'))};
+    document.head.appendChild(s);
+  });
+  return cfSdk;
+}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 // Real sign-in: in the installed app and on washingdaddy.com, wd-sync.js provides WDAuth (Firebase phone
 // sign-in, a 6-digit SMS code) and the account lives in customers/{+91number}. Inside the artifact preview
@@ -851,7 +869,22 @@ const API={
       await db.doc(CUST_PATH()).update({requested_cars:cur.concat([{name:car.name,make:car.make||'',plate:car.plate,plan:car.plan,area:car.area,at:nowIST()}]).slice(-5),updated_at:nowIST()});return {ok:true}}
     catch(e){console.warn(e);return {ok:false}}},
   // POST {N8N}/wd-pay-order {carId, kind} -> Cashfree order (workflow 8). Amount is set server-side, never by the app.
-  async pay(kind,detail){await wait(1100);return {ok:true,ref:'CF'+Date.now().toString().slice(-8)}},
+  // Test build fakes a receipt. Live: n8n prices the order server-side, Cashfree takes the money,
+  // and the wd-pay-hook webhook moves the car's paid-up date. The app never marks itself paid.
+  async pay(kind,detail){
+    if(!PAYREAL()){await wait(1100);return {ok:true,ref:'CF'+Date.now().toString().slice(-8)}}
+    const c=car(),a=A();
+    const r=await fetch(N8N+'/wd-pay-order',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({amount:detail.amt,name:a.name||'',phone:window.WDAuth.phone10(),
+        car:c.name,num:c.plate,area:c.area||a.area||'',kind,label:detail.what,
+        page:location.origin+location.pathname})});
+    const j=await r.json().catch(()=>null);
+    if(!r.ok||!j||!j.paymentSessionId)throw new Error((j&&j.message)||'order');
+    const CF=await loadCashfree();
+    const out=await CF({mode:CF_MODE}).checkout({paymentSessionId:j.paymentSessionId,redirectTarget:'_modal'});
+    if(out&&out.error){const e=new Error(out.error.message||'payment');e.cancelled=/cancel/i.test(out.error.code||out.error.message||'');throw e}
+    return {ok:true,ref:j.orderId||j.order_id||'',pending:true};
+  },
   // Customer -> washer writes. Prototype: requests/{id} in this artifact's shared store, which the washer page reads live.
   // Production: POST {N8N}/wd-request with the same body -> Notion + Telegram to the washer.
   async pause(c,from,to){return sendRequest({reg:regOf(c),kind:from&&from===to&&from===iso(addDays(TODAY,1))?'skip_tomorrow':'pause',from,to,text:from?`Paused ${from} to ${to}`:'Resumed'})},
@@ -1448,9 +1481,12 @@ function success(t,s){openSheet(`<div class="success"><div class="check"><svg vi
 function segPick(sel,cb){$$(sel+' button').forEach(b=>b.onclick=()=>{$$(sel+' button').forEach(x=>x.classList.toggle('on',x===b));cb&&cb(b)})}
 const UPI=`<div style="font-size:13px;font-weight:600;margin-top:4px">Pay with</div><div class="seg" id="upi"><button class="on">GPay</button><button>PhonePe</button><button>Paytm</button><button>Card</button><button>Net banking</button></div>`;
 async function checkout(btn,kind,amt,what,onPaid){
-  const via=$('#upi .on')?.textContent||'UPI',done=busy(btn,'Opening '+via+'…');
-  try{const r=await API.pay(kind,{amt,what});A().payments.push({d:iso(TODAY),what,amt,via,ref:r.ref});onPaid(r);save();renderAll()}
-  catch(e){done();toast('Payment didn\'t go through. Nothing was charged.')}}
+  const via=$('#upi .on')?.textContent||'UPI',done=busy(btn,PAYREAL()?'Opening…':'Opening '+via+'…');
+  try{const r=await API.pay(kind,{amt,what});
+    A().payments.push({d:iso(TODAY),what,amt,via,ref:r.ref,pending:!!r.pending});
+    if(r.pending){save();renderAll();success('Payment received',"We're checking it with the bank. Your plan updates by itself as soon as it clears.");return}
+    onPaid(r);save();renderAll()}
+  catch(e){done();toast(e&&e.cancelled?'Payment cancelled. Nothing was charged.':'Payment didn\'t go through. Nothing was charged.')}}
 
 const ACT={
   carPhoto(){pickCarPhoto()},
@@ -1473,7 +1509,7 @@ const ACT={
   payPlan(){const c=car(),p=planOf(c),from=c.till?parse(c.till):addDays(TODAY,1),nt=new Date(from);nt.setMonth(nt.getMonth()+1);
     openSheet(`<div class="eyebrow">${esc(c.name)} · ${p.name}</div><h3 style="margin-top:4px">Pay ${inr(p.price)} for ${c.till?'one more month':'your first month'}</h3>
       <div class="confirm"><div class="cv"><small>${c.till?'Paid up till':'Starts'}</small><b>${fmt(from)}</b></div><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg><div class="cv"><small>After paying</small><b style="color:var(--accent)">${fmt(nt)}</b></div></div>
-      ${UPI}<button class="btn violet" id="payGo" style="margin-top:16px">Pay ${inr(p.price)}</button><div class="demo-note">Test version. No money moves. Live payments go through Cashfree.</div>`,()=>{
+      ${UPI}<button class="btn violet" id="payGo" style="margin-top:16px">Pay ${inr(p.price)}</button>${PAYREAL()?'':'<div class="demo-note">Test version. No money moves. Live payments go through Cashfree.</div>'}`,()=>{
       segPick('#upi');$('#payGo').onclick=e=>checkout(e.currentTarget,'plan',p.price,`${p.name} · ${c.name}`,()=>{c.till=iso(nt);success('Paid',`Your ${esc(c.name)} is covered till ${fmt(nt)}. Receipt sent on WhatsApp.`)})})},
   switchPlan(id){const np=PLANS.find(p=>p.id===id),c=car(),cp=planOf(c),left=c.till?Math.max(0,Math.round((parse(c.till)-TODAY)/864e5)):0,diff=Math.max(0,Math.round((np.price-cp.price)*left/30)),up=np.price>cp.price;
     openSheet(`<div class="eyebrow">${esc(c.name)}</div><h3 style="margin-top:4px">${up?'Upgrade':'Switch'} to ${np.name}</h3>
@@ -1527,7 +1563,7 @@ const ACT={
     const sub=ids.reduce((s,k)=>s+PRODUCTS.find(p=>p.id===k).price*S.cart[k],0),mrp=ids.reduce((s,k)=>s+PRODUCTS.find(p=>p.id===k).mrp*S.cart[k],0);
     openSheet(`<h3>Your cart</h3><p class="sub">${car().washer} brings it with tomorrow's wash, to ${esc(car().parking)}.</p>${ids.map(line).join('')}
       <div class="sum"><div><span style="color:var(--fg-2)">Items</span><span class="num">${inr(sub)}</span></div><div><span style="color:var(--fg-2)">You save</span><span class="num ok">−${inr(mrp-sub)}</span></div><div><span style="color:var(--fg-2)">Delivery with your wash</span><span class="ok">Free</span></div><div class="tot"><span>Total</span><span class="num">${inr(sub)}</span></div></div>
-      ${UPI}<button class="btn gold" id="coGo" style="margin-top:16px">Pay ${inr(sub)}</button><div class="demo-note">Test version. No money moves.</div>`,()=>{
+      ${UPI}<button class="btn gold" id="coGo" style="margin-top:16px">Pay ${inr(sub)}</button>${PAYREAL()?'':'<div class="demo-note">Test version. No money moves.</div>'}`,()=>{
       segPick('#upi');$('#coGo').onclick=e=>checkout(e.currentTarget,'order',sub,'Store order',async()=>{const r=await API.order(ids);
         A().orders.unshift({id:r.id,total:sub,status:`Arriving tomorrow with ${car().washer}'s wash`,items:ids.map(k=>({name:pName(PRODUCTS.find(p=>p.id===k)),q:S.cart[k]}))});
         A().payments[A().payments.length-1].what='Store order '+r.id;S.cart={};save();renderAll();success('Order placed',`${car().washer} brings it tomorrow before 7:30 AM and sends a photo when it's in your car.`)})})},
