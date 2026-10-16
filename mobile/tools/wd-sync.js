@@ -125,11 +125,17 @@ const DEFAULT_CONFIG = {
     out.code = m[0]; out.en = m[1]; out.hi = m[2]; out.cause = e;
     return out;
   };
-  function freshVerifier() {
+  // The invisible reCAPTCHA badge sits over the app's bottom bar, so it is removed once sign-in is done.
+  function dropVerifier() {
     try { verifier && verifier.clear() } catch (e) {}
-    let box = document.getElementById('wd-recaptcha');
+    verifier = null;
+    const box = document.getElementById('wd-recaptcha');
     if (box) box.remove();
-    box = document.createElement('div');
+    document.querySelectorAll('.grecaptcha-badge').forEach(el => el.remove());
+  }
+  function freshVerifier() {
+    dropVerifier();
+    let box = document.createElement('div');
     box.id = 'wd-recaptcha';
     document.body.appendChild(box);
     verifier = new RecaptchaVerifier(auth, box, { size: 'invisible' });
@@ -154,7 +160,7 @@ const DEFAULT_CONFIG = {
     },
     async confirm(code) {
       if (!confirmer) throw authErr({ code: 'auth/code-expired' });
-      try { const r = await confirmer.confirm(String(code).replace(/\D/g, '')); user = r.user; confirmer = null; return r.user }
+      try { const r = await confirmer.confirm(String(code).replace(/\D/g, '')); user = r.user; confirmer = null; dropVerifier(); return r.user }
       catch (e) { throw authErr(e) }
     },
     async signOut() { confirmer = null; try { await signOut(auth) } catch (e) {} user = null },

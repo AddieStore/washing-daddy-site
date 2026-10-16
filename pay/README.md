@@ -33,3 +33,22 @@ isn't on the book it creates a Lead instead and tells you.
 
 The amount is checked server-side before the order is created, so the page
 can't be used to pay an amount we didn't set.
+
+## The customer app pays through the same endpoints
+
+From the Android app, the pay button calls `wd-pay-order` the same way this page does, then
+opens Cashfree in a modal so the app is not thrown away. The app never marks itself paid: it
+shows "we're checking it with the bank" and waits for the book to change.
+
+The app used to have no way of seeing the payment, because the webhook moves
+`Service Paid Up To` in Notion while the app reads the car's `till` from Firestore. Rather than
+give n8n a Google credential, the app now asks `wd-pay-lookup` for that car every couple of
+seconds after paying, and takes the new date from the book. The book stays the one place the
+money is recorded, and n8n needs no extra credential.
+
+Going live in the app is a third flag: `PAY_LIVE = true` in the customer app source
+(`/mnt/project-files/customer-app/index.html`), on top of the two above.
+
+The workflow itself is `n8n/8-cashfree.json` in the project files, with setup notes beside it.
+It was written from scratch on 16 Oct 2026: the original was never imported into n8n and the
+file was lost.

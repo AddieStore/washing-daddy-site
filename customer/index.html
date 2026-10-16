@@ -812,6 +812,24 @@ const IMG={scorpio:"data:image/webp;base64,UklGRrjZAABXRUJQVlA4WAoAAAAQAAAASwQAi
    ===================================================================== */
 const LIVE=false;                       // flip once the webhooks below exist
 const N8N='https://n8n.washingdaddy.com/webhook';
+// Payments. PAY_LIVE stays false until the Cashfree account is live: see pay/README.md.
+// Going live is two flags, this one and SANDBOX in the n8n order node, or it quietly stays in test mode.
+const CF_MODE='sandbox', PAY_LIVE=false;
+const PAYREAL=()=>PAY_LIVE&&REALACCT();
+let cfSdk=null;
+// loaded only when a real payment starts, so the test build pulls no third-party script
+function loadCashfree(){
+  if(cfSdk)return cfSdk;
+  cfSdk=new Promise((res,rej)=>{
+    if(window.Cashfree)return res(window.Cashfree);
+    const s=document.createElement('script');
+    s.src='https://sdk.cashfree.com/js/v3/cashfree.js';
+    s.onload=()=>window.Cashfree?res(window.Cashfree):rej(new Error('sdk'));
+    s.onerror=()=>{cfSdk=null;rej(new Error('sdk'))};
+    document.head.appendChild(s);
+  });
+  return cfSdk;
+}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 // Real sign-in: in the installed app and on washingdaddy.com, wd-sync.js provides WDAuth (Firebase phone
 // sign-in, a 6-digit SMS code) and the account lives in customers/{+91number}. Inside the artifact preview
@@ -851,7 +869,22 @@ const API={
       await db.doc(CUST_PATH()).update({requested_cars:cur.concat([{name:car.name,make:car.make||'',plate:car.plate,plan:car.plan,area:car.area,at:nowIST()}]).slice(-5),updated_at:nowIST()});return {ok:true}}
     catch(e){console.warn(e);return {ok:false}}},
   // POST {N8N}/wd-pay-order {carId, kind} -> Cashfree order (workflow 8). Amount is set server-side, never by the app.
-  async pay(kind,detail){await wait(1100);return {ok:true,ref:'CF'+Date.now().toString().slice(-8)}},
+  // Test build fakes a receipt. Live: n8n prices the order server-side, Cashfree takes the money,
+  // and the wd-pay-hook webhook moves the car's paid-up date. The app never marks itself paid.
+  async pay(kind,detail){
+    if(!PAYREAL()){await wait(1100);return {ok:true,ref:'CF'+Date.now().toString().slice(-8)}}
+    const c=car(),a=A();
+    const r=await fetch(N8N+'/wd-pay-order',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({amount:detail.amt,name:a.name||'',phone:window.WDAuth.phone10(),
+        car:c.name,num:c.plate,area:c.area||a.area||'',kind,label:detail.what,
+        page:location.origin+location.pathname})});
+    const j=await r.json().catch(()=>null);
+    if(!r.ok||!j||!j.paymentSessionId)throw new Error((j&&j.message)||'order');
+    const CF=await loadCashfree();
+    const out=await CF({mode:CF_MODE}).checkout({paymentSessionId:j.paymentSessionId,redirectTarget:'_modal'});
+    if(out&&out.error){const e=new Error(out.error.message||'payment');e.cancelled=/cancel/i.test(out.error.code||out.error.message||'');throw e}
+    return {ok:true,ref:j.orderId||j.order_id||'',pending:true};
+  },
   // Customer -> washer writes. Prototype: requests/{id} in this artifact's shared store, which the washer page reads live.
   // Production: POST {N8N}/wd-request with the same body -> Notion + Telegram to the washer.
   async pause(c,from,to){return sendRequest({reg:regOf(c),kind:from&&from===to&&from===iso(addDays(TODAY,1))?'skip_tomorrow':'pause',from,to,text:from?`Paused ${from} to ${to}`:'Resumed'})},
@@ -971,6 +1004,55 @@ function extras(c,dt){const k=[...weekPlan(c)[dayKey(dt)]];if(detDays(c).include
 const dayKey=d=>DAYS[(d.getDay()+6)%7];
 const LABEL={foam:'Foam wash',int:'Interior cleaning',tyre:'Tyre & trim polish',det:'Detailing'};
 const isPaused=(c,d)=>c.paused&&iso(d)>=c.paused.from&&iso(d)<=c.paused.to;
+// ---- real accounts: only what really happened is shown (no test data) ----
+const REALACCT=()=>!!(S.session&&S.session.real);
+const startOf=c=>c.start?parse(c.start):null;
+// headline for a car that has not had its first wash yet
+const startTxt=c=>{const s=startOf(c);if(!s)return 'Starts soon';if(TODAY<s)return 'Starts '+fmt(s,{weekday:'long',day:'numeric',month:'short'});return 'Not started yet'};
+const carImg=c=>c.photo||(c.img?IMG[c.img]:null);
+// a plan covers one month from its start; the last covered day is the day before the same date next month
+const tillOf=start=>{const d=new Date(start+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10)};
+// real days left: counted from the start date before the plan begins, from today after that
+function daysLeftOf(c){
+  if(!c.till)return null;
+  if(!REALACCT()||!c.start)return Math.max(0,Math.round((parse(c.till)-TODAY)/864e5)+1);
+  const s=startOf(c),from=TODAY<s?s:TODAY;
+  return Math.max(0,Math.round((parse(c.till)-from)/864e5)+1);
+}
+// washes that really happened, by task, for the usage bars
+function realCounts(c){const n={pressure:0,interior:0,foam:0,tyre:0,detailing:0};
+  (REMOTE[c.id]||[]).forEach(d=>{if(d.status!=='done')return;n.pressure++;(d.tasks||[]).forEach(t=>{if(t.done&&n[t.key]!==undefined)n[t.key]++})});return n}
+// car photo: the customer's own picture, shrunk so it stays small in the customers doc
+async function shrinkPhoto(file,max){
+  const url=URL.createObjectURL(file),img=new Image();
+  await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url});
+  URL.revokeObjectURL(url);
+  const k=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),cv=document.createElement('canvas');
+  cv.width=Math.round(img.naturalWidth*k);cv.height=Math.round(img.naturalHeight*k);
+  cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+  return cv.toDataURL('image/jpeg',0.7);
+}
+async function saveCarPhotoReal(c){
+  const db=await realDb();if(!db)throw new Error('offline');
+  await db.doc('carphotos/'+window.WDAuth.phone()+'_'+c.id).set({photo:c.photo,updated_at:nowIST()});
+}
+let photoUnsubs=[];
+// photos live in carphotos/{+91number}_{carId}, so the customer can add one without touching the account doc
+async function watchCarPhotos(){
+  photoUnsubs.forEach(u=>{try{u()}catch(e){}});photoUnsubs=[];
+  const db=await realDb();if(!db||!REALACCT()||!window.WDAuth.phone())return;
+  A().cars.forEach(x=>{const cid=x.id;photoUnsubs.push(db.doc('carphotos/'+window.WDAuth.phone()+'_'+cid).onSnapshot(g=>{
+    const t=A().cars.find(q=>q.id===cid),v=g.exists?g.data().photo:null;
+    if(t&&v&&t.photo!==v){t.photo=v;save();renderAll()}},()=>{}))});
+}
+function pickCarPhoto(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;
+    try{const c=car();c.photo=await shrinkPhoto(f,600);save();renderAll();toast('Photo saved');
+      if(REALACCT())await saveCarPhotoReal(c)}
+    catch(e){console.warn(e);toast("Couldn't save the photo. Check your signal and try again.")}};
+  inp.click();
+}
 
 /* ---------- theme ---------- */
 function applyTheme(){
@@ -1101,9 +1183,12 @@ function doc(c=car()){
   if(SIM&&SIM.carId===c.id)return SIM.doc;
   const r=(REMOTE[c.id]||[]).find(d=>d.date===iso(TODAY)||(c.status==='new'&&d.date===iso(addDays(TODAY,1))));
   if(r)return r;
+  // a real account with no washer record for today: nothing has happened yet, so nothing is shown
+  if(REALACCT()&&c.status!=='new')return {date:iso(TODAY),reg:regOf(c),car_label:c.name,washer:{name:c.washer},photos:[],status:'scheduled',eta:null,first:true,notStarted:true,tasks:[],washer_note:null,water_litres:null,customer_note_seen:false,remote:false};
   return DOCS[c.id]||(DOCS[c.id]=makeDoc(c))}
 const activeStage=d=>['on_the_way','arrived','washing'].includes(d.status);
 function chipText(c,d){const w=d.washer?.name||c.washer;
+  if(d.notStarted)return startTxt(c);
   if(c.status==='new'&&!d.remote)return 'First wash tomorrow, 6–7:30 AM';
   if(d.status==='skipped')return d.skip_reason==='Paused by you'&&c.paused?'Paused till '+fmt(c.paused.to):'No wash today';
   const done=d.tasks.filter(t=>t.done).length;
@@ -1139,8 +1224,8 @@ function renderLiveDot(){const d=doc(car());$('#liveDot').hidden=!activeStage(d)
 function renderLive(){
   const c=car(),d=doc(c),w=d.washer?.name||c.washer,si=d.status==='skipped'?-1:STAGES.indexOf(d.status),done=d.tasks.filter(t=>t.done).length;
   const nowTask=d.tasks.find(t=>!t.done);
-  const big={scheduled:d.first?'First wash tomorrow':`${w} comes at ${ampm(d.eta)||'6:30 AM'}`,on_the_way:`${w} is on the way`,arrived:`${w} is at your car`,washing:`Washing · ${done} of ${d.tasks.length}`,done:`Done in ${d.minutes} min`,skipped:'No wash today'}[d.status];
-  const sub={scheduled:'Each step shows up here the moment it happens.',on_the_way:`Arriving around ${ampm(d.eta)}.`,arrived:`Reached at ${ampm(d.arrived_at)}. Wash starts in a minute.`,washing:`Started at ${ampm(d.started_at)}. Now: ${nowTask?nowTask.label.toLowerCase():'finishing up'}.`,done:`Finished at ${ampm(d.finished_at)}${d.water_litres?` · ${d.water_litres} L of water, no pocha`:''}.`,skipped:d.skip_reason||'Your washer marked today as skipped.'}[d.status];
+  const big=d.notStarted?startTxt(c):{scheduled:d.first?'First wash tomorrow':`${w} comes at ${ampm(d.eta)||'6:30 AM'}`,on_the_way:`${w} is on the way`,arrived:`${w} is at your car`,washing:`Washing · ${done} of ${d.tasks.length}`,done:`Done in ${d.minutes} min`,skipped:'No wash today'}[d.status];
+  const sub=d.notStarted?(TODAY<startOf(c)?'Your washer comes between 6 and 7:30 AM. Live updates start the moment they leave.':'Live updates start the moment your washer leaves for your car.'):{scheduled:'Each step shows up here the moment it happens.',on_the_way:`Arriving around ${ampm(d.eta)}.`,arrived:`Reached at ${ampm(d.arrived_at)}. Wash starts in a minute.`,washing:`Started at ${ampm(d.started_at)}. Now: ${nowTask?nowTask.label.toLowerCase():'finishing up'}.`,done:`Finished at ${ampm(d.finished_at)}${d.water_litres?` · ${d.water_litres} L of water, no pocha`:''}.`,skipped:d.skip_reason||'Your washer marked today as skipped.'}[d.status];
   const pct=si<0?0:si/4*100;
   $('#liveHero').innerHTML=`<div class="eyebrow">${esc((c.make?c.make+' ':'')+c.name)} · ${esc(maskPlate(c.plate))}</div><div class="live-status">${esc(big)}</div><div class="live-sub">${esc(sub)}</div>
     ${si>=0?`<div class="track"><div class="rl"></div><div class="fill" style="width:${pct}%"></div>${STAGES.map((_,i)=>`<span class="node ${i<=si?'on':''}" style="left:${i*25}%"></span>`).join('')}<div class="rider" style="left:${pct}%"><img src="${d.washer?.photo_url||IMG.washer}" alt=""></div></div>
@@ -1154,6 +1239,7 @@ function renderLive(){
   if(c.note)rows.push([st(d.customer_note_seen||d.status==='done','none'),'✎','Read your note',`"${c.note}"`,d.customer_note_seen?d.arrived_at:null]);
   d.tasks.forEach(t=>rows.push([t.done?'done':d.status==='washing'&&t===nowTask?'now':'todo',t.done?'✓':'',t.label,TASK_SUB[t.key]||'',t.done_at]));
   rows.push([st(d.status==='done',false),'✦',d.status==='done'?`Finished in ${d.minutes} min`:'Finished','Photo sent here and on WhatsApp',d.finished_at]);
+  if(d.notStarted){rows.length=0;rows.push(['todo','🗓',startTxt(c),'Your washer will show each step here',null])}
   if(d.status==='skipped'){rows.length=0;rows.push(['done','⏸','No wash today',d.skip_reason,null])}
   const prev=$('#timeline').dataset.sig||'',sig=rows.map(r=>r[0]).join(',');
   $('#timeline').innerHTML=rows.map((r,i)=>`<li class="${r[0]} ${prev&&prev.split(',')[i]!==r[0]?'fresh':''}"><span class="tdot">${r[0]==='done'?(r[1]||'✓'):r[0]==='now'?'•':''}</span><span class="tt"><b>${esc(r[2])}</b><small>${esc(r[3])}</small></span><span class="tm">${r[4]?ampm(r[4]):''}</span></li>`).join('');
@@ -1164,11 +1250,13 @@ function renderLive(){
   // photos
   const ph=d.photos||[],before=ph.find(p=>p.kind==='before'),after=ph.find(p=>p.kind==='after');
   const tile=(p,kind,waitTxt)=>p?`<div class="ph"><img src="${p.src}" alt="${kind} photo" class="${p.local==='before'?'before':''}" style="${p.cut?'object-fit:contain;background:linear-gradient(160deg,#5409DA,#24065F);padding:14px':''}"><span>${kind}</span></div>`:`<div class="ph wait">${waitTxt}</div>`;
-  $('#photos').innerHTML=tile(before,'Before','Before photo comes when the wash starts')+tile(after,'After','After photo comes when it\'s done');
+  // one photo is the norm now: the before tile only shows when there actually is one
+  $('#photos').innerHTML=(before?tile(before,'Before',''):'')+tile(after,before?'After':'Your car','Photo comes the moment the wash is done');
   // history
   const remote=REMOTE[c.id]||[],h=[];
   for(let i=1;i<=7;i++){const dt=addDays(TODAY,-i),r=remote.find(x=>x.date===iso(dt));
     if(c.status==='new'){break}
+    if(REALACCT()&&!r)continue;
     if(r){h.push([dt,r.status==='skipped'?(r.skip_reason||'Skipped'):`${r.washer?.name||c.washer} · ${ampm(r.finished_at)} · ${r.minutes} min`,r.tasks.filter(t=>!['pressure','dry'].includes(t.key)).map(t=>t.label).join(', ')]);continue}
     if(isPaused(c,dt)){h.push([dt,'Paused by you','']);continue}
     const ex=planTasks(c,dt).filter(k=>!['pressure','dry'].includes(k)).map(k=>TASK_LABEL[k]),f=t2m('06:36')+((hash(c.plate+i)%9)-4);
@@ -1198,7 +1286,8 @@ function renderHero(){
   $('#greetHi').textContent=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
   $('#greetName').textContent=A().name.split(' ')[0];
   const el=$('#car');
-  if(c.img){el.innerHTML=`<img src="${IMG[c.img]}" alt="${esc(c.make+' '+c.name)}, the customer's own car" draggable="false"><div class="sheen" style="-webkit-mask-image:url(${IMG[c.img]});mask-image:url(${IMG[c.img]})"></div>`}
+  const carSrc=carImg(c);
+  if(carSrc){el.innerHTML=`<img src="${carSrc}" alt="${esc(c.make+' '+c.name)}, the customer's own car" draggable="false"><div class="sheen" style="-webkit-mask-image:url(${carSrc});mask-image:url(${carSrc})"></div>`}
   else el.innerHTML=`<div class="ghost-car">${GHOST_CAR}</div><div class="ghost-note">Your car's photo arrives after the first wash</div>`;
   $('#carName').textContent=c.name; $('#carPlate').textContent=maskPlate(c.plate); $('#carTier').textContent=p.name;
   const d=doc(c);
@@ -1228,6 +1317,7 @@ function renderRitual(){
   if(c.status==='new'){el.innerHTML=`<div class="ritual-top"><div class="ring" id="todayRing">${RING}<div class="lbl"><div><b>1</b><small>day to go</small></div></div></div><div><div class="eyebrow">Tomorrow</div><div style="font-size:20px;font-weight:700;margin-top:4px">First wash, 6–7:30 AM</div><div style="font-size:13px;color:var(--fg-2)">${c.washer} will call before he comes and take your car's first photo.</div></div></div>
     <ul class="steps">${[['Find your car',c.parking],['Pressure wash and hand dry','About 12 minutes'],['Photo on WhatsApp','So you know it\'s done']].map((s,i)=>`<li class="step later" style="--i:${i}"><span class="tick"></span><span><div class="t">${s[0]}</div><div class="s">${esc(s[1])}</div></span><span></span></li>`).join('')}</ul>`;ring($('#todayRing'),0.05);return}
   if(isPaused(c,TODAY)){el.innerHTML=`<div class="eyebrow">Today</div><div style="font-size:20px;font-weight:700;margin-top:4px">Paused. Enjoy the trip.</div><div style="font-size:13px;color:var(--fg-2)">Washes start again on ${fmt(addDays(parse(c.paused.to),1),{weekday:'long',day:'numeric',month:'short'})}.</div>`;return}
+  if(doc(c).notStarted){el.innerHTML=`<div class="ritual-top"><div style="min-width:0"><div class="eyebrow">Today's wash</div><div style="font-size:20px;font-weight:700;margin-top:4px">${esc(startTxt(c))}</div><div style="font-size:13px;color:var(--fg-2);margin-top:2px">${esc(c.washer)} washes your car here. Each step ticks off as it happens.</div></div></div>`;return}
   const d=doc(c),st=todaySteps(c),done=st.filter(s=>s[2]==='done').length,frac=done/st.length,w=d.washer?.name||c.washer;
   const head=d.status==='done'?['Done before your chai.',`${w} finished at ${ampm(d.finished_at)} in ${d.minutes} minutes.`]:d.status==='washing'?['Washing right now.',`${w} started at ${ampm(d.started_at)}. Watch it live.`]:d.status==='skipped'?['No wash today.',d.skip_reason||'']:[chipText(c,d)+'.','Each step ticks off here as it happens.'];
   el.innerHTML=`<div class="ritual-top"><div class="ring" id="todayRing">${RING}<div class="lbl"><div><b class="num" id="todayPct">0</b><small>of today</small></div></div></div>
@@ -1237,6 +1327,14 @@ function renderRitual(){
   ring($('#todayRing'),frac);countUp($('#todayPct'),Math.round(frac*100),1400,v=>Math.round(v)+'%');
 }
 function renderProof(){
+  if(!REALACCT())return renderProofDemo();
+  const c=car(),el=$('#proofSec'),d=doc(c),ap=(d.photos||[]).find(p=>p.kind==='after');
+  if(!ap){el.innerHTML=`<div class="sec-head"><h2>Proof of shine</h2></div><div class="empty"><b>Every morning, a photo</b>${esc(c.washer)} sends a photo of your car the moment it's done.</div>`;return}
+  el.innerHTML=`<div class="sec-head"><h2>Proof of shine</h2></div>
+    <button class="proof" data-act="proof" aria-label="Open this morning's photo"><img src="${ap.src}" alt="This morning's photo of the car" style="object-fit:contain;background:linear-gradient(160deg,#5409DA,#24065F);padding:20px"><span class="stamp">No pocha · Pressure wash</span>
+    <div class="cap"><div style="font-weight:700;font-size:15px">Photo by ${esc(c.washer)} · ${ampm(d.finished_at)}</div><div style="font-size:12px;opacity:.8">${esc(c.parking)}</div></div></button>`;
+}
+function renderProofDemo(){
   const c=car(),el=$('#proofSec');
   if(c.status==='new'||!c.img){el.innerHTML=`<div class="sec-head"><h2>Proof of shine</h2></div><div class="empty"><b>Every morning, a photo</b>${c.washer} sends a photo of your car the moment it's done. The first one lands tomorrow.</div>`;return}
   el.innerHTML=`<div class="sec-head"><h2>Proof of shine</h2><button class="link" data-act="proof">Before / after</button></div>
@@ -1244,6 +1342,22 @@ function renderProof(){
     <div class="cap"><div style="font-weight:700;font-size:15px">Photo by ${c.washer} · ${ampm(doc(c).finished_at)}</div><div style="font-size:12px;opacity:.8">${esc(c.parking)}</div></div></button>`;
 }
 function renderCal(){
+  if(!REALACCT())return renderCalDemo();
+  const c=car(),y=TODAY.getFullYear(),mo=TODAY.getMonth(),first=new Date(y,mo,1),off=(first.getDay()+6)%7,dim=new Date(y,mo+1,0).getDate(),td=TODAY.getDate();
+  const s0=startOf(c),rem=REMOTE[c.id]||[];
+  $('#calMonth').textContent=fmt(TODAY,{month:'long'});
+  let h=['M','T','W','T','F','S','S'].map(d=>`<div class="dh">${d}</div>`).join('');
+  for(let i=0;i<off;i++)h+='<div></div>';
+  for(let d=1;d<=dim;d++){const dt=new Date(y,mo,d),r=rem.find(x=>x.date===iso(dt));
+    // only washes that really happened are coloured: nothing before the start date, nothing without a washer's record
+    const washed=d<=td&&!!s0&&dt>=s0&&!!r&&r.status==='done';
+    let cls='d'+(washed?' w'+(extras(c,dt).some(k=>k!=='tyre')?' x':''):'');
+    if(isPaused(c,dt))cls+=' skip';
+    if(d===td)cls+=' today';
+    h+=washed?`<button class="${cls} num" style="--i:${d}" data-act="day" data-arg="${iso(dt)}" aria-label="${fmt(dt,{day:'numeric',month:'long'})}">${d}</button>`:`<div class="${cls} num">${d}</div>`}
+  $('#cal').innerHTML=h;
+}
+function renderCalDemo(){
   const c=car(),y=TODAY.getFullYear(),mo=TODAY.getMonth(),first=new Date(y,mo,1),off=(first.getDay()+6)%7,w=weekPlan(c),dim=new Date(y,mo+1,0).getDate(),td=TODAY.getDate();
   $('#calMonth').textContent=fmt(TODAY,{month:'long'});
   let h=['M','T','W','T','F','S','S'].map(d=>`<div class="dh">${d}</div>`).join('');
@@ -1269,10 +1383,10 @@ function renderHome(){
 }
 
 function renderPlan(){
-  const c=car(),p=planOf(c),src=c.img?IMG[c.img]:null;
-  const left=c.till?Math.max(0,Math.round((parse(c.till)-TODAY)/864e5)):null;
+  const c=car(),p=planOf(c),src=carImg(c);
+  const left=c.till?daysLeftOf(c):null;
   const status=c.status==='new'&&!c.till?['Starts tomorrow','#FFBA08','#1A0A33']:left<=3?['Due soon','#FF6A1A','#fff']:['Active','#14C08A','#fff'];
-  $('#ticketWrap').innerHTML=`<div class="ticket"><div class="ticket-top on-violet"><div class="eyebrow">${esc((c.make?c.make+' ':'')+c.name)} · ${esc(maskPlate(c.plate))}</div><div class="tname">${p.name}</div><div class="tprice num">${inr(p.price)} / month</div>${src?`<img class="tcar" src="${src}" alt="">`:''}</div>
+  $('#ticketWrap').innerHTML=`<div class="ticket"><div class="ticket-top on-violet"><div class="eyebrow">${esc((c.make?c.make+' ':'')+c.name)} · ${esc(maskPlate(c.plate))}</div><div class="tname">${p.name}</div><div class="tprice num">${inr(p.price)} / month</div>${src?`<img class="tcar" src="${src}" alt="">`:''}<button class="link" data-act="carPhoto" style="position:relative;z-index:2;color:var(--cream);margin-top:6px">${src?'Change car photo':'Add a photo of your car'}</button></div>
     <div class="perf"></div><div class="ticket-body">
     <div class="ring" id="daysRing">${RING}<div class="lbl"><div><b class="num" id="daysLeft">${left==null?'–':0}</b><small>${left==null?'not paid':'days left'}</small></div></div></div>
     <div class="kv"><div><span>Status</span><b><span class="status-pill" style="background:${status[1]};color:${status[2]}">${status[0]}</span></b></div>
@@ -1280,8 +1394,9 @@ function renderPlan(){
     <div><span>Washer</span><b>${c.washer}</b></div></div></div>
     <button class="btn violet" data-act="payPlan"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/></svg>${c.till?'Pay next month':'Pay first month'}</button></div>`;
   $('#daysLeft').dataset.to=left??0;$('#daysRing').dataset.frac=left==null?0:left/30;
-  const f=p.f,used=c.status==='new'?0:1,td=TODAY.getDate();$('#usageRange').textContent=`1–${td} ${fmt(TODAY,{month:'short'})}`;
-  const cols=[['Pressure washes',td,30,'var(--violet)'],['Interior',Math.round(f.int*td/7),Math.round(f.int*30/7),'var(--orange)'],['Foam wash',Math.round(f.foam*td/7),Math.round(f.foam*30/7),'var(--sky)'],f.det?['Detailing',f.det>=16?8:Math.floor(f.det/2),f.det>=16?17:f.det,'var(--gold)']:['Tyre & trim',Math.min(Math.round(f.tyre*30/7),Math.round(f.tyre*td/7)),Math.round(f.tyre*30/7),'var(--mint)']];
+  const f=p.f,used=c.status==='new'?0:1,td=TODAY.getDate();$('#usageRange').textContent=REALACCT()&&c.start?`From ${fmt(startOf(c),{day:'numeric',month:'short'})}`:`1–${td} ${fmt(TODAY,{month:'short'})}`;
+  const N=REALACCT()?realCounts(c):null,pick=(k,fake)=>N?N[k]:fake;
+  const cols=[['Pressure washes',pick('pressure',td),30,'var(--violet)'],['Interior',pick('interior',Math.round(f.int*td/7)),Math.round(f.int*30/7),'var(--orange)'],['Foam wash',pick('foam',Math.round(f.foam*td/7)),Math.round(f.foam*30/7),'var(--sky)'],f.det?['Detailing',pick('detailing',f.det>=16?8:Math.floor(f.det/2)),f.det>=16?17:f.det,'var(--gold)']:['Tyre & trim',pick('tyre',Math.min(Math.round(f.tyre*30/7),Math.round(f.tyre*td/7))),Math.round(f.tyre*30/7),'var(--mint)']];
   $('#usageWrap').hidden=c.status==='new';
   $('#usage').innerHTML=cols.map(u=>`<div class="card u"><div class="ul"><i style="background:${u[3]}"></i>${u[0]}</div><div class="uv num"><span data-to="${u[1]*used}">0</span> <small>of ${u[2]}</small></div><div class="bar"><i style="background:${u[3]}" data-w="${u[2]?u[1]/u[2]*100*used:0}"></i></div></div>`).join('');
   $('#plans').innerHTML=PLANS.filter(pl=>!pl.old||pl.id===p.id).map(pl=>`<div class="plan ${pl.id===p.id?'cur on-violet':''} ${pl.id==='res'&&pl.id!==p.id?'res on-violet':''}">${pl.id===p.id?'<span class="cur-tag">Your plan</span>':''}<div class="pn">${pl.name}</div><div class="pp num">${inr(pl.price)} <small>/ month</small></div><ul>${pl.rows.map(r=>`<li><span>${r[0]}</span><b class="${r[1]==='—'?'no':''}">${r[1]}</b></li>`).join('')}</ul>${pl.id===p.id?`<button class="btn gold cta" data-act="payPlan">${c.till?'Pay next month':'Pay first month'}</button>`:`<button class="btn ${pl.price>p.price?'gold':'ghost'} cta" data-act="switchPlan" data-arg="${pl.id}">${pl.price>p.price?'Upgrade':'Switch'} to ${pl.name.replace('WD ','')}</button>`}</div>`).join('');
@@ -1321,7 +1436,7 @@ function renderProfile(){
   $$('#stWashes,#stLitres,#stStreak').forEach(e=>e.textContent=(+e.dataset.to).toLocaleString('en-IN'));
   $('#refCode').textContent=(a.name.split(' ')[0]||'WD').toUpperCase().replace(/[^A-Z]/g,'').slice(0,8)+'200';
   $('#logoutSub').textContent='Signed in as +91 '+a.phone.replace(/(\d{5})(\d+)/,'$1 $2');
-  $('#garage').innerHTML=a.cars.map((g,i)=>`<button class="garage-card ${i===S.carIdx?'on on-violet':''}" data-act="pickCar" data-arg="${i}"><div class="gimg">${g.img?`<img src="${IMG[g.img]}" alt="">`:`<div style="width:100%;color:var(--fg-3)">${GHOST_CAR}</div>`}</div><div class="gn">${esc((g.make?g.make+' ':'')+g.name)}</div><div class="gs">${esc(maskPlate(g.plate))} · ${planOf(g).name}${g.status==='new'?' · starts tomorrow':''}</div></button>`).join('')+`<button class="garage-card add-car" data-act="addCar"><div><div style="font-size:30px;line-height:1">＋</div><div style="font-weight:600;margin-top:6px">Add a car</div><div class="muted">Second car gets 10% off</div></div></button>`;
+  $('#garage').innerHTML=a.cars.map((g,i)=>`<button class="garage-card ${i===S.carIdx?'on on-violet':''}" data-act="pickCar" data-arg="${i}"><div class="gimg">${carImg(g)?`<img src="${carImg(g)}" alt="">`:`<div style="width:100%;color:var(--fg-3)">${GHOST_CAR}</div>`}</div><div class="gn">${esc((g.make?g.make+' ':'')+g.name)}</div><div class="gs">${esc(maskPlate(g.plate))} · ${planOf(g).name}${g.status==='new'?' · starts tomorrow':''}</div></button>`).join('')+`<button class="garage-card add-car" data-act="addCar"><div><div style="font-size:30px;line-height:1">＋</div><div style="font-weight:600;margin-top:6px">Add a car</div><div class="muted">Second car gets 10% off</div></div></button>`;
   const act=[];
   if(a.orders.length)act.push(`<button class="row" data-act="orders"><span class="ri" style="background:rgba(20,192,138,.15);color:var(--ok)">📦</span><span class="rt"><b>My orders</b><small>${a.orders.length} order${a.orders.length>1?'s':''} · latest ${a.orders[0].id}</small></span>${CHEV}</button>`);
   if(a.bookings.length)act.push(`<button class="row" data-act="bookings"><span class="ri" style="background:rgba(84,9,218,.12);color:var(--violet)">✦</span><span class="rt"><b>One-time washes</b><small>${a.bookings.length} booked</small></span>${CHEV}</button>`);
@@ -1366,12 +1481,35 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
 function success(t,s){openSheet(`<div class="success"><div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg></div><h3>${t}</h3><p class="sub" style="max-width:32ch;margin:6px auto 18px">${s}</p><button class="btn gold" data-act="close">Done</button></div>`);confetti()}
 function segPick(sel,cb){$$(sel+' button').forEach(b=>b.onclick=()=>{$$(sel+' button').forEach(x=>x.classList.toggle('on',x===b));cb&&cb(b)})}
 const UPI=`<div style="font-size:13px;font-weight:600;margin-top:4px">Pay with</div><div class="seg" id="upi"><button class="on">GPay</button><button>PhonePe</button><button>Paytm</button><button>Card</button><button>Net banking</button></div>`;
+// After a payment the book is the truth, not the app. The webhook moves the paid-up date
+// in Notion a second or two later, so ask wd-pay-lookup until it changes, then show it.
+async function pollPaidTo(c,was){
+  if(!PAYREAL()||!c||!c.plate)return;
+  for(let i=0;i<10;i++){
+    await wait(i<3?1500:4000);
+    let j=null;
+    try{const r=await fetch(N8N+'/wd-pay-lookup?car='+encodeURIComponent(c.plate),{cache:'no-store'});j=await r.json()}
+    catch(e){continue}
+    if(j&&j.found&&j.paidTo&&j.paidTo!==was){
+      c.till=j.paidTo;
+      const pay=A().payments.slice(-1)[0];if(pay)pay.pending=false;
+      save();renderAll();toast('Payment confirmed. Covered till '+fmt(parse(j.paidTo)));
+      return;
+    }
+  }
+}
 async function checkout(btn,kind,amt,what,onPaid){
-  const via=$('#upi .on')?.textContent||'UPI',done=busy(btn,'Opening '+via+'…');
-  try{const r=await API.pay(kind,{amt,what});A().payments.push({d:iso(TODAY),what,amt,via,ref:r.ref});onPaid(r);save();renderAll()}
-  catch(e){done();toast('Payment didn\'t go through. Nothing was charged.')}}
+  const via=$('#upi .on')?.textContent||'UPI',done=busy(btn,PAYREAL()?'Opening…':'Opening '+via+'…');
+  try{const r=await API.pay(kind,{amt,what});
+    A().payments.push({d:iso(TODAY),what,amt,via,ref:r.ref,pending:!!r.pending});
+    if(r.pending){const c=car(),was=c.till||'';save();renderAll();
+      success('Payment received',"We're checking it with the bank. Your plan updates by itself as soon as it clears.");
+      pollPaidTo(c,was);return}
+    onPaid(r);save();renderAll()}
+  catch(e){done();toast(e&&e.cancelled?'Payment cancelled. Nothing was charged.':'Payment didn\'t go through. Nothing was charged.')}}
 
 const ACT={
+  carPhoto(){pickCarPhoto()},
   close:closeSheet,
   goLive(){go('live')},
   replay(){replay()},
@@ -1391,7 +1529,7 @@ const ACT={
   payPlan(){const c=car(),p=planOf(c),from=c.till?parse(c.till):addDays(TODAY,1),nt=new Date(from);nt.setMonth(nt.getMonth()+1);
     openSheet(`<div class="eyebrow">${esc(c.name)} · ${p.name}</div><h3 style="margin-top:4px">Pay ${inr(p.price)} for ${c.till?'one more month':'your first month'}</h3>
       <div class="confirm"><div class="cv"><small>${c.till?'Paid up till':'Starts'}</small><b>${fmt(from)}</b></div><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg><div class="cv"><small>After paying</small><b style="color:var(--accent)">${fmt(nt)}</b></div></div>
-      ${UPI}<button class="btn violet" id="payGo" style="margin-top:16px">Pay ${inr(p.price)}</button><div class="demo-note">Test version. No money moves. Live payments go through Cashfree.</div>`,()=>{
+      ${UPI}<button class="btn violet" id="payGo" style="margin-top:16px">Pay ${inr(p.price)}</button>${PAYREAL()?'':'<div class="demo-note">Test version. No money moves. Live payments go through Cashfree.</div>'}`,()=>{
       segPick('#upi');$('#payGo').onclick=e=>checkout(e.currentTarget,'plan',p.price,`${p.name} · ${c.name}`,()=>{c.till=iso(nt);success('Paid',`Your ${esc(c.name)} is covered till ${fmt(nt)}. Receipt sent on WhatsApp.`)})})},
   switchPlan(id){const np=PLANS.find(p=>p.id===id),c=car(),cp=planOf(c),left=c.till?Math.max(0,Math.round((parse(c.till)-TODAY)/864e5)):0,diff=Math.max(0,Math.round((np.price-cp.price)*left/30)),up=np.price>cp.price;
     openSheet(`<div class="eyebrow">${esc(c.name)}</div><h3 style="margin-top:4px">${up?'Upgrade':'Switch'} to ${np.name}</h3>
@@ -1445,7 +1583,7 @@ const ACT={
     const sub=ids.reduce((s,k)=>s+PRODUCTS.find(p=>p.id===k).price*S.cart[k],0),mrp=ids.reduce((s,k)=>s+PRODUCTS.find(p=>p.id===k).mrp*S.cart[k],0);
     openSheet(`<h3>Your cart</h3><p class="sub">${car().washer} brings it with tomorrow's wash, to ${esc(car().parking)}.</p>${ids.map(line).join('')}
       <div class="sum"><div><span style="color:var(--fg-2)">Items</span><span class="num">${inr(sub)}</span></div><div><span style="color:var(--fg-2)">You save</span><span class="num ok">−${inr(mrp-sub)}</span></div><div><span style="color:var(--fg-2)">Delivery with your wash</span><span class="ok">Free</span></div><div class="tot"><span>Total</span><span class="num">${inr(sub)}</span></div></div>
-      ${UPI}<button class="btn gold" id="coGo" style="margin-top:16px">Pay ${inr(sub)}</button><div class="demo-note">Test version. No money moves.</div>`,()=>{
+      ${UPI}<button class="btn gold" id="coGo" style="margin-top:16px">Pay ${inr(sub)}</button>${PAYREAL()?'':'<div class="demo-note">Test version. No money moves.</div>'}`,()=>{
       segPick('#upi');$('#coGo').onclick=e=>checkout(e.currentTarget,'order',sub,'Store order',async()=>{const r=await API.order(ids);
         A().orders.unshift({id:r.id,total:sub,status:`Arriving tomorrow with ${car().washer}'s wash`,items:ids.map(k=>({name:pName(PRODUCTS.find(p=>p.id===k)),q:S.cart[k]}))});
         A().payments[A().payments.length-1].what='Store order '+r.id;S.cart={};save();renderAll();success('Order placed',`${car().washer} brings it tomorrow before 7:30 AM and sends a photo when it's in your car.`)})})},
@@ -1556,6 +1694,7 @@ let acctUnsub=null;
 async function watchAccount(){
   if(acctUnsub){try{acctUnsub()}catch(e){}acctUnsub=null}
   const db=await realDb();if(!db||!S.session||!window.WDAuth.phone())return;
+  watchCarPhotos();
   acctUnsub=db.doc(CUST_PATH()).onSnapshot(g=>{if(!g.exists||!S.acct)return;const was=S.acct.status;
     S.acct=fromCustomerDoc(g.data(),S.acct);S.carIdx=Math.min(S.carIdx,S.acct.cars.length-1);save();subFor=null;renderAll();
     if(was&&was!=='active'&&S.acct.status==='active')toast("You're all set. Live wash updates are on.")},()=>{});

@@ -59,6 +59,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // a customer's own car photo, stored as carphotos/{+91number}_{carId} (kept out of the account doc)
+    match /carphotos/{id} {
+      allow read: if isAdmin() || (signedIn() && id.split('_')[0] == me());
+      allow create: if signedIn() && id.split('_')[0] == me()
+        && d().keys().hasOnly(['photo', 'updated_at'])
+        && d().photo is string && d().photo.size() <= 400000
+        && str(d().updated_at, 40);
+      allow update: if signedIn() && id.split('_')[0] == me()
+        && d().diff(resource.data).affectedKeys().hasOnly(['photo', 'updated_at'])
+        && d().photo is string && d().photo.size() <= 400000
+        && str(d().updated_at, 40);
+      allow delete: if isAdmin();
+    }
+
     match /washes/{id} {
       allow read: if isAdmin() || isWasher() || ownsReg(resource.data.reg);
       allow create, update: if (isAdmin() || (isWasher() && d().washer_id == myRound()))

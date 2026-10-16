@@ -129,6 +129,10 @@ let db = null;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nowIST = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 19) + '+05:30';
+// A car's wash plan starts tomorrow (IST) and runs one month, to the day before the same date next month.
+const tomorrowIST = () => new Date(Date.now() + 5.5 * 3600e3 + 864e5).toISOString().slice(0, 10);
+const tillOf = start => { const d = new Date(start + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + 1); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10) };
+const planDates = (x, start) => { const s = x.start || start; return { start: s, till: x.till && x.start ? x.till : tillOf(s) } };
 const nice = p => { const d = String(p || '').replace(/\D/g, '').slice(-10); return d ? '+91 ' + d.slice(0, 5) + ' ' + d.slice(5) : '' };
 const when = iso => { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) };
 const regOf = p => String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -294,7 +298,8 @@ document.addEventListener('click', e => {
       else await ref.set({ phone: '+91' + d, name, area: '', status: 'approved', route_id: r, created_at: nowIST(), decided_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() });
     }, `${name} added. They can sign in now.`);
   } else if (a === 'activate') {
-    act(b, () => db.doc('customers/' + id).update({ status: 'active', regs: (c.cars || []).map(x => regOf(x.plate)), activated_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }), `${c?.name || 'Customer'} is active. Live updates are on for them.`);
+    const start = tomorrowIST(), cars = (c.cars || []).map(x => ({ ...x, ...planDates(x, start) }));
+    act(b, () => db.doc('customers/' + id).update({ status: 'active', cars, regs: cars.map(x => regOf(x.plate)), activated_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }), `${c?.name || 'Customer'} is active. Live updates are on for them.`);
   } else if (a === 'deactivate') {
     if (!confirm(`Pause ${c?.name || 'this account'}? They stop seeing live wash updates until you activate again.`)) return;
     act(b, () => db.doc('customers/' + id).update({ status: 'new', updated_at: nowIST() }), 'Paused');
@@ -302,7 +307,8 @@ document.addEventListener('click', e => {
     if (!confirm(`Remove ${c?.name || 'this sign-up'}?`)) return;
     act(b, () => db.doc('customers/' + id).delete(), 'Removed');
   } else if (a === 'addcars') {
-    const add = (c.requested_cars || []).map((x, i) => ({ id: 'c' + ((c.cars || []).length + i), name: x.name, make: x.make || '', plate: x.plate, plan: x.plan, parking: (x.area || c.area || '') + ', parking spot to be confirmed', window: 'Before 7:30 AM', keys: "I'll unlock it" }));
+    const start = tomorrowIST();
+    const add = (c.requested_cars || []).map((x, i) => ({ id: 'c' + ((c.cars || []).length + i), name: x.name, make: x.make || '', plate: x.plate, plan: x.plan, parking: (x.area || c.area || '') + ', parking spot to be confirmed', window: 'Before 7:30 AM', keys: "I'll unlock it", start, till: tillOf(start) }));
     const cars = (c.cars || []).concat(add);
     act(b, () => db.doc('customers/' + id).update({ cars, regs: cars.map(x => regOf(x.plate)), requested_cars: [], updated_at: nowIST() }), 'Car added');
   } else if (a === 'dropcars') {
