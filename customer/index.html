@@ -1250,7 +1250,8 @@ function renderLive(){
   // photos
   const ph=d.photos||[],before=ph.find(p=>p.kind==='before'),after=ph.find(p=>p.kind==='after');
   const tile=(p,kind,waitTxt)=>p?`<div class="ph"><img src="${p.src}" alt="${kind} photo" class="${p.local==='before'?'before':''}" style="${p.cut?'object-fit:contain;background:linear-gradient(160deg,#5409DA,#24065F);padding:14px':''}"><span>${kind}</span></div>`:`<div class="ph wait">${waitTxt}</div>`;
-  $('#photos').innerHTML=tile(before,'Before','Before photo comes when the wash starts')+tile(after,'After','After photo comes when it\'s done');
+  // one photo is the norm now: the before tile only shows when there actually is one
+  $('#photos').innerHTML=(before?tile(before,'Before',''):'')+tile(after,before?'After':'Your car','Photo comes the moment the wash is done');
   // history
   const remote=REMOTE[c.id]||[],h=[];
   for(let i=1;i<=7;i++){const dt=addDays(TODAY,-i),r=remote.find(x=>x.date===iso(dt));

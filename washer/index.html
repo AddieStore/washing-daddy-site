@@ -538,7 +538,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
           <div class="tasks" id="jobTasks"></div>
         </div>
         <div class="sec">
-          <div class="sec-head"><h2>Photo</h2><span class="muted">Customer ko turant dikhegi</span></div>
+          <div class="sec-head"><h2>Photo</h2><span class="muted">Ek photo zaroori hai</span></div>
           <div class="photos" id="jobPhotos"></div>
         </div>
         <div class="sec" id="jobNote"></div>
@@ -574,6 +574,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
       <div class="sec rv">
         <div class="sec-head"><h2>Settings</h2></div>
         <div class="rows">
+          <div class="row"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14 0 18M12 3c-3 3.5-3 14 0 18"/></svg></span><span class="rt"><b>Bhasha</b><small>Poora app Hindi mein</small></span>
+            <span class="seg" id="langSeg" data-notr><button data-lang-set="hinglish">Hinglish</button><button data-lang-set="hi">हिंदी</button></span></div>
           <div class="row"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2"/></svg></span><span class="rt"><b>Screen</b><small>Dhoop mein "Din" saaf dikhta hai</small></span>
             <span class="seg" id="themeSeg"><button data-theme-set="light">Din</button><button data-theme-set="dark">Raat</button><button data-theme-set="auto">Auto</button></span></div>
           <button class="row" data-act="syncInfo"><span class="ri"><span class="sdot" data-sdot></span></span><span class="rt"><b>Customer app se sync</b><small data-stxt2>Jud raha hai</small></span></button>
@@ -705,6 +707,44 @@ const ROSTER={
 };
 Object.values(ROSTER).flat().forEach(c=>{c.reg=normReg(c.plate);c.label=c.make+' '+c.model});
 
+/* =====================================================================
+   The real round. n8n workflow 9 reads Notion "Monthly Customers" and
+   returns the active cars for this washer; ROSTER above is only the
+   preview's stand-in. A washer must never be shown a car that is not
+   really on their round, so on the installed app a failed load leaves
+   the round empty and says so, rather than falling back to the demo.
+   ===================================================================== */
+const BOOK_URL='https://n8n.washingdaddy.com/webhook/wd-washer-cars';
+const Book={
+  state:'loading',               // loading | live | cached | empty | demo
+  setRound(id,cars){
+    const list=cars.map(c=>Object.assign({},c,{reg:normReg(c.plate),label:(c.make?c.make+' ':'')+c.model}));
+    ROSTER[id]=list;return list;
+  },
+  cacheKey(id){return 'wd_round_'+id},
+  readCache(id){try{const r=JSON.parse(localStorage.getItem(this.cacheKey(id))||'null');
+    return r&&Array.isArray(r.cars)?r:null}catch(e){return null}},
+  writeCache(id,cars){try{localStorage.setItem(this.cacheKey(id),JSON.stringify({at:isoIST(),cars}))}catch(e){}},
+  async load(){
+    if(!REAL){this.state='demo';return}    // preview keeps the made-up round
+    const id=me().id;
+    // yesterday's list first, so the washer can start walking before the network answers
+    const cached=this.readCache(id);
+    if(cached){this.setRound(id,cached.cars);this.state='cached';refresh()}
+    try{
+      const r=await fetch(BOOK_URL+'?washer='+encodeURIComponent(id),{cache:'no-store'});
+      const j=await r.json();
+      if(!r.ok||!j||j.ok===false||!Array.isArray(j.cars))throw new Error('book');
+      this.setRound(id,j.cars);this.writeCache(id,j.cars);
+      this.state=j.cars.length?'live':'empty';
+      if(j.truncated)console.warn('round truncated: the book is bigger than one page');
+    }catch(e){
+      if(!cached){this.setRound(id,[]);this.state='empty'}
+    }
+    ensureDay();Sync.listen();refresh();
+  },
+};
+
 const TASK={
   pressure:{en:'Pressure wash',hi:'Pressure wash',sub:'Upar se neeche. Kapda nahi lagega.',litres:9},
   foam:{en:'Foam wash',hi:'Foam wash',sub:'Foam 2 minute rukne do',litres:3},
@@ -762,7 +802,7 @@ const carArt=(c,small)=>c.img&&IMG[c.img]?`<img src="${IMG[c.img]}" alt="">`:car
    State kept on this phone. The round and every unsent change survive
    no signal and an app restart (handbook §5).
    ===================================================================== */
-let S={session:null,theme:'light',day:null,outbox:{},current:null,selfie:null,hist:{}};
+let S={session:null,theme:'light',lang:'hinglish',day:null,outbox:{},current:null,selfie:null,hist:{}};
 const KEY='wd-washer-v1';
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&typeof x==='object')S=Object.assign(S,x)}catch(e){}
@@ -816,8 +856,8 @@ const Sync={
       if(sn.size&&!S.day.started){S.day.started=true;ch=true}
       if(ch){save();refresh()}
     },err));
-    // customer requests for the cars on my round
-    this.unsubs.push(db.collection('requests').where('reg','in',regs.slice(0,30)).onSnapshot(sn=>{
+    // customer requests for the cars on my round (an empty round has nothing to watch)
+    if(regs.length)this.unsubs.push(db.collection('requests').where('reg','in',regs.slice(0,30)).onSnapshot(sn=>{
       const prev=R;R={};sn.docs.forEach(d=>{const v=d.data();if(v)R[d.id]=Object.assign({},v,{id:d.id})});
       if(booted)Object.values(R).forEach(q=>{if(!prev[q.id]&&q.status==='open'){const c=carBy(q.reg);if(c){toast(`Naya: ${c.model} · ${REQ_KIND[q.kind]||'note'}`);haptic([20,60,20])}}});
       refresh();
@@ -936,14 +976,17 @@ function renderRound(){
   const left=cn.total-cn.done-cn.skipped,av=avatarSrc();
   $('#roundHero').innerHTML=`<div class="hero-bg" aria-hidden="true"><div class="beam"></div><div class="marquee"><span>Pressure wash · No pocha · </span><span>Pressure wash · No pocha · </span></div><div class="stripe"></div></div>
     ${av?`<img class="hero-man" src="${av}" alt="">`:`<div class="hero-man ini">${esc(w.name[0])}</div>`}
-    <div class="hero-in"><span class="chip">${new Date(DAY+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})} · ${esc(w.areas.split(' · ')[0])}</span>
+    <div class="hero-in"><span class="chip">${new Date(DAY+'T00:00:00').toLocaleDateString(LOC(),{weekday:'short',day:'numeric',month:'short'})} · ${esc(w.areas.split(' · ')[0])}</span>
       <div class="hero-count num">${started?`<span id="hcN">${cn.done}</span><small>/${cn.total}</small>`:`${cn.total}<small> gaadi</small>`}</div>
       <div class="hero-sub">${!started?`Pehli ${hm12(first)} · aakhri ~${hm12(last)}`:left?`${left} baaki · ${cn.skipped?cn.skipped+' skip · ':''}aakhri ~${hm12(last)}`:'Round poora! Shabash.'}</div></div>
     <div class="hero-bar"><i id="heroBar"></i></div>`;
   requestAnimationFrame(()=>requestAnimationFrame(()=>{const b=$('#heroBar');if(b)b.style.width=(started?(cn.done+cn.skipped)/cn.total*100:4)+'%'}));
   // primary action
   const act=$('#roundAction');
-  if(!started){act.innerHTML=`<div class="slide gold" data-slide="startRound" role="button" aria-label="Round shuru karo"><div class="slide-fill"></div><span class="slide-txt">Round shuru karo</span><button class="knob" aria-label="Round shuru karo">${I.arrow}</button></div><div class="demo-note">Shuru karte hi har customer ko aapka naam aur time dikh jayega.</div>`}
+  if(!cn.total){act.innerHTML=Book.state==='loading'
+      ? '<div class="demo-note">Aaj ki list aa rahi hai…</div>'
+      : '<div class="demo-note">Aaj aapke naam koi gaadi nahi hai. Ravi se baat karo.</div>'}
+  else if(!started){act.innerHTML=`<div class="slide gold" data-slide="startRound" role="button" aria-label="Round shuru karo"><div class="slide-fill"></div><span class="slide-txt">Round shuru karo</span><button class="knob" aria-label="Round shuru karo">${I.arrow}</button></div><div class="demo-note">Shuru karte hi har customer ko aapka naam aur time dikh jayega.</div>`}
   else act.innerHTML='';
   // next up
   const nr=Route.liveReg()||Route.nextReg(),nw=$('#nextWrap');
@@ -958,8 +1001,8 @@ function renderRound(){
   else if(started){nw.innerHTML=`<div class="empty"><b>Aaj ka round poora 🎉</b>${cn.done} gaadi chamka di. Hisaab tab mein poora din dekho.</div>`}
   else nw.innerHTML='';
   // list
-  $('#routeMeta').textContent=`${cn.total} gaadi · ${w.areas.split(' · ')[0]}`;
-  $('#route').innerHTML=route().map((c,i)=>{const wd=W(c.reg),s=wd?wd.status:'scheduled',live=['on_the_way','arrived','washing'].includes(s),q=openReqs(c.reg).length;
+  $('#routeMeta').textContent=cn.total?`${cn.total} gaadi · ${w.areas.split(' · ')[0]}`:'';
+  $('#route').innerHTML=!cn.total?`<li><div class="empty">${Book.state==='loading'?'<b>List aa rahi hai…</b>Book se aaj ka round padha ja raha hai.':'<b>Koi gaadi nahi</b>Book mein aaj aapke naam koi active gaadi nahi hai.'}</div></li>`:route().map((c,i)=>{const wd=W(c.reg),s=wd?wd.status:'scheduled',live=['on_the_way','arrived','washing'].includes(s),q=openReqs(c.reg).length;
     return `<li><button class="stop ${s} ${live?'live':''}" data-open="${c.reg}" style="--i:${i}"><span class="sq">${s==='done'?'✓':s==='skipped'?'–':i+1}</span><span class="th">${carArt(c,true)}</span>
       <span style="min-width:0"><div class="nm">${esc(c.model)} ${q?`<span class="reqdot">${q}</span>`:''}</div><div class="sb">${esc(c.house)} · ${esc(c.plate)}</div><div class="xs">${xchips(c)}</div></span>
       <span class="rt"><span class="eta num">${s==='done'&&wd.finished_at?t12(wd.finished_at).replace(/ (AM|PM)/,''):hm12(wd?wd.eta:etas[i]).replace(/ (AM|PM)/,'')}</span>${stHTML(wd)}</span></button></li>`}).join('');
@@ -1014,12 +1057,13 @@ function renderMain(c,wd){
   if(!wd){el.innerHTML=`<div class="empty"><b>Round abhi shuru nahi hua</b>Slide karte hi saare customers ko time chala jayega.</div><div style="margin-top:12px">${slideHTML('startRound','Round shuru karo',true)}</div>`;return}
   const sk=skipAsk(c.reg);
   const skipBanner=sk&&!['done','skipped'].includes(st)?`<div class="warn">${I.pause}<span><b>Customer ne aaj mana kiya hai.</b> ${esc(sk.text||'Kal wash mat karna.')}</span></div><button class="btn ink" data-act="skipNow" data-arg="Customer ne mana kiya" style="margin-bottom:10px">Skip karo · customer ne mana kiya</button>`:'';
-  if(st==='scheduled')el.innerHTML=skipBanner+`<button class="btn violet" data-act="status" data-arg="on_the_way">${I.walk} Nikal raha hoon</button><button class="btn ghost" style="margin-top:10px" data-act="status" data-arg="arrived">${I.flag} Seedha pahunch gaya</button><div class="demo-note">${esc(c.customer)} ko dikhega: "${esc(me().name)} aa raha hai"</div>`;
-  else if(st==='on_the_way')el.innerHTML=skipBanner+`<button class="btn violet" data-act="status" data-arg="arrived">${I.flag} Pahunch gaya</button><div class="where" style="justify-content:center">${I.pin}<span>${esc(c.house)} · ${esc(c.spot)}${c.keys?' · '+esc(c.keys):''}</span></div>`;
-  else if(st==='arrived'){const hasBefore=wd.photos.some(p=>p.kind==='before');
-    el.innerHTML=skipBanner+(hasBefore?'':`<button class="btn ghost" data-act="photo" data-arg="before" style="margin-bottom:10px">${I.cam} Pehle ki photo lo</button>`)+slideHTML('startWash','Wash shuru karo',false)+`<div class="demo-note">Slide karte hi timer chalega aur customer ko "Wash chal raha" dikhega</div>`}
-  else if(st==='washing'){const left=wd.tasks.filter(t=>!t.done).length,hasAfter=wd.photos.some(p=>p.kind==='after');
-    el.innerHTML=`<button class="btn ${left?'ink':'mint'}" data-act="finish">${I.check} Wash khatam${left?` · ${left} kaam baaki`:''}</button>${hasAfter?'':`<button class="btn ghost" data-act="photo" data-arg="after" style="margin-top:10px">${I.cam} Baad ki photo lo</button>`}`}
+  if(['scheduled','on_the_way','arrived'].includes(st))
+    el.innerHTML=skipBanner+slideHTML('startWash','Wash shuru karo',false)+`<div class="where" style="justify-content:center;margin-top:10px">${I.pin}<span>${esc(c.house)}${c.spot?' · '+esc(c.spot):''}${c.keys?' · '+esc(c.keys):''}</span></div><div class="demo-note">Pehla kadam. Slide karte hi timer chalega aur ${esc(c.customer)} ko "Wash chal raha" dikhega</div>`;
+  else if(st==='washing'){const shot=wd.photos.some(p=>p.kind==='after');
+    // step two is the photo, step three closes the wash. No photo, no closing.
+    el.innerHTML=shot
+      ? `<button class="btn mint" data-act="finish">${I.check} Wash khatam karo</button><div class="demo-note">Aakhri kadam. Customer ko photo ke saath chala jayega</div>`
+      : `<button class="btn violet" data-act="photo" data-arg="after">${I.cam} Gaadi ki photo lo</button><div class="demo-note">Doosra kadam. Photo ke bina wash band nahi hogi</div><button class="btn ghost" style="margin-top:10px;opacity:.55" data-act="needPhoto">${I.check} Wash khatam karo</button>`}
   else if(st==='done'){const nx=Route.nextReg(),stars=RT[c.reg]||0;
     el.innerHTML=`<div class="donecard"><div class="eyebrow" style="color:rgba(255,255,255,.8)">Customer ko bhej diya</div><div class="dbig">Chamak gayi!</div>
       <div class="drow"><span><b class="num">${t12(wd.finished_at)}</b>Khatam</span><span><b class="num">${wd.minutes??'–'} min</b>Time</span><span><b class="num">${wd.water_litres??'–'} L</b>Paani</span>${stars?`<span><b>${'★'.repeat(stars)}</b>Rating</span>`:''}</div></div>
@@ -1038,7 +1082,7 @@ function renderTasks(reg){
 const pending={}; // reg -> [{kind,display}] while an upload runs
 function renderPhotos(reg){
   const wd=W(reg),ph=(wd?wd.photos:[]).concat((pending[reg]||[]).map(p=>Object.assign({pending:true},p)));
-  $('#jobPhotos').innerHTML=['before','after','issue'].map(k=>{const list=ph.filter(p=>p.kind===k),last=list.at(-1),lab={before:'Pehle',after:'Baad',issue:'Problem'}[k];
+  $('#jobPhotos').innerHTML=['after','issue'].map(k=>{const list=ph.filter(p=>p.kind===k),last=list.at(-1),lab={after:'Gaadi',issue:'Problem'}[k];
     if(!last)return `<button class="shot" data-act="photo" data-arg="${k}" ${wd?'':'disabled'}>${k==='issue'?I.warn:I.cam}<span>${lab}</span></button>`;
     const src=last.pending?last.display:photoSrc(last);
     return `<button class="shot has ${last.pending?'up':''} ${last.fresh?'fly':''}" data-act="${last.pending?'':'viewPhoto'}" data-arg="${k}"><img src="${esc(src)}" alt="${lab} photo">${last.pending?'<span class="spin"></span>':''}<span class="lab">${lab}</span>${list.length>1?`<span class="cnt">${list.length}</span>`:''}</button>`}).join('');
@@ -1058,7 +1102,7 @@ function renderNote(reg){
 /* ---------- day summary ---------- */
 async function renderDay(){
   ensureDay();const ws=route().map(c=>W(c.reg)).filter(Boolean),done=ws.filter(w=>w.status==='done'),cn=Route.counts();
-  $('#dayDate').textContent=new Date(DAY+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+  $('#dayDate').textContent=new Date(DAY+'T00:00:00').toLocaleDateString(LOC(),{weekday:'long',day:'numeric',month:'long'});
   const mins=done.map(w=>w.minutes).filter(x=>x!=null),avg=mins.length?Math.round(mins.reduce((a,b)=>a+b,0)/mins.length):0;
   const litres=done.reduce((a,w)=>a+(w.water_litres||0),0),photos=ws.reduce((a,w)=>a+w.photos.length,0);
   const rated=route().map(c=>RT[c.reg]).filter(Boolean),ravg=rated.length?(rated.reduce((a,b)=>a+b,0)/rated.length):0;
@@ -1072,7 +1116,7 @@ async function renderDay(){
   // week
   const days=[...Array(7)].map((_,i)=>addDaysStr(DAY,i-6));
   const paint=counts=>{const vals=days.map(d=>d===DAY?cn.done:(counts[d]||0)),mx=Math.max(1,...vals,route().length);
-    $('#bars').innerHTML=days.map((d,i)=>`<div class="bar ${d===DAY?'today':''}"><span class="bv num">${vals[i]||''}</span><span class="bb" data-h="${vals[i]/mx*100}"></span><span>${d===DAY?'Aaj':dObj(d).toLocaleDateString('en-IN',{weekday:'narrow'})}</span></div>`).join('');
+    $('#bars').innerHTML=days.map((d,i)=>`<div class="bar ${d===DAY?'today':''}"><span class="bv num">${vals[i]||''}</span><span class="bb" data-h="${vals[i]/mx*100}"></span><span>${d===DAY?'Aaj':dObj(d).toLocaleDateString(LOC(),{weekday:'narrow'})}</span></div>`).join('');
     requestAnimationFrame(()=>requestAnimationFrame(()=>$$('#bars .bb').forEach((b,i)=>setTimeout(()=>b.style.height=b.dataset.h+'%',RM?0:i*60))))};
   const local={};Object.entries(S.hist||{}).forEach(([d,v])=>local[d]=v);
   if(Sync.mode==='demo'&&!Object.keys(local).length)days.slice(0,6).forEach((d,i)=>local[d]=[route().length,route().length-1,route().length,route().length,route().length-1,route().length][i]);
@@ -1096,6 +1140,7 @@ function renderMe(){
   countUp($('#mL'),w.lifetime+Route.counts().done,1400,v=>Math.round(v).toLocaleString('en-IN'));
   $('#mePhone').textContent='+91 '+w.phone.replace(/(\d{5})(\d{5})/,'$1 $2');
   $$('#themeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.themeSet===S.theme));
+  $$('#langSeg button').forEach(b=>b.classList.toggle('on',b.dataset.langSet===(S.lang||'hinglish')));
 }
 
 /* ---------- shell ---------- */
@@ -1148,49 +1193,42 @@ const ACT={
   task(key,el){const reg=S.current,wd=W(reg);if(!wd)return;if(wd.status!=='washing'){toast('Pehle "Wash shuru karo" slide karo');el&&el.animate&&el.animate([{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'none'}],{duration:300});return}
     let nowDone=false;mutate(reg,d=>{const t=d.tasks.find(x=>x.key===key);t.done=!t.done;t.done_at=t.done?isoIST():null;nowDone=t.done});haptic(nowDone?[10,30,10]:6);
     renderTasks(reg);renderMain(carBy(reg),W(reg));if(nowDone){const b=$(`.task[data-arg="${key}"]`);b&&b.classList.add('just');if(key==='foam')foamBurst();else sprayBurst()}
-    if(W(reg).tasks.every(t=>t.done)){toast('Saare kaam ho gaye! Ab baad ki photo lo');confetti(.35)}},
+    if(W(reg).tasks.every(t=>t.done)){toast('Saare kaam ho gaye! Ab gaadi ki photo lo');confetti(.35)}},
   photo(kind){if(!W(S.current)){toast('Pehle round shuru karo');return}camFor={reg:S.current,kind};const i=$('#camIn');i.value='';i.click()},
   selfie(){const i=$('#selfieIn');i.value='';i.click()},
   viewPhoto(kind){const wd=W(S.current),list=wd.photos.filter(p=>p.kind===kind);const can=!['done','skipped'].includes(wd.status);
-    openSheet(`<h3>${{before:'Pehle ki',after:'Baad ki',issue:'Problem ki'}[kind]} photo</h3><p class="sub">${list.length} photo · customer ke app mein dikh rahi hai</p>
+    openSheet(`<h3>${{before:'Pehle ki',after:'Gaadi ki',issue:'Problem ki'}[kind]} photo</h3><p class="sub">${list.length} photo · customer ke app mein dikh rahi hai</p>
       <div style="display:grid;gap:10px">${list.map(p=>`<img class="bigimg" src="${esc(photoSrc(p))}" alt=""><div class="muted">${t12(p.at)}</div>`).join('')}</div>
       <div class="btn-row"><button class="btn ghost" data-act="photo" data-arg="${kind}" ${can?'':'disabled'}>${I.cam} Aur lo</button>${can?`<button class="btn ghost" data-act="delPhoto" data-arg="${kind}">Aakhri hatao</button>`:'<button class="btn ghost" data-act="close">Band karo</button>'}</div>`)},
   delPhoto(kind){mutate(S.current,d=>{for(let i=d.photos.length-1;i>=0;i--)if(d.photos[i].kind===kind){d.photos.splice(i,1);break}});closeSheet();renderPhotos(S.current);renderMain(carBy(S.current),W(S.current));toast('Photo hata di')},
   note(){const wd=W(S.current);if(!wd)return;
     openSheet(`<h3>Customer ke liye note</h3><p class="sub">${esc(carBy(S.current).customer)} ke app mein turant dikhega.</p>
-      <div class="chips" id="nChips">${NOTE_CHIPS.map(t=>`<button>${esc(t)}</button>`).join('')}</div>
+      <div class="chips" id="nChips">${NOTE_CHIPS.map(t=>`<button data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div>
       <textarea class="field" id="nText" rows="3" maxlength="280" placeholder="Apne shabdon mein likho">${esc(wd.washer_note||'')}</textarea>
       <button class="btn violet" id="nSave">Note bhejo</button>${wd.washer_note?'<button class="linkbtn" id="nClear">Note hatao</button>':''}`,()=>{
-      chipPick('#nChips',false,b=>{const t=$('#nText');t.value=t.value?t.value.replace(/\s*$/,'. ')+b.textContent:b.textContent});
+      chipPick('#nChips',false,b=>{const t=$('#nText'),v=b.dataset.v||b.textContent;t.value=t.value?t.value.replace(/\s*$/,'. ')+v:v});
       $('#nSave').onclick=()=>{const v=$('#nText').value.trim();mutate(S.current,d=>{d.washer_note=v||null});closeSheet();renderNote(S.current);toast(v?'Note bhej diya':'Note hata diya')};
       const cl=$('#nClear');if(cl)cl.onclick=()=>{mutate(S.current,d=>{d.washer_note=null});closeSheet();renderNote(S.current);toast('Note hata diya')}})},
   skip(){const c=carBy(S.current);
-    openSheet(`<h3>Skip kyun?</h3><p class="sub">${esc(c.customer)} ko yahi wajah dikhegi.</p><div class="chips" id="sChips" style="display:grid">${SKIPS.map(s=>`<button>${esc(s)}</button>`).join('')}</div>
+    openSheet(`<h3>Skip kyun?</h3><p class="sub">${esc(c.customer)} ko yahi wajah dikhegi.</p><div class="chips" id="sChips" style="display:grid">${SKIPS.map(s=>`<button data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>
       <textarea class="field" id="sText" rows="2" maxlength="160" placeholder="Ya khud likho"></textarea><button class="btn ink" id="sGo" disabled>Skip karo</button>`,()=>{
       let pick='';const upd=()=>{$('#sGo').disabled=!(pick||$('#sText').value.trim())};
-      chipPick('#sChips',false,b=>{pick=b.textContent;upd()});$('#sText').oninput=upd;
+      chipPick('#sChips',false,b=>{pick=b.dataset.v||b.textContent;upd()});$('#sText').oninput=upd;
       $('#sGo').onclick=()=>{ACT.skipNow($('#sText').value.trim()||pick)}})},
   skipNow(reason){const reg=S.current;mutate(reg,d=>{d.status='skipped';d.skip_reason=reason});const sk=skipAsk(reg);if(sk)Sync.setRequest(sk.id,{status:'done',done_at:isoIST()});
     closeSheet();haptic(14);Route.retime();toast('Skip kiya. Customer ko wajah dikh rahi hai');refresh()},
   unskip(){mutate(S.current,d=>{d.status=d.arrived_at?'arrived':'scheduled';d.skip_reason=null});refresh()},
+  needPhoto(){toast('Pehle gaadi ki photo lo, phir wash band hogi');haptic(14)},
   finish(){const reg=S.current,wd=W(reg),c=carBy(reg);if(!wd)return;
-    const left=wd.tasks.filter(t=>!t.done),hasAfter=wd.photos.some(p=>p.kind==='after');
-    let litres=wd.tasks.reduce((a,t)=>a+(t.done?TASK[t.key].litres:0),0)||TASK.pressure.litres;
-    const mins=Math.max(1,Math.round((Date.now()-Date.parse(wd.started_at))/60000));
-    openSheet(`<h3>Wash khatam?</h3><p class="sub">${esc(c.model)} · ${mins} min</p>
-      ${left.length?`<div class="warn">${I.warn}<span><b>${left.length} kaam baaki:</b> ${left.map(t=>TASK[t.key].hi).join(', ')}. Customer ko dikhega.</span></div>`:''}
-      ${hasAfter?'':`<div class="warn">${I.cam}<span><b>Baad ki photo nahi li.</b> Customer photo dekhna pasand karte hain.</span></div><button class="btn ghost" data-act="photo" data-arg="after" style="margin-bottom:12px">${I.cam} Baad ki photo lo</button>`}
-      <div class="eyebrow" style="margin-top:4px">Kitna paani laga</div>
-      <div class="stepperN"><button id="lM" aria-label="Kam">−</button><div class="sv num"><span id="lV">${litres}</span><small>litre</small></div><button id="lP" aria-label="Zyada">+</button></div>
-      <button class="btn mint" id="fGo">${I.check} Khatam · customer ko bhejo</button>`,()=>{
-      $('#lM').onclick=()=>{litres=Math.max(1,litres-1);$('#lV').textContent=litres;haptic(4)};$('#lP').onclick=()=>{litres=Math.min(60,litres+1);$('#lV').textContent=litres;haptic(4)};
-      $('#fGo').onclick=()=>{const end=isoIST();mutate(reg,d=>{d.status='done';d.finished_at=end;d.minutes=Math.max(1,Math.round((Date.parse(end)-Date.parse(d.started_at))/60000));d.water_litres=litres});
-        haptic([20,40,20,40,60]);Route.retime();const nx=Route.nextReg();
-        openSheet(`<div class="success"><div class="check">${I.check}</div><h3>Chamak gayi!</h3><p class="sub" style="margin:6px auto 4px">${esc(c.customer)} ke phone pe pahunch gaya</p>
-          <div class="beam-sync" style="color:var(--fg)"><span class="ph">🧽</span><span class="dots"><i></i><i></i><i></i><i></i></span><span class="ph">📱</span></div>
-          ${nx?`<button class="btn gold" style="margin-top:14px" data-open="${nx}">Agli gaadi: ${esc(carBy(nx).model)} ${I.arrow}</button>`:`<button class="btn gold" style="margin-top:14px" data-tab="day">Round poora · hisaab dekho</button>`}
-          <button class="linkbtn" data-act="close">Yahin raho</button></div>`);
-        confetti(1);const el=$('#car');el.classList.remove('shine');void el.offsetWidth;el.classList.add('shine');refresh()}})},
+    if(!wd.photos.some(p=>p.kind==='after')){ACT.needPhoto();return}   // the photo is the gate
+    const litres=wd.tasks.reduce((a,t)=>a+(t.done?TASK[t.key].litres:0),0)||TASK.pressure.litres;
+    const end=isoIST();mutate(reg,d=>{d.status='done';d.finished_at=end;d.minutes=Math.max(1,Math.round((Date.parse(end)-Date.parse(d.started_at))/60000));d.water_litres=litres});
+    haptic([20,40,20,40,60]);Route.retime();const nx=Route.nextReg();
+    openSheet(`<div class="success"><div class="check">${I.check}</div><h3>Chamak gayi!</h3><p class="sub" style="margin:6px auto 4px">${esc(c.customer)} ke phone pe pahunch gaya</p>
+      <div class="beam-sync" style="color:var(--fg)"><span class="ph">🧽</span><span class="dots"><i></i><i></i><i></i><i></i></span><span class="ph">📱</span></div>
+      ${nx?`<button class="btn gold" style="margin-top:14px" data-open="${nx}">Agli gaadi: ${esc(carBy(nx).model)} ${I.arrow}</button>`:`<button class="btn gold" style="margin-top:14px" data-tab="day">Round poora · hisaab dekho</button>`}
+      <button class="linkbtn" data-act="close">Yahin raho</button></div>`);
+    confetti(1);const el=$('#car');el.classList.remove('shine');void el.offsetWidth;el.classList.add('shine');refresh()},
   reqSeen(id){Sync.setRequest(id,{status:'seen',seen_at:isoIST()});haptic(6)},
   reqDone(id){Sync.setRequest(id,{status:'done',done_at:isoIST()});haptic([10,30,10]);toast('Customer ko dikh gaya: kar diya')},
   resetDay(){openSheet(`<h3>Aaj ka round reset?</h3><p class="sub">Is phone se aaj ka sab hat jayega. Jo customer tak jaa chuka hai, woh unke app mein rahega.</p><button class="btn ink" id="rGo">Haan, reset karo</button><button class="linkbtn" data-act="close">Rehne do</button>`,()=>{
@@ -1208,6 +1246,7 @@ document.addEventListener('click',e=>{
   const o=e.target.closest('[data-open]');if(o){S.current=o.dataset.open;save();closeSheet();if(current==='job')renderJob();else go('job');return}
   const t=e.target.closest('[data-tab]');if(t){closeSheet();go(t.dataset.tab);return}
   const th=e.target.closest('[data-theme-set]');if(th){S.theme=th.dataset.themeSet;save();applyTheme();renderMe();return}
+  const lg=e.target.closest('[data-lang-set]');if(lg){Lang.set(lg.dataset.langSet);haptic(6);return}
   const a=e.target.closest('[data-act]');if(a&&a.dataset.act&&ACT[a.dataset.act]){if(a.getAttribute('aria-disabled')==='true'&&a.dataset.act!=='task')return;ACT[a.dataset.act](a.dataset.arg,a)}
 });
 
@@ -1218,7 +1257,7 @@ $('#camIn').addEventListener('change',async e=>{
   const local=URL.createObjectURL(f);(pending[reg]=pending[reg]||[]).push({kind,display:local});if(current==='job')renderPhotos(reg);
   try{const r=await Sync.uploadPhoto(f);const at=isoIST();
     mutate(reg,d=>{if(d.photos.length>=8)d.photos.shift();d.photos.push(Object.assign({kind,at},r.asset_id?{asset_id:r.asset_id}:{url:r.url}))});
-    toast(kind==='before'?'Pehle ki photo customer ko gayi':kind==='after'?'Baad ki photo customer ko gayi':'Problem ki photo customer ko gayi');
+    toast(kind==='after'?'Photo customer ko gayi':kind==='issue'?'Problem ki photo customer ko gayi':'Photo customer ko gayi');
   }catch(err){console.warn(err);toast('Photo nahi gayi. Dobara try karo')}
   pending[reg]=(pending[reg]||[]).filter(p=>p.display!==local);
   if(current==='job'&&S.current===reg){renderPhotos(reg);const s=$(`.shot[data-arg="${kind}"]`);s&&s.classList.add('fly');renderMain(carBy(reg),W(reg))}
@@ -1357,6 +1396,7 @@ async function afterRealLogin(){
 }
 function enterApp(){
   $('#auth').hidden=true;ensureDay();renderRound._did=false;jobReg=null;go('round');paintBadges();
+  Book.load();                 // this washer's own round, from the book
   if(Sync.mode==='live')Sync.listen();if(Sync.mode==='demo')demoExtras();
 }
 
@@ -1380,10 +1420,351 @@ Sync.queue=function(doc){_queue(doc);if(this.mode==='demo'&&doc.status==='done'&
 addEventListener('resize',()=>{moveInd()});
 addEventListener('online',()=>{paintSync();Sync.flush()});addEventListener('offline',paintSync);
 setInterval(()=>{if(Object.keys(S.outbox).length&&navigator.onLine)Sync.flush()},20000);
-document.addEventListener('visibilitychange',()=>{if(document.hidden)return;const d=dateIST();if(d!==DAY){DAY=d;ensureDay();Sync.listen();refresh()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)return;const d=dateIST();if(d!==DAY){DAY=d;ensureDay();Sync.listen();refresh();Book.load()}});
 addEventListener('scroll',()=>{const y=scrollY>8;$$('[data-bar]').forEach(b=>b.classList.toggle('stuck',y))},{passive:true});
+/* ---------- bhasha: Hinglish (default) or Hindi only ----------
+   The app is written in Hinglish. Hindi mode swaps the words a washer reads, in place,
+   and remembers each original so switching back is exact. Car names, plates, plans,
+   areas and people's names are data: they are never touched. */
+const HI = {
+  "WASH TIME":"वॉश टाइम",
+  "Subah":"सुबह",
+  "ka hero":"का हीरो",
+  "Sync status":"सिंक स्टेटस",
+  "Main":"मुख्य",
+  "Abhi ki gaadi":"अभी की गाड़ी",
+  "Round par wapas":"राउंड पर वापस",
+  "Aaj ka hisaab":"आज का हिसाब",
+  "Aaj ki":"आज की",
+  "mehnat.":"मेहनत.",
+  "Gaadi roz":"गाड़ी रोज़",
+  "Aaj":"आज",
+  "Phone number":"फ़ोन नंबर",
+  "OTP bhejo":"OTP भेजो",
+  "Apne shabdon mein likho":"अपने शब्दों में लिखो",
+  "Aaj ki selfie":"आज की सेल्फ़ी",
+  "Se saath":"से साथ",
+  "Wash":"वॉश",
+  "gaadi":"गाड़ी",
+  "Pressure wash · No pocha ·":"प्रेशर वॉश · बिना पोछा ·",
+  "Washing Daddy washer":"Washing Daddy वॉशर",
+  "Agli gaadi":"अगली गाड़ी",
+  "Aapki details owner ke paas pahunch gayi. Jaise hi woh approve karenge, app khud khul jayega. App band bhi kar sakte ho.":"आपकी डिटेल मालिक के पास पहुँच गई. जैसे ही वो मंज़ूरी देंगे, ऐप खुद खुल जाएगा. ऐप बंद भी कर सकते हो.",
+  "Namaste! 👋":"नमस्ते! 👋",
+  "Namaste":"नमस्ते",
+  "Subah bakhair":"सुबह बख़ैर",
+  "Shaam ho gayi":"शाम हो गई",
+  "Apna phone number daalo. OTP aayega.":"अपना फ़ोन नंबर डालो. OTP आएगा.",
+  "Naye washer ho? Apna number daalo. OTP ke baad naam bharo, owner approve karenge.":"नए वॉशर हो? अपना नंबर डालो. OTP के बाद नाम भरो, मालिक मंज़ूरी देंगे.",
+  "Test version. Washer chuno:":"टेस्ट वर्ज़न. वॉशर चुनो:",
+  "10 number ka phone daalo":"10 नंबर का फ़ोन डालो",
+  "Number sahi nahi lag raha.":"नंबर सही नहीं लग रहा.",
+  "Yeh number washer list mein nahi hai. Office se baat karo.":"यह नंबर वॉशर लिस्ट में नहीं है. ऑफ़िस से बात करो.",
+  "Chalo":"चलो",
+  "OTP daalo":"OTP डालो",
+  "Number badlo":"नंबर बदलो",
+  "OTP galat hai. Test mein 1234 daalo.":"OTP ग़लत है. टेस्ट में 1234 डालो.",
+  "Andar chalo":"अंदर चलो",
+  "Naya number hai. Apna naam aur area batao, owner approve karenge.":"नया नंबर है. अपना नाम और एरिया बताओ, मालिक मंज़ूरी देंगे.",
+  "Apna naam likho":"अपना नाम लिखो",
+  "Aapka naam":"आपका नाम",
+  "Kaunsa area?":"कौन सा एरिया?",
+  "Area chuno":"एरिया चुनो",
+  "Approval ke liye bhejo":"मंज़ूरी के लिए भेजो",
+  "Approval ka intezaar ⏳":"मंज़ूरी का इंतज़ार ⏳",
+  "Swagat hai! 🙌":"स्वागत है! 🙌",
+  "Approve ho gaye! Aaj ka round khul raha hai":"मंज़ूरी मिल गई! आज का राउंड खुल रहा है",
+  "Account band hai":"अकाउंट बंद है",
+  "Is number se abhi kaam nahi ho sakta. Owner se baat karo.":"इस नंबर से अभी काम नहीं हो सकता. मालिक से बात करो.",
+  "Round abhi set nahi hua":"राउंड अभी सेट नहीं हुआ",
+  "Aap approve ho gaye ho, par aapka round abhi set nahi hua. Owner se baat karo.":"आपको मंज़ूरी मिल गई है, पर आपका राउंड अभी सेट नहीं हुआ. मालिक से बात करो.",
+  "Owner ko WhatsApp karo":"मालिक को WhatsApp करो",
+  "Check ho raha hai…":"चेक हो रहा है…",
+  "Washing Daddy Washer · test version. OTP 1234.":"Washing Daddy Washer · टेस्ट वर्ज़न. OTP 1234.",
+  "Washer app. Round, photo, customer, sab ek jagah.":"वॉशर ऐप. राउंड, फोटो, कस्टमर, सब एक जगह.",
+  "Round":"राउंड",
+  "Hisaab":"हिसाब",
+  "Profile":"प्रोफ़ाइल",
+  "Aaj ka round":"आज का राउंड",
+  "Aaj ke kaam":"आज के काम",
+  "Aaj ki timeline":"आज की टाइमलाइन",
+  "Round shuru karo":"राउंड शुरू करो",
+  "Round pe chalo":"राउंड पे चलो",
+  "Slide karte hi saare customers ko time chala jayega.":"स्लाइड करते ही सारे कस्टमर को टाइम चला जाएगा.",
+  "Shuru karte hi har customer ko aapka naam aur time dikh jayega.":"शुरू करते ही हर कस्टमर को आपका नाम और टाइम दिख जाएगा.",
+  "Chalo shuru karein":"चलो शुरू करें",
+  "Aaj aapke naam koi gaadi nahi hai. Ravi se baat karo.":"आज आपके नाम कोई गाड़ी नहीं है. रवि से बात करो.",
+  "Aaj ki list aa rahi hai…":"आज की लिस्ट आ रही है…",
+  "Koi gaadi nahi":"कोई गाड़ी नहीं",
+  "Book mein aaj aapke naam koi active gaadi nahi hai.":"बुक में आज आपके नाम कोई गाड़ी चालू नहीं है.",
+  "List aa rahi hai…":"लिस्ट आ रही है…",
+  "Book se aaj ka round padha ja raha hai.":"बुक से आज का राउंड पढ़ा जा रहा है.",
+  "Koi gaadi baaki nahi":"कोई गाड़ी बाकी नहीं",
+  "Aaj ka round poora 🎉":"आज का राउंड पूरा 🎉",
+  "Aaj ka round poora. Shabash!":"आज का राउंड पूरा. शाबाश!",
+  "Round poora":"राउंड पूरा",
+  "Round poora · hisaab dekho":"राउंड पूरा · हिसाब देखो",
+  "Baaki":"बाकी",
+  "Raaste mein":"रास्ते में",
+  "Pahunch gaye":"पहुँच गए",
+  "Wash chal raha":"वॉश चल रहा",
+  "Ho gaya":"हो गया",
+  "Skip":"स्किप",
+  "Abhi chal raha":"अभी चल रहा",
+  "Nikla":"निकला",
+  "Pahuncha":"पहुँचा",
+  "Khatam":"ख़त्म",
+  "Shuru":"शुरू",
+  "Abhi":"अभी",
+  "Wash shuru karo":"वॉश शुरू करो",
+  "Gaadi ki photo lo":"गाड़ी की फोटो लो",
+  "Doosra kadam. Photo ke bina wash band nahi hogi":"दूसरा कदम. फोटो के बिना वॉश बंद नहीं होगी",
+  "Wash khatam karo":"वॉश ख़त्म करो",
+  "Aakhri kadam. Customer ko photo ke saath chala jayega":"आख़िरी कदम. कस्टमर को फोटो के साथ चला जाएगा",
+  "Pehle gaadi ki photo lo, phir wash band hogi":"पहले गाड़ी की फोटो लो, फिर वॉश बंद होगी",
+  "Chamak gayi!":"चमक गई!",
+  "Customer ko bhej diya":"कस्टमर को भेज दिया",
+  "Yahin raho":"यहीं रहो",
+  "Photo":"फोटो",
+  "Ek photo zaroori hai":"एक फोटो ज़रूरी है",
+  "Gaadi":"गाड़ी",
+  "Problem":"प्रॉब्लम",
+  "Gaadi ki photo":"गाड़ी की फोटो",
+  "Problem ki photo":"प्रॉब्लम की फोटो",
+  "Pehle ki photo":"पहले की फोटो",
+  "Aur lo":"और लो",
+  "Aakhri hatao":"आख़िरी हटाओ",
+  "Band karo":"बंद करो",
+  "Photo hata di":"फोटो हटा दी",
+  "Photo customer ko gayi":"फोटो कस्टमर को गई",
+  "Problem ki photo customer ko gayi":"प्रॉब्लम की फोटो कस्टमर को गई",
+  "Photo nahi gayi. Dobara try karo":"फोटो नहीं गई. दोबारा कोशिश करो",
+  "Pehle round shuru karo":"पहले राउंड शुरू करो",
+  "Pehle \"Wash shuru karo\" slide karo":"पहले \"वॉश शुरू करो\" स्लाइड करो",
+  "Saare kaam ho gaye! Ab gaadi ki photo lo":"सारे काम हो गए! अब गाड़ी की फोटो लो",
+  "Pressure wash":"प्रेशर वॉश",
+  "Foam wash":"फोम वॉश",
+  "Andar ki safai":"अंदर की सफाई",
+  "Tyre aur trim polish":"टायर और ट्रिम पॉलिश",
+  "Detailing":"डीटेलिंग",
+  "Haath se sukhao":"हाथ से सुखाओ",
+  "Upar se neeche. Kapda nahi lagega.":"ऊपर से नीचे. कपड़ा नहीं लगेगा.",
+  "Foam 2 minute rukne do":"फोम 2 मिनट रुकने दो",
+  "Mat, dashboard, seat":"मैट, डैशबोर्ड, सीट",
+  "Satin finish, chikna nahi":"सैटिन फ़िनिश, चिकना नहीं",
+  "Clay, polish, wax":"क्ले, पॉलिश, वैक्स",
+  "Sirf microfibre":"सिर्फ़ माइक्रोफ़ाइबर",
+  "Customer ke liye note":"कस्टमर के लिए नोट",
+  "Customer ko kuch batana hai?":"कस्टमर को कुछ बताना है?",
+  "Scratch, tyre, kuch bhi. Unke app mein dikhega.":"स्क्रैच, टायर, कुछ भी. उनके ऐप में दिखेगा.",
+  "Note bhejo":"नोट भेजो",
+  "Note hatao":"नोट हटाओ",
+  "Note bhej diya":"नोट भेज दिया",
+  "Note hata diya":"नोट हटा दिया",
+  "Bird dropping saaf kar di":"बर्ड ड्रॉपिंग साफ़ कर दी",
+  "Tyre mein hawa kam lagi":"टायर में हवा कम लगी",
+  "Naya scratch dikha, photo bheji":"नया स्क्रैच दिखा, फोटो भेजी",
+  "Body cover fold kar diya":"बॉडी कवर फ़ोल्ड कर दिया",
+  "Andar kuch saman pada tha, chhua nahi":"अंदर कुछ सामान पड़ा था, छुआ नहीं",
+  "Gaadi nahi dho paye? Skip karo":"गाड़ी नहीं धो पाए? स्किप करो",
+  "Skip karo":"स्किप करो",
+  "Skip kyun?":"स्किप क्यों?",
+  "Gaadi nahi mili":"गाड़ी नहीं मिली",
+  "Baarish":"बारिश",
+  "Gate band tha":"गेट बंद था",
+  "Customer ne mana kiya":"कस्टमर ने मना किया",
+  "Gaadi nikal chuki thi":"गाड़ी निकल चुकी थी",
+  "Skip kiya":"स्किप किया",
+  "Skip kiya. Customer ko wajah dikh rahi hai":"स्किप किया. कस्टमर को वजह दिख रही है",
+  "Customer ko wajah dikh rahi hai.":"कस्टमर को वजह दिख रही है.",
+  "Galti se hua? Wapas kholo":"गलती से हुआ? वापस खोलो",
+  "Customer ne aaj mana kiya hai.":"कस्टमर ने आज मना किया है.",
+  "Skip karo · customer ne mana kiya":"स्किप करो · कस्टमर ने मना किया",
+  "Kal wash mat karna.":"कल वॉश मत करना.",
+  "Customer ka note":"कस्टमर का नोट",
+  "Dobara wash chahiye":"दोबारा वॉश चाहिए",
+  "Aaj wash mat karna":"आज वॉश मत करना",
+  "Dekh liya":"देख लिया",
+  "Dekh liya ✓":"देख लिया ✓",
+  "Kar diya":"कर दिया",
+  "Customer ko dikh gaya: kar diya":"कस्टमर को दिख गया: कर दिया",
+  "· dekh liya":"· देख लिया",
+  "Ek gaadi ka average":"एक गाड़ी का औसत",
+  "Paani lagaya":"पानी लगाया",
+  "Photo bheji":"फोटो भेजी",
+  "Customer rating":"कस्टमर रेटिंग",
+  "Is hafte":"इस हफ़्ते",
+  "Ab tak":"अब तक",
+  "Abhi kuch nahi":"अभी कुछ नहीं",
+  "Har khatam gaadi yahan time ke saath aayegi.":"हर ख़त्म हुई गाड़ी यहाँ टाइम के साथ आएगी.",
+  "Paani":"पानी",
+  "Time":"टाइम",
+  "Rating":"रेटिंग",
+  "Gaadi dhoyi":"गाड़ी धोई",
+  "Aaj ki selfie lo: customer dekhega kaun aaya":"आज की सेल्फ़ी लो: कस्टमर देखेगा कौन आया",
+  "✓ Aaj ki selfie customers ko dikh rahi hai":"✓ आज की सेल्फ़ी कस्टमर को दिख रही है",
+  "Selfie lag gayi. Customers ko dikhegi":"सेल्फ़ी लग गई. कस्टमर को दिखेगी",
+  "Selfie nahi lagi. Dobara try karo":"सेल्फ़ी नहीं लगी. दोबारा कोशिश करो",
+  "Settings":"सेटिंग्स",
+  "Bhasha":"भाषा",
+  "Poora app Hindi mein":"पूरा ऐप हिंदी में",
+  "Screen":"स्क्रीन",
+  "Din":"दिन",
+  "Raat":"रात",
+  "Auto":"ऑटो",
+  "Dhoop mein \"Din\" saaf dikhta hai":"धूप में \"दिन\" साफ़ दिखता है",
+  "Customer app se sync":"कस्टमर ऐप से सिंक",
+  "Live. Har tap customer ke phone pe turant dikhta hai.":"लाइव. हर टैप कस्टमर के फ़ोन पे तुरंत दिखता है.",
+  "Sirf is phone se. Test ke liye.":"सिर्फ़ इस फ़ोन से. टेस्ट के लिए.",
+  "Poori photo upload hoti hai":"पूरी फोटो अपलोड होती है",
+  "Chhoti photo jaati hai (is version mein)":"छोटी फोटो जाती है (इस वर्ज़न में)",
+  "Ruke hue update":"रुके हुए अपडेट",
+  "Abhi bhejo":"अभी भेजो",
+  "Net nahi ho to phone pe safe rehte hain":"नेट न हो तो फ़ोन पे सेफ़ रहते हैं",
+  "Aaj ka round reset?":"आज का राउंड रीसेट?",
+  "Aaj ka round reset":"आज का राउंड रीसेट",
+  "Is phone se aaj ka sab hat jayega. Jo customer tak jaa chuka hai, woh unke app mein rahega.":"इस फ़ोन से आज का सब हट जाएगा. जो कस्टमर तक जा चुका है, वो उनके ऐप में रहेगा.",
+  "Haan, reset karo":"हाँ, रीसेट करो",
+  "Rehne do":"रहने दो",
+  "Reset ho gaya":"रीसेट हो गया",
+  "Log out":"लॉग आउट",
+  "Log out?":"लॉग आउट?",
+  "Aaj ka round is phone pe safe rahega.":"आज का राउंड इस फ़ोन पे सेफ़ रहेगा.",
+  "Kuch update abhi bheje nahi gaye. Log out karne pe bhi phone pe rahenge.":"कुछ अपडेट अभी भेजे नहीं गए. लॉग आउट करने पे भी फ़ोन पे रहेंगे.",
+  "Theek hai":"ठीक है",
+  "Kholo":"खोलो",
+  "Badhiya chal raha hai":"बढ़िया चल रहा है",
+  "Kya baat hai!":"क्या बात है!",
+  "Washer":"वॉशर",
+  "Jud raha hai":"जुड़ रहा है",
+  "Customer app se jud raha hai":"कस्टमर ऐप से जुड़ रहा है",
+  "Bhej raha hoon…":"भेज रहा हूँ…",
+  "Sirf phone pe":"सिर्फ़ फ़ोन पे",
+  "Live":"लाइव",
+  "Demo":"डेमो",
+  "Demo data":"डेमो डेटा",
+  "Demo mode. Is preview mein customer app se sync nahi hota.":"डेमो मोड. इस प्रीव्यू में कस्टमर ऐप से सिंक नहीं होता.",
+  "Nahi gaya. Internet dekh ke dobara try karo.":"नहीं गया. इंटरनेट देख के दोबारा कोशिश करो.",
+  "Internet dekh ke dobara try karo.":"इंटरनेट देख के दोबारा कोशिश करो.",
+  "Is account se customer tak update nahi jaa raha":"इस अकाउंट से कस्टमर तक अपडेट नहीं जा रहा",
+  "Is account ko likhne ki permission nahi. Round is phone pe safe hai.":"इस अकाउंट को लिखने की इजाज़त नहीं. राउंड इस फ़ोन पे सेफ़ है.",
+  "Round abhi shuru nahi hua":"राउंड अभी शुरू नहीं हुआ",
+  "Round tab pe slide karo, phir pehli gaadi yahan khulegi.":"राउंड टैब पे स्लाइड करो, फिर पहली गाड़ी यहाँ खुलेगी.",
+  "Round shuru nahi hua":"राउंड शुरू नहीं हुआ",
+  "· wash shuru hone pe tick karo":"· वॉश शुरू होने पे टिक करो"
+};
+const HI_PATTERNS = [
+  [/^Jaise: (.+)$/, 'जैसे: $1'],
+  [/^(\d+)\/(\d+) gaadi$/, '$1/$2 गाड़ी'],
+  [/^\/(\d+) gaadi$/, '/$1 गाड़ी'],
+  [/^(.+) ke app mein turant dikhega\.$/, '$1 के ऐप में तुरंत दिखेगा.'],
+  [/^Pehla kadam\. Slide karte hi timer chalega aur (.+) ko "Wash chal raha" dikhega$/, 'पहला कदम. स्लाइड करते ही टाइमर चलेगा और $1 को "वॉश चल रहा" दिखेगा'],
+  [/^Timer chalu · (.+) ko "Wash chal raha" dikh raha hai$/, 'टाइमर चालू · $1 को "वॉश चल रहा" दिख रहा है'],
+  [/^(.+) ke phone pe pahunch gaya$/, '$1 के फ़ोन पे पहुँच गया'],
+  [/^Agli gaadi: (.+?)\s*$/, 'अगली गाड़ी: $1'],
+  [/^Round shuru! (\d+) customers ko time chala gaya$/, 'राउंड शुरू! $1 कस्टमर को टाइम चला गया'],
+  [/^Aaj ka hisaab dekho\s*$/, 'आज का हिसाब देखो'],
+  [/^(\d+) gaadi · (\d+) skip$/, '$1 गाड़ी · $2 स्किप'],
+  [/^(\d+) gaadi · (.+)$/, '$1 गाड़ी · $2'],
+  [/^(\d+) gaadi$/, '$1 गाड़ी'],
+  [/^(\d+) baaki · (\d+) skip · aakhri ~(.+)$/, '$1 बाकी · $2 स्किप · आख़िरी ~$3'],
+  [/^(\d+) baaki · aakhri ~(.+)$/, '$1 बाकी · आख़िरी ~$2'],
+  [/^Pehli (.+) · aakhri ~(.+)$/, 'पहली $1 · आख़िरी ~$2'],
+  [/^Round poora! Shabash\.$/, 'राउंड पूरा! शाबाश.'],
+  [/^Shuru (.+) · aakhri (.+) · (\d+) skip$/, 'शुरू $1 · आख़िरी $2 · $3 स्किप'],
+  [/^Shuru (.+) · aakhri (.+)$/, 'शुरू $1 · आख़िरी $2'],
+  [/^Shuru (.+)$/, 'शुरू $1'],
+  [/^(\d+\/\d+) · wash shuru hone pe tick karo$/, '$1 · वॉश शुरू होने पे टिक करो'],
+  [/^(\d+) min · (\d+\/\d+) kaam · (\d+) photo$/, '$1 मिनट · $2 काम · $3 फोटो'],
+  [/^Skip · (.*)$/, 'स्किप · $1'],
+  [/^(\d+) photo · customer ke app mein dikh rahi hai$/, '$1 फोटो · कस्टमर के ऐप में दिख रही है'],
+  [/^(\d+) number ka OTP daalo$/, '$1 नंबर का OTP डालो'],
+  [/^(.+) ko yahi wajah dikhegi\.$/, '$1 को यही वजह दिखेगी.'],
+  [/^(.+) ko dikh raha hai: aap aa rahe ho$/, '$1 को दिख रहा है: आप आ रहे हो'],
+  [/^(.+) ko bata diya: aap pahunch gaye$/, '$1 को बता दिया: आप पहुँच गए'],
+  [/^Naya: (.+) · (.+)$/, 'नया: $1 · $2'],
+  [/^(.+) ne (\d)★ diya · (.+)$/, '$1 ने $2★ दिया · $3'],
+  [/^\+91 (.+) pe SMS bheja\.(.*)$/, '+91 $1 पे SMS भेजा.$2'],
+  [/^Test mein (.+)\.$/, 'टेस्ट में $1.'],
+];
+const LOC = () => (S.lang === 'hi' ? 'hi-IN' : 'en-IN');
+const TR_ATTRS = ['placeholder', 'aria-label', 'title'];
+function hiOf(t) {
+  const s = t.trim(); if (!s) return null;
+  const hit = HI[s];
+  if (hit) return t.replace(s, hit);
+  for (const [re, out] of HI_PATTERNS) if (re.test(s)) return t.replace(s, s.replace(re, out));
+  if (s.includes(' · ')) {
+    const parts = s.split(' · ');
+    let any = false;
+    const done = parts.map(part => {
+      const hit = HI[part]; if (hit) { any = true; return hit }
+      for (const [re, out] of HI_PATTERNS) if (re.test(part)) { any = true; return part.replace(re, out) }
+      return part;
+    });
+    if (any) return t.replace(s, done.join(' · '));
+  }
+  return null;
+}
+const Lang = {
+  on: false,
+  texts: new Map(),      // text node -> what it said in Hinglish
+  attrs: new Map(),      // element -> { attr: original }
+  obs: null,
+  is(){ return S.lang === 'hi' },
+  node(n){
+    if (!n.nodeValue || this.texts.has(n)) return;
+    const hi = hiOf(n.nodeValue); if (!hi) return;
+    this.texts.set(n, n.nodeValue); n.nodeValue = hi;
+  },
+  el(e){
+    for (const a of TR_ATTRS) {
+      const v = e.getAttribute && e.getAttribute(a); if (!v) continue;
+      const kept = this.attrs.get(e) || {};
+      if (a in kept) continue;
+      const hi = hiOf(v); if (!hi) continue;
+      kept[a] = v; this.attrs.set(e, kept); e.setAttribute(a, hi);
+    }
+  },
+  walk(root){
+    if (!root) return;
+    if (root.nodeType === 3) return this.node(root);
+    if (root.nodeType !== 1) return;
+    if (root.tagName === 'SCRIPT' || root.tagName === 'STYLE' || root.dataset.notr !== undefined) return;
+    this.el(root);
+    for (const n of root.childNodes) this.walk(n);
+  },
+  start(){
+    if (this.on) return; this.on = true;
+    this.walk(document.body);
+    this.obs = new MutationObserver(ms => {
+      if (!this.on) return;
+      for (const m of ms) {
+        if (m.type === 'characterData') this.node(m.target);
+        else if (m.type === 'attributes') { this.attrs.delete(m.target); this.el(m.target) }
+        else m.addedNodes.forEach(n => this.walk(n));
+      }
+    });
+    this.obs.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: TR_ATTRS });
+  },
+  stop(){
+    if (!this.on) return; this.on = false;
+    this.obs && this.obs.disconnect(); this.obs = null;
+    this.texts.forEach((was, n) => { try { n.nodeValue = was } catch (e) {} });
+    this.attrs.forEach((kept, e) => { for (const a in kept) try { e.setAttribute(a, kept[a]) } catch (err) {} });
+    this.texts = new Map(); this.attrs = new Map();
+  },
+  apply(){
+    document.documentElement.lang = this.is() ? 'hi' : 'hi-Latn';
+    this.is() ? this.start() : this.stop();
+    if (booted) { try { refresh(); renderMe() } catch (e) {} }
+    $$('#langSeg button').forEach(b => b.classList.toggle('on', b.dataset.langSet === (S.lang || 'hinglish')));
+  },
+  set(v){ S.lang = v; save(); this.apply() },
+};
+
 function boot(){
-  applyTheme();
+  applyTheme();Lang.apply();
   setTimeout(()=>{$('#splash').classList.add('gone');booted=true;
     if(S.session&&WASHERS[S.session.washerId])enterApp();else showAuth()},RM?50:1100);
   if(REAL){const n=$('#demoNote');if(n)n.textContent='Washing Daddy Washer';
@@ -1393,7 +1774,7 @@ function boot(){
       if(!S.session)return;
       if(!u||window.WDAuth.phone10()!==S.session.phone){S.session=null;save();Sync.stop();if(booted)showAuth();return}
       watchMe()})}
-  Sync.init();
+  Sync.init();if(S.session)Book.load();
   requestAnimationFrame(moveInd);if(document.fonts)document.fonts.ready.then(moveInd);
 }
 boot();
