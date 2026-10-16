@@ -1,6 +1,6 @@
 /* Offline shell for WD Washer. Pages: network first, cache when there is no signal.
    Fonts: cached after first use. Firestore traffic is never touched (it keeps its own offline store). */
-var CACHE='wd-washer-1c41a9d303';
+var CACHE='wd-washer-21bc4036b0';
 var SHELL=['./','index.html','wd-sync.js','manifest.webmanifest','icon-192.png','icon-512.png','apple-touch-icon.png','favicon.png'];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(SHELL)}).then(function(){return self.skipWaiting()}))});
 self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(k){return Promise.all(k.filter(function(x){return x.indexOf('wd-washer-')===0&&x!==CACHE}).map(function(x){return caches.delete(x)}))}).then(function(){return self.clients.claim()}))});
