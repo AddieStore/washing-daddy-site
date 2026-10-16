@@ -1480,11 +1480,30 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
 function success(t,s){openSheet(`<div class="success"><div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg></div><h3>${t}</h3><p class="sub" style="max-width:32ch;margin:6px auto 18px">${s}</p><button class="btn gold" data-act="close">Done</button></div>`);confetti()}
 function segPick(sel,cb){$$(sel+' button').forEach(b=>b.onclick=()=>{$$(sel+' button').forEach(x=>x.classList.toggle('on',x===b));cb&&cb(b)})}
 const UPI=`<div style="font-size:13px;font-weight:600;margin-top:4px">Pay with</div><div class="seg" id="upi"><button class="on">GPay</button><button>PhonePe</button><button>Paytm</button><button>Card</button><button>Net banking</button></div>`;
+// After a payment the book is the truth, not the app. The webhook moves the paid-up date
+// in Notion a second or two later, so ask wd-pay-lookup until it changes, then show it.
+async function pollPaidTo(c,was){
+  if(!PAYREAL()||!c||!c.plate)return;
+  for(let i=0;i<10;i++){
+    await wait(i<3?1500:4000);
+    let j=null;
+    try{const r=await fetch(N8N+'/wd-pay-lookup?car='+encodeURIComponent(c.plate),{cache:'no-store'});j=await r.json()}
+    catch(e){continue}
+    if(j&&j.found&&j.paidTo&&j.paidTo!==was){
+      c.till=j.paidTo;
+      const pay=A().payments.slice(-1)[0];if(pay)pay.pending=false;
+      save();renderAll();toast('Payment confirmed. Covered till '+fmt(parse(j.paidTo)));
+      return;
+    }
+  }
+}
 async function checkout(btn,kind,amt,what,onPaid){
   const via=$('#upi .on')?.textContent||'UPI',done=busy(btn,PAYREAL()?'Opening…':'Opening '+via+'…');
   try{const r=await API.pay(kind,{amt,what});
     A().payments.push({d:iso(TODAY),what,amt,via,ref:r.ref,pending:!!r.pending});
-    if(r.pending){save();renderAll();success('Payment received',"We're checking it with the bank. Your plan updates by itself as soon as it clears.");return}
+    if(r.pending){const c=car(),was=c.till||'';save();renderAll();
+      success('Payment received',"We're checking it with the bank. Your plan updates by itself as soon as it clears.");
+      pollPaidTo(c,was);return}
     onPaid(r);save();renderAll()}
   catch(e){done();toast(e&&e.cancelled?'Payment cancelled. Nothing was charged.':'Payment didn\'t go through. Nothing was charged.')}}
 
