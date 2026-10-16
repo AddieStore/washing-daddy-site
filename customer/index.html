@@ -1,8 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Washing Daddy App</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="favicon.png">
@@ -563,6 +559,7 @@ button.row:active{background:var(--tile-2)}
 .otp input{width:100%;max-width:64px;aspect-ratio:1;text-align:center;font-size:26px;font-weight:700;border-radius:16px;border:1.5px solid var(--line);background:var(--input-bg);outline:none;transition:border-color .2s,transform .3s var(--spring)}
 .otp input:focus{border-color:var(--violet);transform:translateY(-2px)}
 .otp.shake{animation:shake .4s}
+.otp.six{gap:7px}.otp.six input{font-size:22px;border-radius:13px}
 @keyframes shake{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
 .chips button{padding:9px 13px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);font-size:13px;font-weight:600;transition:all .25s var(--spring)}
@@ -816,14 +813,43 @@ const IMG={scorpio:"data:image/webp;base64,UklGRrjZAABXRUJQVlA4WAoAAAAQAAAASwQAi
 const LIVE=false;                       // flip once the webhooks below exist
 const N8N='https://n8n.washingdaddy.com/webhook';
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+// Real sign-in: in the installed app and on washingdaddy.com, wd-sync.js provides WDAuth (Firebase phone
+// sign-in, a 6-digit SMS code) and the account lives in customers/{+91number}. Inside the artifact preview
+// there is no WDAuth, so the test login below (code 1234) still runs.
+const REAL=!!window.WDAuth;
+const OTP_N=REAL?6:4;
+const CUST_PATH=()=>'customers/'+window.WDAuth.phone();
+async function realDb(){if(!DB){try{DB=await (window.claude&&window.claude.use?window.claude.use('db'):null)}catch(e){DB=null}}return DB}
+// customers/{+91number} -> the account this app draws. Local-only bits (pauses, notes, orders) stay on the phone.
+function fromCustomerDoc(r,old){
+  const active=r.status==='active',prev=old&&old.phone===r.phone.slice(-10)?old:null;
+  const cars=(r.cars||[]).map((c,i)=>{const o=prev&&prev.cars.find(x=>regOf(x)===regOf(c));
+    return Object.assign({id:'c'+i,name:'',make:'',plate:'',img:null,plan:'std',till:null,washer:WASHER_FOR(r.area||''),parking:(r.area||'')+', parking spot to be confirmed',window:'Before 7:30 AM',keys:"I'll unlock it",doneAt:null,mins:0,streak:0,washes:0,paused:null,note:null,rating:0},
+      o||{},c,{id:o?o.id:(c.id||'c'+i),status:active?(c.status||'active'):'new'})});
+  return Object.assign({prefs:{photo:true,pay:true,drops:true},payments:[],orders:[],requests:[],bookings:[]},prev||{},
+    {name:r.name||'',phone:r.phone.slice(-10),since:r.since||'October 2026',area:r.area||'',status:r.status,cars})}
 const API={
-  // POST {N8N}/wd-otp-send {phone} — needs an SMS or WhatsApp OTP sender (MSG91 / Meta WhatsApp once verified)
-  async sendOtp(phone){await wait(700);return {ok:true,demoCode:'1234'}},
-  // POST {N8N}/wd-otp-verify {phone,code} -> {token, customer|null}; looks the phone up in Notion "Monthly Customers"
-  async verifyOtp(phone,code){await wait(700);if(code!=='1234')throw new Error('That code is wrong. Try 1234 in this test version.');
+  // SMS code through Firebase phone sign-in
+  async sendOtp(phone){if(REAL)return await window.WDAuth.send(phone);await wait(700);return {ok:true,demoCode:'1234'}},
+  // -> {token, customer|null}; null means a new number, which goes through sign-up
+  async verifyOtp(phone,code){
+    if(REAL){const u=await window.WDAuth.confirm(code);const db=await realDb();let r=null;
+      if(db){try{const g=await db.doc(CUST_PATH()).get();if(g.exists)r=g.data()}catch(e){console.warn(e)}}
+      return {token:u.uid,customer:r?fromCustomerDoc(r,S.acct):phone===DEMO_PHONE?sampleAccount():null}}
+    await wait(700);if(code!=='1234')throw new Error('That code is wrong. Try 1234 in this test version.');
     return {token:'test-'+phone,customer:phone===DEMO_PHONE?sampleAccount():null}},
-  // POST {N8N}/wd-signup -> writes a row to Notion "Leads", WhatsApp to the owner
-  async signup(data){await wait(800);return {ok:true}},
+  // new customer: customers/{+91number}, status 'new' until the owner checks the car and activates it
+  async signup(data){if(!REAL){await wait(800);return {ok:true}}
+    const db=await realDb();if(!db)return {ok:false};
+    const car={id:'c0',name:data.model,make:'',plate:data.plate,plan:data.plan,washer:WASHER_FOR(data.area),parking:data.area+', parking spot to be confirmed',window:'Before 7:30 AM',keys:"I'll unlock it"};
+    try{await db.doc(CUST_PATH()).set({phone:window.WDAuth.phone(),name:data.name,area:data.area,status:'new',cars:[car],regs:[regOf(car)],since:fmt(TODAY,{month:'long',year:'numeric'}),created_at:nowIST(),updated_at:nowIST()});return {ok:true}}
+    catch(e){console.warn(e);return {ok:false}}},
+  // another car on an existing account: the owner adds it from the approval page
+  async addCar(car){if(!REAL){await wait(800);return {ok:true}}
+    const db=await realDb();if(!db)return {ok:false};
+    try{const g=await db.doc(CUST_PATH()).get();const cur=(g.exists&&g.data().requested_cars)||[];
+      await db.doc(CUST_PATH()).update({requested_cars:cur.concat([{name:car.name,make:car.make||'',plate:car.plate,plan:car.plan,area:car.area,at:nowIST()}]).slice(-5),updated_at:nowIST()});return {ok:true}}
+    catch(e){console.warn(e);return {ok:false}}},
   // POST {N8N}/wd-pay-order {carId, kind} -> Cashfree order (workflow 8). Amount is set server-side, never by the app.
   async pay(kind,detail){await wait(1100);return {ok:true,ref:'CF'+Date.now().toString().slice(-8)}},
   // Customer -> washer writes. Prototype: requests/{id} in this artifact's shared store, which the washer page reads live.
@@ -966,39 +992,39 @@ function showAuth(){$('#auth').hidden=false;$('#authCar').src=IMG.scorpio;render
 function renderAuth(){
   const el=$('#authCard');
   if(auth.step==='phone'){
-    el.innerHTML=`<h2>Sign in with your phone</h2><p>Use the number your washer has. We'll send a 4-digit code.</p>
+    el.innerHTML=`<h2>Sign in with your phone</h2><p>Use the number your washer has. We'll send a ${OTP_N}-digit code by SMS.</p>
       <div class="phone"><span class="cc">+91</span><input id="ph" inputmode="numeric" autocomplete="tel-national" maxlength="11" placeholder="98765 04210" value="${auth.phone?auth.phone.replace(/(\d{5})(\d+)/,'$1 $2'):''}" aria-label="Mobile number"><button class="btn gold" id="sendOtp" style="width:auto;padding:13px 18px" disabled>Get code</button></div>
       <div class="err" id="phErr" style="margin-top:8px"></div>
-      <div class="hint"><b>Test version.</b> 98765 04210 opens a sample customer with two cars. Any other number takes you through sign-up as a new customer.</div>`;
+      ${REAL?`<div class="hint">New to Washing Daddy? Use your number and we'll set you up after the code.</div>`:`<div class="hint"><b>Test version.</b> 98765 04210 opens a sample customer with two cars. Any other number takes you through sign-up as a new customer.</div>`}`;
     const ph=$('#ph'),go=$('#sendOtp');
     const ok=()=>{const d=ph.value.replace(/\D/g,'').slice(-10);go.disabled=!/^[6-9]\d{9}$/.test(d);return d};
     ph.oninput=()=>{const d=ph.value.replace(/\D/g,'').slice(0,10);ph.value=d.length>5?d.slice(0,5)+' '+d.slice(5):d;ok();$('#phErr').textContent=''};
     ph.onkeydown=e=>{if(e.key==='Enter'&&!go.disabled)go.click()};
     go.onclick=async()=>{const d=ok();if(!d){$('#phErr').textContent='Enter a 10-digit mobile number.';return}
-      const done=busy(go,'Sending…');try{await API.sendOtp(d);auth.phone=d;auth.step='otp';renderAuth()}catch(e){$('#phErr').textContent=e.message;done()}};
+      const done=busy(go,'Sending…');try{await API.sendOtp(d);auth.phone=d;auth.step='otp';renderAuth()}catch(e){$('#phErr').textContent=e.en||e.message;done()}};
     ok();
   } else if(auth.step==='otp'){
     el.innerHTML=`<h2>Enter the code</h2><p>Sent to +91 ${auth.phone.replace(/(\d{5})(\d+)/,'$1 $2')}. <button class="link" id="chg">Change</button></p>
-      <div class="otp" id="otp">${[0,1,2,3].map(i=>`<input inputmode="numeric" maxlength="1" aria-label="Digit ${i+1}" autocomplete="${i?'off':'one-time-code'}">`).join('')}</div>
+      <div class="otp${OTP_N>4?' six':''}" id="otp">${Array.from({length:OTP_N},(_,i)=>`<input inputmode="numeric" maxlength="1" aria-label="Digit ${i+1}" autocomplete="${i?'off':'one-time-code'}">`).join('')}</div>
       <div class="err" id="otpErr"></div>
       <button class="btn violet" id="verify" disabled>Verify</button>
-      <div class="hint">Didn't get it? <button class="link" id="resend" disabled>Resend in 30s</button><br><b>Test code: 1234</b></div>`;
+      <div class="hint">Didn't get it? <button class="link" id="resend" disabled>Resend in 30s</button>${REAL?'':'<br><b>Test code: 1234</b>'}</div>`;
     const ins=$$('#otp input'),v=$('#verify');
     const code=()=>ins.map(i=>i.value).join('');
     ins.forEach((inp,i)=>{
-      inp.oninput=()=>{inp.value=inp.value.replace(/\D/g,'').slice(-1);if(inp.value&&ins[i+1])ins[i+1].focus();v.disabled=code().length<4;$('#otpErr').textContent='';if(code().length===4)v.click()};
+      inp.oninput=()=>{const all=inp.value.replace(/\D/g,'');if(all.length===OTP_N&&i===0){all.split('').forEach((c,j)=>ins[j].value=c);v.disabled=false;v.click();return}inp.value=all.slice(-1);if(inp.value&&ins[i+1])ins[i+1].focus();v.disabled=code().length<OTP_N;$('#otpErr').textContent='';if(code().length===OTP_N)v.click()};
       inp.onkeydown=e=>{if(e.key==='Backspace'&&!inp.value&&ins[i-1])ins[i-1].focus()};
-      inp.onpaste=e=>{const t=(e.clipboardData.getData('text')||'').replace(/\D/g,'').slice(0,4);if(t){e.preventDefault();t.split('').forEach((c,j)=>ins[j]&&(ins[j].value=c));v.disabled=t.length<4;if(t.length===4)v.click()}};
+      inp.onpaste=e=>{const t=(e.clipboardData.getData('text')||'').replace(/\D/g,'').slice(0,OTP_N);if(t){e.preventDefault();t.split('').forEach((c,j)=>ins[j]&&(ins[j].value=c));v.disabled=t.length<OTP_N;if(t.length===OTP_N)v.click()}};
     });
     setTimeout(()=>ins[0].focus(),300);
     $('#chg').onclick=()=>{auth.step='phone';renderAuth()};
     let left=30;const rs=$('#resend');const tk=setInterval(()=>{left--;if(!document.body.contains(rs)){clearInterval(tk);return}if(left<=0){clearInterval(tk);rs.disabled=false;rs.textContent='Resend code'}else rs.textContent=`Resend in ${left}s`},1000);
-    rs.onclick=async()=>{await API.sendOtp(auth.phone);toast('New code sent');renderAuth()};
-    v.onclick=async()=>{if(v.disabled&&code().length<4)return;const done=busy(v,'Checking…');
+    rs.onclick=async()=>{try{await API.sendOtp(auth.phone);toast('New code sent');renderAuth()}catch(e){$('#otpErr').textContent=e.en||e.message}};
+    v.onclick=async()=>{if(v.disabled&&code().length<OTP_N)return;const done=busy(v,'Checking…');
       try{const r=await API.verifyOtp(auth.phone,code());
-        if(r.customer){S.session={token:r.token,phone:auth.phone};S.acct=r.customer;S.carIdx=0;save();enterApp()}
+        if(r.customer){S.session={token:r.token,phone:auth.phone,real:REAL};S.acct=r.customer;S.carIdx=0;save();enterApp()}
         else{auth.step='about';renderAuth()}}
-      catch(e){done();$('#otpErr').textContent=e.message;const o=$('#otp');o.classList.remove('shake');void o.offsetWidth;o.classList.add('shake');ins.forEach(i=>i.value='');ins[0].focus();v.disabled=true}};
+      catch(e){done();$('#otpErr').textContent=e.en||e.message;const o=$('#otp');o.classList.remove('shake');void o.offsetWidth;o.classList.add('shake');ins.forEach(i=>i.value='');ins[0].focus();v.disabled=true}};
   } else if(auth.step==='about'){
     const s=auth.signup;
     el.innerHTML=`<div class="step-dots"><i class="on"></i><i></i></div><h2>Welcome to Washing Daddy</h2><p>New number. Tell us where your car sleeps and we'll start tomorrow morning.</p>
@@ -1018,9 +1044,10 @@ function renderAuth(){
       <button class="btn gold" id="suGo" style="margin-top:8px">Start tomorrow morning</button><button class="link" id="suBack" style="display:block;margin:14px auto 0">Back</button>`;
     $$('.opt').forEach(b=>b.onclick=()=>{s.plan=b.dataset.v;$$('.opt').forEach(x=>x.classList.toggle('on',x===b))});
     $('#suBack').onclick=()=>{auth.step='about';renderAuth()};
-    $('#suGo').onclick=async()=>{const done=busy($('#suGo'),'Setting up…');await API.signup({...s,phone:auth.phone});
+    $('#suGo').onclick=async()=>{const done=busy($('#suGo'),'Setting up…');const sr=await API.signup({...s,phone:auth.phone});
+      if(sr&&sr.ok===false){done();toast("Couldn't save your sign-up. Check your signal and try again.");return}
       const w=WASHER_FOR(s.area);
-      S.session={token:'test-'+auth.phone,phone:auth.phone};
+      S.session={token:REAL?(window.WDAuth.user()||{}).uid:'test-'+auth.phone,phone:auth.phone,real:REAL};
       S.acct={name:s.name,phone:auth.phone,since:'October 2026',area:s.area,prefs:{photo:true,pay:true,drops:true},
         cars:[{id:'c'+Date.now(),name:s.model,make:'',plate:s.plate,img:null,plan:s.plan,till:null,status:'new',washer:w,parking:s.area+', parking spot to be confirmed',window:'Before 7:30 AM',keys:'I\'ll unlock it',doneAt:null,mins:0,streak:0,washes:0,paused:null,note:null,rating:0}],
         payments:[],orders:[],requests:[],bookings:[]};
@@ -1029,6 +1056,7 @@ function renderAuth(){
 }
 function enterApp(isNew){
   const a=$('#auth');a.style.transition='opacity .45s';a.style.opacity='0';
+  if(REAL)watchAccount();
   setTimeout(()=>{a.hidden=true;a.style.opacity='';auth={step:'phone',phone:'',signup:{name:'',area:'',model:'',plate:'',plan:'std'}};renderAll();go('home',true);driveIn();if(isNew)setTimeout(()=>{confetti();toast(`You're in. ${car().washer} comes tomorrow morning.`)},700)},RM?0:420);
 }
 
@@ -1088,7 +1116,7 @@ async function connectSync(){
   setSyncChip()}
 function setSyncChip(){const el=$('#syncChip');if(!el)return;el.className='sync'+(SYNC==='live'?' live':'');el.innerHTML=`<i></i>${SYNC==='live'?'Live':'Test data'}`}
 function subscribeCar(){
-  if(!DB||!S.acct)return;const c=car();if(subFor===c.id)return;
+  if(!DB||!S.acct)return;const c=car();if(subFor===c.id)return;SYNC='live';setSyncChip();
   unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];subFor=c.id;const reg=regOf(c),id=c.id;
   try{
     unsubs.push(DB.collection('washes').where('reg','==',reg).onSnapshot(snap=>{
@@ -1431,7 +1459,7 @@ const ACT={
       <div class="err" id="acErr" style="margin-top:10px"></div><button class="btn violet" id="acGo">Start tomorrow</button>`,()=>{
       segPick('#acArea',b=>area=b.textContent);segPick('#acPlan',b=>plan=b.dataset.v);
       $('#acGo').onclick=async e=>{const m=$('#acModel').value.trim(),pl=$('#acPlate').value.trim().toUpperCase();if(!m||!pl){$('#acErr').textContent='Add the car and its registration number.';return}
-        busy(e.currentTarget,'Adding…');await API.signup({model:m,plate:pl,area,plan});
+        busy(e.currentTarget,'Adding…');await API.addCar({name:m,plate:pl,area,plan});
         A().cars.push({id:'c'+Date.now(),name:m,make:'',plate:pl,img:null,plan,till:null,status:'new',washer:WASHER_FOR(area),parking:area+', spot to be confirmed',window:'Before 7:30 AM',keys:'I\'ll unlock it',doneAt:null,mins:0,streak:0,washes:0,paused:null,note:null,rating:0});
         S.carIdx=A().cars.length-1;save();renderAll();closeSheet();go('home');driveIn();toast(`${m} added. First wash tomorrow.`)}})},
   editDetail(k){const c=car();
@@ -1447,7 +1475,7 @@ const ACT={
       <div class="row"><span class="ri" style="background:rgba(84,9,218,.12);color:var(--violet)">✦</span><span class="rt"><b>Drop 01 is live in the store</b><small>Daddy's Own Car Perfume</small></span></div></div>`)},
   help(){openSheet(`<h3>Talk to Washing Daddy</h3><p class="sub">WhatsApp or call, 7 AM to 9 PM.</p><div class="code" style="margin-bottom:12px"><b style="font-size:20px">77018 08924</b><button class="pill gold" id="copyNum">Copy</button></div>
       <div class="rows">${[['How early do you come?','Between 5:30 and 7:30 AM, before you leave.'],['What if it rains?','We still come. Rainy-day washes focus on glass, rims and interior.'],['Why no pocha?','A wet cloth drags dust across the paint and leaves swirl marks. A pressure wash lifts it off.'],['Can I pay my washer in cash?','Yes. He marks it in his app and you get the receipt here.']].map(q=>`<div class="row"><span class="rt"><b>${q[0]}</b><small>${q[1]}</small></span></div>`).join('')}</div>`,()=>{$('#copyNum').onclick=()=>copy('7701808924','Number copied')})},
-  logout(){openSheet(`<h3>Log out?</h3><p class="sub">Your washes carry on. Sign in again with +91 ${A().phone.replace(/(\d{5})(\d+)/,'$1 $2')}.</p><button class="btn violet" id="loGo">Log out</button><button class="btn ghost" style="margin-top:8px" data-act="close">Stay signed in</button>`,()=>{$('#loGo').onclick=()=>{closeSheet();S.session=null;S.acct=null;S.cart={};S.carIdx=0;save();SC.scrollTo(0,0);subFor=null;showAuth()}})},
+  logout(){openSheet(`<h3>Log out?</h3><p class="sub">Your washes carry on. Sign in again with +91 ${A().phone.replace(/(\d{5})(\d+)/,'$1 $2')}.</p><button class="btn violet" id="loGo">Log out</button><button class="btn ghost" style="margin-top:8px" data-act="close">Stay signed in</button>`,()=>{$('#loGo').onclick=()=>{closeSheet();S.session=null;S.acct=null;S.cart={};S.carIdx=0;save();SC.scrollTo(0,0);unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];subFor=null;if(acctUnsub){try{acctUnsub()}catch(e){}acctUnsub=null}if(REAL)window.WDAuth.signOut();showAuth()}})},
 };
 function copy(txt,msg){try{navigator.clipboard.writeText(txt).then(()=>toast(msg),()=>toast(txt))}catch(e){toast(txt)}}
 function product(id){const p=PRODUCTS.find(x=>x.id===id);let q=1;
@@ -1516,11 +1544,30 @@ function confetti(){if(RM)return;const c=$('#confetti'),x=c.getContext('2d'),d=d
 $('#marq').innerHTML='<span>No pocha</span><span>Only pressure wash</span><span>No pocha</span><span>Only pressure wash</span>';
 applyTheme();
 addEventListener('resize',()=>{moveInd();moveCatInd()});
+// Installed app: a saved test login (code 1234) or a lost Firebase sign-in goes back to the sign-in screen;
+// otherwise refresh the account from customers/{+91number}, which is how an activation by the owner arrives.
+async function checkRealSession(){
+  if(!REAL||!S.session)return;
+  const u=await window.WDAuth.ready();
+  if(!u||!S.session.real||window.WDAuth.phone10()!==S.session.phone){S.session=null;S.acct=null;S.carIdx=0;save();unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];subFor=null;$('#splash').classList.add('gone');showAuth();return}
+  watchAccount();
+}
+let acctUnsub=null;
+async function watchAccount(){
+  if(acctUnsub){try{acctUnsub()}catch(e){}acctUnsub=null}
+  const db=await realDb();if(!db||!S.session||!window.WDAuth.phone())return;
+  acctUnsub=db.doc(CUST_PATH()).onSnapshot(g=>{if(!g.exists||!S.acct)return;const was=S.acct.status;
+    S.acct=fromCustomerDoc(g.data(),S.acct);S.carIdx=Math.min(S.carIdx,S.acct.cars.length-1);save();subFor=null;renderAll();
+    if(was&&was!=='active'&&S.acct.status==='active')toast("You're all set. Live wash updates are on.")},()=>{});
+}
 function boot(){
-  connectSync().then(()=>{if(S.acct)renderAll()});
+  if(REAL&&S.session&&!S.session.real){S.session=null;S.acct=null;save()}
+  connectSync().then(()=>{if(S.acct)renderAll();return checkRealSession()});
   const signedIn=S.session&&S.acct;
   if(signedIn){renderAll();go('home',true)}else showAuth();
   setTimeout(()=>{$('#splash').classList.add('gone');if(signedIn){driveIn();countUp($('#streakN'),car().streak,1400)}},RM?0:850);
 }
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(boot);else addEventListener('load',boot);
 </script>
+
+</body></html>

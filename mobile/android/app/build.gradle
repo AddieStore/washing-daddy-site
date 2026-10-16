@@ -10,8 +10,16 @@ android {
   defaultConfig {
     minSdk 24
     targetSdk 34
-    versionCode 1
-    versionName "1.0"
+    versionCode 2
+    versionName "1.1"
+  }
+
+  // Release builds come out unsigned here; they are signed with the Washing Daddy release key outside CI
+  // (the key cannot live in this public repo). Same key for every update, so phones update in place.
+  buildTypes {
+    release {
+      minifyEnabled false
+    }
   }
 
   buildFeatures { buildConfig true }

@@ -1,41 +1,92 @@
 rules_version = '2';
-// Washing Daddy live sync (customer app <-> washer app). Shape: .notes/sync-contract.md in the project.
-// Apps sign in anonymously, so every rule needs a signed-in app. Logins are still the test OTP (1234):
-// until real phone OTP is wired, anyone with the app can read every car's wash status. Tighten to
-// per-customer and per-washer rules when OTP goes live.
+// Washing Daddy: customer app, washer app and the approval page (/admin/). Shape: .notes/sync-contract.md.
+// Everyone signs in with their phone number (SMS OTP), so request.auth.token.phone_number is the person.
+//   admins     the numbers in ADMINS below: approve washers, activate customers, see everything
+//   washers    washers/{+91number}; a washer can do nothing until an admin sets status 'approved'
+//   customers  customers/{+91number}; sees live washes only for the cars on an account an admin activated
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
+
+    // Owner and anyone else allowed to approve washers. Full number with +91.
+    function ADMINS() { return ['+91ADMIN_PHONE']; }
+
+    function signedIn() { return request.auth != null && request.auth.token.phone_number is string; }
+    function me() { return request.auth.token.phone_number; }
+    function isAdmin() { return signedIn() && me() in ADMINS(); }
     function str(v, n) { return v is string && v.size() <= n; }
+    function optStr(m, k, n) { return !(k in m) || m[k] == null || str(m[k], n); }
+    function d() { return request.resource.data; }
+
+    function washerPath() { return /databases/$(database)/documents/washers/$(me()); }
+    function isWasher() {
+      return signedIn() && exists(washerPath()) && get(washerPath()).data.status == 'approved';
+    }
+    function myRound() { return get(washerPath()).data.route_id; }
+
+    function customerPath() { return /databases/$(database)/documents/customers/$(me()); }
+    function ownsReg(reg) {
+      return signedIn() && exists(customerPath())
+        && get(customerPath()).data.status == 'active'
+        && reg in get(customerPath()).data.regs;
+    }
+
+    match /washers/{phone} {
+      allow read: if isAdmin() || (signedIn() && phone == me());
+      // a new washer signs up and waits: status must start as 'pending', with no round
+      allow create: if isAdmin() || (signedIn() && phone == me()
+        && d().keys().hasOnly(['phone', 'name', 'area', 'status', 'created_at', 'updated_at'])
+        && d().phone == me() && d().status == 'pending'
+        && str(d().name, 60) && d().name.size() > 0 && optStr(d(), 'area', 80));
+      allow update: if isAdmin()
+        || (signedIn() && phone == me()
+            && d().diff(resource.data).affectedKeys().hasOnly(['name', 'area', 'updated_at', 'last_seen_at'])
+            && str(d().name, 60));
+      allow delete: if isAdmin();
+    }
+
+    match /customers/{phone} {
+      allow read: if isAdmin() || (signedIn() && phone == me());
+      // a new customer signs up as 'new'; an admin checks the car and makes the account 'active'
+      allow create: if isAdmin() || (signedIn() && phone == me()
+        && d().phone == me() && d().status == 'new'
+        && str(d().name, 80) && d().cars is list && d().cars.size() <= 5
+        && d().regs is list && d().regs.size() <= 5);
+      // the customer can change their name and preferences, and ask for another car (an admin adds it)
+      allow update: if isAdmin()
+        || (signedIn() && phone == me()
+            && d().diff(resource.data).affectedKeys().hasOnly(['name', 'prefs', 'requested_cars', 'updated_at'])
+            && (!('requested_cars' in d()) || (d().requested_cars is list && d().requested_cars.size() <= 5)));
+      allow delete: if isAdmin();
+    }
 
     match /washes/{id} {
-      allow read: if signedIn();
-      allow create, update: if signedIn()
-        && id == request.resource.data.date + '_' + request.resource.data.reg
-        && str(request.resource.data.washer_id, 40)
-        && request.resource.data.status in ['scheduled', 'on_the_way', 'arrived', 'washing', 'done', 'skipped'];
-      allow delete: if false;
+      allow read: if isAdmin() || isWasher() || ownsReg(resource.data.reg);
+      allow create, update: if (isAdmin() || (isWasher() && d().washer_id == myRound()))
+        && id == d().date + '_' + d().reg
+        && str(d().washer_id, 40)
+        && d().status in ['scheduled', 'on_the_way', 'arrived', 'washing', 'done', 'skipped'];
+      allow delete: if isAdmin();
     }
 
     match /requests/{id} {
-      allow read: if signedIn();
-      allow create: if signedIn()
-        && str(request.resource.data.reg, 20)
-        && request.resource.data.kind in ['note', 'rewash', 'skip_tomorrow']
-        && request.resource.data.status == 'open'
-        && (!('text' in request.resource.data) || request.resource.data.text == null || str(request.resource.data.text, 1000));
+      allow read: if isAdmin() || isWasher() || ownsReg(resource.data.reg);
+      allow create: if (isAdmin() || ownsReg(d().reg))
+        && str(d().reg, 20)
+        && d().kind in ['note', 'rewash', 'skip_tomorrow', 'pause']
+        && d().status == 'open'
+        && optStr(d(), 'text', 1000);
       // the washer app only moves the status along
-      allow update: if signedIn()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'seen_at', 'done_at'])
-        && request.resource.data.status in ['open', 'seen', 'done'];
-      allow delete: if false;
+      allow update: if (isAdmin() || isWasher())
+        && d().diff(resource.data).affectedKeys().hasOnly(['status', 'seen_at', 'done_at'])
+        && d().status in ['open', 'seen', 'done'];
+      allow delete: if isAdmin();
     }
 
     match /ratings/{id} {
-      allow read: if signedIn();
-      allow write: if signedIn()
-        && request.resource.data.stars is int
-        && request.resource.data.stars >= 1 && request.resource.data.stars <= 5;
+      allow read: if isAdmin() || isWasher() || ownsReg(resource.data.reg);
+      allow write: if (isAdmin() || ownsReg(d().reg))
+        && id == d().date + '_' + d().reg
+        && d().stars is int && d().stars >= 1 && d().stars <= 5;
     }
 
     match /{other=**} {

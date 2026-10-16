@@ -11,6 +11,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.ValueCallback;
@@ -41,6 +42,8 @@ import java.util.Map;
  *   1. Camera: <input type=file capture> needs onShowFileChooser with a camera intent.
  *   2. localStorage: off by default; the washer's offline queue depends on it.
  *   3. Status bar colour follows the page's theme-color (day/night) via WDNative.setBarColor.
+ *   4. Phone sign-in: Firebase checks for robots with an invisible reCAPTCHA from google.com,
+ *      which needs third-party cookies in the WebView.
  */
 public class MainActivity extends Activity {
 
@@ -82,6 +85,9 @@ public class MainActivity extends Activity {
     s.setBuiltInZoomControls(false);
     s.setTextZoom(100);
     s.setUserAgentString(s.getUserAgentString() + " WashingDaddyApp/" + BuildConfig.VERSION_NAME);
+
+    CookieManager.getInstance().setAcceptCookie(true);
+    CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
 
     web.addJavascriptInterface(new Object() {
       @JavascriptInterface public void setBarColor(final String c) { runOnUiThread(() -> MainActivity.this.setBarColor(c)); }

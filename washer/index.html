@@ -469,6 +469,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .who small{display:block;font-size:12px;color:var(--fg-3);font-weight:600}
 .err{color:var(--red);font-size:14px;font-weight:700;min-height:1.3em;margin:-4px 0 8px}
 .hint{font-size:13px;color:var(--fg-3);margin-top:12px;line-height:1.5;font-weight:500}
+.otp.six{gap:7px}.otp.six input{font-size:24px;border-radius:14px}
+.jfield{width:100%;font:inherit;font-size:17px;font-weight:600;padding:14px 16px;border-radius:16px;border:2px solid var(--line);background:var(--input-bg);color:var(--fg);outline:none}
+.jfield:focus{border-color:var(--violet)}
+.jchips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.jchips button{padding:10px 14px;border-radius:999px;border:2px solid var(--line);background:var(--tile);font-weight:700;font-size:14px;color:var(--fg)}
+.jchips button.on{background:var(--violet);border-color:var(--violet);color:#fff}
 
 .splash{position:fixed;inset:0;z-index:400;background:var(--violet);display:grid;place-items:center;transition:opacity .5s .1s,visibility .6s}
 .splash.gone{opacity:0;visibility:hidden}
@@ -575,7 +581,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
           <button class="row" data-act="logout"><span class="ri" style="color:var(--red)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg></span><span class="rt"><b>Log out</b><small id="mePhone"></small></span></button>
         </div>
       </div>
-      <div class="demo-note">Washing Daddy Washer · test version. OTP 1234.</div>
+      <div class="demo-note" id="demoNote">Washing Daddy Washer · test version. OTP 1234.</div>
     </div>
   </section>
 
@@ -763,7 +769,17 @@ try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&typeof x==='obje
 let DAY=dateIST();
 let R={};   // requests by id, from the customer app
 let RT={};  // today's ratings by reg
-const me=()=>WASHERS[S.session?.washerId]||WASHERS.chotte;
+// Real sign-in (installed app, washingdaddy.com): wd-sync.js provides WDAuth, Firebase phone sign-in with a
+// 6-digit SMS OTP. Each washer is washers/{+91number}; a new washer waits until the owner approves them on
+// washingdaddy.com/admin/ and gives them a round (route_id: chotte or shahrukh). Inside the artifact preview
+// there is no WDAuth and the test login (OTP 1234) still runs.
+const REAL=!!window.WDAuth;
+const OTP_N=REAL?6:4;
+const JOIN_AREAS=['GH-9 Paschim Vihar','GH-6 Paschim Vihar','GH-14 Paschim Vihar','Meera Bagh','Sundar Vihar','Guru Hari Apartments'];
+const me=()=>{const b=WASHERS[S.session?.washerId]||WASHERS.chotte;if(!REAL||!S.session?.real)return b;
+  // the roster's photo and lifetime count belong to that washer; anyone else on the round starts fresh
+  const same=(S.session.name||'').trim().toLowerCase()===b.name.toLowerCase();
+  return same?Object.assign({},b,{phone:S.session.phone}):Object.assign({},b,{name:S.session.name||b.name,phone:S.session.phone,img:null,lifetime:0,rating:'–',since:S.session.since||'2026'})};
 const route=()=>ROSTER[me().id]||[];
 const carBy=reg=>route().find(c=>c.reg===reg);
 const W=reg=>S.day?.washes?.[reg]||null;
@@ -1180,7 +1196,7 @@ const ACT={
   resetDay(){openSheet(`<h3>Aaj ka round reset?</h3><p class="sub">Is phone se aaj ka sab hat jayega. Jo customer tak jaa chuka hai, woh unke app mein rahega.</p><button class="btn ink" id="rGo">Haan, reset karo</button><button class="linkbtn" data-act="close">Rehne do</button>`,()=>{
     $('#rGo').onclick=()=>{Object.keys(S.outbox).forEach(k=>{if(k.startsWith(DAY))delete S.outbox[k]});S.day=null;S.current=null;jobReg=null;ensureDay();save();closeSheet();renderRound._did=false;go('round');toast('Reset ho gaya')}})},
   logout(){openSheet(`<h3>Log out?</h3><p class="sub">${Object.keys(S.outbox).length?'Kuch update abhi bheje nahi gaye. Log out karne pe bhi phone pe rahenge.':'Aaj ka round is phone pe safe rahega.'}</p><button class="btn ink" id="lGo">Log out</button><button class="linkbtn" data-act="close">Rehne do</button>`,()=>{
-    $('#lGo').onclick=()=>{S.session=null;save();Sync.stop();closeSheet();showAuth()}})},
+    $('#lGo').onclick=()=>{S.session=null;save();Sync.stop();closeSheet();if(REAL){stopWatch();window.WDAuth.signOut()}showAuth()}})},
 };
 function startRoundAction(){Route.start();haptic([20,50,20]);confetti(.6);toast(`Round shuru! ${route().length} customers ko time chala gaya`);renderRound._did=false;refresh();Sync.listen()}
 const SLIDE_DONE={
@@ -1250,28 +1266,94 @@ function confetti(k=1){if(RM)return;const c=$('#confetti'),x=c.getContext('2d'),
 function showAuth(){const a=$('#auth');a.hidden=false;const m=$('#authMan');m.src=IMG.washer;renderAuth('phone')}
 function renderAuth(step,phone){
   const card=$('#authCard');
+  card.dataset.step=step;
   if(step==='phone'){
     card.innerHTML=`<h2>Namaste! 👋</h2><p>Apna phone number daalo. OTP aayega.</p>
       <label class="phone"><span class="cc">+91</span><input id="ph" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="98xxxxxxxx" aria-label="Phone number"></label>
       <div class="err" id="phErr"></div><button class="btn violet" id="phGo">OTP bhejo ${I.arrow}</button>
-      <div class="hint">Test version. Washer chuno:</div>
-      <div class="who">${Object.values(WASHERS).map(w=>`<button data-who="${w.phone}">${w.img?`<img src="${IMG[w.img]}" alt="">`:`<span class="ini">${w.name[0]}</span>`}<span>${w.name}<small>${w.phone.replace(/(\d{5})(\d{5})/,'$1 $2')}</small></span></button>`).join('')}</div>`;
-    const ph=$('#ph');const as=new URLSearchParams(location.search).get('as');if(as){const w=WASHERS[as.toLowerCase()];if(w)ph.value=w.phone}
+      ${REAL?`<div class="hint">Naye washer ho? Apna number daalo. OTP ke baad naam bharo, owner approve karenge.</div>`:`<div class="hint">Test version. Washer chuno:</div>
+      <div class="who">${Object.values(WASHERS).map(w=>`<button data-who="${w.phone}">${w.img?`<img src="${IMG[w.img]}" alt="">`:`<span class="ini">${w.name[0]}</span>`}<span>${w.name}<small>${w.phone.replace(/(\d{5})(\d{5})/,'$1 $2')}</small></span></button>`).join('')}</div>`}`;
+    const ph=$('#ph');const as=new URLSearchParams(location.search).get('as');if(as&&!REAL){const w=WASHERS[as.toLowerCase()];if(w)ph.value=w.phone}
+    ph.onkeydown=e=>{if(e.key==='Enter')$('#phGo').click()};
     $$('[data-who]').forEach(b=>b.onclick=()=>{ph.value=b.dataset.who;haptic(6);$('#phGo').click()});
     $('#phGo').onclick=async()=>{const v=ph.value.replace(/\D/g,'');if(v.length!==10){$('#phErr').textContent='10 number ka phone daalo';return}
-      if(!PHONE_TO_WASHER[v]){$('#phErr').textContent='Yeh number washer list mein nahi hai. Office se baat karo.';return}
-      const b=$('#phGo');b.disabled=true;b.textContent='Bhej raha hoon…';await new Promise(r=>setTimeout(r,600));renderAuth('otp',v)};
-  }else{
-    card.innerHTML=`<h2>OTP daalo</h2><p>+91 ${phone.replace(/(\d{5})(\d{5})/,'$1 $2')} pe bheja. Test mein <b>1234</b>.</p>
-      <div class="otp" id="otp">${[0,1,2,3].map(i=>`<input inputmode="numeric" maxlength="1" aria-label="OTP digit ${i+1}">`).join('')}</div>
+      if(!/^[6-9]/.test(v)){$('#phErr').textContent='Number sahi nahi lag raha.';return}
+      if(!REAL&&!PHONE_TO_WASHER[v]){$('#phErr').textContent='Yeh number washer list mein nahi hai. Office se baat karo.';return}
+      const b=$('#phGo'),old=b.innerHTML;b.disabled=true;b.textContent='Bhej raha hoon…';
+      if(REAL){try{await window.WDAuth.send(v)}catch(e){b.disabled=false;b.innerHTML=old;$('#phErr').textContent=e.hi||e.message;return}}
+      else await new Promise(r=>setTimeout(r,600));
+      renderAuth('otp',v)};
+  }else if(step==='otp'){
+    card.innerHTML=`<h2>OTP daalo</h2><p>+91 ${phone.replace(/(\d{5})(\d{5})/,'$1 $2')} pe SMS bheja.${REAL?'':' Test mein <b>1234</b>.'}</p>
+      <div class="otp${OTP_N>4?' six':''}" id="otp">${Array.from({length:OTP_N},(_,i)=>`<input inputmode="numeric" maxlength="1" aria-label="OTP digit ${i+1}"${i?'':' autocomplete="one-time-code"'}>`).join('')}</div>
       <div class="err" id="oErr"></div><button class="btn violet" id="oGo">Andar chalo ${I.arrow}</button><button class="linkbtn" id="oBack">Number badlo</button>`;
     const ins=$$('#otp input');ins[0].focus();
-    ins.forEach((inp,i)=>{inp.oninput=()=>{inp.value=inp.value.replace(/\D/g,'').slice(-1);if(inp.value&&i<3)ins[i+1].focus();if(ins.every(x=>x.value))$('#oGo').click()};inp.onkeydown=e=>{if(e.key==='Backspace'&&!inp.value&&i)ins[i-1].focus()}});
+    ins.forEach((inp,i)=>{inp.oninput=()=>{const all=inp.value.replace(/\D/g,'');if(i===0&&all.length===OTP_N){all.split('').forEach((c,j)=>ins[j].value=c);$('#oGo').click();return}inp.value=all.slice(-1);if(inp.value&&i<OTP_N-1)ins[i+1].focus();if(ins.every(x=>x.value))$('#oGo').click()};inp.onkeydown=e=>{if(e.key==='Backspace'&&!inp.value&&i)ins[i-1].focus()}});
     $('#oBack').onclick=()=>renderAuth('phone');
-    $('#oGo').onclick=()=>{const code=ins.map(x=>x.value).join('');
+    $('#oGo').onclick=async()=>{const code=ins.map(x=>x.value).join('');
+      if(REAL){const b=$('#oGo');if(b.disabled)return;if(code.length<OTP_N){$('#oErr').textContent=OTP_N+' number ka OTP daalo';return}
+        b.disabled=true;b.textContent='Check ho raha hai…';
+        try{await window.WDAuth.confirm(code)}catch(e){b.disabled=false;b.innerHTML='Andar chalo '+I.arrow;const o=$('#otp');o.classList.remove('shake');void o.offsetWidth;o.classList.add('shake');$('#oErr').textContent=e.hi||e.message;haptic([30,40,30]);ins.forEach(x=>x.value='');ins[0].focus();return}
+        afterRealLogin();return}
       if(code!=='1234'){const o=$('#otp');o.classList.remove('shake');void o.offsetWidth;o.classList.add('shake');$('#oErr').textContent='OTP galat hai. Test mein 1234 daalo.';haptic([30,40,30]);ins.forEach(x=>x.value='');ins[0].focus();return}
       S.session={washerId:PHONE_TO_WASHER[phone],at:isoIST()};save();enterApp()};
+  }else if(step==='join'){
+    let area='';
+    card.innerHTML=`<h2>Swagat hai! 🙌</h2><p>Naya number hai. Apna naam aur area batao, owner approve karenge.</p>
+      <label class="eyebrow" for="jName" style="display:block;font-weight:700;margin:4px 0 6px">Aapka naam</label>
+      <input id="jName" class="jfield" maxlength="60" autocomplete="name" placeholder="Jaise: Ramesh Kumar">
+      <div style="font-weight:700;margin:14px 0 8px">Kaunsa area?</div>
+      <div class="jchips" id="jArea">${JOIN_AREAS.map(a=>`<button type="button" data-v="${esc(a)}">${esc(a)}</button>`).join('')}</div>
+      <div class="err" id="jErr"></div><button class="btn violet" id="jGo">Approval ke liye bhejo ${I.arrow}</button>
+      <button class="linkbtn" id="jBack">Number badlo</button>`;
+    $$('#jArea button').forEach(b=>b.onclick=()=>{area=b.dataset.v;$$('#jArea button').forEach(x=>x.classList.toggle('on',x===b));haptic(6)});
+    $('#jBack').onclick=async()=>{await window.WDAuth.signOut();renderAuth('phone')};
+    $('#jGo').onclick=async()=>{const name=$('#jName').value.trim().replace(/\s+/g,' ');
+      if(name.length<2){$('#jErr').textContent='Apna naam likho';return}if(!area){$('#jErr').textContent='Area chuno';return}
+      const b=$('#jGo');b.disabled=true;b.textContent='Bhej raha hoon…';
+      try{const db=await window.claude.use('db');await db.doc('washers/'+window.WDAuth.phone()).set({phone:window.WDAuth.phone(),name,area,status:'pending',created_at:isoIST(),updated_at:isoIST()});renderAuth('wait')}
+      catch(e){console.warn(e);b.disabled=false;b.innerHTML='Approval ke liye bhejo '+I.arrow;$('#jErr').textContent='Nahi gaya. Internet dekh ke dobara try karo.'}};
+  }else if(step==='wait'||step==='blocked'||step==='noround'){
+    const txt={wait:['Approval ka intezaar ⏳','Aapki details owner ke paas pahunch gayi. Jaise hi woh approve karenge, app khud khul jayega. App band bhi kar sakte ho.'],
+      noround:['Round abhi set nahi hua','Aap approve ho gaye ho, par aapka round abhi set nahi hua. Owner se baat karo.'],
+      blocked:['Account band hai','Is number se abhi kaam nahi ho sakta. Owner se baat karo.']}[step];
+    card.innerHTML=`<h2>${txt[0]}</h2><p>${txt[1]}</p>
+      <div class="hint" style="margin:0 0 16px">+91 ${(window.WDAuth.phone10()||'').replace(/(\d{5})(\d{5})/,'$1 $2')}</div>
+      <a class="btn violet" href="https://wa.me/917701808924" style="text-decoration:none;display:flex;justify-content:center">Owner ko WhatsApp karo</a>
+      <button class="linkbtn" id="wOut">Log out</button>`;
+    $('#wOut').onclick=async()=>{stopWatch();S.session=null;save();await window.WDAuth.signOut();renderAuth('phone')};
+    watchMe();
   }
+}
+/* ---------- real sign-in: washers/{+91number} decides who gets in ---------- */
+let meUnsub=null;
+function stopWatch(){if(meUnsub){try{meUnsub()}catch(e){}meUnsub=null}}
+function applyWasher(v){
+  // -> 'in' when this phone may work, else the auth step to show
+  if(!v)return 'join';
+  if(v.status==='blocked')return 'blocked';
+  if(v.status!=='approved')return 'wait';
+  if(!WASHERS[v.route_id])return 'noround';
+  const was=S.session&&S.session.real&&S.session.washerId;
+  S.session=Object.assign({},S.session||{},{real:true,washerId:v.route_id,name:v.name,phone:window.WDAuth.phone10(),since:String(v.decided_at||v.created_at||'2026').slice(0,4),at:S.session?.at||isoIST()});save();
+  if(was&&was!==v.route_id){ensureDay();Sync.listen();refresh()}
+  return 'in';
+}
+async function watchMe(){
+  if(meUnsub)return;const db=await window.claude.use('db');if(!db||!window.WDAuth.phone()||meUnsub)return;
+  meUnsub=db.doc('washers/'+window.WDAuth.phone()).onSnapshot(d=>{
+    const v=d.exists?d.data():null,inApp=$('#auth').hidden,r=applyWasher(v);
+    if(r==='in'){if(!inApp){toast('Approve ho gaye! Aaj ka round khul raha hai');haptic([20,60,20]);confetti(.6);enterApp()}else renderMe()}
+    else if(r!=='join'){if(inApp){Sync.stop();S.session=Object.assign({},S.session,{washerId:null});save();$('#auth').hidden=false}
+      if($('#authCard').dataset.step!==r)renderAuth(r)}
+  },e=>console.warn('washer doc',e));
+}
+async function afterRealLogin(){
+  let v=null;
+  try{const db=await window.claude.use('db');const d=await db.doc('washers/'+window.WDAuth.phone()).get();v=d.exists?d.data():null}
+  catch(e){console.warn(e);$('#oErr')&&($('#oErr').textContent='Internet dekh ke dobara try karo.');return}
+  const r=applyWasher(v);
+  if(r==='in'){enterApp();watchMe()}else renderAuth(r)
 }
 function enterApp(){
   $('#auth').hidden=true;ensureDay();renderRound._did=false;jobReg=null;go('round');paintBadges();
@@ -1304,6 +1386,13 @@ function boot(){
   applyTheme();
   setTimeout(()=>{$('#splash').classList.add('gone');booted=true;
     if(S.session&&WASHERS[S.session.washerId])enterApp();else showAuth()},RM?50:1100);
+  if(REAL){const n=$('#demoNote');if(n)n.textContent='Washing Daddy Washer';
+    // a saved test login (OTP 1234) is not a real sign-in
+    if(S.session&&!S.session.real){S.session=null;save()}
+    window.WDAuth.ready().then(u=>{
+      if(!S.session)return;
+      if(!u||window.WDAuth.phone10()!==S.session.phone){S.session=null;save();Sync.stop();if(booted)showAuth();return}
+      watchMe()})}
   Sync.init();
   requestAnimationFrame(moveInd);if(document.fonts)document.fonts.ready.then(moveInd);
 }

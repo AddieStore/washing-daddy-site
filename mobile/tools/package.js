@@ -1,7 +1,8 @@
 // Builds the installable web apps from the two source pages.
 // node package.js <customer.html> <washer.html> <assetsDir> <syncJs> <outDir>
 // Output: <outDir>/customer/ and <outDir>/washer/, each a self-contained installable app folder
-// (index.html, wd-sync.js, manifest.webmanifest, sw.js, icons, iOS splash screens).
+// (index.html, wd-sync.js, manifest.webmanifest, sw.js, icons, iOS splash screens),
+// and <outDir>/admin/wd-sync.js for the approvals page, which shares the same Firebase layer.
 // The source pages are not changed; re-run this whenever they change.
 const fs = require('fs');
 const path = require('path');
@@ -98,3 +99,8 @@ self.addEventListener('fetch',function(e){
 `);
   console.log(id, 'ok', ver);
 }
+
+// the approvals page (admin/index.html, edited in place) signs in and reads through the same layer
+fs.mkdirSync(path.join(outDir, 'admin'), { recursive: true });
+fs.copyFileSync(syncJs, path.join(outDir, 'admin', 'wd-sync.js'));
+console.log('admin ok');

@@ -6,3 +6,4 @@ mobile/android/app/build/
 mobile/android/local.properties
 mobile/android/app/src/*/assets/
 mobile/tools/node_modules/
+mobile/tools/build/
