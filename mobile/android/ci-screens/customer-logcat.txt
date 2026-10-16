@@ -1,4 +1,9 @@
 --------- beginning of main
-10-16 16:22:53.664  2162  2281 W chromium: [WARNING:dns_config_service_android.cc(115)] Failed to read DnsConfig.
-10-16 16:22:54.149  2162  2329 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
-10-16 16:23:20.216  2162  2329 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-16 18:36:26.640  2096  2313 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-16 18:36:52.659  2096  2313 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-16 18:36:53.092  2096  2096 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint (unset) for first_image_paint 0.329 s
+10-16 18:36:53.149  2096  2096 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 0.434 s for first_image_paint 0.329 s
+10-16 18:36:53.274  2096  2096 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 0.434 s for first_image_paint 0.329 s
+10-16 18:36:53.451  2096  2096 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 0.434 s for first_image_paint 0.329 s
+10-16 18:36:53.622  2096  2096 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 0.434 s for first_image_paint 0.329 s
+10-16 18:36:53.728  2096  2096 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 0.434 s for first_image_paint 0.329 s
