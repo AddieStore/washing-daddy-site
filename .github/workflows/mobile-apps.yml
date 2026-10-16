@@ -104,6 +104,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # the signing tools from the runner's Android SDK, so release builds can be signed and checked off CI
+          BT=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
+          mkdir -p ci-screens/tools && cp $BT/lib/apksigner.jar $BT/zipalign ci-screens/tools/ || true
           git checkout --orphan ci-screens-tmp && git rm -rq --cached . && git add -f ci-screens
           git commit -qm "Emulator screenshots for ${GITHUB_SHA::7} [skip ci]" && git push -f origin HEAD:refs/heads/ci/emulator-screens || true
 
