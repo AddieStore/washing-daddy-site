@@ -1,3 +1,9 @@
 --------- beginning of main
-10-16 09:38:19.703  2062  2254 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
-10-16 09:38:45.878  2062  2254 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-16 11:31:51.678  1989  2149 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-16 11:32:17.590  1989  2149 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-16 11:32:17.985  1989  1989 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint (unset) for first_image_paint 0.289 s
+10-16 11:32:18.042  1989  1989 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 0.398 s for first_image_paint 0.289 s
+10-16 11:32:18.228  1989  1989 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 0.398 s for first_image_paint 0.289 s
+10-16 11:32:18.354  1989  1989 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 0.398 s for first_image_paint 0.289 s
+10-16 11:32:18.455  1989  1989 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 0.398 s for first_image_paint 0.289 s
+10-16 11:32:18.568  1989  1989 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 0.398 s for first_image_paint 0.289 s
