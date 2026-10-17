@@ -613,7 +613,7 @@ button.row:active{background:var(--tile-2)}
 
     <div class="pad">
       <div class="quick">
-        <button class="qa" data-act="book"><span class="qi" style="color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/><path d="M12 11v6M9 14h6"/></svg></span>One-time wash</button>
+        <button class="qa" data-act="book" hidden><span class="qi" style="color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/><path d="M12 11v6M9 14h6"/></svg></span>One-time wash</button>
         <button class="qa" data-act="pause"><span class="qi" style="color:var(--sky)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6v12M15 6v12"/></svg></span>Pause washes</button>
         <button class="qa" data-act="note"><span class="qi" style="color:var(--orange)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg></span>Note for washer</button>
         <button class="qa" data-act="issue"><span class="qi" style="color:var(--red)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>Missed a spot</button>
@@ -648,7 +648,7 @@ button.row:active{background:var(--tile-2)}
             <div class="wn" id="washerName">Chotte</div>
             <div class="ws" id="washerSub">★ 4.9 · Washes your car every morning</div>
             <div class="washer-actions">
-              <button class="pill gold" data-act="tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/></svg>Tip</button>
+              <button class="pill gold" data-act="tip" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/></svg>Tip</button>
               <button class="pill" data-act="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 5h16v11H8l-4 4z"/></svg>Leave a note</button>
             </div>
           </div>
@@ -657,7 +657,7 @@ button.row:active{background:var(--tile-2)}
     </div>
 
     <div class="sec rv">
-      <div class="sec-head pad"><h2>Picked for your car</h2><button class="link" data-tab="store">Open store</button></div>
+      <div class="sec-head pad"><h2>Picked for your car</h2><button class="link" data-tab="store" hidden>Open store</button></div>
       <div class="rail" id="homeRail"></div>
     </div>
   </section>
@@ -706,7 +706,7 @@ button.row:active{background:var(--tile-2)}
     <header class="topbar" data-bar>
       <div class="eyebrow">Daddy's store</div>
       <span class="mini">Store</span>
-      <button class="iconbtn" aria-label="Cart" data-act="cart" id="cartBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7A2 2 0 0 1 6.5 18z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span class="badge" id="cartBadge" hidden>0</span></button>
+      <button class="iconbtn" aria-label="Cart" data-act="cart" id="cartBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7A2 2 0 0 1 6.5 18z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span class="badge" id="cartBadge" hidden>0</span></button>
     </header>
     <div class="pad">
       <h1 class="big-title">Gear for a car that's <em>washed daily.</em></h1>
@@ -777,7 +777,7 @@ button.row:active{background:var(--tile-2)}
       <button class="tab on" data-tab="home" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
       <button class="tab" data-tab="live" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>Live<span class="live-dot" id="liveDot" hidden></span></button>
       <button class="tab" data-tab="plan" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/></svg>Plan</button>
-      <button class="tab" data-tab="store" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7A2 2 0 0 1 6.5 18z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Store<span class="badge" id="tabBadge" hidden>0</span></button>
+      <button class="tab" data-tab="store" role="tab" aria-selected="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7A2 2 0 0 1 6.5 18z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Store<span class="badge" id="tabBadge" hidden>0</span></button>
       <button class="tab" data-tab="profile" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</button>
     </div>
   </nav>
@@ -940,6 +940,7 @@ function sampleAccount(){return {
 // Washes run on IST, whatever the phone's time zone: TODAY is the IST calendar date, held as a local midnight
 const istNow=()=>new Date(Date.now()+5.5*3600e3);
 const TODAY=(()=>{const n=istNow();return new Date(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate())})();
+setInterval(()=>{const n=istNow();if(n.getUTCDate()!==TODAY.getDate()&&!document.querySelector('.sheet.on,.sheet.open'))location.reload()},60000);
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const parse=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
@@ -952,7 +953,7 @@ load();
 // older saves showed masked plates; keep the full number and mask it only on screen
 if(S.acct)S.acct.cars.forEach(c=>{if(c.plate==='DL 4C •• 2731')c.plate='DL 4C AB 2731';if(c.plate==='DL 3C •• 0419'||c.plate==='DL 3C AF 0419')c.plate='DL 3C BK 0419'});
 const maskPlate=p=>String(p).replace(/^([A-Z]{2}\s?\d{1,2}\s?[A-Z]{0,1})\s?([A-Z]{1,3})\s?(\d{1,4})$/i,(m,a,b,c)=>`${a.trim()} •• ${c}`);
-const regOf=c=>String(c.plate).replace(/\s+/g,'').toUpperCase();
+const regOf=c=>String(c.plate).toUpperCase().replace(/[^A-Z0-9]/g,'');
 const A=()=>S.acct, car=()=>A().cars[Math.min(S.carIdx,A().cars.length-1)], planOf=c=>PLANS.find(p=>p.id===c.plan);
 
 /* ---------- helpers ---------- */
@@ -1163,12 +1164,15 @@ const hm=v=>{if(!v)return null;v=String(v);const m=v.match(/T(\d{2}:\d{2})/)||v.
 const ampm=t=>{if(!t)return '';const [h,m]=t.split(':').map(Number);return `${h%12||12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`};
 let DB=null,SYNC='test',SIM=null,DOCS={},REMOTE={},REQS={},subFor=null,unsubs=[];
 // Contract doc -> what this screen draws. Field renames from the washer side are absorbed here.
-function fromContract(r){r=r||{};return {date:r.date,reg:r.reg,car_label:r.car_label,washer:r.washer||{},status:STAGES.includes(r.status)||r.status==='skipped'?r.status:'scheduled',
+// washers write these docs, so only our own image addresses and plain text get through to the screen
+const safeImg=u=>typeof u==='string'&&(/^\/_blob\/[A-Za-z0-9_-]{1,128}$/.test(u)||/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+\/=]+$/.test(u))?u:null;
+const numOrNull=v=>Number.isFinite(+v)&&v!==null&&v!==''?Math.round(+v):null;
+function fromContract(r){r=r||{};const w=r.washer||{};return {date:r.date,reg:r.reg,car_label:r.car_label,washer:{id:String(w.id||''),name:String(w.name||''),photo_url:safeImg(w.photo_url)||undefined},status:STAGES.includes(r.status)||r.status==='skipped'?r.status:'scheduled',
   eta:hm(r.eta),on_the_way_at:hm(r.on_the_way_at),arrived_at:hm(r.arrived_at),started_at:hm(r.started_at),finished_at:hm(r.finished_at),
-  minutes:r.minutes??(r.started_at&&r.finished_at?t2m(hm(r.finished_at))-t2m(hm(r.started_at)):null),
-  tasks:(r.tasks||[]).map(t=>({key:t.key,label:t.label||TASK_LABEL[t.key]||t.key,done:!!t.done,done_at:hm(t.done_at)})),
-  photos:(r.photos||[]).map(p=>({kind:p.kind,src:p.asset_id?'/_blob/'+p.asset_id:(p.url||null)})).filter(p=>p.src),
-  water_litres:r.water_litres??null,washer_note:r.washer_note||'',skip_reason:r.skip_reason||'',customer_note_seen:!!r.customer_note_seen,remote:true}}
+  minutes:numOrNull(r.minutes??(r.started_at&&r.finished_at?t2m(hm(r.finished_at))-t2m(hm(r.started_at)):null)),
+  tasks:(Array.isArray(r.tasks)?r.tasks:[]).map(t=>({key:String(t.key),label:TASK_LABEL[t.key]||esc(t.label||t.key),done:!!t.done,done_at:hm(t.done_at)})),
+  photos:(Array.isArray(r.photos)?r.photos:[]).map(p=>({kind:p.kind,src:safeImg(p.asset_id?'/_blob/'+p.asset_id:p.url)})).filter(p=>p.src),
+  water_litres:numOrNull(r.water_litres),washer_note:r.washer_note||'',skip_reason:r.skip_reason||'',customer_note_seen:!!r.customer_note_seen,remote:true}}
 function planTasks(c,d){const w=extras(c,d);return ['pressure',...w.map(k=>KEYMAP[k]),'dry']}
 function makeDoc(c){
   const base={date:iso(TODAY),reg:regOf(c),car_label:c.name,washer:{name:c.washer},photos:[]};
@@ -1215,8 +1219,10 @@ let lastStatus={};
 function toastStatus(id){const d=doc(car()),k=d.status+'|'+d.tasks.filter(t=>t.done).length;if(lastStatus[id]&&lastStatus[id]!==k&&d.remote){toast(chipText(car(),d));haptic();if(d.status==='done')confetti()}lastStatus[id]=k}
 async function sendRequest(body){
   if(!DB){await wait(500);return {ok:true}}
-  try{await DB.collection('requests').doc().set({...body,created_at:nowIST(),status:'open'});return {ok:true}}
-  catch(e){return {ok:true,queued:true}}}
+  const w=DB.collection('requests').doc().set({...body,created_at:nowIST(),status:'open'});
+  try{return await Promise.race([w.then(()=>({ok:true})),wait(5000).then(()=>({ok:true,queued:true}))])}
+  catch(e){console.warn('request',e);return {ok:false}}}
+const sendFailed=(undo)=>{undo&&undo();toast("That didn't go through. Call or WhatsApp us on 77018 08924.")};
 function renderLiveBits(){renderHero();renderBanners();renderRitual();renderLive();renderLiveDot()}
 function renderLiveDot(){const d=doc(car());$('#liveDot').hidden=!activeStage(d)}
 
@@ -1230,7 +1236,7 @@ function renderLive(){
   $('#liveHero').innerHTML=`<div class="eyebrow">${esc((c.make?c.make+' ':'')+c.name)} · ${esc(maskPlate(c.plate))}</div><div class="live-status">${esc(big)}</div><div class="live-sub">${esc(sub)}</div>
     ${si>=0?`<div class="track"><div class="rl"></div><div class="fill" style="width:${pct}%"></div>${STAGES.map((_,i)=>`<span class="node ${i<=si?'on':''}" style="left:${i*25}%"></span>`).join('')}<div class="rider" style="left:${pct}%"><img src="${d.washer?.photo_url||IMG.washer}" alt=""></div></div>
     <div class="track-labels">${STAGE_LABEL.map((l,i)=>`<span class="${i<=si?'on':''}">${l}</span>`).join('')}</div>`:''}
-    <div class="live-who"><img src="${d.washer?.photo_url||IMG.washer}" alt=""><div style="flex:1;min-width:0"><b>${esc(w)}</b><small>★ 4.9 · your washer${c.status!=='new'?` · ${c.washes} washes on this car`:''}</small></div><button class="pill gold" data-act="tip">Tip</button></div>`;
+    <div class="live-who"><img src="${d.washer?.photo_url||IMG.washer}" alt=""><div style="flex:1;min-width:0"><b>${esc(w)}</b><small>★ 4.9 · your washer${c.status!=='new'?` · ${c.washes} washes on this car`:''}</small></div></div>`;
   $('#liveDate').textContent=fmt(d.date||iso(TODAY),{weekday:'long',day:'numeric',month:'short'});
   // timeline
   const rows=[],st=(cond,isNow)=>cond?'done':isNow?'now':'todo';
@@ -1399,7 +1405,7 @@ function renderPlan(){
   const cols=[['Pressure washes',pick('pressure',td),30,'var(--violet)'],['Interior',pick('interior',Math.round(f.int*td/7)),Math.round(f.int*30/7),'var(--orange)'],['Foam wash',pick('foam',Math.round(f.foam*td/7)),Math.round(f.foam*30/7),'var(--sky)'],f.det?['Detailing',pick('detailing',f.det>=16?8:Math.floor(f.det/2)),f.det>=16?17:f.det,'var(--gold)']:['Tyre & trim',pick('tyre',Math.min(Math.round(f.tyre*30/7),Math.round(f.tyre*td/7))),Math.round(f.tyre*30/7),'var(--mint)']];
   $('#usageWrap').hidden=c.status==='new';
   $('#usage').innerHTML=cols.map(u=>`<div class="card u"><div class="ul"><i style="background:${u[3]}"></i>${u[0]}</div><div class="uv num"><span data-to="${u[1]*used}">0</span> <small>of ${u[2]}</small></div><div class="bar"><i style="background:${u[3]}" data-w="${u[2]?u[1]/u[2]*100*used:0}"></i></div></div>`).join('');
-  $('#plans').innerHTML=PLANS.filter(pl=>!pl.old||pl.id===p.id).map(pl=>`<div class="plan ${pl.id===p.id?'cur on-violet':''} ${pl.id==='res'&&pl.id!==p.id?'res on-violet':''}">${pl.id===p.id?'<span class="cur-tag">Your plan</span>':''}<div class="pn">${pl.name}</div><div class="pp num">${inr(pl.price)} <small>/ month</small></div><ul>${pl.rows.map(r=>`<li><span>${r[0]}</span><b class="${r[1]==='—'?'no':''}">${r[1]}</b></li>`).join('')}</ul>${pl.id===p.id?`<button class="btn gold cta" data-act="payPlan">${c.till?'Pay next month':'Pay first month'}</button>`:`<button class="btn ${pl.price>p.price?'gold':'ghost'} cta" data-act="switchPlan" data-arg="${pl.id}">${pl.price>p.price?'Upgrade':'Switch'} to ${pl.name.replace('WD ','')}</button>`}</div>`).join('');
+  $('#plans').innerHTML=PLANS.filter(pl=>!pl.old||pl.id===p.id).map(pl=>`<div class="plan ${pl.id===p.id?'cur on-violet':''} ${pl.id==='res'&&pl.id!==p.id?'res on-violet':''}">${pl.id===p.id?'<span class="cur-tag">Your plan</span>':''}<div class="pn">${pl.name}</div><div class="pp num">${inr(pl.price)} <small>/ month</small></div><ul>${pl.rows.map(r=>`<li><span>${r[0]}</span><b class="${r[1]==='—'?'no':''}">${r[1]}</b></li>`).join('')}</ul>${pl.id===p.id?`<button class="btn gold cta" data-act="payPlan">${c.till?'Pay next month':'Pay first month'}</button>`:''}</div>`).join('');
   const pz=c.paused&&c.paused.to>=iso(TODAY);
   $('#pauseCard').innerHTML=`<div style="display:flex;gap:12px;align-items:center"><div style="font-size:26px" aria-hidden="true">✈︎</div><div><div style="font-weight:700">${pz?`Paused ${fmt(c.paused.from)} – ${fmt(c.paused.to)}`:'Going out of town?'}</div><div style="font-size:12.5px;color:var(--fg-2)">${pz?'Paused days are added to the end of your plan.':'Pause washes and the days get added to your plan.'}</div></div></div>
     ${pz?`<button class="btn ghost" style="margin-top:12px" data-act="resume">Resume washes now</button>`:`<button class="btn ghost" style="margin-top:12px" data-act="pause">Choose dates</button>`}`;
@@ -1436,10 +1442,9 @@ function renderProfile(){
   $$('#stWashes,#stLitres,#stStreak').forEach(e=>e.textContent=(+e.dataset.to).toLocaleString('en-IN'));
   $('#refCode').textContent=(a.name.split(' ')[0]||'WD').toUpperCase().replace(/[^A-Z]/g,'').slice(0,8)+'200';
   $('#logoutSub').textContent='Signed in as +91 '+a.phone.replace(/(\d{5})(\d+)/,'$1 $2');
-  $('#garage').innerHTML=a.cars.map((g,i)=>`<button class="garage-card ${i===S.carIdx?'on on-violet':''}" data-act="pickCar" data-arg="${i}"><div class="gimg">${carImg(g)?`<img src="${carImg(g)}" alt="">`:`<div style="width:100%;color:var(--fg-3)">${GHOST_CAR}</div>`}</div><div class="gn">${esc((g.make?g.make+' ':'')+g.name)}</div><div class="gs">${esc(maskPlate(g.plate))} · ${planOf(g).name}${g.status==='new'?' · starts tomorrow':''}</div></button>`).join('')+`<button class="garage-card add-car" data-act="addCar"><div><div style="font-size:30px;line-height:1">＋</div><div style="font-weight:600;margin-top:6px">Add a car</div><div class="muted">Second car gets 10% off</div></div></button>`;
+  $('#garage').innerHTML=a.cars.map((g,i)=>`<button class="garage-card ${i===S.carIdx?'on on-violet':''}" data-act="pickCar" data-arg="${i}"><div class="gimg">${carImg(g)?`<img src="${carImg(g)}" alt="">`:`<div style="width:100%;color:var(--fg-3)">${GHOST_CAR}</div>`}</div><div class="gn">${esc((g.make?g.make+' ':'')+g.name)}</div><div class="gs">${esc(maskPlate(g.plate))} · ${planOf(g).name}${g.status==='new'?' · starts tomorrow':''}</div></button>`).join('')+`<button class="garage-card add-car" data-act="addCar"><div><div style="font-size:30px;line-height:1">＋</div><div style="font-weight:600;margin-top:6px">Add a car</div><div class="muted">Add a second car</div></div></button>`;
   const act=[];
-  if(a.orders.length)act.push(`<button class="row" data-act="orders"><span class="ri" style="background:rgba(20,192,138,.15);color:var(--ok)">📦</span><span class="rt"><b>My orders</b><small>${a.orders.length} order${a.orders.length>1?'s':''} · latest ${a.orders[0].id}</small></span>${CHEV}</button>`);
-  if(a.bookings.length)act.push(`<button class="row" data-act="bookings"><span class="ri" style="background:rgba(84,9,218,.12);color:var(--violet)">✦</span><span class="rt"><b>One-time washes</b><small>${a.bookings.length} booked</small></span>${CHEV}</button>`);
+  // Store orders and one-time bookings are not live yet; rows hidden for launch
   if(a.requests.length)act.push(`<button class="row" data-act="requests"><span class="ri" style="background:rgba(232,56,79,.14);color:var(--red)">↺</span><span class="rt"><b>Re-wash requests</b><small>${a.requests.filter(r=>r.open).length} open</small></span>${CHEV}</button>`);
   $('#activity').innerHTML=act.length?`<div class="sec-head"><h2>Activity</h2></div><div class="rows">${act.join('')}</div>`:'';
   $('#detailsFor').textContent='For your '+c.name;
@@ -1543,14 +1548,14 @@ const ACT={
       <div class="confirm" id="pzSum"></div><button class="btn violet" id="pzGo">Pause washes</button>`,()=>{
       const sum=()=>{$('#pzSum').innerHTML=`<div class="cv"><small>No washes</small><b>${fmt(addDays(TODAY,1))} – ${fmt(addDays(TODAY,days))}</b></div><span>·</span><div class="cv"><small>Plan now ends</small><b style="color:var(--accent)">${c.till?fmt(addDays(parse(c.till),days)):'–'}</b></div>`};
       sum();segPick('#pz',b=>{days=+b.dataset.v;sum()});
-      $('#pzGo').onclick=async e=>{busy(e.currentTarget,'Telling '+c.washer+'…');c.paused={from:iso(addDays(TODAY,1)),to:iso(addDays(TODAY,days))};await API.pause(c,c.paused.from,c.paused.to);if(c.till)c.till=iso(addDays(parse(c.till),days));save();renderAll();success('Paused',`No washes till ${fmt(c.paused.to)}. ${c.washer} has been told.`)}})},
+      $('#pzGo').onclick=async e=>{const undo=busy(e.currentTarget,'Telling '+c.washer+'…');const pz={from:iso(addDays(TODAY,1)),to:iso(addDays(TODAY,days))};if(!(await API.pause(c,pz.from,pz.to)).ok)return sendFailed(undo);c.paused=pz;if(c.till)c.till=iso(addDays(parse(c.till),days));save();renderAll();success('Paused',`No washes till ${fmt(c.paused.to)}. ${c.washer} has been told.`)}})},
   async resume(){const c=car();if(!c.paused)return;const unused=Math.max(0,Math.round((parse(c.paused.to)-Math.max(TODAY,addDays(parse(c.paused.from),-1)))/864e5));
-    await API.pause(c,null,null);if(c.till)c.till=iso(addDays(parse(c.till),-unused));c.paused=null;save();renderAll();toast(`Washes resume tomorrow. ${c.washer} has been told.`)},
-  note(){const c=car();openSheet(`<h3>Note for ${c.washer}</h3><p class="sub">He sees it on tomorrow's round, in Hinglish.</p><label for="noteTxt" class="eyebrow">Your note</label><textarea id="noteTxt" class="field" rows="3" style="resize:none" placeholder="e.g. Please do the boot area too">${esc(c.note||'')}</textarea>
+    if(!(await API.pause(c,null,null)).ok)return sendFailed();if(c.till)c.till=iso(addDays(parse(c.till),-unused));c.paused=null;save();renderAll();toast(`Washes resume tomorrow. ${c.washer} has been told.`)},
+  note(){const c=car();openSheet(`<h3>Note for ${c.washer}</h3><p class="sub">He sees it on tomorrow's round, in Hinglish.</p><label for="noteTxt" class="eyebrow">Your note</label><textarea id="noteTxt" class="field" rows="3" maxlength="1000" style="resize:none" placeholder="e.g. Please do the boot area too">${esc(c.note||'')}</textarea>
       <div class="chips" id="noteQuick"><button>Car is in the basement</button><button>Skip tomorrow</button><button>Extra interior please</button><button>Clean the boot</button></div>
       <button class="btn violet" id="noteGo">Send to ${c.washer}</button>${c.note?'<button class="btn ghost" id="noteDel" style="margin-top:8px">Remove note</button>':''}`,()=>{
       $$('#noteQuick button').forEach(b=>b.onclick=()=>{const t=$('#noteTxt');t.value=(t.value?t.value.trim()+'. ':'')+b.textContent;t.focus()});
-      $('#noteGo').onclick=async e=>{const v=$('#noteTxt').value.trim();if(!v){$('#noteTxt').focus();return}busy(e.currentTarget,'Sending…');await API.note(c,v);c.note=v;save();closeSheet();renderBanners();toast('Note sent to '+c.washer)};
+      $('#noteGo').onclick=async e=>{const v=$('#noteTxt').value.trim();if(!v){$('#noteTxt').focus();return}const undo=busy(e.currentTarget,'Sending…');if(!(await API.note(c,v)).ok)return sendFailed(undo);c.note=v;save();closeSheet();renderBanners();toast('Note sent to '+c.washer)};
       $('#noteDel')&&($('#noteDel').onclick=()=>{c.note=null;save();closeSheet();renderBanners();toast('Note removed')})})},
   tip(){const c=car();let amt=50;openSheet(`<div style="display:flex;gap:14px;align-items:center"><img src="${IMG.washer}" alt="" style="width:64px;height:64px;border-radius:20px;object-fit:cover;object-position:top;background:var(--violet)"><div><h3>Tip ${c.washer}</h3><p class="sub" style="margin:0">All of it goes to him, the same day.</p></div></div>
       <div class="seg" id="tipSeg" style="margin:18px 0 4px"><button data-v="20">₹20</button><button class="on" data-v="50">₹50</button><button data-v="100">₹100</button><button data-v="200">₹200</button></div>${UPI}<button class="btn gold" id="tipGo" style="margin-top:16px">Send ₹50</button>`,()=>{
@@ -1573,7 +1578,7 @@ const ACT={
     openSheet(`<h3>Report a missed spot</h3><p class="sub">${c.washer} comes back and fixes it today. Tap where it was.</p><div class="card" style="padding:16px">${c.img?`<img src="${IMG[c.img]}" alt="" style="width:100%">`:''}<div class="chips" id="spots">${['Roof','Rims','Glass','Bonnet','Doors','Interior','Boot'].map(s=>`<button class="${spots.has(s)?'on':''}">${s}</button>`).join('')}</div></div>
       <button class="btn violet" style="margin-top:14px" id="isGo">Send to ${c.washer}</button>`,()=>{
       $$('#spots button').forEach(b=>b.onclick=()=>{b.classList.toggle('on');b.classList.contains('on')?spots.add(b.textContent):spots.delete(b.textContent);$('#isGo').disabled=!spots.size});
-      $('#isGo').onclick=async e=>{busy(e.currentTarget,'Sending…');await API.issue(c,[...spots]);A().requests.unshift({id:'R'+Date.now(),carId:c.id,spots:[...spots],open:true,at:iso(TODAY)});save();renderAll();success('We\'re on it',`${c.washer} will come back by 11 AM and send a new photo.`)}})},
+      $('#isGo').onclick=async e=>{const undo=busy(e.currentTarget,'Sending…');if(!(await API.issue(c,[...spots])).ok)return sendFailed(undo);A().requests.unshift({id:'R'+Date.now(),carId:c.id,spots:[...spots],open:true,at:iso(TODAY)});save();renderAll();success('We\'re on it',`${c.washer} will come back by 11 AM and send a new photo.`)}})},
   closeReq(id){const r=A().requests.find(x=>x.id===id);if(r)r.open=false;save();renderAll();toast('Marked as fixed')},
   requests(){openSheet(`<h3>Re-wash requests</h3><div class="rows" style="margin-top:12px">${A().requests.map(r=>`<div class="row"><span class="rt"><b>${r.spots.join(', ')}</b><small>${fmt(r.at)} · ${r.open?'Washer coming back by 11 AM':'Fixed'}</small></span>${r.open?`<button class="mini-btn link" data-act="closeReq" data-arg="${r.id}">Fixed</button>`:'<span class="ok">✓</span>'}</div>`).join('')}</div>`)},
   orders(){openSheet(`<h3>My orders</h3><div class="rows" style="margin-top:12px">${A().orders.map(o=>`<div class="row"><span class="rt"><b>${o.id} · ${inr(o.total)}</b><small>${o.items.map(i=>i.q+' × '+esc(i.name)).join(', ')}</small><small style="display:block;color:var(--ok);font-weight:600">${o.status}</small></span></div>`).join('')}</div>`)},
@@ -1589,15 +1594,15 @@ const ACT={
         A().payments[A().payments.length-1].what='Store order '+r.id;S.cart={};save();renderAll();success('Order placed',`${car().washer} brings it tomorrow before 7:30 AM and sends a photo when it's in your car.`)})})},
   qty(arg){const [k,d]=arg.split(':');S.cart[k]=Math.max(0,(S.cart[k]||0)+ +d);if(!S.cart[k])delete S.cart[k];save();syncBadges();ACT.cart()},
   shop(){closeSheet();go('store')},
-  addCar(){let area=A().area,plan='std';openSheet(`<h3>Add a car</h3><p class="sub">Second car gets 10% off. Your washer takes its first photo tomorrow morning.</p>
+  addCar(){let area=A().area,plan='std';openSheet(`<h3>Add a car</h3><p class="sub">Your washer takes its first photo tomorrow morning.</p>
       <label class="eyebrow" for="acModel">Car</label><input id="acModel" class="field" placeholder="e.g. Creta, Nexon, City">
       <label class="eyebrow" for="acPlate">Registration number</label><input id="acPlate" class="field" placeholder="DL 8C AB 1234" style="text-transform:uppercase">
       <div class="eyebrow">Area</div><div class="chips" id="acArea">${AREAS.map(a=>`<button class="${a===area?'on':''}">${a}</button>`).join('')}</div>
-      <div class="eyebrow">Plan</div><div class="seg" id="acPlan">${PLANS.map(p=>`<button class="${p.id===plan?'on':''}" data-v="${p.id}">${p.name.replace('WD ','')} ${inr(Math.round(p.price*.9))}</button>`).join('')}</div>
+      <div class="eyebrow">Plan</div><div class="seg" id="acPlan">${PLANS.map(p=>`<button class="${p.id===plan?'on':''}" data-v="${p.id}">${p.name.replace('WD ','')} ${inr(p.price)}</button>`).join('')}</div>
       <div class="err" id="acErr" style="margin-top:10px"></div><button class="btn violet" id="acGo">Start tomorrow</button>`,()=>{
       segPick('#acArea',b=>area=b.textContent);segPick('#acPlan',b=>plan=b.dataset.v);
       $('#acGo').onclick=async e=>{const m=$('#acModel').value.trim(),pl=$('#acPlate').value.trim().toUpperCase();if(!m||!pl){$('#acErr').textContent='Add the car and its registration number.';return}
-        busy(e.currentTarget,'Adding…');await API.addCar({name:m,plate:pl,area,plan});
+        const undo=busy(e.currentTarget,'Adding…');if(!(await API.addCar({name:m,plate:pl,area,plan})).ok)return sendFailed(undo);
         A().cars.push({id:'c'+Date.now(),name:m,make:'',plate:pl,img:null,plan,till:null,status:'new',washer:WASHER_FOR(area),parking:area+', spot to be confirmed',window:'Before 7:30 AM',keys:'I\'ll unlock it',doneAt:null,mins:0,streak:0,washes:0,paused:null,note:null,rating:0});
         S.carIdx=A().cars.length-1;save();renderAll();closeSheet();go('home');driveIn();toast(`${m} added. First wash tomorrow.`)}})},
   editDetail(k){const c=car();
@@ -1613,7 +1618,7 @@ const ACT={
       <div class="row"><span class="ri" style="background:rgba(84,9,218,.12);color:var(--violet)">✦</span><span class="rt"><b>Drop 01 is live in the store</b><small>Daddy's Own Car Perfume</small></span></div></div>`)},
   help(){openSheet(`<h3>Talk to Washing Daddy</h3><p class="sub">WhatsApp or call, 7 AM to 9 PM.</p><div class="code" style="margin-bottom:12px"><b style="font-size:20px">77018 08924</b><button class="pill gold" id="copyNum">Copy</button></div>
       <div class="rows">${[['How early do you come?','Between 5:30 and 7:30 AM, before you leave.'],['What if it rains?','We still come. Rainy-day washes focus on glass, rims and interior.'],['Why no pocha?','A wet cloth drags dust across the paint and leaves swirl marks. A pressure wash lifts it off.'],['Can I pay my washer in cash?','Yes. He marks it in his app and you get the receipt here.']].map(q=>`<div class="row"><span class="rt"><b>${q[0]}</b><small>${q[1]}</small></span></div>`).join('')}</div>`,()=>{$('#copyNum').onclick=()=>copy('7701808924','Number copied')})},
-  logout(){openSheet(`<h3>Log out?</h3><p class="sub">Your washes carry on. Sign in again with +91 ${A().phone.replace(/(\d{5})(\d+)/,'$1 $2')}.</p><button class="btn violet" id="loGo">Log out</button><button class="btn ghost" style="margin-top:8px" data-act="close">Stay signed in</button>`,()=>{$('#loGo').onclick=()=>{closeSheet();S.session=null;S.acct=null;S.cart={};S.carIdx=0;save();SC.scrollTo(0,0);unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];subFor=null;if(acctUnsub){try{acctUnsub()}catch(e){}acctUnsub=null}if(REAL)window.WDAuth.signOut();showAuth()}})},
+  logout(){openSheet(`<h3>Log out?</h3><p class="sub">Your washes carry on. Sign in again with +91 ${A().phone.replace(/(\d{5})(\d+)/,'$1 $2')}.</p><button class="btn violet" id="loGo">Log out</button><button class="btn ghost" style="margin-top:8px" data-act="close">Stay signed in</button>`,()=>{$('#loGo').onclick=()=>{closeSheet();S.session=null;S.acct=null;S.cart={};S.carIdx=0;save();SC.scrollTo(0,0);unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];subFor=null;photoUnsubs.forEach(u=>{try{u()}catch(e){}});photoUnsubs=[];REMOTE={};REQS={};DOCS={};lastStatus={};if(acctUnsub){try{acctUnsub()}catch(e){}acctUnsub=null}if(REAL)window.WDAuth.signOut();showAuth()}})},
 };
 function copy(txt,msg){try{navigator.clipboard.writeText(txt).then(()=>toast(msg),()=>toast(txt))}catch(e){toast(txt)}}
 function product(id){const p=PRODUCTS.find(x=>x.id===id);let q=1;

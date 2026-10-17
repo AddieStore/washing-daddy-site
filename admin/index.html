@@ -105,11 +105,15 @@ select{flex:1 1 100%;min-width:0}
     <nav class="tabs" role="tablist">
       <button class="tab on" data-tab="washers" role="tab">Washers <span class="badge" id="bW"></span></button>
       <button class="tab" data-tab="customers" role="tab">Customers <span class="badge" id="bC"></span></button>
+      <button class="tab" data-tab="newcars" role="tab">New cars <span class="badge" id="bN"></span></button>
+      <button class="tab" data-tab="extra" role="tab">Extra work <span class="badge" id="bX"></span></button>
     </nav>
   </div></header>
   <main>
     <section id="t-washers"></section>
     <section id="t-customers" hidden></section>
+    <section id="t-newcars" hidden></section>
+    <section id="t-extra" hidden></section>
   </main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -129,10 +133,13 @@ let db = null;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nowIST = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 19) + '+05:30';
-// A car's wash plan starts tomorrow (IST) and runs one month, to the day before the same date next month.
-const tomorrowIST = () => new Date(Date.now() + 5.5 * 3600e3 + 864e5).toISOString().slice(0, 10);
-const tillOf = start => { const d = new Date(start + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + 1); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10) };
-const planDates = (x, start) => { const s = x.start || start; return { start: s, till: x.till && x.start ? x.till : tillOf(s) } };
+// a car's first wash day (tomorrow, IST) and the last day of its first month: start + 1 month - 1 day, kept inside short months
+function firstMonth() {
+  const t = new Date(Date.now() + 5.5 * 3600e3), y = t.getUTCFullYear(), m = t.getUTCMonth(), d = t.getUTCDate() + 1;
+  const s = new Date(Date.UTC(y, m, d)), last = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() + 2, 0)).getUTCDate();
+  const e = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() + 1, Math.min(s.getUTCDate(), last)) - 864e5);
+  return { start: s.toISOString().slice(0, 10), till: e.toISOString().slice(0, 10) };
+}
 const nice = p => { const d = String(p || '').replace(/\D/g, '').slice(-10); return d ? '+91 ' + d.slice(0, 5) + ' ' + d.slice(5) : '' };
 const when = iso => { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) };
 const regOf = p => String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -173,7 +180,7 @@ function gateCode(d) {
 }
 
 /* ---------------- data ---------------- */
-let W = [], C = [], tab = 'washers', unsubs = [], q = '';
+let W = [], C = [], N = [], X = [], tab = 'washers', unsubs = [], q = '';
 function stop() { unsubs.forEach(u => { try { u() } catch (e) {} }); unsubs = [] }
 
 async function signedIn(u) {
@@ -191,11 +198,13 @@ async function signedIn(u) {
     $('#app').hidden = true; $('#gate').hidden = false;
     gatePhone(e.code === 'invalid_argument' ? `${nice(u.phoneNumber)} is not an approver. Use the owner's number.` : "Couldn't load. Check the internet and sign in again.");
   }));
-  unsubs.push(db.collection('customers').onSnapshot(sn => { C = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
+  unsubs.push(db.collection('customers').onSnapshot(sn => { C = sn.docs.map(d => cleanCust({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
+  unsubs.push(db.collection('newcars').onSnapshot(sn => { N = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
+  unsubs.push(db.collection('ondemand').onSnapshot(sn => { X = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
 }
 WDAuth.ready().then(signedIn);
 $('#signOut').onclick = async () => { stop(); await WDAuth.signOut(); signedIn(null) };
-$$('.tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; $$('.tab').forEach(x => x.classList.toggle('on', x === t)); $('#t-washers').hidden = tab !== 'washers'; $('#t-customers').hidden = tab !== 'customers'; render() });
+$$('.tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; $$('.tab').forEach(x => x.classList.toggle('on', x === t)); ['washers', 'customers', 'newcars', 'extra'].forEach(k => $('#t-' + k).hidden = tab !== k); render() });
 
 async function act(btn, fn, ok) {
   btn.disabled = true;
@@ -239,6 +248,17 @@ function renderWashers() {
 function carRow(c, req) {
   return `<div class="car ${req ? 'req' : ''}"><span><b>${esc((c.make ? c.make + ' ' : '') + (c.name || ''))}</b> · <span class="plate">${esc(c.plate || '')}</span></span><span>${esc(PLANS[c.plan] || c.plan || '')}${req ? ' · wants to add' : ''}</span></div>`;
 }
+// customers write their own doc, so a malformed one must not take the whole tab down
+function cleanCust(c) {
+  const cars = v => Array.isArray(v) ? v.filter(x => x && typeof x === 'object') : [];
+  return { ...c, name: c.name == null ? '' : String(c.name), cars: cars(c.cars), requested_cars: cars(c.requested_cars), regs: Array.isArray(c.regs) ? c.regs.map(String) : [] };
+}
+// a plate that another account already holds: the admin should check it before activating
+function heldBy(c, x) {
+  const r = regOf(x.plate); if (!r) return null;
+  const o = C.find(o => o.id !== c.id && (o.cars.some(y => regOf(y.plate) === r) || o.regs.includes(r)));
+  return o ? (o.name || o.phone || o.id) : null;
+}
 function custCard(c) {
   const st = c.status || 'new', k = esc(c.id), req = c.requested_cars || [];
   const pill = st === 'active' ? '<span class="pill a">Active</span>' : '<span class="pill p">New</span>';
@@ -250,6 +270,7 @@ function custCard(c) {
     <div class="meta">${contact(c.phone || c.id)}</div>
     <div class="meta">${esc(c.area || '')}${c.created_at ? ' · signed up ' + esc(when(c.created_at)) : ''}</div>
     <div class="cars">${(c.cars || []).map(x => carRow(x)).join('')}${req.map(x => carRow(x, true)).join('')}</div>
+    ${[...(c.cars || []), ...req].map(x => heldBy(c, x) ? `<div class="meta" style="color:#c0392b">⚠ ${esc(x.plate)} is already on ${esc(heldBy(c, x))}'s account. Check before you activate.</div>` : '').join('')}
     </div></div><div class="acts">${acts}</div></div>`;
 }
 function renderCustomers() {
@@ -270,7 +291,74 @@ function renderCustomers() {
     ${a.length ? a.map(custCard).join('') : '<div class="empty">No active customers' + (q ? ' match.' : ' yet.') + '</div>'}`;
   const s = $('#cq'); s.oninput = () => { q = s.value; const pos = s.selectionStart; renderCustomers(); const t = $('#cq'); t.focus(); t.setSelectionRange(pos, pos) };
 }
-function render() { if (tab === 'washers') renderWashers(); else renderCustomers(); const p = W.filter(w => (w.status || 'pending') === 'pending').length; $('#bW').textContent = p || ''; }
+/* ---------------- cars a washer sold ---------------- */
+const RUPEE = n => '\u20b9' + Number(n || 0).toLocaleString('en-IN');
+function newCarCard(n) {
+  const st = n.status || 'pending', k = esc(n.id), half = Math.round((Number(n.fee) || 0) / 2);
+  const pill = st === 'approved' ? '<span class="pill a">Approved</span>' : st === 'rejected' ? '<span class="pill b">Rejected</span>' : '<span class="pill p">Waiting</span>';
+  const acts = st === 'pending'
+    ? `<label class="meta">Monthly fee <input class="field" id="f-${k}" inputmode="numeric" value="${esc(String(Number(n.fee) || 0))}" style="width:110px;display:inline-block;margin-left:6px"></label><button class="btn go" data-a="okcar" data-id="${k}">Approve</button><button class="btn no" data-a="nocar" data-id="${k}">Reject</button>`
+    : `<button class="btn ghost" data-a="rmcar" data-id="${k}">Remove</button>`;
+  return `<div class="card ${st === 'pending' ? 'pending' : ''}"><div class="row"><div class="av">${esc((n.model || '?')[0].toUpperCase())}</div><div class="grow">
+    <div class="nm">${esc(n.model || 'Car')} ${pill}</div>
+    <div class="meta"><span class="plate">${esc(n.plate || n.reg || '')}</span> · ${esc(PLANS[n.plan] || n.plan || '')} · ${RUPEE(n.fee)}/month <span class="meta">(washer's half ${RUPEE(half)})</span></div>
+    <div class="meta">${esc(n.customer_name || 'No name')}${n.customer_phone ? ' · ' + contact(n.customer_phone) : ''}${n.area ? ' · ' + esc(n.area) : ''}</div>
+    <div class="meta">Sold by ${esc(ROUNDS[n.washer_id] ? ROUNDS[n.washer_id].split(' · ')[0] : n.washer_id || '')} · added ${esc(when(n.created_at))}</div>
+    ${n.note ? `<div class="meta">${esc(n.note)}</div>` : ''}
+    ${st === 'approved' ? '<div class="meta"><b>Put it in the book</b> (Notion, Monthly Customers) so it stays on the round.</div>' : ''}
+    </div></div><div class="acts">${acts}</div></div>`;
+}
+function renderNewCars() {
+  const p = N.filter(n => (n.status || 'pending') === 'pending').sort(byNew), rest = N.filter(n => (n.status || 'pending') !== 'pending').sort(byNew);
+  $('#bN').textContent = p.length || ''; $('#bN').dataset.n = p.length;
+  $('#t-newcars').innerHTML = `
+    <h2>Cars a washer sold <span class="n">${p.length}</span></h2>
+    <p class="meta" style="margin:-4px 0 10px">A washer added these from his app. They are already on his round; approving one settles the fee so his earnings start counting. Put it in the book afterwards.</p>
+    ${p.length ? p.map(newCarCard).join('') : '<div class="empty">Nothing waiting. When a washer taps + Add Car, it shows up here.</div>'}
+    ${rest.length ? `<h2>Decided <span class="n">${rest.length}</span></h2>${rest.map(newCarCard).join('')}` : ''}`;
+}
+
+/* ---------------- extra (on-demand) work ---------------- */
+function extraCard(x) {
+  const st = x.status || 'offered', k = esc(x.id);
+  const pill = st === 'done' ? '<span class="pill a">Done</span>' : st === 'doing' ? '<span class="pill p">Doing it</span>' : '<span class="pill p">Given</span>';
+  return `<div class="card"><div class="row"><div class="grow">
+    <div class="nm">${esc(x.service || 'Extra work')} ${pill}</div>
+    <div class="meta">${RUPEE(x.price)} · washer's half ${RUPEE(Math.round((Number(x.price) || 0) / 2))} · ${esc(ROUNDS[x.washer_id] ? ROUNDS[x.washer_id].split(' · ')[0] : x.washer_id || '')}</div>
+    <div class="meta">${esc(x.car || x.reg || '')}${x.customer_name ? ' · ' + esc(x.customer_name) : ''}${x.area ? ' · ' + esc(x.area) : ''} · ${esc(x.date || '')}</div>
+    ${x.note ? `<div class="meta">${esc(x.note)}</div>` : ''}
+    ${x.photo ? `<img src="${esc(x.photo)}" alt="Photo from the washer" style="max-width:220px;border-radius:12px;margin-top:8px">` : ''}
+    </div></div><div class="acts"><button class="btn ghost" data-a="rmextra" data-id="${k}">Remove</button></div></div>`;
+}
+function renderExtra() {
+  const open = X.filter(x => (x.status || 'offered') !== 'done').sort(byNew), done = X.filter(x => x.status === 'done').sort(byNew);
+  $('#bX').textContent = open.length || ''; $('#bX').dataset.n = open.length;
+  const today = new Date(Date.now() + 19800000).toISOString().slice(0, 10);
+  $('#t-extra').innerHTML = `
+    <h2>Give a washer extra work</h2>
+    <p class="meta" style="margin:-4px 0 10px">A one-off wash, a detail, anything outside the monthly round. The washer sees it in his Extra tab and keeps half.</p>
+    <div class="card"><div class="grid2">
+      <input class="field" id="xService" placeholder="What is it? e.g. Full detail" maxlength="80">
+      <input class="field" id="xPrice" inputmode="numeric" placeholder="Price, e.g. 1500" maxlength="6">
+      <input class="field" id="xCar" placeholder="Car, e.g. Swift DL 8C AB 1234" maxlength="80">
+      <input class="field" id="xName" placeholder="Customer name" maxlength="80">
+      <input class="field" id="xArea" placeholder="Area / house" maxlength="80">
+      <input class="field" id="xDate" type="date" value="${today}">
+    </div>
+    <input class="field" id="xNote" placeholder="Anything the washer should know" maxlength="300" style="margin-top:10px">
+    <div class="acts">${roundSelect('xRound', '')}<button class="btn gold" data-a="addExtra">Give the work</button></div></div>
+    <h2>Open <span class="n">${open.length}</span></h2>
+    ${open.length ? open.map(extraCard).join('') : '<div class="empty">No extra work out there right now.</div>'}
+    ${done.length ? `<h2>Done <span class="n">${done.length}</span></h2>${done.slice(0, 30).map(extraCard).join('')}` : ''}`;
+}
+
+function render() {
+  if (tab === 'washers') renderWashers(); else if (tab === 'customers') renderCustomers();
+  else if (tab === 'newcars') renderNewCars(); else renderExtra();
+  const p = W.filter(w => (w.status || 'pending') === 'pending').length; $('#bW').textContent = p || '';
+  const np = N.filter(n => (n.status || 'pending') === 'pending').length; $('#bN').textContent = np || '';
+  const xo = X.filter(x => (x.status || 'offered') !== 'done').length; $('#bX').textContent = xo || '';
+}
 
 /* ---------------- actions ---------------- */
 document.addEventListener('click', e => {
@@ -298,8 +386,9 @@ document.addEventListener('click', e => {
       else await ref.set({ phone: '+91' + d, name, area: '', status: 'approved', route_id: r, created_at: nowIST(), decided_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() });
     }, `${name} added. They can sign in now.`);
   } else if (a === 'activate') {
-    const start = tomorrowIST(), cars = (c.cars || []).map(x => ({ ...x, ...planDates(x, start) }));
-    act(b, () => db.doc('customers/' + id).update({ status: 'active', cars, regs: cars.map(x => regOf(x.plate)), activated_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }), `${c?.name || 'Customer'} is active. Live updates are on for them.`);
+    // first activation sets each car's dates, replacing anything typed at sign-up; a re-activation keeps them
+    const cars = c.activated_at ? c.cars : (c.cars || []).map(x => ({ ...x, ...firstMonth() }));
+    act(b, () => db.doc('customers/' + id).update({ status: 'active', cars, regs: (c.cars || []).map(x => regOf(x.plate)), activated_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }), `${c?.name || 'Customer'} is active. Live updates are on for them.`);
   } else if (a === 'deactivate') {
     if (!confirm(`Pause ${c?.name || 'this account'}? They stop seeing live wash updates until you activate again.`)) return;
     act(b, () => db.doc('customers/' + id).update({ status: 'new', updated_at: nowIST() }), 'Paused');
@@ -307,12 +396,36 @@ document.addEventListener('click', e => {
     if (!confirm(`Remove ${c?.name || 'this sign-up'}?`)) return;
     act(b, () => db.doc('customers/' + id).delete(), 'Removed');
   } else if (a === 'addcars') {
-    const start = tomorrowIST();
-    const add = (c.requested_cars || []).map((x, i) => ({ id: 'c' + ((c.cars || []).length + i), name: x.name, make: x.make || '', plate: x.plate, plan: x.plan, parking: (x.area || c.area || '') + ', parking spot to be confirmed', window: 'Before 7:30 AM', keys: "I'll unlock it", start, till: tillOf(start) }));
+    const add = (c.requested_cars || []).map((x, i) => ({ id: 'c' + ((c.cars || []).length + i), name: x.name, make: x.make || '', plate: x.plate, plan: x.plan, ...firstMonth(), parking: (x.area || c.area || '') + ', parking spot to be confirmed', window: 'Before 7:30 AM', keys: "I'll unlock it" }));
     const cars = (c.cars || []).concat(add);
     act(b, () => db.doc('customers/' + id).update({ cars, regs: cars.map(x => regOf(x.plate)), requested_cars: [], updated_at: nowIST() }), 'Car added');
   } else if (a === 'dropcars') {
     act(b, () => db.doc('customers/' + id).update({ requested_cars: [], updated_at: nowIST() }), 'Ignored');
+  } else if (a === 'okcar') {
+    const n = N.find(x => x.id === id), f = document.getElementById('f-' + id);
+    const fee = Math.max(0, Math.min(20000, Math.round(Number(f ? f.value : n && n.fee) || 0)));
+    if (!fee) { toast('Put the monthly fee in first'); f && f.focus(); return }
+    act(b, () => db.doc('newcars/' + id).update({ status: 'approved', fee, decided_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }),
+      `${n?.model || 'Car'} approved at ${RUPEE(fee)}. Add it to the book too.`);
+  } else if (a === 'nocar') {
+    const n = N.find(x => x.id === id);
+    if (!confirm(`Reject ${n?.model || 'this car'}? It comes off ${n?.washer_id || 'the'} round.`)) return;
+    act(b, () => db.doc('newcars/' + id).update({ status: 'rejected', decided_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }), 'Rejected');
+  } else if (a === 'rmcar') {
+    if (!confirm('Remove this car from the list?')) return;
+    act(b, () => db.doc('newcars/' + id).delete(), 'Removed');
+  } else if (a === 'addExtra') {
+    const service = $('#xService').value.trim(), price = Math.round(Number($('#xPrice').value.replace(/\D/g, '')) || 0);
+    const washer = $('#xRound').value, date = $('#xDate').value || nowIST().slice(0, 10);
+    if (!service) { toast('Say what the work is'); return }
+    if (!price) { toast('Put a price on it'); return }
+    if (!washer) { toast('Choose whose round it goes to'); return }
+    act(b, () => db.collection('ondemand').doc().set({
+      washer_id: washer, service, price, date,
+      car: $('#xCar').value.trim(), customer_name: $('#xName').value.trim(), area: $('#xArea').value.trim(),
+      note: $('#xNote').value.trim(), status: 'offered',
+      created_at: nowIST(), created_by: WDAuth.phone(), updated_at: nowIST(),
+    }), `Given to ${washer}. ${RUPEE(Math.round(price / 2))} is his.`);
   }
 });
 </script>

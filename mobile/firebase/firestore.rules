@@ -62,11 +62,11 @@ service cloud.firestore {
     // a customer's own car photo, stored as carphotos/{+91number}_{carId} (kept out of the account doc)
     match /carphotos/{id} {
       allow read: if isAdmin() || (signedIn() && id.split('_')[0] == me());
-      allow create: if signedIn() && id.split('_')[0] == me()
+      allow create: if signedIn() && id.split('_')[0] == me() && id.size() <= 60 && exists(customerPath())
         && d().keys().hasOnly(['photo', 'updated_at'])
         && d().photo is string && d().photo.size() <= 400000
         && str(d().updated_at, 40);
-      allow update: if signedIn() && id.split('_')[0] == me()
+      allow update: if signedIn() && id.split('_')[0] == me() && id.size() <= 60 && exists(customerPath())
         && d().diff(resource.data).affectedKeys().hasOnly(['photo', 'updated_at'])
         && d().photo is string && d().photo.size() <= 400000
         && str(d().updated_at, 40);
@@ -75,7 +75,11 @@ service cloud.firestore {
 
     match /washes/{id} {
       allow read: if isAdmin() || isWasher() || ownsReg(resource.data.reg);
-      allow create, update: if (isAdmin() || (isWasher() && d().washer_id == myRound()))
+      // a washer writes only his own round's docs, cannot take over a doc another round already wrote,
+      // and cannot turn a finished wash back into an unfinished one
+      allow create, update: if (isAdmin() || (isWasher() && d().washer_id == myRound()
+                                              && (resource == null || (resource.data.washer_id == myRound()
+                                                  && (resource.data.status != 'done' || d().status == 'done')))))
         && id == d().date + '_' + d().reg
         && str(d().washer_id, 40)
         && d().status in ['scheduled', 'on_the_way', 'arrived', 'washing', 'done', 'skipped'];
@@ -85,6 +89,9 @@ service cloud.firestore {
     match /requests/{id} {
       allow read: if isAdmin() || isWasher() || ownsReg(resource.data.reg);
       allow create: if (isAdmin() || ownsReg(d().reg))
+        && d().keys().hasOnly(['reg', 'kind', 'text', 'spots', 'from', 'to', 'created_at', 'status'])
+        && (!('spots' in d()) || (d().spots is list && d().spots.size() <= 20))
+        && optStr(d(), 'from', 10) && optStr(d(), 'to', 10) && optStr(d(), 'created_at', 40)
         && str(d().reg, 20)
         && d().kind in ['note', 'rewash', 'skip_tomorrow', 'pause']
         && d().status == 'open'
@@ -93,6 +100,47 @@ service cloud.firestore {
       allow update: if (isAdmin() || isWasher())
         && d().diff(resource.data).affectedKeys().hasOnly(['status', 'seen_at', 'done_at'])
         && d().status in ['open', 'seen', 'done'];
+      allow delete: if isAdmin();
+    }
+
+    // a car the washer sold himself, waiting for the owner to accept it and put it in the book.
+    // The washer may put it on his own round; only an admin may approve it or change the fee.
+    match /newcars/{reg} {
+      allow read: if isAdmin() || isWasher();
+      allow create: if isAdmin() || (isWasher()
+        && d().keys().hasOnly(['reg', 'plate', 'model', 'area', 'plan', 'fee', 'customer_name',
+                               'customer_phone', 'washer_id', 'added_by', 'status', 'note',
+                               'created_at', 'updated_at'])
+        && d().washer_id == myRound() && d().added_by == me() && d().status == 'pending'
+        && d().reg == reg && d().reg.matches('^[A-Z0-9]{4,12}$')
+        && str(d().plate, 20) && str(d().model, 60) && d().model.size() > 0
+        && optStr(d(), 'area', 80) && optStr(d(), 'plan', 20) && optStr(d(), 'note', 300)
+        && optStr(d(), 'customer_name', 80) && optStr(d(), 'customer_phone', 20)
+        && d().fee is number && d().fee >= 0 && d().fee <= 20000);
+      // the washer can correct what he typed while it is still pending; the owner decides the rest
+      allow update: if isAdmin()
+        || (isWasher() && resource.data.status == 'pending'
+            && d().diff(resource.data).affectedKeys().hasOnly(
+                 ['plate', 'model', 'area', 'plan', 'customer_name', 'customer_phone', 'note', 'updated_at'])
+            && str(d().model, 60) && d().model.size() > 0);
+      allow delete: if isAdmin();
+    }
+
+    // an extra job the owner gives a washer: a one-off wash or a detail, with its own price
+    match /ondemand/{id} {
+      allow read: if isAdmin() || isWasher() || ownsReg(resource.data.reg);
+      allow create: if isAdmin()
+        && str(d().washer_id, 40) && str(d()['service'], 80)   // 'service' is a rules keyword, so read it as a key
+        && d().price is number && d().price >= 0 && d().price <= 100000
+        && d().status == 'offered';
+      // the washer moves his own job along and attaches the photo; the price is not his to change
+      allow update: if isAdmin()
+        || (isWasher() && resource.data.washer_id == myRound()
+            && d().diff(resource.data).affectedKeys().hasOnly(
+                 ['status', 'started_at', 'finished_at', 'photo', 'photo_at', 'washer_note', 'updated_at'])
+            && d().status in ['offered', 'doing', 'done']
+            && (!('photo' in d()) || d().photo == null || (d().photo is string && d().photo.size() <= 400000))
+            && optStr(d(), 'washer_note', 300));
       allow delete: if isAdmin();
     }
 
