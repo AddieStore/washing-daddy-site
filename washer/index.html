@@ -497,6 +497,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     <header class="topbar" data-bar>
       <div class="greet" style="min-width:0"><div class="hi" id="greetHi">Subah bakhair</div><div class="name" id="greetName">Chotte</div></div>
       <div class="tb-right">
+        <button class="iconbtn" data-act="addCar" aria-label="Nayi gaadi add karo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
         <button class="sync" data-act="syncInfo" aria-label="Sync status"><span class="sdot" data-sdot></span><span data-stxt>Jud raha hai</span></button>
       </div>
     </header>
@@ -507,6 +508,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
       <div class="sec rv">
         <div class="sec-head"><h2>Aaj ka round</h2><span class="muted" id="routeMeta"></span></div>
         <ol class="route" id="route"></ol>
+        <button class="btn ghost" data-act="addCar" style="margin-top:12px">+ Nayi gaadi add karo</button>
+        <div class="demo-note">Naya customer mila? Gaadi yahan add karo, aaj se dhona shuru. Ravi manzoori denge.</div>
       </div>
     </div>
   </section>
@@ -548,13 +551,39 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   </section>
 
   <!-- ================= DAY ================= -->
+  <!-- ================= EXTRA (on-demand) ================= -->
+  <section class="screen" id="s-extra" aria-label="Extra kaam">
+    <header class="topbar" data-bar><div style="font-weight:800;font-size:17px">Extra kaam</div><button class="sync" data-act="syncInfo" aria-label="Sync status"><span class="sdot" data-sdot></span><span data-stxt>Jud raha hai</span></button></header>
+    <div class="pad">
+      <div class="eyebrow" id="extraMeta"></div>
+      <h1 class="big-title">On-demand <em>kaam.</em></h1>
+      <div class="sec rv" style="margin-top:18px"><div id="extraOpen"></div></div>
+      <div class="sec rv">
+        <div class="sec-head"><h2>Ho gaye</h2><span class="muted" id="extraDoneMeta"></span></div>
+        <div id="extraDone"></div>
+      </div>
+    </div>
+  </section>
+
   <section class="screen" id="s-day" aria-label="Aaj ka hisaab">
     <header class="topbar" data-bar><div style="font-weight:800;font-size:17px">Hisaab</div><button class="sync" data-act="syncInfo" aria-label="Sync status"><span class="sdot" data-sdot></span><span data-stxt>Jud raha hai</span></button></header>
     <div class="pad">
       <div class="eyebrow" id="dayDate"></div>
-      <h1 class="big-title">Aaj ki <em>mehnat.</em></h1>
-      <div class="sec rv" style="margin-top:18px"><div class="dayhero on-violet" id="dayHero"></div></div>
-      <div class="sec rv"><div class="tiles" id="tiles"></div></div>
+      <h1 class="big-title">Aaj ki <em>kamai.</em></h1>
+      <div class="sec rv" style="margin-top:18px"><div class="dayhero on-violet" id="payHero"></div></div>
+      <div class="sec rv"><div class="tiles" id="payTiles"></div></div>
+      <div class="sec rv">
+        <div class="sec-head"><h2>Gaadi se kamai</h2><span class="muted" id="payCarsMeta"></span></div>
+        <div id="payCars"></div>
+      </div>
+      <div class="sec rv">
+        <div class="sec-head"><h2>Extra kaam se</h2><span class="muted" id="payExtraMeta"></span></div>
+        <div id="payExtra"></div>
+      </div>
+      <div class="sec rv">
+        <div class="sec-head"><h2>Aaj ka kaam</h2></div>
+        <div class="tiles" id="tiles"></div>
+      </div>
       <div class="sec rv">
         <div class="sec-head"><h2>Is hafte</h2><span class="muted" id="weekMeta">Gaadi roz</span></div>
         <div class="bars" id="bars"></div>
@@ -593,8 +622,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
   <div class="tabs" id="tabs" role="tablist">
     <span class="tab-ind" id="tabInd"></span>
     <button class="tab on" data-tab="round" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg>Round<span class="badge" id="tabReq" hidden>0</span></button>
-    <button class="tab" data-tab="job" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/></svg>Abhi<span class="live" id="tabLive" hidden></span></button>
-    <button class="tab" data-tab="day" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>Hisaab</button>
+    <button class="tab" data-tab="extra" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>Extra<span class="badge" id="tabExtra" hidden>0</span></button>
+    <button class="tab" data-tab="day" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.8 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/></svg>Paisa</button>
     <button class="tab" data-tab="me" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profile</button>
   </div>
 </nav>
@@ -706,6 +735,16 @@ const ROSTER={
   ],
 };
 Object.values(ROSTER).flat().forEach(c=>{c.reg=normReg(c.plate);c.label=c.make+' '+c.model});
+if(window.WDAuth)Object.keys(ROSTER).forEach(k=>{ROSTER[k]=[]});   // installed app: only the book's cars, never the demo list
+// customers, co-washers and the webhook all feed these screens, so colours, plans and numbers are checked on the way in
+const safeColor=v=>/^#[0-9a-fA-F]{3,8}$/.test(String(v||''))?v:'#8a8f98';
+const numOr=(v,d)=>v!==null&&v!==''&&Number.isFinite(+v)?+v:d;
+function cleanWash(r){r=clone(r||{});r.tasks=Array.isArray(r.tasks)?r.tasks.filter(t=>t&&typeof t==='object'):[];
+  r.photos=Array.isArray(r.photos)?r.photos.filter(p=>p&&typeof p==='object'):[];
+  r.minutes=numOr(r.minutes,null);r.water_litres=numOr(r.water_litres,null);return r}
+function cleanReq(v,id){const q=Object.assign({},v,{id});q.reg=String(q.reg||'');q.kind=String(q.kind||'note');
+  q.text=q.text==null?'':String(q.text);q.created_at=String(q.created_at||'');q.status=String(q.status||'open');
+  q.spots=Array.isArray(q.spots)?q.spots.map(String):[];return q}
 
 /* =====================================================================
    The real round. n8n workflow 9 reads Notion "Monthly Customers" and
@@ -717,10 +756,9 @@ Object.values(ROSTER).flat().forEach(c=>{c.reg=normReg(c.plate);c.label=c.make+'
 const BOOK_URL='https://n8n.washingdaddy.com/webhook/wd-washer-cars';
 const Book={
   state:'loading',               // loading | live | cached | empty | demo
-  setRound(id,cars){
-    const list=cars.map(c=>Object.assign({},c,{reg:normReg(c.plate),label:(c.make?c.make+' ':'')+c.model}));
-    ROSTER[id]=list;return list;
-  },
+  cars:null,                     // the book's own answer, before his own sales are added
+  shape(c){return Object.assign({},c,{reg:normReg(c.plate),color:safeColor(c.color),plan:PLAN[c.plan]?c.plan:'std',fee:numOr(c.fee,null),label:(c.make?c.make+' ':'')+c.model})},
+  setRound(id,cars){this.cars=cars.filter(c=>c&&c.plate&&normReg(c.plate)).map(c=>this.shape(c));return composeRound(id)},
   cacheKey(id){return 'wd_round_'+id},
   readCache(id){try{const r=JSON.parse(localStorage.getItem(this.cacheKey(id))||'null');
     return r&&Array.isArray(r.cars)?r:null}catch(e){return null}},
@@ -732,7 +770,7 @@ const Book={
     const cached=this.readCache(id);
     if(cached){this.setRound(id,cached.cars);this.state='cached';refresh()}
     try{
-      const r=await fetch(BOOK_URL+'?washer='+encodeURIComponent(id),{cache:'no-store'});
+      const r=await fetch(BOOK_URL+'?washer='+encodeURIComponent(id),{cache:'no-store',signal:AbortSignal.timeout?AbortSignal.timeout(15000):undefined});
       const j=await r.json();
       if(!r.ok||!j||j.ok===false||!Array.isArray(j.cars))throw new Error('book');
       this.setRound(id,j.cars);this.writeCache(id,j.cars);
@@ -742,6 +780,83 @@ const Book={
       if(!cached){this.setRound(id,[]);this.state='empty'}
     }
     ensureDay();Sync.listen();refresh();
+  },
+};
+
+/* ---------- cars the washer sold himself, and the extra jobs Ravi gives him ----------
+   A car he adds goes on his round the same morning, marked as waiting for Ravi. It earns
+   him nothing until Ravi approves it, because Ravi is the one who settles the fee. */
+const NewCar={
+  mine:[],                       // newcars docs for this washer
+  shape(d){
+    return {plate:d.plate||d.reg,reg:normReg(d.reg),make:'',model:d.model||'Gaadi',label:d.model||'Gaadi',
+      plan:PLAN[d.plan]?d.plan:'std',type:'suv',color:'#8a8f98',house:d.area||'',spot:'',
+      customer:d.customer_name||'Customer',fee:typeof d.fee==='number'?d.fee:null,
+      mine:true,pending:d.status!=='approved',status:d.status||'pending'};
+  },
+  set(docs){
+    this.mine=docs.filter(d=>d&&d.reg&&normReg(d.reg)&&d.status!=='rejected').map(d=>this.shape(d));
+    composeRound(me().id);
+  },
+};
+// the round the washer walks: the book first, then his own cars the book has not caught up with
+function composeRound(id){
+  const book=Book.cars||[],have=new Set(book.map(c=>c.reg));
+  ROSTER[id]=book.concat(NewCar.mine.filter(c=>!have.has(c.reg)));
+  return ROSTER[id];
+}
+const Extra={
+  jobs:[],                       // ondemand docs for this washer, newest first
+  set(docs){
+    this.jobs=docs.filter(Boolean).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.created_at||'').localeCompare(a.created_at||''));
+  },
+  today(){return this.jobs.filter(j=>j.date===DAY)},
+  open(){return this.jobs.filter(j=>j.status!=='done')},
+  doneOn(day){return this.jobs.filter(j=>j.status==='done'&&(j.finished_at||j.date||'').slice(0,10)===day)},
+  doneIn(month){return this.jobs.filter(j=>j.status==='done'&&(j.finished_at||j.date||'').slice(0,7)===month)},
+  byId(id){return this.jobs.find(j=>j.id===id)||null},
+};
+
+/* ---------- the money: half of what a car pays us is the washer's ---------- */
+const SHARE=0.5;
+const daysInMonth=day=>new Date(Number(day.slice(0,4)),Number(day.slice(5,7)),0).getDate();
+const rupee=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
+const Money={
+  share(fee){return (typeof fee==='number'?fee:0)*SHARE},
+  // a car that Ravi has not approved yet is not counted: he sets the fee
+  earns(c){return c&&!c.pending?this.share(c.fee):0},
+  perDay(c){return this.earns(c)/daysInMonth(DAY)},
+  monthly(){return route().reduce((a,c)=>a+this.earns(c),0)},
+  // what today's finished washes are worth
+  todayWashes(){
+    return route().reduce((a,c)=>{const w=W(c.reg);return a+(w&&w.status==='done'?this.perDay(c):0)},0);
+  },
+  todayExtra(){return Extra.doneOn(DAY).reduce((a,j)=>a+this.share(j.price),0)},
+  today(){return this.todayWashes()+this.todayExtra()},
+  // the month so far, from the wash records this phone has seen
+  monthWashes(){
+    const m=DAY.slice(0,7);let sum=0;
+    Object.entries(Hist.done).forEach(([day,regs])=>{
+      if(day.slice(0,7)!==m)return;
+      const dm=daysInMonth(day);
+      regs.forEach(reg=>{const c=carBy(reg);if(c&&!c.pending)sum+=this.share(c.fee)/dm});
+    });
+    return sum;
+  },
+  monthExtra(){return Extra.doneIn(DAY.slice(0,7)).reduce((a,j)=>a+this.share(j.price),0)},
+  month(){return this.monthWashes()+this.monthExtra()},
+  pending(){return route().filter(c=>c.pending).length},
+};
+// which cars were finished on which day this month, so the month's earnings are real and not guessed
+const Hist={
+  done:{},                       // 'YYYY-MM-DD' -> [reg]
+  add(day,reg){const l=this.done[day]=this.done[day]||[];if(!l.includes(reg))l.push(reg)},
+  fromToday(){Object.values((S.day&&S.day.washes)||{}).forEach(w=>{if(w&&w.status==='done'&&w.date===DAY)this.add(DAY,w.reg)})},
+  async load(){
+    this.done={};this.fromToday();
+    const rows=await Sync.monthDone();
+    if(rows)rows.forEach(w=>this.add(w.date,w.reg));
+    this.fromToday();
   },
 };
 
@@ -852,14 +967,26 @@ const Sync={
     this.unsubs.push(db.collection('washes').where('washer_id','==',id).where('date','==',DAY).onSnapshot(sn=>{
       let ch=false;ensureDay();
       sn.docs.forEach(d=>{const r=d.data();if(!r||!r.reg||!carBy(r.reg))return;if(S.outbox[DAY+'_'+r.reg])return;const l=W(r.reg);
-        if(!l||(r.updated_at||'')>(l.updated_at||'')){S.day.washes[r.reg]=clone(r);ch=true}});
+        if(!l||(r.updated_at||'')>(l.updated_at||'')){S.day.washes[r.reg]=cleanWash(r);ch=true}});
       if(sn.size&&!S.day.started){S.day.started=true;ch=true}
       if(ch){save();refresh()}
     },err));
     // customer requests for the cars on my round (an empty round has nothing to watch)
     if(regs.length)this.unsubs.push(db.collection('requests').where('reg','in',regs.slice(0,30)).onSnapshot(sn=>{
-      const prev=R;R={};sn.docs.forEach(d=>{const v=d.data();if(v)R[d.id]=Object.assign({},v,{id:d.id})});
+      const prev=R;R={};sn.docs.forEach(d=>{const v=d.data();if(v)R[d.id]=cleanReq(v,d.id)});
       if(booted)Object.values(R).forEach(q=>{if(!prev[q.id]&&q.status==='open'){const c=carBy(q.reg);if(c){toast(`Naya: ${c.model} · ${REQ_KIND[q.kind]||'note'}`);haptic([20,60,20])}}});
+      refresh();
+    },err));
+    // the cars he added himself: Ravi may approve one while he is walking
+    this.unsubs.push(db.collection('newcars').where('washer_id','==',id).onSnapshot(sn=>{
+      NewCar.set(sn.docs.map(d=>Object.assign({},d.data(),{reg:d.data()?.reg||d.id})));
+      ensureDay();refresh();
+    },err));
+    // the extra jobs Ravi gives him
+    this.unsubs.push(db.collection('ondemand').where('washer_id','==',id).onSnapshot(sn=>{
+      const was=Extra.open().length;
+      Extra.set(sn.docs.map(d=>Object.assign({id:d.id},d.data())));
+      if(booted&&Extra.open().length>was){toast('Naya extra kaam aaya hai');haptic([20,60,20])}
       refresh();
     },err));
     // today's ratings, one doc per car
@@ -875,17 +1002,31 @@ const Sync={
     try{
       for(let guard=0;guard<50;guard++){
         const key=Object.keys(S.outbox)[0];if(!key)break;const doc=S.outbox[key];
+        // a fresh 'scheduled' doc (new round, reset, new phone) must not wipe a wash the server already has
+        if(doc.status==='scheduled'&&await this.adopt(key))continue;
         try{await this.db.doc('washes/'+key).set(doc)}
         catch(e){
           if(e&&(e.code==='invalid_argument'||e.code==='transform_error')){
-            // the store refused this write for good (no write access, or a bad doc): keep the round local
-            this.ro=true;toast('Is account se customer tak update nahi jaa raha');break}
+            // the store refused this car for good: set it aside, take the server's copy, and keep sending the rest
+            S.rejected=S.rejected||{};S.rejected[key]=doc;delete S.outbox[key];save();await this.adopt(key,true);
+            this.refused=(this.refused||0)+1;
+            if(this.refused>=3){this.ro=true;toast('Is account se customer tak update nahi jaa raha');break}
+            const c=carBy(doc.reg);toast(`${c?c.model:doc.reg}: update nahi gaya, Ravi ko batao`);continue}
           if(e&&e.code==='unavailable'){await new Promise(r=>setTimeout(r,800+Math.random()*800));continue}
           break}
+        this.refused=0;
         if(S.outbox[key]&&S.outbox[key].updated_at===doc.updated_at)delete S.outbox[key];
         save();paintSync();
       }
     }finally{this.flushing=false;paintSync()}
+  },
+  // take the server's copy of a wash when it is further along (or always, after a refused write)
+  async adopt(key,always){
+    try{const g=await this.db.doc('washes/'+key).get();if(!g.exists)return false;const r=g.data();
+      if(!r||(!always&&(r.status||'scheduled')==='scheduled'))return false;
+      delete S.outbox[key];if(key.startsWith(DAY+'_')&&r.reg&&S.day&&S.day.washes)S.day.washes[r.reg]=cleanWash(r);
+      save();refresh();return true}
+    catch(e){return false}
   },
   async setRequest(id,patch){
     const q=R[id];if(!q)return;R[id]=Object.assign({},q,patch);refresh();
@@ -899,6 +1040,31 @@ const Sync={
       catch(e){console.warn('asset upload',e)}
     }
     const url=await toDataURL(bmp,maxBig?240:420,.62);return {url,display:url};
+  },
+  // every wash this washer finished this month, so the month's earnings are counted, not guessed
+  async monthDone(){
+    if(!this.db)return null;
+    const from=DAY.slice(0,8)+'01';
+    try{const sn=await this.db.collection('washes').where('washer_id','==',me().id).where('date','>=',from).get();
+      return sn.docs.map(d=>d.data()).filter(v=>v&&v.status==='done'&&v.reg&&v.date);
+    }catch(e){console.warn(e);return null}
+  },
+  // a car the washer sold himself: his round now, Ravi's approval next
+  async addCar(car){
+    const doc={reg:car.reg,plate:car.plate,model:car.model,area:car.area||'',plan:car.plan||'std',
+      fee:Number(car.fee)||0,customer_name:car.customer_name||'',customer_phone:car.customer_phone||'',
+      note:car.note||'',washer_id:me().id,added_by:(window.WDAuth&&window.WDAuth.phone())||'',
+      status:'pending',created_at:isoIST(),updated_at:isoIST()};
+    if(!this.db){NewCar.set(NewCar.mine.map(c=>({reg:c.reg,plate:c.plate,model:c.model,area:c.house,plan:c.plan,fee:c.fee,customer_name:c.customer,status:c.status})).concat([doc]));return {local:true}}
+    await this.db.doc('newcars/'+doc.reg).set(doc);
+    return {local:false};
+  },
+  async extraSet(id,patch){
+    const j=Extra.byId(id);if(!j)return;
+    Object.assign(j,patch);refresh();
+    if(!this.db)return;
+    try{await this.db.doc('ondemand/'+id).update(Object.assign({updated_at:isoIST()},patch))}
+    catch(e){console.warn(e);toast('Nahi gaya. Internet dekh ke dobara try karo.')}
   },
   async weekCounts(){
     const from=addDaysStr(DAY,-6),out={};
@@ -1106,10 +1272,14 @@ async function renderDay(){
   const mins=done.map(w=>w.minutes).filter(x=>x!=null),avg=mins.length?Math.round(mins.reduce((a,b)=>a+b,0)/mins.length):0;
   const litres=done.reduce((a,w)=>a+(w.water_litres||0),0),photos=ws.reduce((a,w)=>a+w.photos.length,0);
   const rated=route().map(c=>RT[c.reg]).filter(Boolean),ravg=rated.length?(rated.reduce((a,b)=>a+b,0)/rated.length):0;
-  $('#dayHero').innerHTML=`<div class="ring" id="dayRing">${RING}<div class="lbl"><div><b class="num" id="dayN">0</b><small>/${cn.total} gaadi</small></div></div></div>
-    <div style="position:relative;z-index:1"><div class="eyebrow">${cn.done===cn.total?'Round poora':'Ab tak'}</div><div style="font-size:24px;font-weight:800;line-height:1.15;margin-top:4px">${cn.done===cn.total?'Kya baat hai!':cn.done?'Badhiya chal raha hai':'Chalo shuru karein'}</div>
-    <div style="font-size:14px;font-weight:600;color:var(--fg-2);margin-top:4px">${S.day.startedAt?'Shuru '+t12(S.day.startedAt):'Round shuru nahi hua'}${done.length?' · aakhri '+t12(done.map(w=>w.finished_at).sort().at(-1)):''}${cn.skipped?` · ${cn.skipped} skip`:''}</div></div>`;
+  $('#payHero').innerHTML=`<div class="ring" id="dayRing">${RING}<div class="lbl"><div><b class="num" id="dayN">0</b><small>/${cn.total} gaadi</small></div></div></div>
+    <div style="position:relative;z-index:1"><div class="eyebrow">${cn.done===cn.total?'Round poora':'Aaj ki kamai'}</div><div style="font-size:28px;font-weight:800;line-height:1.1;margin-top:4px">${rupee(Money.today())}</div>
+    <div style="font-size:14px;font-weight:600;color:var(--fg-2);margin-top:4px">${cn.done} gaadi dhoyi${Extra.doneOn(DAY).length?` · ${Extra.doneOn(DAY).length} extra kaam`:''}${S.day.startedAt?' · shuru '+t12(S.day.startedAt):''}</div></div>`;
   ring($('#dayRing'),cn.total?cn.done/cn.total:0);countUp($('#dayN'),cn.done,1200);
+  renderPay();
+  Hist.fromToday();
+  if(renderDay._hist!==DAY+'|'+cn.done){renderDay._hist=DAY+'|'+cn.done;
+    Hist.load().then(()=>{if($('#s-day').classList.contains('on'))renderPay()})}
   const tile=(ic,v,unit,l,id)=>`<div class="tile"><div class="ti">${ic}</div><div class="tv num"><span id="${id}">0</span><small>${unit}</small></div><div class="tl">${l}</div></div>`;
   $('#tiles').innerHTML=tile('⏱️',avg,'min','Ek gaadi ka average','tA')+tile('💧',litres,'L','Paani lagaya','tL')+tile('📸',photos,'','Photo bheji','tP')+tile('⭐',ravg,rated.length?`/5 · ${rated.length}`:'','Customer rating','tR');
   countUp($('#tA'),avg);countUp($('#tL'),litres);countUp($('#tP'),photos);countUp($('#tR'),ravg,1100,v=>ravg?v.toFixed(1):'–');
@@ -1129,6 +1299,53 @@ async function renderDay(){
   S.hist=S.hist||{};S.hist[DAY]=cn.done;save();
 }
 
+/* ---------- the money: his half, car by car ---------- */
+function renderPay(){
+  const cars=route(),paid=cars.filter(c=>!c.pending),pend=cars.filter(c=>c.pending);
+  const tile=(ic,v,unit,l)=>`<div class="tile"><div class="ti">${ic}</div><div class="tv num"><span>${v}</span><small>${unit}</small></div><div class="tl">${l}</div></div>`;
+  $('#payTiles').innerHTML=
+    tile('💰',rupee(Money.today()),'','Aaj')+
+    tile('📆',rupee(Money.month()),'','Is mahine ab tak')+
+    tile('🎯',rupee(Money.monthly()),'/mahina','Poora mahina chale to')+
+    tile('✨',rupee(Money.monthExtra()),'','Extra kaam se');
+  $('#payCarsMeta').textContent=`${paid.length} gaadi · aadha aapka`;
+  const row=c=>{const w=W(c.reg),dn=w&&w.status==='done';
+    return `<div class="row"><span class="rt"><b>${esc(c.model)}${c.mine?' <span class="xchip">meri sale</span>':''}</b><small>${esc(c.plate)}${c.pending?' · Ravi ki manzoori baaki':typeof c.fee==='number'&&c.fee?` · gaadi ${rupee(c.fee)}/mahina`:' · fee book mein nahi hai'}</small></span>
+      <span style="text-align:right"><b class="num">${c.pending?'—':rupee(Money.earns(c))}</b><small style="display:block;color:var(--fg-2);font-weight:600">${c.pending?'manzoori ke baad':`${rupee(Money.perDay(c))} roz${dn?' · aaj mila':''}`}</small></span></div>`};
+  $('#payCars').innerHTML=cars.length?`<div class="rows">${paid.map(row).join('')+pend.map(row).join('')}</div>`
+    :`<div class="empty"><b>Koi gaadi nahi</b>Round aayega to kamai yahan dikhegi.</div>`;
+  const ex=Extra.doneIn(DAY.slice(0,7));
+  $('#payExtraMeta').textContent=ex.length?`${ex.length} kaam is mahine`:'';
+  $('#payExtra').innerHTML=ex.length?`<div class="rows">${ex.map(j=>`<div class="row"><span class="rt"><b>${esc(j.service||'Extra kaam')}</b><small>${esc(j.car||j.reg||'')} · ${esc((j.finished_at||j.date||'').slice(0,10))}</small></span><span style="text-align:right"><b class="num">${rupee(Money.share(j.price))}</b><small style="display:block;color:var(--fg-2);font-weight:600">kaam ${rupee(j.price)}</small></span></div>`).join('')}</div>`
+    :`<div class="empty"><b>Abhi koi extra kaam nahi</b>Ravi jo extra kaam denge, uska aadha aapka.</div>`;
+}
+
+/* ---------- extra (on-demand) work ---------- */
+const EX_STEP={offered:'Shuru karo',doing:'Photo ke baad khatam',done:'Ho gaya'};
+function renderExtra(){
+  const open=Extra.open(),done=Extra.jobs.filter(j=>j.status==='done');
+  $('#extraMeta').textContent=open.length?`${open.length} kaam baaki`:'Sab ho gaya';
+  const card=j=>{
+    const shot=!!j.photo;
+    const act=j.status==='done'
+      ? `<div class="demo-note">Ho gaya ${esc((j.finished_at||'').slice(11,16))} · aapke ${rupee(Money.share(j.price))}</div>`
+      : j.status==='doing'
+        ? (shot?`<button class="btn mint" data-act="exDone" data-arg="${esc(j.id)}">Kaam khatam karo</button>`
+               :`<button class="btn violet" data-act="exPhoto" data-arg="${esc(j.id)}">Kaam ki photo lo</button><div class="demo-note">Photo ke bina kaam band nahi hoga</div><button class="btn ghost" style="margin-top:10px;opacity:.55" data-act="exNeedPhoto">Kaam khatam karo</button>`)
+        : `<button class="btn violet" data-act="exStart" data-arg="${esc(j.id)}">Shuru karo</button>`;
+    return `<div class="sec" style="margin-bottom:14px"><div class="sec-head"><h2>${esc(j.service||'Extra kaam')}</h2><span class="muted">${rupee(j.price)} · aapke ${rupee(Money.share(j.price))}</span></div>
+      <div class="where">${I.pin}<span>${esc(j.car||j.reg||'Gaadi')}${j.area?' · '+esc(j.area):''}${j.customer_name?' · '+esc(j.customer_name):''}</span></div>
+      ${j.note?`<div class="demo-note">${esc(j.note)}</div>`:''}
+      ${j.photo?`<img class="bigimg" src="${esc(j.photo)}" alt="Kaam ki photo" style="margin:10px 0">`:''}
+      ${act}</div>`;
+  };
+  $('#extraOpen').innerHTML=open.length?open.map(card).join('')
+    :`<div class="empty"><b>Abhi koi extra kaam nahi</b>Ravi jo extra kaam denge woh yahan aayega. Uska aadha aapka.</div>`;
+  $('#extraDoneMeta').textContent=done.length?`${rupee(done.reduce((a,j)=>a+Money.share(j.price),0))} ab tak`:'';
+  $('#extraDone').innerHTML=done.length?`<div class="rows">${done.slice(0,20).map(j=>`<div class="row"><span class="rt"><b>${esc(j.service||'Extra kaam')}</b><small>${esc(j.car||j.reg||'')} · ${esc((j.finished_at||j.date||'').slice(0,10))}</small></span><b class="num">${rupee(Money.share(j.price))}</b></div>`).join('')}</div>`
+    :`<div class="empty"><b>Abhi kuch nahi</b>Jo extra kaam khatam karoge woh yahan jama hoga.</div>`;
+}
+
 /* ---------- profile ---------- */
 function renderMe(){
   const w=me(),av=avatarSrc(),sf=myPhoto();
@@ -1144,7 +1361,7 @@ function renderMe(){
 }
 
 /* ---------- shell ---------- */
-const ORDER=['round','job','day','me'];let current='round',booted=false;
+const ORDER=['round','job','extra','day','me'];let current='round',booted=false;
 function moveInd(){const on=$('.tab.on'),ind=$('#tabInd');if(!on||!on.offsetWidth)return;ind.style.left=on.offsetLeft+'px';ind.style.width=on.offsetWidth+'px'}
 function go(t){
   const back=ORDER.indexOf(t)<ORDER.indexOf(current);current=t;
@@ -1153,7 +1370,7 @@ function go(t){
   renderScreen(t);prepReveal(sc);
   if(t!=='job')stopSpray();
 }
-function renderScreen(t){({round:renderRound,job:renderJob,day:renderDay,me:renderMe})[t]()}
+function renderScreen(t){({round:renderRound,job:renderJob,extra:renderExtra,day:renderDay,me:renderMe})[t]()}
 let refreshT=0;
 function refresh(soft){ // re-render the visible screen after state changes, coalesced
   clearTimeout(refreshT);refreshT=setTimeout(()=>{
@@ -1162,7 +1379,8 @@ function refresh(soft){ // re-render the visible screen after state changes, coa
 }
 function paintBadges(){
   const n=route().reduce((a,c)=>a+openReqs(c.reg).filter(q=>q.status==='open').length,0),b=$('#tabReq');b.hidden=!n;b.textContent=n;
-  $('#tabLive').hidden=!(S.day&&route().some(c=>W(c.reg)?.status==='washing'));
+  const live=$('#tabLive');if(live)live.hidden=!(S.day&&route().some(c=>W(c.reg)?.status==='washing'));
+  const x=Extra.open().length,xb=$('#tabExtra');if(xb){xb.hidden=!x;xb.textContent=x}
 }
 function prepReveal(scope){if(RM||!('IntersectionObserver' in window))return;
   const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.remove('pre');io.unobserve(e.target)}}),{threshold:.1});
@@ -1219,6 +1437,55 @@ const ACT={
     closeSheet();haptic(14);Route.retime();toast('Skip kiya. Customer ko wajah dikh rahi hai');refresh()},
   unskip(){mutate(S.current,d=>{d.status=d.arrived_at?'arrived':'scheduled';d.skip_reason=null});refresh()},
   needPhoto(){toast('Pehle gaadi ki photo lo, phir wash band hogi');haptic(14)},
+  /* ---------- a car the washer sold himself ---------- */
+  addCar(){
+    const plans=Object.keys(PLAN);
+    openSheet(`<h3>Nayi gaadi add karo</h3><p class="sub">Aaj se aapke round pe aa jayegi. Ravi manzoori denge aur book mein daalenge.</p>
+      <div class="eyebrow">Gaadi</div><input id="acModel" class="jfield" maxlength="60" placeholder="Jaise: Swift">
+      <div class="eyebrow" style="margin-top:10px">Gaadi ka number</div><input id="acPlate" class="jfield" maxlength="20" placeholder="DL 8C AB 1234">
+      <div class="eyebrow" style="margin-top:10px">Ghar / area</div><input id="acArea" class="jfield" maxlength="80" placeholder="GH-9, 212">
+      <div class="eyebrow" style="margin-top:10px">Customer</div><input id="acName" class="jfield" maxlength="80" placeholder="Naam">
+      <input id="acPhone" class="jfield" inputmode="numeric" maxlength="10" placeholder="Phone (10 number)" style="margin-top:8px">
+      <div class="eyebrow" style="margin-top:10px">Plan</div>
+      <div class="jchips" id="acPlan">${plans.map((k,i)=>`<button type="button" data-v="${k}" class="${i===1?'on':''}">${PLAN[k].name}</button>`).join('')}</div>
+      <div class="eyebrow" style="margin-top:10px">Mahine ka kitna tay hua?</div>
+      <div class="stepperN"><button id="acM" aria-label="Kam">−</button><div class="sv num">₹<span id="acFee">1000</span><small>mahina</small></div><button id="acP" aria-label="Zyada">+</button></div>
+      <div class="demo-note" id="acShare"></div>
+      <div class="err" id="acErr"></div>
+      <button class="btn violet" id="acGo">Round pe daalo</button>
+      <button class="linkbtn" data-act="close">Rehne do</button>`,()=>{
+      let plan='std',fee=1000;
+      const shareLine=()=>{$('#acShare').textContent=`Aapka aadha: ${rupee(fee*SHARE)} mahina, ${rupee(fee*SHARE/daysInMonth(DAY))} roz. Ravi ki manzoori ke baad ginna shuru hoga.`};
+      shareLine();
+      chipPick('#acPlan',false,b=>{plan=b.dataset.v});
+      const setFee=v=>{fee=Math.max(0,Math.min(20000,v));$('#acFee').textContent=fee;shareLine()};
+      $('#acM').onclick=()=>{setFee(fee-100);haptic(4)};$('#acP').onclick=()=>{setFee(fee+100);haptic(4)};
+      $('#acGo').onclick=async()=>{
+        const model=$('#acModel').value.trim(),plate=$('#acPlate').value.trim().toUpperCase();
+        const reg=normReg(plate),area=$('#acArea').value.trim();
+        const phone=$('#acPhone').value.replace(/\D/g,'');
+        const err=m=>{$('#acErr').textContent=m;haptic(14)};
+        if(!model)return err('Gaadi ka naam likho');
+        if(reg.length<4)return err('Poora number daalo');
+        if(route().some(c=>c.reg===reg))return err('Yeh gaadi pehle se round pe hai');
+        if(phone&&phone.length!==10)return err('Phone 10 number ka hota hai');
+        const b=$('#acGo');b.disabled=true;b.textContent='Daal raha hoon…';
+        try{
+          await Sync.addCar({reg,plate,model,area,plan,fee,customer_name:$('#acName').value.trim(),customer_phone:phone?'+91'+phone:''});
+          closeSheet();haptic([20,50,20]);confetti(.5);
+          toast('Gaadi round pe aa gayi. Ravi ko bhej diya');
+          renderRound._did=false;go('round');
+        }catch(e){console.warn(e);b.disabled=false;b.textContent='Round pe daalo';err('Nahi gayi. Internet dekh ke dobara try karo.')}
+      };
+    })},
+  /* ---------- extra (on-demand) work: same three steps, its own photo ---------- */
+  exStart(id){Sync.extraSet(id,{status:'doing',started_at:isoIST()});haptic([20,40,20]);toast('Shuru. Ab kaam ki photo lo')},
+  exNeedPhoto(){toast('Pehle kaam ki photo lo, phir kaam band hoga');haptic(14)},
+  exPhoto(id){camFor={extra:id};const i=$('#camIn');i.value='';i.click()},
+  exDone(id){const j=Extra.byId(id);if(!j)return;
+    if(!j.photo){ACT.exNeedPhoto();return}
+    Sync.extraSet(id,{status:'done',finished_at:isoIST()});haptic([20,40,20,40,60]);confetti(.6);
+    toast(`Ho gaya. Aapke ${rupee(Money.share(j.price))}`)},
   finish(){const reg=S.current,wd=W(reg),c=carBy(reg);if(!wd)return;
     if(!wd.photos.some(p=>p.kind==='after')){ACT.needPhoto();return}   // the photo is the gate
     const litres=wd.tasks.reduce((a,t)=>a+(t.done?TASK[t.key].litres:0),0)||TASK.pressure.litres;
@@ -1236,7 +1503,7 @@ const ACT={
   logout(){openSheet(`<h3>Log out?</h3><p class="sub">${Object.keys(S.outbox).length?'Kuch update abhi bheje nahi gaye. Log out karne pe bhi phone pe rahenge.':'Aaj ka round is phone pe safe rahega.'}</p><button class="btn ink" id="lGo">Log out</button><button class="linkbtn" data-act="close">Rehne do</button>`,()=>{
     $('#lGo').onclick=()=>{S.session=null;save();Sync.stop();closeSheet();if(REAL){stopWatch();window.WDAuth.signOut()}showAuth()}})},
 };
-function startRoundAction(){Route.start();haptic([20,50,20]);confetti(.6);toast(`Round shuru! ${route().length} customers ko time chala gaya`);renderRound._did=false;refresh();Sync.listen()}
+function startRoundAction(){if(REAL&&Book.state==='loading'){toast('Gaadiyon ki list aa rahi hai, ek minute ruko');refresh();return}Route.start();haptic([20,50,20]);confetti(.6);toast(`Round shuru! ${route().length} customers ko time chala gaya`);renderRound._did=false;refresh();Sync.listen()}
 const SLIDE_DONE={
   startRound:startRoundAction,
   startWash(){const reg=S.current;mutate(reg,d=>{d.status='washing';d.started_at=isoIST();if(!d.arrived_at)d.arrived_at=d.started_at});haptic([20,40,20]);scrollTo({top:0,behavior:RM?"auto":"smooth"});sprayBurst();toast(`Timer chalu · ${carBy(reg).customer} ko "Wash chal raha" dikh raha hai`);refresh()},
@@ -1252,8 +1519,15 @@ document.addEventListener('click',e=>{
 
 /* ---------- photo capture ---------- */
 $('#camIn').addEventListener('change',async e=>{
-  const f=e.target.files&&e.target.files[0];if(!f||!camFor)return;const{reg,kind}=camFor;camFor=null;
+  const f=e.target.files&&e.target.files[0];if(!f||!camFor)return;const{reg,kind,extra}=camFor;camFor=null;
   const fl=$('#flash');fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');haptic(20);closeSheet();
+  if(extra){   // an extra job keeps its one photo on its own doc
+    try{const r=await Sync.uploadPhoto(f);
+      await Sync.extraSet(extra,{photo:r.url||r.display,photo_at:isoIST()});
+      toast('Photo lag gayi. Ab kaam khatam karo');
+    }catch(err){console.warn(err);toast('Photo nahi gayi. Dobara try karo')}
+    return;
+  }
   const local=URL.createObjectURL(f);(pending[reg]=pending[reg]||[]).push({kind,display:local});if(current==='job')renderPhotos(reg);
   try{const r=await Sync.uploadPhoto(f);const at=isoIST();
     mutate(reg,d=>{if(d.photos.length>=8)d.photos.shift();d.photos.push(Object.assign({kind,at},r.asset_id?{asset_id:r.asset_id}:{url:r.url}))});
@@ -1427,6 +1701,58 @@ addEventListener('scroll',()=>{const y=scrollY>8;$$('[data-bar]').forEach(b=>b.c
    and remembers each original so switching back is exact. Car names, plates, plans,
    areas and people's names are data: they are never touched. */
 const HI = {
+  "Nayi gaadi add karo":"नई गाड़ी जोड़ो",
+  "+ Nayi gaadi add karo":"+ नई गाड़ी जोड़ो",
+  "Naya customer mila? Gaadi yahan add karo, aaj se dhona shuru. Ravi manzoori denge.":"नया कस्टमर मिला? गाड़ी यहाँ जोड़ो, आज से धोना शुरू. रवि मंज़ूरी देंगे.",
+  "Aaj se aapke round pe aa jayegi. Ravi manzoori denge aur book mein daalenge.":"आज से आपके राउंड पे आ जाएगी. रवि मंज़ूरी देंगे और बुक में डालेंगे.",
+  "Gaadi ka number":"गाड़ी का नंबर",
+  "Ghar / area":"घर / एरिया",
+  "Customer":"कस्टमर",
+  "Naam":"नाम",
+  "Phone (10 number)":"फ़ोन (10 नंबर)",
+  "Plan":"प्लान",
+  "Mahine ka kitna tay hua?":"महीने का कितना तय हुआ?",
+  "mahina":"महीना",
+  "Round pe daalo":"राउंड पे डालो",
+  "Daal raha hoon…":"डाल रहा हूँ…",
+  "Gaadi ka naam likho":"गाड़ी का नाम लिखो",
+  "Poora number daalo":"पूरा नंबर डालो",
+  "Yeh gaadi pehle se round pe hai":"यह गाड़ी पहले से राउंड पे है",
+  "Phone 10 number ka hota hai":"फ़ोन 10 नंबर का होता है",
+  "Gaadi round pe aa gayi. Ravi ko bhej diya":"गाड़ी राउंड पे आ गई. रवि को भेज दिया",
+  "Nahi gayi. Internet dekh ke dobara try karo.":"नहीं गई. इंटरनेट देख के दोबारा कोशिश करो.",
+  "Ravi ki manzoori baaki":"रवि की मंज़ूरी बाकी",
+  "meri sale":"मेरी सेल",
+  "manzoori ke baad":"मंज़ूरी के बाद",
+  "fee book mein nahi hai":"फ़ीस बुक में नहीं है",
+  "Extra":"एक्स्ट्रा",
+  "Extra kaam":"एक्स्ट्रा काम",
+  "kaam.":"काम.",
+  "Ho gaye":"हो गए",
+  "Sab ho gaya":"सब हो गया",
+  "Shuru karo":"शुरू करो",
+  "Kaam ki photo lo":"काम की फोटो लो",
+  "Kaam khatam karo":"काम ख़त्म करो",
+  "Photo ke bina kaam band nahi hoga":"फोटो के बिना काम बंद नहीं होगा",
+  "Pehle kaam ki photo lo, phir kaam band hoga":"पहले काम की फोटो लो, फिर काम बंद होगा",
+  "Shuru. Ab kaam ki photo lo":"शुरू. अब काम की फोटो लो",
+  "Photo lag gayi. Ab kaam khatam karo":"फोटो लग गई. अब काम ख़त्म करो",
+  "Naya extra kaam aaya hai":"नया एक्स्ट्रा काम आया है",
+  "Abhi koi extra kaam nahi":"अभी कोई एक्स्ट्रा काम नहीं",
+  "Ravi jo extra kaam denge woh yahan aayega. Uska aadha aapka.":"रवि जो एक्स्ट्रा काम देंगे वो यहाँ आएगा. उसका आधा आपका.",
+  "Ravi jo extra kaam denge, uska aadha aapka.":"रवि जो एक्स्ट्रा काम देंगे, उसका आधा आपका.",
+  "Jo extra kaam khatam karoge woh yahan jama hoga.":"जो एक्स्ट्रा काम ख़त्म करोगे वो यहाँ जमा होगा.",
+  "Kaam ki photo":"काम की फोटो",
+  "Paisa":"पैसा",
+  "kamai.":"कमाई.",
+  "Aaj ki kamai":"आज की कमाई",
+  "Gaadi se kamai":"गाड़ी से कमाई",
+  "Extra kaam se":"एक्स्ट्रा काम से",
+  "Aaj ka kaam":"आज का काम",
+  "Is mahine ab tak":"इस महीने अब तक",
+  "Poora mahina chale to":"पूरा महीना चले तो",
+  "/mahina":"/महीना",
+  "Round aayega to kamai yahan dikhegi.":"राउंड आएगा तो कमाई यहाँ दिखेगी.",
   "WASH TIME":"वॉश टाइम",
   "Subah":"सुबह",
   "ka hero":"का हीरो",
@@ -1654,6 +1980,21 @@ const HI = {
   "· wash shuru hone pe tick karo":"· वॉश शुरू होने पे टिक करो"
 };
 const HI_PATTERNS = [
+  [/^Aapka aadha: ₹([\d,]+) mahina, ₹([\d,]+) roz\. Ravi ki manzoori ke baad ginna shuru hoga\.$/, 'आपका आधा: ₹$1 महीना, ₹$2 रोज़. रवि की मंज़ूरी के बाद गिनना शुरू होगा.'],
+  [/^(\d+) kaam baaki$/, '$1 काम बाकी'],
+  [/^shuru (.+)$/, 'शुरू $1'],
+  [/^(\d+) kaam is mahine$/, '$1 काम इस महीने'],
+  [/^(\d+) gaadi · aadha aapka$/, '$1 गाड़ी · आधा आपका'],
+  [/^(\d+) gaadi dhoyi · (\d+) extra kaam$/, '$1 गाड़ी धोई · $2 एक्स्ट्रा काम'],
+  [/^(\d+) gaadi dhoyi$/, '$1 गाड़ी धोई'],
+  [/^gaadi ₹([\d,]+)\/mahina$/, 'गाड़ी ₹$1/महीना'],
+  [/^₹([\d,]+) roz · aaj mila$/, '₹$1 रोज़ · आज मिला'],
+  [/^₹([\d,]+) roz$/, '₹$1 रोज़'],
+  [/^₹([\d,]+) ab tak$/, '₹$1 अब तक'],
+  [/^kaam ₹([\d,]+)$/, 'काम ₹$1'],
+  [/^Ho gaya ([\d:]+) · aapke ₹([\d,]+)$/, 'हो गया $1 · आपके ₹$2'],
+  [/^Ho gaya\. Aapke ₹([\d,]+)$/, 'हो गया. आपके ₹$1'],
+  [/^₹([\d,]+) · aapke ₹([\d,]+)$/, '₹$1 · आपके ₹$2'],
   [/^Jaise: (.+)$/, 'जैसे: $1'],
   [/^(\d+)\/(\d+) gaadi$/, '$1/$2 गाड़ी'],
   [/^\/(\d+) gaadi$/, '/$1 गाड़ी'],

@@ -940,6 +940,7 @@ function sampleAccount(){return {
 // Washes run on IST, whatever the phone's time zone: TODAY is the IST calendar date, held as a local midnight
 const istNow=()=>new Date(Date.now()+5.5*3600e3);
 const TODAY=(()=>{const n=istNow();return new Date(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate())})();
+setInterval(()=>{const n=istNow();if(n.getUTCDate()!==TODAY.getDate()&&!document.querySelector('.sheet.on,.sheet.open'))location.reload()},60000);
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const parse=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
@@ -952,7 +953,7 @@ load();
 // older saves showed masked plates; keep the full number and mask it only on screen
 if(S.acct)S.acct.cars.forEach(c=>{if(c.plate==='DL 4C •• 2731')c.plate='DL 4C AB 2731';if(c.plate==='DL 3C •• 0419'||c.plate==='DL 3C AF 0419')c.plate='DL 3C BK 0419'});
 const maskPlate=p=>String(p).replace(/^([A-Z]{2}\s?\d{1,2}\s?[A-Z]{0,1})\s?([A-Z]{1,3})\s?(\d{1,4})$/i,(m,a,b,c)=>`${a.trim()} •• ${c}`);
-const regOf=c=>String(c.plate).replace(/\s+/g,'').toUpperCase();
+const regOf=c=>String(c.plate).toUpperCase().replace(/[^A-Z0-9]/g,'');
 const A=()=>S.acct, car=()=>A().cars[Math.min(S.carIdx,A().cars.length-1)], planOf=c=>PLANS.find(p=>p.id===c.plan);
 
 /* ---------- helpers ---------- */
@@ -1163,12 +1164,15 @@ const hm=v=>{if(!v)return null;v=String(v);const m=v.match(/T(\d{2}:\d{2})/)||v.
 const ampm=t=>{if(!t)return '';const [h,m]=t.split(':').map(Number);return `${h%12||12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`};
 let DB=null,SYNC='test',SIM=null,DOCS={},REMOTE={},REQS={},subFor=null,unsubs=[];
 // Contract doc -> what this screen draws. Field renames from the washer side are absorbed here.
-function fromContract(r){r=r||{};return {date:r.date,reg:r.reg,car_label:r.car_label,washer:r.washer||{},status:STAGES.includes(r.status)||r.status==='skipped'?r.status:'scheduled',
+// washers write these docs, so only our own image addresses and plain text get through to the screen
+const safeImg=u=>typeof u==='string'&&(/^\/_blob\/[A-Za-z0-9_-]{1,128}$/.test(u)||/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+\/=]+$/.test(u))?u:null;
+const numOrNull=v=>Number.isFinite(+v)&&v!==null&&v!==''?Math.round(+v):null;
+function fromContract(r){r=r||{};const w=r.washer||{};return {date:r.date,reg:r.reg,car_label:r.car_label,washer:{id:String(w.id||''),name:String(w.name||''),photo_url:safeImg(w.photo_url)||undefined},status:STAGES.includes(r.status)||r.status==='skipped'?r.status:'scheduled',
   eta:hm(r.eta),on_the_way_at:hm(r.on_the_way_at),arrived_at:hm(r.arrived_at),started_at:hm(r.started_at),finished_at:hm(r.finished_at),
-  minutes:r.minutes??(r.started_at&&r.finished_at?t2m(hm(r.finished_at))-t2m(hm(r.started_at)):null),
-  tasks:(r.tasks||[]).map(t=>({key:t.key,label:t.label||TASK_LABEL[t.key]||t.key,done:!!t.done,done_at:hm(t.done_at)})),
-  photos:(r.photos||[]).map(p=>({kind:p.kind,src:p.asset_id?'/_blob/'+p.asset_id:(p.url||null)})).filter(p=>p.src),
-  water_litres:r.water_litres??null,washer_note:r.washer_note||'',skip_reason:r.skip_reason||'',customer_note_seen:!!r.customer_note_seen,remote:true}}
+  minutes:numOrNull(r.minutes??(r.started_at&&r.finished_at?t2m(hm(r.finished_at))-t2m(hm(r.started_at)):null)),
+  tasks:(Array.isArray(r.tasks)?r.tasks:[]).map(t=>({key:String(t.key),label:TASK_LABEL[t.key]||esc(t.label||t.key),done:!!t.done,done_at:hm(t.done_at)})),
+  photos:(Array.isArray(r.photos)?r.photos:[]).map(p=>({kind:p.kind,src:safeImg(p.asset_id?'/_blob/'+p.asset_id:p.url)})).filter(p=>p.src),
+  water_litres:numOrNull(r.water_litres),washer_note:r.washer_note||'',skip_reason:r.skip_reason||'',customer_note_seen:!!r.customer_note_seen,remote:true}}
 function planTasks(c,d){const w=extras(c,d);return ['pressure',...w.map(k=>KEYMAP[k]),'dry']}
 function makeDoc(c){
   const base={date:iso(TODAY),reg:regOf(c),car_label:c.name,washer:{name:c.washer},photos:[]};
@@ -1215,8 +1219,10 @@ let lastStatus={};
 function toastStatus(id){const d=doc(car()),k=d.status+'|'+d.tasks.filter(t=>t.done).length;if(lastStatus[id]&&lastStatus[id]!==k&&d.remote){toast(chipText(car(),d));haptic();if(d.status==='done')confetti()}lastStatus[id]=k}
 async function sendRequest(body){
   if(!DB){await wait(500);return {ok:true}}
-  try{await DB.collection('requests').doc().set({...body,created_at:nowIST(),status:'open'});return {ok:true}}
-  catch(e){return {ok:true,queued:true}}}
+  const w=DB.collection('requests').doc().set({...body,created_at:nowIST(),status:'open'});
+  try{return await Promise.race([w.then(()=>({ok:true})),wait(5000).then(()=>({ok:true,queued:true}))])}
+  catch(e){console.warn('request',e);return {ok:false}}}
+const sendFailed=(undo)=>{undo&&undo();toast("That didn't go through. Call or WhatsApp us on 77018 08924.")};
 function renderLiveBits(){renderHero();renderBanners();renderRitual();renderLive();renderLiveDot()}
 function renderLiveDot(){const d=doc(car());$('#liveDot').hidden=!activeStage(d)}
 
@@ -1543,14 +1549,14 @@ const ACT={
       <div class="confirm" id="pzSum"></div><button class="btn violet" id="pzGo">Pause washes</button>`,()=>{
       const sum=()=>{$('#pzSum').innerHTML=`<div class="cv"><small>No washes</small><b>${fmt(addDays(TODAY,1))} – ${fmt(addDays(TODAY,days))}</b></div><span>·</span><div class="cv"><small>Plan now ends</small><b style="color:var(--accent)">${c.till?fmt(addDays(parse(c.till),days)):'–'}</b></div>`};
       sum();segPick('#pz',b=>{days=+b.dataset.v;sum()});
-      $('#pzGo').onclick=async e=>{busy(e.currentTarget,'Telling '+c.washer+'…');c.paused={from:iso(addDays(TODAY,1)),to:iso(addDays(TODAY,days))};await API.pause(c,c.paused.from,c.paused.to);if(c.till)c.till=iso(addDays(parse(c.till),days));save();renderAll();success('Paused',`No washes till ${fmt(c.paused.to)}. ${c.washer} has been told.`)}})},
+      $('#pzGo').onclick=async e=>{const undo=busy(e.currentTarget,'Telling '+c.washer+'…');const pz={from:iso(addDays(TODAY,1)),to:iso(addDays(TODAY,days))};if(!(await API.pause(c,pz.from,pz.to)).ok)return sendFailed(undo);c.paused=pz;if(c.till)c.till=iso(addDays(parse(c.till),days));save();renderAll();success('Paused',`No washes till ${fmt(c.paused.to)}. ${c.washer} has been told.`)}})},
   async resume(){const c=car();if(!c.paused)return;const unused=Math.max(0,Math.round((parse(c.paused.to)-Math.max(TODAY,addDays(parse(c.paused.from),-1)))/864e5));
-    await API.pause(c,null,null);if(c.till)c.till=iso(addDays(parse(c.till),-unused));c.paused=null;save();renderAll();toast(`Washes resume tomorrow. ${c.washer} has been told.`)},
-  note(){const c=car();openSheet(`<h3>Note for ${c.washer}</h3><p class="sub">He sees it on tomorrow's round, in Hinglish.</p><label for="noteTxt" class="eyebrow">Your note</label><textarea id="noteTxt" class="field" rows="3" style="resize:none" placeholder="e.g. Please do the boot area too">${esc(c.note||'')}</textarea>
+    if(!(await API.pause(c,null,null)).ok)return sendFailed();if(c.till)c.till=iso(addDays(parse(c.till),-unused));c.paused=null;save();renderAll();toast(`Washes resume tomorrow. ${c.washer} has been told.`)},
+  note(){const c=car();openSheet(`<h3>Note for ${c.washer}</h3><p class="sub">He sees it on tomorrow's round, in Hinglish.</p><label for="noteTxt" class="eyebrow">Your note</label><textarea id="noteTxt" class="field" rows="3" maxlength="1000" style="resize:none" placeholder="e.g. Please do the boot area too">${esc(c.note||'')}</textarea>
       <div class="chips" id="noteQuick"><button>Car is in the basement</button><button>Skip tomorrow</button><button>Extra interior please</button><button>Clean the boot</button></div>
       <button class="btn violet" id="noteGo">Send to ${c.washer}</button>${c.note?'<button class="btn ghost" id="noteDel" style="margin-top:8px">Remove note</button>':''}`,()=>{
       $$('#noteQuick button').forEach(b=>b.onclick=()=>{const t=$('#noteTxt');t.value=(t.value?t.value.trim()+'. ':'')+b.textContent;t.focus()});
-      $('#noteGo').onclick=async e=>{const v=$('#noteTxt').value.trim();if(!v){$('#noteTxt').focus();return}busy(e.currentTarget,'Sending…');await API.note(c,v);c.note=v;save();closeSheet();renderBanners();toast('Note sent to '+c.washer)};
+      $('#noteGo').onclick=async e=>{const v=$('#noteTxt').value.trim();if(!v){$('#noteTxt').focus();return}const undo=busy(e.currentTarget,'Sending…');if(!(await API.note(c,v)).ok)return sendFailed(undo);c.note=v;save();closeSheet();renderBanners();toast('Note sent to '+c.washer)};
       $('#noteDel')&&($('#noteDel').onclick=()=>{c.note=null;save();closeSheet();renderBanners();toast('Note removed')})})},
   tip(){const c=car();let amt=50;openSheet(`<div style="display:flex;gap:14px;align-items:center"><img src="${IMG.washer}" alt="" style="width:64px;height:64px;border-radius:20px;object-fit:cover;object-position:top;background:var(--violet)"><div><h3>Tip ${c.washer}</h3><p class="sub" style="margin:0">All of it goes to him, the same day.</p></div></div>
       <div class="seg" id="tipSeg" style="margin:18px 0 4px"><button data-v="20">₹20</button><button class="on" data-v="50">₹50</button><button data-v="100">₹100</button><button data-v="200">₹200</button></div>${UPI}<button class="btn gold" id="tipGo" style="margin-top:16px">Send ₹50</button>`,()=>{
@@ -1573,7 +1579,7 @@ const ACT={
     openSheet(`<h3>Report a missed spot</h3><p class="sub">${c.washer} comes back and fixes it today. Tap where it was.</p><div class="card" style="padding:16px">${c.img?`<img src="${IMG[c.img]}" alt="" style="width:100%">`:''}<div class="chips" id="spots">${['Roof','Rims','Glass','Bonnet','Doors','Interior','Boot'].map(s=>`<button class="${spots.has(s)?'on':''}">${s}</button>`).join('')}</div></div>
       <button class="btn violet" style="margin-top:14px" id="isGo">Send to ${c.washer}</button>`,()=>{
       $$('#spots button').forEach(b=>b.onclick=()=>{b.classList.toggle('on');b.classList.contains('on')?spots.add(b.textContent):spots.delete(b.textContent);$('#isGo').disabled=!spots.size});
-      $('#isGo').onclick=async e=>{busy(e.currentTarget,'Sending…');await API.issue(c,[...spots]);A().requests.unshift({id:'R'+Date.now(),carId:c.id,spots:[...spots],open:true,at:iso(TODAY)});save();renderAll();success('We\'re on it',`${c.washer} will come back by 11 AM and send a new photo.`)}})},
+      $('#isGo').onclick=async e=>{const undo=busy(e.currentTarget,'Sending…');if(!(await API.issue(c,[...spots])).ok)return sendFailed(undo);A().requests.unshift({id:'R'+Date.now(),carId:c.id,spots:[...spots],open:true,at:iso(TODAY)});save();renderAll();success('We\'re on it',`${c.washer} will come back by 11 AM and send a new photo.`)}})},
   closeReq(id){const r=A().requests.find(x=>x.id===id);if(r)r.open=false;save();renderAll();toast('Marked as fixed')},
   requests(){openSheet(`<h3>Re-wash requests</h3><div class="rows" style="margin-top:12px">${A().requests.map(r=>`<div class="row"><span class="rt"><b>${r.spots.join(', ')}</b><small>${fmt(r.at)} · ${r.open?'Washer coming back by 11 AM':'Fixed'}</small></span>${r.open?`<button class="mini-btn link" data-act="closeReq" data-arg="${r.id}">Fixed</button>`:'<span class="ok">✓</span>'}</div>`).join('')}</div>`)},
   orders(){openSheet(`<h3>My orders</h3><div class="rows" style="margin-top:12px">${A().orders.map(o=>`<div class="row"><span class="rt"><b>${o.id} · ${inr(o.total)}</b><small>${o.items.map(i=>i.q+' × '+esc(i.name)).join(', ')}</small><small style="display:block;color:var(--ok);font-weight:600">${o.status}</small></span></div>`).join('')}</div>`)},
@@ -1597,7 +1603,7 @@ const ACT={
       <div class="err" id="acErr" style="margin-top:10px"></div><button class="btn violet" id="acGo">Start tomorrow</button>`,()=>{
       segPick('#acArea',b=>area=b.textContent);segPick('#acPlan',b=>plan=b.dataset.v);
       $('#acGo').onclick=async e=>{const m=$('#acModel').value.trim(),pl=$('#acPlate').value.trim().toUpperCase();if(!m||!pl){$('#acErr').textContent='Add the car and its registration number.';return}
-        busy(e.currentTarget,'Adding…');await API.addCar({name:m,plate:pl,area,plan});
+        const undo=busy(e.currentTarget,'Adding…');if(!(await API.addCar({name:m,plate:pl,area,plan})).ok)return sendFailed(undo);
         A().cars.push({id:'c'+Date.now(),name:m,make:'',plate:pl,img:null,plan,till:null,status:'new',washer:WASHER_FOR(area),parking:area+', spot to be confirmed',window:'Before 7:30 AM',keys:'I\'ll unlock it',doneAt:null,mins:0,streak:0,washes:0,paused:null,note:null,rating:0});
         S.carIdx=A().cars.length-1;save();renderAll();closeSheet();go('home');driveIn();toast(`${m} added. First wash tomorrow.`)}})},
   editDetail(k){const c=car();
@@ -1613,7 +1619,7 @@ const ACT={
       <div class="row"><span class="ri" style="background:rgba(84,9,218,.12);color:var(--violet)">✦</span><span class="rt"><b>Drop 01 is live in the store</b><small>Daddy's Own Car Perfume</small></span></div></div>`)},
   help(){openSheet(`<h3>Talk to Washing Daddy</h3><p class="sub">WhatsApp or call, 7 AM to 9 PM.</p><div class="code" style="margin-bottom:12px"><b style="font-size:20px">77018 08924</b><button class="pill gold" id="copyNum">Copy</button></div>
       <div class="rows">${[['How early do you come?','Between 5:30 and 7:30 AM, before you leave.'],['What if it rains?','We still come. Rainy-day washes focus on glass, rims and interior.'],['Why no pocha?','A wet cloth drags dust across the paint and leaves swirl marks. A pressure wash lifts it off.'],['Can I pay my washer in cash?','Yes. He marks it in his app and you get the receipt here.']].map(q=>`<div class="row"><span class="rt"><b>${q[0]}</b><small>${q[1]}</small></span></div>`).join('')}</div>`,()=>{$('#copyNum').onclick=()=>copy('7701808924','Number copied')})},
-  logout(){openSheet(`<h3>Log out?</h3><p class="sub">Your washes carry on. Sign in again with +91 ${A().phone.replace(/(\d{5})(\d+)/,'$1 $2')}.</p><button class="btn violet" id="loGo">Log out</button><button class="btn ghost" style="margin-top:8px" data-act="close">Stay signed in</button>`,()=>{$('#loGo').onclick=()=>{closeSheet();S.session=null;S.acct=null;S.cart={};S.carIdx=0;save();SC.scrollTo(0,0);unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];subFor=null;if(acctUnsub){try{acctUnsub()}catch(e){}acctUnsub=null}if(REAL)window.WDAuth.signOut();showAuth()}})},
+  logout(){openSheet(`<h3>Log out?</h3><p class="sub">Your washes carry on. Sign in again with +91 ${A().phone.replace(/(\d{5})(\d+)/,'$1 $2')}.</p><button class="btn violet" id="loGo">Log out</button><button class="btn ghost" style="margin-top:8px" data-act="close">Stay signed in</button>`,()=>{$('#loGo').onclick=()=>{closeSheet();S.session=null;S.acct=null;S.cart={};S.carIdx=0;save();SC.scrollTo(0,0);unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];subFor=null;photoUnsubs.forEach(u=>{try{u()}catch(e){}});photoUnsubs=[];REMOTE={};REQS={};DOCS={};lastStatus={};if(acctUnsub){try{acctUnsub()}catch(e){}acctUnsub=null}if(REAL)window.WDAuth.signOut();showAuth()}})},
 };
 function copy(txt,msg){try{navigator.clipboard.writeText(txt).then(()=>toast(msg),()=>toast(txt))}catch(e){toast(txt)}}
 function product(id){const p=PRODUCTS.find(x=>x.id===id);let q=1;
