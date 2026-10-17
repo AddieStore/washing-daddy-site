@@ -613,7 +613,7 @@ button.row:active{background:var(--tile-2)}
 
     <div class="pad">
       <div class="quick">
-        <button class="qa" data-act="book"><span class="qi" style="color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/><path d="M12 11v6M9 14h6"/></svg></span>One-time wash</button>
+        <button class="qa" data-act="book" hidden><span class="qi" style="color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/><path d="M12 11v6M9 14h6"/></svg></span>One-time wash</button>
         <button class="qa" data-act="pause"><span class="qi" style="color:var(--sky)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6v12M15 6v12"/></svg></span>Pause washes</button>
         <button class="qa" data-act="note"><span class="qi" style="color:var(--orange)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg></span>Note for washer</button>
         <button class="qa" data-act="issue"><span class="qi" style="color:var(--red)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>Missed a spot</button>
@@ -648,7 +648,7 @@ button.row:active{background:var(--tile-2)}
             <div class="wn" id="washerName">Chotte</div>
             <div class="ws" id="washerSub">★ 4.9 · Washes your car every morning</div>
             <div class="washer-actions">
-              <button class="pill gold" data-act="tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/></svg>Tip</button>
+              <button class="pill gold" data-act="tip" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/></svg>Tip</button>
               <button class="pill" data-act="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 5h16v11H8l-4 4z"/></svg>Leave a note</button>
             </div>
           </div>
@@ -657,7 +657,7 @@ button.row:active{background:var(--tile-2)}
     </div>
 
     <div class="sec rv">
-      <div class="sec-head pad"><h2>Picked for your car</h2><button class="link" data-tab="store">Open store</button></div>
+      <div class="sec-head pad"><h2>Picked for your car</h2><button class="link" data-tab="store" hidden>Open store</button></div>
       <div class="rail" id="homeRail"></div>
     </div>
   </section>
@@ -706,7 +706,7 @@ button.row:active{background:var(--tile-2)}
     <header class="topbar" data-bar>
       <div class="eyebrow">Daddy's store</div>
       <span class="mini">Store</span>
-      <button class="iconbtn" aria-label="Cart" data-act="cart" id="cartBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7A2 2 0 0 1 6.5 18z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span class="badge" id="cartBadge" hidden>0</span></button>
+      <button class="iconbtn" aria-label="Cart" data-act="cart" id="cartBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7A2 2 0 0 1 6.5 18z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span class="badge" id="cartBadge" hidden>0</span></button>
     </header>
     <div class="pad">
       <h1 class="big-title">Gear for a car that's <em>washed daily.</em></h1>
@@ -777,7 +777,7 @@ button.row:active{background:var(--tile-2)}
       <button class="tab on" data-tab="home" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
       <button class="tab" data-tab="live" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>Live<span class="live-dot" id="liveDot" hidden></span></button>
       <button class="tab" data-tab="plan" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/></svg>Plan</button>
-      <button class="tab" data-tab="store" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7A2 2 0 0 1 6.5 18z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Store<span class="badge" id="tabBadge" hidden>0</span></button>
+      <button class="tab" data-tab="store" role="tab" aria-selected="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7A2 2 0 0 1 6.5 18z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Store<span class="badge" id="tabBadge" hidden>0</span></button>
       <button class="tab" data-tab="profile" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</button>
     </div>
   </nav>
@@ -1236,7 +1236,7 @@ function renderLive(){
   $('#liveHero').innerHTML=`<div class="eyebrow">${esc((c.make?c.make+' ':'')+c.name)} · ${esc(maskPlate(c.plate))}</div><div class="live-status">${esc(big)}</div><div class="live-sub">${esc(sub)}</div>
     ${si>=0?`<div class="track"><div class="rl"></div><div class="fill" style="width:${pct}%"></div>${STAGES.map((_,i)=>`<span class="node ${i<=si?'on':''}" style="left:${i*25}%"></span>`).join('')}<div class="rider" style="left:${pct}%"><img src="${d.washer?.photo_url||IMG.washer}" alt=""></div></div>
     <div class="track-labels">${STAGE_LABEL.map((l,i)=>`<span class="${i<=si?'on':''}">${l}</span>`).join('')}</div>`:''}
-    <div class="live-who"><img src="${d.washer?.photo_url||IMG.washer}" alt=""><div style="flex:1;min-width:0"><b>${esc(w)}</b><small>★ 4.9 · your washer${c.status!=='new'?` · ${c.washes} washes on this car`:''}</small></div><button class="pill gold" data-act="tip">Tip</button></div>`;
+    <div class="live-who"><img src="${d.washer?.photo_url||IMG.washer}" alt=""><div style="flex:1;min-width:0"><b>${esc(w)}</b><small>★ 4.9 · your washer${c.status!=='new'?` · ${c.washes} washes on this car`:''}</small></div></div>`;
   $('#liveDate').textContent=fmt(d.date||iso(TODAY),{weekday:'long',day:'numeric',month:'short'});
   // timeline
   const rows=[],st=(cond,isNow)=>cond?'done':isNow?'now':'todo';
@@ -1405,7 +1405,7 @@ function renderPlan(){
   const cols=[['Pressure washes',pick('pressure',td),30,'var(--violet)'],['Interior',pick('interior',Math.round(f.int*td/7)),Math.round(f.int*30/7),'var(--orange)'],['Foam wash',pick('foam',Math.round(f.foam*td/7)),Math.round(f.foam*30/7),'var(--sky)'],f.det?['Detailing',pick('detailing',f.det>=16?8:Math.floor(f.det/2)),f.det>=16?17:f.det,'var(--gold)']:['Tyre & trim',pick('tyre',Math.min(Math.round(f.tyre*30/7),Math.round(f.tyre*td/7))),Math.round(f.tyre*30/7),'var(--mint)']];
   $('#usageWrap').hidden=c.status==='new';
   $('#usage').innerHTML=cols.map(u=>`<div class="card u"><div class="ul"><i style="background:${u[3]}"></i>${u[0]}</div><div class="uv num"><span data-to="${u[1]*used}">0</span> <small>of ${u[2]}</small></div><div class="bar"><i style="background:${u[3]}" data-w="${u[2]?u[1]/u[2]*100*used:0}"></i></div></div>`).join('');
-  $('#plans').innerHTML=PLANS.filter(pl=>!pl.old||pl.id===p.id).map(pl=>`<div class="plan ${pl.id===p.id?'cur on-violet':''} ${pl.id==='res'&&pl.id!==p.id?'res on-violet':''}">${pl.id===p.id?'<span class="cur-tag">Your plan</span>':''}<div class="pn">${pl.name}</div><div class="pp num">${inr(pl.price)} <small>/ month</small></div><ul>${pl.rows.map(r=>`<li><span>${r[0]}</span><b class="${r[1]==='—'?'no':''}">${r[1]}</b></li>`).join('')}</ul>${pl.id===p.id?`<button class="btn gold cta" data-act="payPlan">${c.till?'Pay next month':'Pay first month'}</button>`:`<button class="btn ${pl.price>p.price?'gold':'ghost'} cta" data-act="switchPlan" data-arg="${pl.id}">${pl.price>p.price?'Upgrade':'Switch'} to ${pl.name.replace('WD ','')}</button>`}</div>`).join('');
+  $('#plans').innerHTML=PLANS.filter(pl=>!pl.old||pl.id===p.id).map(pl=>`<div class="plan ${pl.id===p.id?'cur on-violet':''} ${pl.id==='res'&&pl.id!==p.id?'res on-violet':''}">${pl.id===p.id?'<span class="cur-tag">Your plan</span>':''}<div class="pn">${pl.name}</div><div class="pp num">${inr(pl.price)} <small>/ month</small></div><ul>${pl.rows.map(r=>`<li><span>${r[0]}</span><b class="${r[1]==='—'?'no':''}">${r[1]}</b></li>`).join('')}</ul>${pl.id===p.id?`<button class="btn gold cta" data-act="payPlan">${c.till?'Pay next month':'Pay first month'}</button>`:''}</div>`).join('');
   const pz=c.paused&&c.paused.to>=iso(TODAY);
   $('#pauseCard').innerHTML=`<div style="display:flex;gap:12px;align-items:center"><div style="font-size:26px" aria-hidden="true">✈︎</div><div><div style="font-weight:700">${pz?`Paused ${fmt(c.paused.from)} – ${fmt(c.paused.to)}`:'Going out of town?'}</div><div style="font-size:12.5px;color:var(--fg-2)">${pz?'Paused days are added to the end of your plan.':'Pause washes and the days get added to your plan.'}</div></div></div>
     ${pz?`<button class="btn ghost" style="margin-top:12px" data-act="resume">Resume washes now</button>`:`<button class="btn ghost" style="margin-top:12px" data-act="pause">Choose dates</button>`}`;
@@ -1442,10 +1442,9 @@ function renderProfile(){
   $$('#stWashes,#stLitres,#stStreak').forEach(e=>e.textContent=(+e.dataset.to).toLocaleString('en-IN'));
   $('#refCode').textContent=(a.name.split(' ')[0]||'WD').toUpperCase().replace(/[^A-Z]/g,'').slice(0,8)+'200';
   $('#logoutSub').textContent='Signed in as +91 '+a.phone.replace(/(\d{5})(\d+)/,'$1 $2');
-  $('#garage').innerHTML=a.cars.map((g,i)=>`<button class="garage-card ${i===S.carIdx?'on on-violet':''}" data-act="pickCar" data-arg="${i}"><div class="gimg">${carImg(g)?`<img src="${carImg(g)}" alt="">`:`<div style="width:100%;color:var(--fg-3)">${GHOST_CAR}</div>`}</div><div class="gn">${esc((g.make?g.make+' ':'')+g.name)}</div><div class="gs">${esc(maskPlate(g.plate))} · ${planOf(g).name}${g.status==='new'?' · starts tomorrow':''}</div></button>`).join('')+`<button class="garage-card add-car" data-act="addCar"><div><div style="font-size:30px;line-height:1">＋</div><div style="font-weight:600;margin-top:6px">Add a car</div><div class="muted">Second car gets 10% off</div></div></button>`;
+  $('#garage').innerHTML=a.cars.map((g,i)=>`<button class="garage-card ${i===S.carIdx?'on on-violet':''}" data-act="pickCar" data-arg="${i}"><div class="gimg">${carImg(g)?`<img src="${carImg(g)}" alt="">`:`<div style="width:100%;color:var(--fg-3)">${GHOST_CAR}</div>`}</div><div class="gn">${esc((g.make?g.make+' ':'')+g.name)}</div><div class="gs">${esc(maskPlate(g.plate))} · ${planOf(g).name}${g.status==='new'?' · starts tomorrow':''}</div></button>`).join('')+`<button class="garage-card add-car" data-act="addCar"><div><div style="font-size:30px;line-height:1">＋</div><div style="font-weight:600;margin-top:6px">Add a car</div><div class="muted">Add a second car</div></div></button>`;
   const act=[];
-  if(a.orders.length)act.push(`<button class="row" data-act="orders"><span class="ri" style="background:rgba(20,192,138,.15);color:var(--ok)">📦</span><span class="rt"><b>My orders</b><small>${a.orders.length} order${a.orders.length>1?'s':''} · latest ${a.orders[0].id}</small></span>${CHEV}</button>`);
-  if(a.bookings.length)act.push(`<button class="row" data-act="bookings"><span class="ri" style="background:rgba(84,9,218,.12);color:var(--violet)">✦</span><span class="rt"><b>One-time washes</b><small>${a.bookings.length} booked</small></span>${CHEV}</button>`);
+  // Store orders and one-time bookings are not live yet; rows hidden for launch
   if(a.requests.length)act.push(`<button class="row" data-act="requests"><span class="ri" style="background:rgba(232,56,79,.14);color:var(--red)">↺</span><span class="rt"><b>Re-wash requests</b><small>${a.requests.filter(r=>r.open).length} open</small></span>${CHEV}</button>`);
   $('#activity').innerHTML=act.length?`<div class="sec-head"><h2>Activity</h2></div><div class="rows">${act.join('')}</div>`:'';
   $('#detailsFor').textContent='For your '+c.name;
@@ -1595,11 +1594,11 @@ const ACT={
         A().payments[A().payments.length-1].what='Store order '+r.id;S.cart={};save();renderAll();success('Order placed',`${car().washer} brings it tomorrow before 7:30 AM and sends a photo when it's in your car.`)})})},
   qty(arg){const [k,d]=arg.split(':');S.cart[k]=Math.max(0,(S.cart[k]||0)+ +d);if(!S.cart[k])delete S.cart[k];save();syncBadges();ACT.cart()},
   shop(){closeSheet();go('store')},
-  addCar(){let area=A().area,plan='std';openSheet(`<h3>Add a car</h3><p class="sub">Second car gets 10% off. Your washer takes its first photo tomorrow morning.</p>
+  addCar(){let area=A().area,plan='std';openSheet(`<h3>Add a car</h3><p class="sub">Your washer takes its first photo tomorrow morning.</p>
       <label class="eyebrow" for="acModel">Car</label><input id="acModel" class="field" placeholder="e.g. Creta, Nexon, City">
       <label class="eyebrow" for="acPlate">Registration number</label><input id="acPlate" class="field" placeholder="DL 8C AB 1234" style="text-transform:uppercase">
       <div class="eyebrow">Area</div><div class="chips" id="acArea">${AREAS.map(a=>`<button class="${a===area?'on':''}">${a}</button>`).join('')}</div>
-      <div class="eyebrow">Plan</div><div class="seg" id="acPlan">${PLANS.map(p=>`<button class="${p.id===plan?'on':''}" data-v="${p.id}">${p.name.replace('WD ','')} ${inr(Math.round(p.price*.9))}</button>`).join('')}</div>
+      <div class="eyebrow">Plan</div><div class="seg" id="acPlan">${PLANS.map(p=>`<button class="${p.id===plan?'on':''}" data-v="${p.id}">${p.name.replace('WD ','')} ${inr(p.price)}</button>`).join('')}</div>
       <div class="err" id="acErr" style="margin-top:10px"></div><button class="btn violet" id="acGo">Start tomorrow</button>`,()=>{
       segPick('#acArea',b=>area=b.textContent);segPick('#acPlan',b=>plan=b.dataset.v);
       $('#acGo').onclick=async e=>{const m=$('#acModel').value.trim(),pl=$('#acPlate').value.trim().toUpperCase();if(!m||!pl){$('#acErr').textContent='Add the car and its registration number.';return}
