@@ -128,20 +128,28 @@ service cloud.firestore {
 
     // an extra job the owner gives a washer: a one-off wash or a detail, with its own price
     match /ondemand/{id} {
-      allow read: if isAdmin() || isWasher() || ownsReg(resource.data.reg);
+      allow read: if isAdmin() || isWasher()
+        || ownsReg(resource.data.reg)
+        || (signedIn() && resource.data.customer_id == me());
       allow create: if isAdmin()
-        && str(d().washer_id, 40) && str(d()['service'], 80)   // 'service' is a rules keyword, so read it as a key
-        && d().price is number && d().price >= 0 && d().price <= 100000
-        && d().status == 'offered';
-      // the washer moves his own job along and attaches the photo; the price is not his to change
+        || (signedIn()
+            && d().customer_id == me()
+            && d().status == 'new'
+            && d().price is number && d().price >= 0 && d().price <= 100000
+            && str(d()['service'], 80));
       allow update: if isAdmin()
         || (isWasher() && resource.data.washer_id == myRound()
             && d().diff(resource.data).affectedKeys().hasOnly(
                  ['status', 'started_at', 'finished_at', 'photo', 'photo_at', 'washer_note', 'updated_at'])
-            && d().status in ['offered', 'doing', 'done']
+            && d().status in ['new', 'doing', 'done']
             && (!('photo' in d()) || d().photo == null || (d().photo is string && d().photo.size() <= 400000))
             && optStr(d(), 'washer_note', 300));
       allow delete: if isAdmin();
+    }
+
+    match /locations/{washerId} {
+      allow read: if signedIn();
+      allow write: if isWasher() && washerId == me();
     }
 
     match /ratings/{id} {
