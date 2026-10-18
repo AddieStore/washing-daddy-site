@@ -300,6 +300,19 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 @keyframes flyIn{from{transform:scale(1.6) rotate(-6deg);opacity:0}to{transform:none;opacity:1}}
 .flash{position:fixed;inset:0;z-index:500;background:#fff;pointer-events:none;opacity:0}
 .flash.on{animation:flash .5s ease-out}
+/* job-alert: Uber/Swiggy-style incoming job popup */
+.job-alert{position:fixed;inset:0;z-index:600;display:flex;align-items:flex-end;justify-content:center;padding:0 0 calc(20px + env(safe-area-inset-bottom,0px));background:rgba(18,7,36,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:jaIn .4s var(--spring) both}
+.job-alert[hidden]{display:none!important}
+@keyframes jaIn{from{opacity:0}to{opacity:1}}
+.ja-card{width:min(100%,420px);background:var(--bg);border-radius:var(--r-l) var(--r-l) 0 0;padding:24px var(--gut-r) calc(24px + env(safe-area-inset-bottom,0px)) var(--gut-l);animation:jaCardIn .45s var(--spring) both}
+@keyframes jaCardIn{from{transform:translateY(100%)}to{transform:none}}
+.ja-badge{display:inline-flex;align-items:center;gap:7px;background:var(--gold);color:var(--ink-2);font-weight:800;font-size:13px;padding:5px 12px;border-radius:999px;margin-bottom:12px;letter-spacing:.02em}
+.ja-badge::before{content:'';display:block;width:8px;height:8px;border-radius:50%;background:var(--orange);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.6)}}
+.ja-svc{font-size:22px;font-weight:800;margin:0 0 4px}
+.ja-meta{color:var(--fg-3);font-size:14px;margin-bottom:20px}
+.ja-pay{font-size:28px;font-weight:800;color:var(--ok);margin-bottom:20px}
+.ja-btns{display:grid;gap:10px}
 @keyframes flash{0%{opacity:.95}100%{opacity:0}}
 
 .req{display:grid;gap:10px;padding:14px;border-radius:20px;background:linear-gradient(150deg,rgba(255,106,26,.14),rgba(255,186,8,.12));border:1.5px solid rgba(255,106,26,.4);animation:slideIn .5s var(--ease) both}
@@ -633,8 +646,20 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="flash" id="flash"></div>
 <canvas id="confetti" aria-hidden="true"></canvas>
+<div class="job-alert" id="jobAlert" hidden role="dialog" aria-modal="true" aria-label="Naya kaam">
+  <div class="ja-card">
+    <div class="ja-badge">⚡ Naya kaam aaya!</div>
+    <div class="ja-svc" id="jaSvc"></div>
+    <div class="ja-meta" id="jaMeta"></div>
+    <div class="ja-pay" id="jaPay"></div>
+    <div class="ja-btns">
+      <button class="btn gold" id="jaAccept">✓ Lo yeh kaam</button>
+      <button class="btn ghost" id="jaPass">Nahi karna</button>
+    </div>
+  </div>
+</div>
 <input type="file" accept="image/*" capture="environment" id="camIn" hidden>
-<input type="file" accept="image/*" capture="user" id="selfieIn" hidden>
+<input type="file" accept="image/*" id="selfieIn" hidden>
 
 <div class="auth" id="auth" hidden><div class="auth-in">
   <div class="auth-poster">
@@ -811,7 +836,7 @@ const Extra={
     this.jobs=docs.filter(Boolean).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.created_at||'').localeCompare(a.created_at||''));
   },
   today(){return this.jobs.filter(j=>j.date===DAY)},
-  open(){return this.jobs.filter(j=>j.status!=='done')},
+  open(){return this.jobs.filter(j=>j.status!=='done'&&j.status!=='declined')},
   doneOn(day){return this.jobs.filter(j=>j.status==='done'&&(j.finished_at||j.date||'').slice(0,10)===day)},
   doneIn(month){return this.jobs.filter(j=>j.status==='done'&&(j.finished_at||j.date||'').slice(0,7)===month)},
   byId(id){return this.jobs.find(j=>j.id===id)||null},
@@ -940,7 +965,7 @@ const carBy=reg=>route().find(c=>c.reg===reg);
 const W=reg=>S.day?.washes?.[reg]||null;
 function ensureDay(){if(!S.day||S.day.date!==DAY||S.day.washer!==me().id){S.day={date:DAY,washer:me().id,started:false,startedAt:null,washes:{}};S.current=null;save()}}
 const photoSrc=p=>p.asset_id?'/_blob/'+p.asset_id:p.url;
-const myPhoto=()=>S.selfie&&S.selfie.date===DAY&&S.selfie.washer===me().id?S.selfie:null;
+const myPhoto=()=>S.selfie&&S.selfie.washer===me().id?S.selfie:null;
 function washerObj(){const w=me(),o={id:w.id,name:w.name},s=myPhoto();if(s)o.photo_url=s.asset_id?'/_blob/'+s.asset_id:s.url;return o}
 const avatarSrc=()=>{const s=myPhoto();return s?photoSrc(s):(me().img?IMG[me().img]:null)};
 
@@ -984,9 +1009,9 @@ const Sync={
     },err));
     // the extra jobs Ravi gives him
     this.unsubs.push(db.collection('ondemand').where('washer_id','==',id).onSnapshot(sn=>{
-      const was=Extra.open().length;
+      const prevIds=new Set(Extra.open().map(j=>j.id));
       Extra.set(sn.docs.map(d=>Object.assign({id:d.id},d.data())));
-      if(booted&&Extra.open().length>was){toast('Naya extra kaam aaya hai');haptic([20,60,20])}
+      if(booted){const nj=Extra.open().find(j=>!prevIds.has(j.id));if(nj)showJobAlert(nj)}
       refresh();
     },err));
     // today's ratings, one doc per car
@@ -1350,9 +1375,9 @@ function renderExtra(){
 function renderMe(){
   const w=me(),av=avatarSrc(),sf=myPhoto();
   $('#meCard').innerHTML=`<div class="hero-bg" aria-hidden="true"><div class="beam"></div></div>
-    <div class="avatar">${av?`<img src="${esc(av)}" alt="${esc(w.name)}">`:`<span class="ini">${esc(w.name[0])}</span>`}<button class="cam" data-act="selfie" aria-label="Aaj ki selfie">${I.cam}</button></div>
+    <div class="avatar">${av?`<img src="${esc(av)}" alt="${esc(w.name)}">`:`<span class="ini">${esc(w.name[0])}</span>`}<button class="cam" data-act="selfie" aria-label="Profile photo badlo">${I.cam}</button></div>
     <div class="mn">${esc(w.name)}</div><div class="ms">Washing Daddy washer · ${esc(w.areas)}</div>
-    <div class="selfie-note">${sf?'✓ Aaj ki selfie customers ko dikh rahi hai':'Aaj ki selfie lo: customer dekhega kaun aaya'}</div>
+    <div class="selfie-note">${sf?'✓ Profile photo set hai. Customers ko dikhegi.':'Camera icon se apni photo lagao — customer dekhega kaun aaya.'}</div>
     <div class="mstats"><div><b class="num" id="mL">0</b><small>Gaadi dhoyi</small></div><div><b class="num">${w.rating}★</b><small>Rating</small></div><div><b>${w.since}</b><small>Se saath</small></div></div>`;
   countUp($('#mL'),w.lifetime+Route.counts().done,1400,v=>Math.round(v).toLocaleString('en-IN'));
   $('#mePhone').textContent='+91 '+w.phone.replace(/(\d{5})(\d{5})/,'$1 $2');
@@ -1541,7 +1566,7 @@ $('#selfieIn').addEventListener('change',async e=>{
   try{const r=await Sync.uploadPhoto(f,640);S.selfie=Object.assign({date:DAY,washer:me().id},r.asset_id?{asset_id:r.asset_id}:{url:r.url});save();
     // show the face on every car still to come today
     route().forEach(c=>{const w=W(c.reg);if(w&&!['done','skipped'].includes(w.status))mutate(c.reg,()=>{})});
-    renderMe();toast('Selfie lag gayi. Customers ko dikhegi');confetti(.3)}catch(err){toast('Selfie nahi lagi. Dobara try karo')}
+    renderMe();toast('Photo save ho gayi. Customers ko dikhegi.');confetti(.3)}catch(err){toast('Selfie nahi lagi. Dobara try karo')}
 });
 
 /* ---------- slide to confirm ---------- */
@@ -1695,6 +1720,42 @@ addEventListener('resize',()=>{moveInd()});
 addEventListener('online',()=>{paintSync();Sync.flush()});addEventListener('offline',paintSync);
 setInterval(()=>{if(Object.keys(S.outbox).length&&navigator.onLine)Sync.flush()},20000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)return;const d=dateIST();if(d!==DAY){DAY=d;ensureDay();Sync.listen();refresh();Book.load()}});
+
+/* ---------- job alert: Uber-style incoming job popup with sound ---------- */
+let _alertJob=null;
+function playJobAlert(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    // three ascending beeps: 660 Hz, 880 Hz, 1100 Hz
+    [[0,.66],[.22,.88],[.44,1.1]].forEach(([t,f])=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='sine';o.frequency.value=f*1000;
+      g.gain.setValueAtTime(0,ctx.currentTime+t);
+      g.gain.linearRampToValueAtTime(.5,ctx.currentTime+t+.06);
+      g.gain.linearRampToValueAtTime(0,ctx.currentTime+t+.22);
+      o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+.25);
+    });
+  }catch(e){}
+}
+function showJobAlert(job){
+  _alertJob=job;
+  const svc=job.service||'Extra kaam';
+  const earn=rupee(Money.share(job.price));
+  $('#jaSvc').textContent=svc;
+  $('#jaMeta').textContent=[job.car||job.reg,job.area,job.customer_name].filter(Boolean).join(' · ')||'';
+  $('#jaPay').textContent=earn+' aapke';
+  const al=$('#jobAlert');al.hidden=false;
+  playJobAlert();haptic([20,60,20,60,20]);
+}
+function closeJobAlert(){$('#jobAlert').hidden=true;_alertJob=null}
+$('#jaAccept').onclick=()=>{closeJobAlert();go('extra');toast('Extra tab mein dekho')};
+$('#jaPass').onclick=()=>{
+  if(_alertJob)Sync.extraSet(_alertJob.id,{status:'declined',declined_at:isoIST()});
+  closeJobAlert();
+};
+// tap outside the card also dismisses
+$('#jobAlert').addEventListener('click',e=>{if(e.target===e.currentTarget)closeJobAlert()});
 addEventListener('scroll',()=>{const y=scrollY>8;$$('[data-bar]').forEach(b=>b.classList.toggle('stuck',y))},{passive:true});
 /* ---------- bhasha: Hinglish (default) or Hindi only ----------
    The app is written in Hinglish. Hindi mode swaps the words a washer reads, in place,
