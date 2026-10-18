@@ -814,7 +814,7 @@ const LIVE=false;                       // flip once the webhooks below exist
 const N8N='https://n8n.washingdaddy.com/webhook';
 // Payments. PAY_LIVE stays false until the Cashfree account is live: see pay/README.md.
 // Going live is two flags, this one and SANDBOX in the n8n order node, or it quietly stays in test mode.
-const CF_MODE='sandbox', PAY_LIVE=false;
+const CF_MODE='production', PAY_LIVE=true;
 const PAYREAL=()=>PAY_LIVE&&REALACCT();
 let cfSdk=null;
 // loaded only when a real payment starts, so the test build pulls no third-party script
