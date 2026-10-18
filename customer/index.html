@@ -613,7 +613,7 @@ button.row:active{background:var(--tile-2)}
 
     <div class="pad">
       <div class="quick">
-        <button class="qa" data-act="book" hidden><span class="qi" style="color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/><path d="M12 11v6M9 14h6"/></svg></span>One-time wash</button>
+        <button class="qa" data-act="book"><span class="qi" style="color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/><path d="M12 11v6M9 14h6"/></svg></span>Book a wash</button>
         <button class="qa" data-act="pause"><span class="qi" style="color:var(--sky)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6v12M15 6v12"/></svg></span>Pause washes</button>
         <button class="qa" data-act="note"><span class="qi" style="color:var(--orange)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg></span>Note for washer</button>
         <button class="qa" data-act="issue"><span class="qi" style="color:var(--red)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>Missed a spot</button>
@@ -1561,17 +1561,26 @@ const ACT={
       <div class="seg" id="tipSeg" style="margin:18px 0 4px"><button data-v="20">₹20</button><button class="on" data-v="50">₹50</button><button data-v="100">₹100</button><button data-v="200">₹200</button></div>${UPI}<button class="btn gold" id="tipGo" style="margin-top:16px">Send ₹50</button>`,()=>{
       segPick('#upi');segPick('#tipSeg',b=>{amt=+b.dataset.v;$('#tipGo').textContent='Send '+inr(amt)});
       $('#tipGo').onclick=e=>checkout(e.currentTarget,'tip',amt,`Tip for ${c.washer}`,()=>success('Sent',`${c.washer} gets ${inr(amt)} and a thank-you from you on WhatsApp.`))})},
-  book(){const c=car();let type=ONE_TIME[1],day=1,slot='6–7:30 AM';
-    openSheet(`<h3>Book a one-time wash</h3><p class="sub">For a guest's car, a second car, or a deep clean before a trip.</p>
-      ${ONE_TIME.map(t=>`<button class="opt ${t.id==='pro'?'on':''}" data-v="${t.id}"><span class="radio"></span><span><b>${t.name}</b><br><small style="color:var(--fg-3)">${t.d}</small></span><b class="num">${inr(t.price)}</b></button>`).join('')}
-      <div class="eyebrow" style="margin-top:10px">Day</div><div class="seg" id="bkDay">${[1,2,3].map(i=>`<button class="${i===1?'on':''}" data-v="${i}">${i===1?'Tomorrow':fmt(addDays(TODAY,i),{weekday:'short',day:'numeric'})}</button>`).join('')}</div>
-      <div class="eyebrow" style="margin-top:14px">Time</div><div class="seg" id="bkSlot"><button class="on">6–7:30 AM</button><button>9–11 AM</button><button>4–6 PM</button></div>
-      <label class="eyebrow" for="bkCar" style="display:block;margin-top:14px">Which car</label><input class="field" id="bkCar" value="${esc(c.name+' · '+maskPlate(c.plate))}">
-      ${UPI}<button class="btn violet" id="bkGo" style="margin-top:16px">Pay ${inr(type.price)}</button>`,()=>{
-      const upd=()=>$('#bkGo').textContent='Pay '+inr(type.price);
-      $$('.opt').forEach(b=>b.onclick=()=>{type=ONE_TIME.find(t=>t.id===b.dataset.v);$$('.opt').forEach(x=>x.classList.toggle('on',x===b));upd()});
-      segPick('#bkDay',b=>day=+b.dataset.v);segPick('#bkSlot',b=>slot=b.textContent);segPick('#upi');
-      $('#bkGo').onclick=e=>{const what=$('#bkCar').value.trim()||c.name;checkout(e.currentTarget,'onetime',type.price,`One-time ${type.name} wash · ${what}`,()=>{A().bookings.push({id:'B'+Date.now(),carId:c.id,type:type.name,date:iso(addDays(TODAY,day)),slot,what});success('Booked',`${type.name} wash on ${fmt(addDays(TODAY,day),{weekday:'long',day:'numeric',month:'short'})}, ${slot}.`)})}})},
+  book(){const c=car();
+    const SVCS=[
+      {id:'wash',name:'One-time Wash',price:500,d:'Pressure wash, hand dry, tyre shine'},
+      {id:'interior',name:'Interior Cleaning',price:800,d:'Vacuum, dashboard wipe, seats and windows'},
+      {id:'detailing',name:'Full Detailing',price:1500,d:'Clay bar, polish, wax — showroom finish'},
+      {id:'combo',name:'Wash + Interior',price:1200,d:'Outside wash + full interior clean'}
+    ];
+    let svc=SVCS[0];
+    openSheet(`<h3>Book a wash</h3><p class="sub">Washer arrives in 45–60 min. Pay them on arrival — no advance needed.</p>
+      ${SVCS.map(s=>`<button class="opt ${s===SVCS[0]?'on':''}" data-v="${s.id}"><span class="radio"></span><span><b>${s.name}</b><br><small style="color:var(--fg-3)">${s.d}</small></span><b class="num">${inr(s.price)}</b></button>`).join('')}
+      <div class="eyebrow" style="margin-top:14px">Which car</div><input class="field" id="bkCar" value="${esc(c.name+' · '+maskPlate(c.plate))}" style="margin-top:6px">
+      <button class="btn violet" id="bkGo" style="margin-top:16px">Book · ${inr(svc.price)}</button>`,()=>{
+      $$('.opt').forEach(b=>b.onclick=()=>{svc=SVCS.find(s=>s.id===b.dataset.v);$$('.opt').forEach(x=>x.classList.toggle('on',x===b));$('#bkGo').textContent=`Book · ${inr(svc.price)}`});
+      $('#bkGo').onclick=async e=>{
+        const db=DB||await realDb();if(!db){toast('App offline. Try again.');return}
+        const undo=busy(e.currentTarget,'Booking…');
+        try{
+          await db.collection('ondemand').add({service:svc.name,service_id:svc.id,price:svc.price,car:c.name,reg:c.plate,area:c.area||'',phone:window.WDAuth.phone(),customer_id:window.WDAuth.phone(),status:'new',washer_id:'',created_at:nowIST(),date:iso(TODAY)});
+          closeSheet();success('Booked!',`${svc.name} request sent. A washer is on the way — pay ₹${svc.price} on arrival.`);
+        }catch(err){undo();toast('Booking failed. Try again.')}}})},
   bookings(){const bs=A().bookings.slice().reverse();openSheet(`<h3>One-time washes</h3><div class="rows" style="margin-top:12px">${bs.map(b=>`<div class="row"><span class="rt"><b>${b.type} · ${esc(b.what)}</b><small>${fmt(b.date,{weekday:'short',day:'numeric',month:'short'})}, ${b.slot}</small></span><button class="mini-btn link" data-act="cancelBooking" data-arg="${b.id}">Cancel</button></div>`).join('')||'<div class="row"><span class="rt"><b>Nothing booked</b></span></div>'}</div>`)},
   cancelBooking(id){const a=A(),b=a.bookings.find(x=>x.id===id);a.bookings=a.bookings.filter(x=>x.id!==id);save();renderAll();closeSheet();toast(`Cancelled. Refund on its way to your ${a.payments.find(p=>p.what.includes(b.type))?.via||'UPI'}.`)},
   issue(){const c=car();if(c.status==='new'){toast('You can report a spot after your first wash');return}let spots=new Set(['Rims']);
