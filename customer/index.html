@@ -648,7 +648,7 @@ button.row:active{background:var(--tile-2)}
             <div class="wn" id="washerName">Chotte</div>
             <div class="ws" id="washerSub">★ 4.9 · Washes your car every morning</div>
             <div class="washer-actions">
-              <button class="pill gold" data-act="tip" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/></svg>Tip</button>
+              <button class="pill gold" data-act="tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/></svg>Tip</button>
               <button class="pill" data-act="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 5h16v11H8l-4 4z"/></svg>Leave a note</button>
             </div>
           </div>
@@ -1236,7 +1236,7 @@ function renderLive(){
   $('#liveHero').innerHTML=`<div class="eyebrow">${esc((c.make?c.make+' ':'')+c.name)} · ${esc(maskPlate(c.plate))}</div><div class="live-status">${esc(big)}</div><div class="live-sub">${esc(sub)}</div>
     ${si>=0?`<div class="track"><div class="rl"></div><div class="fill" style="width:${pct}%"></div>${STAGES.map((_,i)=>`<span class="node ${i<=si?'on':''}" style="left:${i*25}%"></span>`).join('')}<div class="rider" style="left:${pct}%"><img src="${d.washer?.photo_url||IMG.washer}" alt=""></div></div>
     <div class="track-labels">${STAGE_LABEL.map((l,i)=>`<span class="${i<=si?'on':''}">${l}</span>`).join('')}</div>`:''}
-    <div class="live-who"><img src="${d.washer?.photo_url||IMG.washer}" alt=""><div style="flex:1;min-width:0"><b>${esc(w)}</b><small>★ 4.9 · your washer${c.status!=='new'?` · ${c.washes} washes on this car`:''}</small></div></div>`;
+    <div class="live-who"><img src="${d.washer?.photo_url||IMG.washer}" alt=""><div style="flex:1;min-width:0"><b>${esc(w)}</b><small>★ 4.9 · your washer${c.status!=='new'?` · ${c.washes} washes on this car`:''}</small></div><button class="pill gold" data-act="tip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/></svg>Tip</button></div>`;
   $('#liveDate').textContent=fmt(d.date||iso(TODAY),{weekday:'long',day:'numeric',month:'short'});
   // timeline
   const rows=[],st=(cond,isNow)=>cond?'done':isNow?'now':'todo';
