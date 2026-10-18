@@ -831,15 +831,20 @@ function composeRound(id){
   return ROSTER[id];
 }
 const Extra={
-  jobs:[],                       // ondemand docs for this washer, newest first
+  jobs:[],                       // ondemand docs assigned to this washer
+  pending:[],                    // unassigned customer requests
   set(docs){
     this.jobs=docs.filter(Boolean).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.created_at||'').localeCompare(a.created_at||''));
   },
+  setPending(docs){
+    this.pending=docs.filter(Boolean).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  },
   today(){return this.jobs.filter(j=>j.date===DAY)},
   open(){return this.jobs.filter(j=>j.status!=='done'&&j.status!=='declined')},
+  allOpen(){return [...this.open(),...this.pending]},
   doneOn(day){return this.jobs.filter(j=>j.status==='done'&&(j.finished_at||j.date||'').slice(0,10)===day)},
   doneIn(month){return this.jobs.filter(j=>j.status==='done'&&(j.finished_at||j.date||'').slice(0,7)===month)},
-  byId(id){return this.jobs.find(j=>j.id===id)||null},
+  byId(id){return this.jobs.find(j=>j.id===id)||this.pending.find(j=>j.id===id)||null},
 };
 
 /* ---------- the money: half of what a car pays us is the washer's ---------- */
@@ -1007,11 +1012,18 @@ const Sync={
       NewCar.set(sn.docs.map(d=>Object.assign({},d.data(),{reg:d.data()?.reg||d.id})));
       ensureDay();refresh();
     },err));
-    // the extra jobs Ravi gives him
+    // the extra jobs Ravi gives him (and customer-claimed jobs)
     this.unsubs.push(db.collection('ondemand').where('washer_id','==',id).onSnapshot(sn=>{
       const prevIds=new Set(Extra.open().map(j=>j.id));
       Extra.set(sn.docs.map(d=>Object.assign({id:d.id},d.data())));
       if(booted){const nj=Extra.open().find(j=>!prevIds.has(j.id));if(nj)showJobAlert(nj)}
+      refresh();
+    },err));
+    // unassigned customer bookings — first washer to accept claims it
+    this.unsubs.push(db.collection('ondemand').where('washer_id','==','').onSnapshot(sn=>{
+      const prevIds=new Set(Extra.pending.map(j=>j.id));
+      Extra.setPending(sn.docs.map(d=>Object.assign({id:d.id},d.data())).filter(j=>j.status==='new'));
+      if(booted){const nj=Extra.pending.find(j=>!prevIds.has(j.id));if(nj)showJobAlert(nj)}
       refresh();
     },err));
     // today's ratings, one doc per car
@@ -1348,16 +1360,19 @@ function renderPay(){
 /* ---------- extra (on-demand) work ---------- */
 const EX_STEP={offered:'Shuru karo',doing:'Photo ke baad khatam',done:'Ho gaya'};
 function renderExtra(){
-  const open=Extra.open(),done=Extra.jobs.filter(j=>j.status==='done');
+  const open=Extra.allOpen(),done=Extra.jobs.filter(j=>j.status==='done');
   $('#extraMeta').textContent=open.length?`${open.length} kaam baaki`:'Sab ho gaya';
   const card=j=>{
     const shot=!!j.photo;
-    const act=j.status==='done'
-      ? `<div class="demo-note">Ho gaya ${esc((j.finished_at||'').slice(11,16))} · aapke ${rupee(Money.share(j.price))}</div>`
-      : j.status==='doing'
-        ? (shot?`<button class="btn mint" data-act="exDone" data-arg="${esc(j.id)}">Kaam khatam karo</button>`
-               :`<button class="btn violet" data-act="exPhoto" data-arg="${esc(j.id)}">Kaam ki photo lo</button><div class="demo-note">Photo ke bina kaam band nahi hoga</div><button class="btn ghost" style="margin-top:10px;opacity:.55" data-act="exNeedPhoto">Kaam khatam karo</button>`)
-        : `<button class="btn violet" data-act="exStart" data-arg="${esc(j.id)}">Shuru karo</button>`;
+    const unassigned=!j.washer_id;
+    const act=unassigned
+      ? `<div class="demo-note" style="margin-bottom:8px">Customer ne book kiya — aapke area mein hai</div><button class="btn gold" data-act="exClaim" data-arg="${esc(j.id)}">Lo yeh kaam</button>`
+      : j.status==='done'
+        ? `<div class="demo-note">Ho gaya ${esc((j.finished_at||'').slice(11,16))} · aapke ${rupee(Money.share(j.price))}</div>`
+        : j.status==='doing'
+          ? (shot?`<button class="btn mint" data-act="exDone" data-arg="${esc(j.id)}">Kaam khatam karo</button>`
+                 :`<button class="btn violet" data-act="exPhoto" data-arg="${esc(j.id)}">Kaam ki photo lo</button><div class="demo-note">Photo ke bina kaam band nahi hoga</div><button class="btn ghost" style="margin-top:10px;opacity:.55" data-act="exNeedPhoto">Kaam khatam karo</button>`)
+          : `<button class="btn violet" data-act="exStart" data-arg="${esc(j.id)}">Shuru karo</button>`;
     return `<div class="sec" style="margin-bottom:14px"><div class="sec-head"><h2>${esc(j.service||'Extra kaam')}</h2><span class="muted">${rupee(j.price)} · aapke ${rupee(Money.share(j.price))}</span></div>
       <div class="where">${I.pin}<span>${esc(j.car||j.reg||'Gaadi')}${j.area?' · '+esc(j.area):''}${j.customer_name?' · '+esc(j.customer_name):''}</span></div>
       ${j.note?`<div class="demo-note">${esc(j.note)}</div>`:''}
@@ -1365,7 +1380,7 @@ function renderExtra(){
       ${act}</div>`;
   };
   $('#extraOpen').innerHTML=open.length?open.map(card).join('')
-    :`<div class="empty"><b>Abhi koi extra kaam nahi</b>Ravi jo extra kaam denge woh yahan aayega. Uska aadha aapka.</div>`;
+    :`<div class="empty"><b>Abhi koi extra kaam nahi</b>Customer ya Ravi ka koi kaam aaya toh yahan dikhega.</div>`;
   $('#extraDoneMeta').textContent=done.length?`${rupee(done.reduce((a,j)=>a+Money.share(j.price),0))} ab tak`:'';
   $('#extraDone').innerHTML=done.length?`<div class="rows">${done.slice(0,20).map(j=>`<div class="row"><span class="rt"><b>${esc(j.service||'Extra kaam')}</b><small>${esc(j.car||j.reg||'')} · ${esc((j.finished_at||j.date||'').slice(0,10))}</small></span><b class="num">${rupee(Money.share(j.price))}</b></div>`).join('')}</div>`
     :`<div class="empty"><b>Abhi kuch nahi</b>Jo extra kaam khatam karoge woh yahan jama hoga.</div>`;
@@ -1405,7 +1420,7 @@ function refresh(soft){ // re-render the visible screen after state changes, coa
 function paintBadges(){
   const n=route().reduce((a,c)=>a+openReqs(c.reg).filter(q=>q.status==='open').length,0),b=$('#tabReq');b.hidden=!n;b.textContent=n;
   const live=$('#tabLive');if(live)live.hidden=!(S.day&&route().some(c=>W(c.reg)?.status==='washing'));
-  const x=Extra.open().length,xb=$('#tabExtra');if(xb){xb.hidden=!x;xb.textContent=x}
+  const x=Extra.allOpen().length,xb=$('#tabExtra');if(xb){xb.hidden=!x;xb.textContent=x}
 }
 function prepReveal(scope){if(RM||!('IntersectionObserver' in window))return;
   const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.remove('pre');io.unobserve(e.target)}}),{threshold:.1});
@@ -1504,6 +1519,7 @@ const ACT={
       };
     })},
   /* ---------- extra (on-demand) work: same three steps, its own photo ---------- */
+  exClaim(id){Sync.extraSet(id,{washer_id:me().id});haptic([20,40,20]);toast('Kaam mila! Shuru karo.')},
   exStart(id){Sync.extraSet(id,{status:'doing',started_at:isoIST()});haptic([20,40,20]);toast('Shuru. Ab kaam ki photo lo')},
   exNeedPhoto(){toast('Pehle kaam ki photo lo, phir kaam band hoga');haptic(14)},
   exPhoto(id){camFor={extra:id};const i=$('#camIn');i.value='';i.click()},
@@ -1526,7 +1542,7 @@ const ACT={
   resetDay(){openSheet(`<h3>Aaj ka round reset?</h3><p class="sub">Is phone se aaj ka sab hat jayega. Jo customer tak jaa chuka hai, woh unke app mein rahega.</p><button class="btn ink" id="rGo">Haan, reset karo</button><button class="linkbtn" data-act="close">Rehne do</button>`,()=>{
     $('#rGo').onclick=()=>{Object.keys(S.outbox).forEach(k=>{if(k.startsWith(DAY))delete S.outbox[k]});S.day=null;S.current=null;jobReg=null;ensureDay();save();closeSheet();renderRound._did=false;go('round');toast('Reset ho gaya')}})},
   logout(){openSheet(`<h3>Log out?</h3><p class="sub">${Object.keys(S.outbox).length?'Kuch update abhi bheje nahi gaye. Log out karne pe bhi phone pe rahenge.':'Aaj ka round is phone pe safe rahega.'}</p><button class="btn ink" id="lGo">Log out</button><button class="linkbtn" data-act="close">Rehne do</button>`,()=>{
-    $('#lGo').onclick=()=>{S.session=null;save();Sync.stop();closeSheet();if(REAL){stopWatch();window.WDAuth.signOut()}showAuth()}})},
+    $('#lGo').onclick=()=>{S.session=null;save();Sync.stop();closeSheet();if(REAL){stopWatch();stopGps();window.WDAuth.signOut()}showAuth()}})},
 };
 function startRoundAction(){if(REAL&&Book.state==='loading'){toast('Gaadiyon ki list aa rahi hai, ek minute ruko');refresh();return}Route.start();haptic([20,50,20]);confetti(.6);toast(`Round shuru! ${route().length} customers ko time chala gaya`);renderRound._did=false;refresh();Sync.listen()}
 const SLIDE_DONE={
@@ -1659,7 +1675,7 @@ function renderAuth(step,phone){
       <div class="hint" style="margin:0 0 16px">+91 ${(window.WDAuth.phone10()||'').replace(/(\d{5})(\d{5})/,'$1 $2')}</div>
       <a class="btn violet" href="https://wa.me/917701808924" style="text-decoration:none;display:flex;justify-content:center">Owner ko WhatsApp karo</a>
       <button class="linkbtn" id="wOut">Log out</button>`;
-    $('#wOut').onclick=async()=>{stopWatch();S.session=null;save();await window.WDAuth.signOut();renderAuth('phone')};
+    $('#wOut').onclick=async()=>{stopWatch();stopGps();S.session=null;save();await window.WDAuth.signOut();renderAuth('phone')};
     watchMe();
   }
 }
@@ -1697,6 +1713,27 @@ function enterApp(){
   $('#auth').hidden=true;ensureDay();renderRound._did=false;jobReg=null;go('round');paintBadges();
   Book.load();                 // this washer's own round, from the book
   if(Sync.mode==='live')Sync.listen();if(Sync.mode==='demo')demoExtras();
+  if(REAL)startGps();
+}
+
+/* ---------- GPS location broadcast (washer app only) ---------- */
+let _gpsWatch=null;
+function startGps(){
+  if(_gpsWatch!==null||!navigator.geolocation)return;
+  const write=pos=>{
+    const{latitude:lat,longitude:lng,accuracy}=pos.coords;
+    window.claude&&window.claude.use('db').then(db=>{
+      if(!db)return;
+      db.doc('locations/'+me().id).set({lat,lng,accuracy,washer_id:me().id,updated_at:isoIST()})
+        .catch(e=>console.warn('gps write',e));
+    });
+  };
+  _gpsWatch=navigator.geolocation.watchPosition(write,e=>console.warn('gps err',e),
+    {enableHighAccuracy:true,maximumAge:30000,timeout:30000});
+}
+function stopGps(){
+  if(_gpsWatch!==null){navigator.geolocation.clearWatch(_gpsWatch);_gpsWatch=null}
+  if(REAL&&window.claude)window.claude.use('db').then(db=>{if(db)db.doc('locations/'+me().id).delete().catch(()=>{})});
 }
 
 /* ---------- demo-only extras: when no shared db is attached (plain preview), play the customer's side ---------- */
@@ -1749,9 +1786,12 @@ function showJobAlert(job){
   playJobAlert();haptic([20,60,20,60,20]);
 }
 function closeJobAlert(){$('#jobAlert').hidden=true;_alertJob=null}
-$('#jaAccept').onclick=()=>{closeJobAlert();go('extra');toast('Extra tab mein dekho')};
+$('#jaAccept').onclick=()=>{
+  if(_alertJob&&!_alertJob.washer_id)Sync.extraSet(_alertJob.id,{washer_id:me().id});
+  closeJobAlert();go('extra');toast('Extra tab mein dekho')};
 $('#jaPass').onclick=()=>{
-  if(_alertJob)Sync.extraSet(_alertJob.id,{status:'declined',declined_at:isoIST()});
+  // only decline an already-assigned job; for unassigned bookings just dismiss
+  if(_alertJob&&_alertJob.washer_id)Sync.extraSet(_alertJob.id,{status:'declined',declined_at:isoIST()});
   closeJobAlert();
 };
 // tap outside the card also dismisses
