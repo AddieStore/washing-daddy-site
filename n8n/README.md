@@ -128,3 +128,55 @@ The shaping logic was run against the real book's rows (28 checks), the Code nod
 n8n runs it (13 checks), and the washer app was driven end to end against this webhook stubbed
 out (13 checks): a live round, an empty book, an unreachable book, and a round that survives
 with no signal. Nothing has been run inside n8n itself, because this session cannot reach it.
+
+---
+
+# 10 — On-demand GPS dispatch (n8n)
+
+`10-ondemand-dispatch.json` auto-assigns an on-demand job to the nearest active washer the moment
+a customer books. Without it, both washers see the job alert and the first to accept claims it
+(the old behaviour still works as a fallback).
+
+## What it does
+
+| Webhook | Who calls it | What it does |
+|---|---|---|
+| `wd-ondemand-dispatch` | customer app, immediately after creating the `ondemand` Firestore doc | Reads `locations` collection, finds nearest active washer (updated ≤ 30 min ago), sets `washer_id` on the `ondemand` doc |
+
+The customer app fires the webhook fire-and-forget — a network error never blocks the booking.
+If no washer is broadcasting GPS, the workflow responds `{assigned:false}` and the job sits
+unassigned so the old job-alert flow takes over.
+
+Haversine distance is computed inside a Code node against a hardcoded centre-point for each of
+the six service areas (all Paschim Vihar, Delhi). Add or update area coordinates inside
+"Nazdeeki washer dhundo" as new areas open.
+
+## Setting it up
+
+1. **Import** `10-ondemand-dispatch.json`: Workflows → ⋯ → Import from File.
+2. **Firebase service account credential** — in n8n, create a new credential of type
+   *Google Firebase Cloud Firestore OAuth2 API*, name it `Firebase service account`, and
+   paste the JSON key from a Firebase service account that has Firestore read/write access
+   (Firebase console → Project settings → Service accounts → Generate new private key).
+3. **Replace `YOUR_FIREBASE_PROJECT_ID`** in both Firestore nodes with your actual Firebase
+   project ID (e.g. `washing-daddy-prod`).
+4. **Publish.**
+
+## Testing it
+
+POST to `https://n8n.washingdaddy.com/webhook/wd-ondemand-dispatch` with body
+`{"doc_id":"test123","area":"GH-9 Paschim Vihar"}`.
+- If a washer's location in Firestore `locations/chotte` was updated in the last 30 min,
+  the response will be `{assigned:true,washer_id:"chotte",...}`.
+- If no location is fresh, it returns `{assigned:false,reason:"no_active_washers"}` — safe.
+
+## GPS on the washer app
+
+The washer app (installed APK) broadcasts GPS every time the device moves, via
+`navigator.geolocation.watchPosition` → Firestore `locations/{washer_id}`. Location is
+**only broadcast in the real app** (when `window.WDAuth` is present), not in the plain web preview.
+Android 6+ shows a one-time "Allow location" prompt the first time; the WebChromeClient in
+`MainActivity.java` handles the permission handshake.
+
+Location is cleared from Firestore when the washer logs out, so stale positions do not
+mislead the dispatch algorithm.

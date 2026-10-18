@@ -1542,7 +1542,7 @@ const ACT={
   resetDay(){openSheet(`<h3>Aaj ka round reset?</h3><p class="sub">Is phone se aaj ka sab hat jayega. Jo customer tak jaa chuka hai, woh unke app mein rahega.</p><button class="btn ink" id="rGo">Haan, reset karo</button><button class="linkbtn" data-act="close">Rehne do</button>`,()=>{
     $('#rGo').onclick=()=>{Object.keys(S.outbox).forEach(k=>{if(k.startsWith(DAY))delete S.outbox[k]});S.day=null;S.current=null;jobReg=null;ensureDay();save();closeSheet();renderRound._did=false;go('round');toast('Reset ho gaya')}})},
   logout(){openSheet(`<h3>Log out?</h3><p class="sub">${Object.keys(S.outbox).length?'Kuch update abhi bheje nahi gaye. Log out karne pe bhi phone pe rahenge.':'Aaj ka round is phone pe safe rahega.'}</p><button class="btn ink" id="lGo">Log out</button><button class="linkbtn" data-act="close">Rehne do</button>`,()=>{
-    $('#lGo').onclick=()=>{S.session=null;save();Sync.stop();closeSheet();if(REAL){stopWatch();window.WDAuth.signOut()}showAuth()}})},
+    $('#lGo').onclick=()=>{S.session=null;save();Sync.stop();closeSheet();if(REAL){stopWatch();stopGps();window.WDAuth.signOut()}showAuth()}})},
 };
 function startRoundAction(){if(REAL&&Book.state==='loading'){toast('Gaadiyon ki list aa rahi hai, ek minute ruko');refresh();return}Route.start();haptic([20,50,20]);confetti(.6);toast(`Round shuru! ${route().length} customers ko time chala gaya`);renderRound._did=false;refresh();Sync.listen()}
 const SLIDE_DONE={
@@ -1675,7 +1675,7 @@ function renderAuth(step,phone){
       <div class="hint" style="margin:0 0 16px">+91 ${(window.WDAuth.phone10()||'').replace(/(\d{5})(\d{5})/,'$1 $2')}</div>
       <a class="btn violet" href="https://wa.me/917701808924" style="text-decoration:none;display:flex;justify-content:center">Owner ko WhatsApp karo</a>
       <button class="linkbtn" id="wOut">Log out</button>`;
-    $('#wOut').onclick=async()=>{stopWatch();S.session=null;save();await window.WDAuth.signOut();renderAuth('phone')};
+    $('#wOut').onclick=async()=>{stopWatch();stopGps();S.session=null;save();await window.WDAuth.signOut();renderAuth('phone')};
     watchMe();
   }
 }
@@ -1713,6 +1713,27 @@ function enterApp(){
   $('#auth').hidden=true;ensureDay();renderRound._did=false;jobReg=null;go('round');paintBadges();
   Book.load();                 // this washer's own round, from the book
   if(Sync.mode==='live')Sync.listen();if(Sync.mode==='demo')demoExtras();
+  if(REAL)startGps();
+}
+
+/* ---------- GPS location broadcast (washer app only) ---------- */
+let _gpsWatch=null;
+function startGps(){
+  if(_gpsWatch!==null||!navigator.geolocation)return;
+  const write=pos=>{
+    const{latitude:lat,longitude:lng,accuracy}=pos.coords;
+    window.claude&&window.claude.use('db').then(db=>{
+      if(!db)return;
+      db.doc('locations/'+me().id).set({lat,lng,accuracy,washer_id:me().id,updated_at:isoIST()})
+        .catch(e=>console.warn('gps write',e));
+    });
+  };
+  _gpsWatch=navigator.geolocation.watchPosition(write,e=>console.warn('gps err',e),
+    {enableHighAccuracy:true,maximumAge:30000,timeout:30000});
+}
+function stopGps(){
+  if(_gpsWatch!==null){navigator.geolocation.clearWatch(_gpsWatch);_gpsWatch=null}
+  if(REAL&&window.claude)window.claude.use('db').then(db=>{if(db)db.doc('locations/'+me().id).delete().catch(()=>{})});
 }
 
 /* ---------- demo-only extras: when no shared db is attached (plain preview), play the customer's side ---------- */

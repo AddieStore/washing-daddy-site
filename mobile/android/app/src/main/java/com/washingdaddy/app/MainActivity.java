@@ -1,8 +1,10 @@
 package com.washingdaddy.app;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -12,6 +14,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
+import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.ValueCallback;
@@ -23,6 +26,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
@@ -50,6 +55,7 @@ public class MainActivity extends Activity {
   private static final String ORIGIN_HOST = "washingdaddy.com";
   private static final String HOME = "https://" + ORIGIN_HOST + BuildConfig.SCOPE;
   private static final int REQ_FILE = 1001;
+  private static final int REQ_LOCATION = 1002;
   private static final Map<String, String> MIME = new HashMap<>();
   static {
     MIME.put("html", "text/html"); MIME.put("js", "application/javascript"); MIME.put("css", "text/css");
@@ -61,6 +67,8 @@ public class MainActivity extends Activity {
   private WebView web;
   private ValueCallback<Uri[]> pending;
   private Uri shotUri;
+  private GeolocationPermissions.Callback pendingGeoCallback;
+  private String pendingGeoOrigin;
 
   @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
   @Override
@@ -147,6 +155,20 @@ public class MainActivity extends Activity {
 
     web.setWebChromeClient(new WebChromeClient() {
       @Override
+      public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED) {
+          callback.invoke(origin, true, false);
+        } else {
+          pendingGeoCallback = callback;
+          pendingGeoOrigin = origin;
+          ActivityCompat.requestPermissions(MainActivity.this,
+              new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+              REQ_LOCATION);
+        }
+      }
+
+      @Override
       public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams params) {
         if (pending != null) pending.onReceiveValue(null);
         pending = cb;
@@ -213,6 +235,16 @@ public class MainActivity extends Activity {
     } catch (Exception e) {
       shotUri = null;
       return null;
+    }
+  }
+
+  @Override
+  public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    if (requestCode == REQ_LOCATION && pendingGeoCallback != null) {
+      boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+      pendingGeoCallback.invoke(pendingGeoOrigin, granted, false);
+      pendingGeoCallback = null;
+      pendingGeoOrigin = null;
     }
   }
 

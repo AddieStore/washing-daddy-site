@@ -1563,10 +1563,10 @@ const ACT={
       $('#tipGo').onclick=e=>checkout(e.currentTarget,'tip',amt,`Tip for ${c.washer}`,()=>success('Sent',`${c.washer} gets ${inr(amt)} and a thank-you from you on WhatsApp.`))})},
   book(){const c=car();
     const SVCS=[
-      {id:'wash',name:'One-time Wash',price:500,d:'Pressure wash, hand dry, tyre shine'},
-      {id:'interior',name:'Interior Cleaning',price:800,d:'Vacuum, dashboard wipe, seats and windows'},
-      {id:'detailing',name:'Full Detailing',price:1500,d:'Clay bar, polish, wax — showroom finish'},
-      {id:'combo',name:'Wash + Interior',price:1200,d:'Outside wash + full interior clean'}
+      {id:'wash',name:'One-time Wash',price:99,d:'Pressure wash, hand dry, tyre shine'},
+      {id:'interior',name:'Interior Cleaning',price:99,d:'Vacuum, dashboard wipe, seats and windows'},
+      {id:'detailing',name:'Full Detailing',price:800,d:'Clay bar, polish, wax — showroom finish'},
+      {id:'combo',name:'Wash + Interior',price:169,d:'Outside wash + full interior clean'}
     ];
     let svc=SVCS[0];
     openSheet(`<h3>Book a wash</h3><p class="sub">Washer arrives in 45–60 min. Pay them on arrival — no advance needed.</p>
@@ -1578,7 +1578,8 @@ const ACT={
         const db=DB||await realDb();if(!db){toast('App offline. Try again.');return}
         const undo=busy(e.currentTarget,'Booking…');
         try{
-          await db.collection('ondemand').add({service:svc.name,service_id:svc.id,price:svc.price,car:c.name,reg:c.plate,area:c.area||'',phone:window.WDAuth.phone(),customer_id:window.WDAuth.phone(),status:'new',washer_id:'',created_at:nowIST(),date:iso(TODAY)});
+          const ref=await db.collection('ondemand').add({service:svc.name,service_id:svc.id,price:svc.price,car:c.name,reg:c.plate,area:c.area||'',phone:window.WDAuth.phone(),customer_id:window.WDAuth.phone(),status:'new',washer_id:'',created_at:nowIST(),date:iso(TODAY)});
+          fetch('https://n8n.washingdaddy.com/webhook/wd-ondemand-dispatch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({doc_id:ref.id,area:c.area||''})}).catch(()=>{});
           closeSheet();success('Booked!',`${svc.name} request sent. A washer is on the way — pay ₹${svc.price} on arrival.`);
         }catch(err){undo();toast('Booking failed. Try again.')}}})},
   bookings(){const bs=A().bookings.slice().reverse();openSheet(`<h3>One-time washes</h3><div class="rows" style="margin-top:12px">${bs.map(b=>`<div class="row"><span class="rt"><b>${b.type} · ${esc(b.what)}</b><small>${fmt(b.date,{weekday:'short',day:'numeric',month:'short'})}, ${b.slot}</small></span><button class="mini-btn link" data-act="cancelBooking" data-arg="${b.id}">Cancel</button></div>`).join('')||'<div class="row"><span class="rt"><b>Nothing booked</b></span></div>'}</div>`)},
