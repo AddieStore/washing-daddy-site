@@ -1580,7 +1580,11 @@ const ACT={
         try{
           const ref=await db.collection('ondemand').add({service:svc.name,service_id:svc.id,price:svc.price,car:c.name,reg:c.plate,area:c.area||'',phone:window.WDAuth.phone(),customer_id:window.WDAuth.phone(),status:'new',washer_id:'',created_at:nowIST(),date:iso(TODAY)});
           fetch('https://n8n.washingdaddy.com/webhook/wd-ondemand-dispatch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({doc_id:ref.id,area:c.area||''})}).catch(()=>{});
-          closeSheet();success('Booked!',`${svc.name} request sent. A washer is on the way — pay ₹${svc.price} on arrival.`);
+          const _docId=ref.id;
+          closeSheet();
+          openSheet(`<div class="success"><div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg></div><h3>Booked!</h3><p class="sub" style="max-width:32ch;margin:6px auto 10px">${esc(svc.name)} request sent. Pay ₹${svc.price} on arrival.</p><button class="btn violet" id="bkTrackBtn" style="margin-bottom:8px">📍 Track washer live</button><button class="btn gold" data-act="close">Done</button></div>`);
+          confetti();
+          setTimeout(()=>{const b=$('#bkTrackBtn');if(b)b.onclick=()=>{closeSheet();ACT.trackWasher(_docId)}},0);
         }catch(err){undo();toast('Booking failed. Try again.')}}})},
   bookings(){const bs=A().bookings.slice().reverse();openSheet(`<h3>One-time washes</h3><div class="rows" style="margin-top:12px">${bs.map(b=>`<div class="row"><span class="rt"><b>${b.type} · ${esc(b.what)}</b><small>${fmt(b.date,{weekday:'short',day:'numeric',month:'short'})}, ${b.slot}</small></span><button class="mini-btn link" data-act="cancelBooking" data-arg="${b.id}">Cancel</button></div>`).join('')||'<div class="row"><span class="rt"><b>Nothing booked</b></span></div>'}</div>`)},
   cancelBooking(id){const a=A(),b=a.bookings.find(x=>x.id===id);a.bookings=a.bookings.filter(x=>x.id!==id);save();renderAll();closeSheet();toast(`Cancelled. Refund on its way to your ${a.payments.find(p=>p.what.includes(b.type))?.via||'UPI'}.`)},
@@ -1722,6 +1726,229 @@ function boot(){
   setTimeout(()=>{$('#splash').classList.add('gone');if(signedIn){driveIn();countUp($('#streakN'),car().streak,1400)}},RM?0:850);
 }
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(boot);else addEventListener('load',boot);
-</script>
+
+/* =====================================================================
+   3-D LIVE WASHER TRACKING MAP
+   MapLibre GL JS + OpenFreeMap vector tiles (no API key required)
+   Opens as a full-screen overlay when the customer taps "Track live"
+   after booking an on-demand wash.
+   ===================================================================== */
+
+// [lng, lat] — MapLibre / GeoJSON use longitude-first
+const MAP_AREA_COORDS={
+  'GH-9 Paschim Vihar':  [77.0989,28.6680],
+  'GH-6 Paschim Vihar':  [77.0970,28.6695],
+  'GH-14 Paschim Vihar': [77.0982,28.6705],
+  'Meera Bagh':           [77.1065,28.6720],
+  'Sundar Vihar':         [77.1110,28.6710],
+  'Guru Hari Apartments': [77.0960,28.6650],
+};
+
+function mapHaversineM(lat1,lng1,lat2,lng2){
+  const R=6371000,toRad=x=>x*Math.PI/180,dLat=toRad(lat2-lat1),dLng=toRad(lng2-lng1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function mapBearing(lat1,lng1,lat2,lng2){
+  const toRad=x=>x*Math.PI/180,dLng=toRad(lng2-lng1);
+  const y=Math.sin(dLng)*Math.cos(toRad(lat2)),x=Math.cos(toRad(lat1))*Math.sin(toRad(lat2))-Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(dLng);
+  return(Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+
+let _mapJobUnsub=null,_mapLocUnsub=null;
+function closeMapOverlay(){
+  if(_mapJobUnsub){try{_mapJobUnsub()}catch(e){}; _mapJobUnsub=null}
+  if(_mapLocUnsub){try{_mapLocUnsub()}catch(e){}; _mapLocUnsub=null}
+  const ov=document.getElementById('wdMapOverlay');if(ov)ov.remove();
+}
+
+function loadMapLibre(cb){
+  if(window.maplibregl){cb();return}
+  const lnk=document.createElement('link');
+  lnk.rel='stylesheet';lnk.href='https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css';
+  document.head.appendChild(lnk);
+  const sc=document.createElement('script');
+  sc.src='https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js';
+  sc.onload=cb;sc.onerror=()=>{toast('Map could not load. Check connection.');};
+  document.head.appendChild(sc);
+}
+
+ACT.trackWasher=function(docId){
+  const c=car();
+  const home=MAP_AREA_COORDS[c.area]||[77.1000,28.6700];
+
+  closeMapOverlay();
+
+  const ov=document.createElement('div');
+  ov.id='wdMapOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9000;background:#150830;display:flex;flex-direction:column;font-family:var(--f-body)';
+  ov.innerHTML=`
+<div id="mpHead" style="display:flex;align-items:center;gap:10px;padding:max(env(safe-area-inset-top,16px),16px) 16px 14px;background:rgba(21,8,48,.96);backdrop-filter:blur(14px);position:relative;z-index:2;flex-shrink:0">
+  <button id="mpBack" aria-label="Back" style="width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#FFF6E9;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">‹</button>
+  <div style="flex:1;min-width:0">
+    <div style="font-weight:700;font-size:15px;color:#FFF6E9;line-height:1.2">Washer is on the way</div>
+    <div id="mpSub" style="font-size:12px;color:rgba(255,246,233,.55);margin-top:2px">Finding location…</div>
+  </div>
+  <div id="mpEtaBadge" style="background:#5409DA;color:#FFF6E9;font-weight:700;font-size:13px;padding:7px 14px;border-radius:24px;flex-shrink:0;display:none;line-height:1"></div>
+</div>
+<div id="mpMapEl" style="flex:1;position:relative;min-height:0"></div>
+<div id="mpFoot" style="padding:14px 16px max(env(safe-area-inset-bottom,14px),14px);background:rgba(21,8,48,.96);backdrop-filter:blur(14px);text-align:center;font-size:13px;color:rgba(255,246,233,.5);flex-shrink:0">Loading 3D map…</div>`;
+  document.body.appendChild(ov);
+
+  document.getElementById('mpBack').onclick=closeMapOverlay;
+
+  loadMapLibre(()=>{
+    const map=new maplibregl.Map({
+      container:'mpMapEl',
+      style:'https://tiles.openfreemap.org/styles/liberty',
+      center:home,zoom:15,pitch:55,bearing:30,antialias:true,
+      attributionControl:false,
+    });
+    map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
+
+    // --- home pin ---
+    const homeEl=document.createElement('div');
+    homeEl.style.cssText='width:44px;height:52px;cursor:pointer';
+    homeEl.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 52" width="44" height="52">
+      <filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#5409DA" flood-opacity=".5"/></filter>
+      <g filter="url(#sh)">
+        <path d="M22 2 C11.5 2 3 10.5 3 21 C3 34 22 50 22 50 C22 50 41 34 41 21 C41 10.5 32.5 2 22 2Z" fill="#FFBA08"/>
+        <circle cx="22" cy="21" r="10" fill="white" opacity=".25"/>
+        <text x="22" y="27" text-anchor="middle" font-size="15">🏠</text>
+      </g>
+    </svg>`;
+    new maplibregl.Marker({element:homeEl,anchor:'bottom'}).setLngLat(home).addTo(map);
+
+    // --- scooter marker ---
+    const scoEl=document.createElement('div');
+    scoEl.style.cssText='width:72px;height:52px;filter:drop-shadow(0 4px 10px rgba(84,9,218,.7));transition:transform .3s ease';
+    scoEl.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 52" width="72" height="52">
+      <!-- shadow -->
+      <ellipse cx="36" cy="50" rx="22" ry="3.5" fill="rgba(84,9,218,.35)"/>
+      <!-- rear wheel -->
+      <circle cx="12" cy="36" r="9" fill="none" stroke="#22094F" stroke-width="4"/>
+      <circle cx="12" cy="36" r="4" fill="#22094F"/>
+      <circle cx="12" cy="36" r="1.5" fill="#FFBA08"/>
+      <!-- front wheel -->
+      <circle cx="58" cy="36" r="9" fill="none" stroke="#22094F" stroke-width="4"/>
+      <circle cx="58" cy="36" r="4" fill="#22094F"/>
+      <circle cx="58" cy="36" r="1.5" fill="#FFBA08"/>
+      <!-- frame/chassis -->
+      <path d="M12 36 Q16 20 30 18 L48 18 Q58 20 58 36" fill="none" stroke="#5409DA" stroke-width="4.5" stroke-linecap="round"/>
+      <!-- body -->
+      <path d="M20 28 Q28 16 42 20 L52 28 Q44 38 22 36 Z" fill="#5409DA"/>
+      <!-- footboard -->
+      <rect x="16" y="33" width="30" height="5" rx="2.5" fill="#3A06A0"/>
+      <!-- water tank (pressure-washer drum on back) -->
+      <rect x="36" y="10" width="18" height="14" rx="7" fill="#2E8BFF" stroke="#1E6ECF" stroke-width="1"/>
+      <rect x="42" y="7" width="6" height="5" rx="3" fill="#2E8BFF"/>
+      <!-- hose coil on tank -->
+      <circle cx="45" cy="17" r="4" fill="none" stroke="#14C08A" stroke-width="2"/>
+      <circle cx="45" cy="17" r="2" fill="none" stroke="#14C08A" stroke-width="1.5"/>
+      <!-- seat -->
+      <rect x="24" y="17" width="15" height="6" rx="3" fill="#3A06A0"/>
+      <!-- rider body -->
+      <rect x="26" y="22" width="13" height="9" rx="3" fill="#5409DA"/>
+      <!-- rider helmet -->
+      <circle cx="32" cy="11" r="8.5" fill="#FFBA08"/>
+      <path d="M23.5 11 Q23.5 4 32 4 Q40.5 4 40.5 11" fill="#FFBA08"/>
+      <!-- visor -->
+      <path d="M24.5 12 Q32 10 39.5 12" fill="none" stroke="#22094F" stroke-width="2" stroke-linecap="round"/>
+      <!-- visor tint -->
+      <path d="M25.5 11 Q32 9.5 38.5 11 Q32 15.5 25.5 11Z" fill="rgba(46,139,255,.45)"/>
+      <!-- WD logo on jacket -->
+      <text x="32" y="30" text-anchor="middle" font-size="5.5" fill="#FFBA08" font-weight="700">WD</text>
+    </svg>`;
+    let washerMarker=null;
+
+    // --- route line ---
+    map.on('load',()=>{
+      // Tint buildings purple/violet for the WD brand feel
+      map.addLayer({
+        id:'wd-buildings-3d',
+        source:'openmaptiles',
+        'source-layer':'building',
+        type:'fill-extrusion',
+        minzoom:14,
+        paint:{
+          'fill-extrusion-color':['interpolate',['linear'],['get','render_height'],
+            [0,'#2d1260'],[20,'#3e1a80'],[50,'#5409DA'],[100,'#7640ff']],
+          'fill-extrusion-height':['get','render_height'],
+          'fill-extrusion-base':['get','render_min_height'],
+          'fill-extrusion-opacity':0.82,
+        },
+      });
+
+      // Route line source (will be updated as washer moves)
+      map.addSource('wd-route',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:[]}}});
+      map.addLayer({id:'wd-route-line',type:'line',source:'wd-route',layout:{'line-cap':'round','line-join':'round'},
+        paint:{'line-color':'#FFBA08','line-width':3,'line-dasharray':[2,3],'line-opacity':0.8}});
+
+      document.getElementById('mpFoot').textContent='3D map loaded · Waiting for washer GPS…';
+    });
+
+    let _animFrame=null;
+    function smoothMove(marker,fromLngLat,toLngLat,ms){
+      const start=performance.now();
+      function step(now){
+        const t=Math.min((now-start)/ms,1);
+        const ease=t<.5?2*t*t:-1+(4-2*t)*t;
+        marker.setLngLat([fromLngLat[0]+(toLngLat[0]-fromLngLat[0])*ease,fromLngLat[1]+(toLngLat[1]-fromLngLat[1])*ease]);
+        if(t<1)_animFrame=requestAnimationFrame(step);
+      }
+      if(_animFrame)cancelAnimationFrame(_animFrame);
+      _animFrame=requestAnimationFrame(step);
+    }
+
+    let prevWasherPos=null;
+    function updateWasher(loc){
+      if(!loc||!loc.lat||!loc.lng)return;
+      const lngLat=[loc.lng,loc.lat];
+      if(!washerMarker){
+        washerMarker=new maplibregl.Marker({element:scoEl,anchor:'bottom'}).setLngLat(lngLat).addTo(map);
+      } else if(prevWasherPos){
+        smoothMove(washerMarker,prevWasherPos,lngLat,900);
+      } else {
+        washerMarker.setLngLat(lngLat);
+      }
+      prevWasherPos=lngLat;
+
+      // Update dashed route line
+      if(map.getSource('wd-route'))
+        map.getSource('wd-route').setData({type:'Feature',geometry:{type:'LineString',coordinates:[lngLat,home]}});
+
+      // Bearing toward customer, camera slightly behind washer
+      const br=mapBearing(loc.lat,loc.lng,home[1],home[0]);
+      // Flip scooter SVG to face direction of travel
+      scoEl.style.transform=br>180?'scaleX(-1)':'scaleX(1)';
+
+      const distM=Math.round(mapHaversineM(loc.lat,loc.lng,home[1],home[0]));
+      const etaMin=Math.max(1,Math.round(distM/(20000/60))); // 20 km/h scooter
+
+      map.easeTo({center:lngLat,bearing:br-20,pitch:58,zoom:15.8,duration:1100,easing:t=>t<.5?2*t*t:-1+(4-2*t)*t});
+
+      document.getElementById('mpSub').textContent=`${distM < 100 ? 'Almost there! ' + distM + ' m away' : distM + ' m away'}`;
+      const badge=document.getElementById('mpEtaBadge');
+      badge.textContent=distM<100?'Almost here':(etaMin===1?'1 min':etaMin+' min');
+      badge.style.display='block';
+      document.getElementById('mpFoot').textContent=`${(loc.washer_id||'Washer')} heading your way · pay on arrival`;
+    }
+
+    // Subscribe to ondemand doc → then to washer location
+    realDb().then(db=>{
+      if(!db||!docId)return;
+      _mapJobUnsub=db.collection('ondemand').doc(docId).onSnapshot(snap=>{
+        if(!snap.exists)return;
+        const job=snap.data();
+        if(!job.washer_id){document.getElementById('mpSub').textContent='Assigning nearest washer…';return}
+        if(_mapLocUnsub)return; // already listening
+        document.getElementById('mpSub').textContent=`${job.washer_id} is on the way`;
+        _mapLocUnsub=db.collection('locations').doc(job.washer_id).onSnapshot(ld=>{
+          updateWasher(ld.exists?ld.data():null);
+        },e=>console.warn('map loc',e));
+      },e=>console.warn('map job',e));
+    });
+  }); // loadMapLibre
+}; // ACT.trackWasher
 
 </body></html>
