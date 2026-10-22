@@ -14,10 +14,18 @@ nothing was carried over except what `pay/README.md` in the site repo described.
 | `wd-pay-order` | both | Prices the order **itself**, then asks Cashfree for a payment session |
 | `wd-pay-hook` | Cashfree | Checks the signature, moves the paid-up date, reduces what is owed, messages you |
 
-The browser sends an amount, but `wd-pay-order` ignores it and prices **always from the car's
-own Notion row** (Monthly Fee and Owes Now). The page cannot be used to pay a different amount
-than the book says. The order carries the car's Notion page id and the expected amount in its
-tags; the hook refuses if the amount paid falls short.
+The browser sends an amount, but `wd-pay-order` never trusts it for anything that moves a
+paid-up date:
+
+| What is paid | Priced from | What the hook does |
+|---|---|---|
+| Plan or bill, car on the book | the car's Notion row (Monthly Fee, Owes Now) | moves Service Paid Up To, reduces Owes Now |
+| Plan, car not on the book yet (signed up in the app) | the plan's list price | logs a lead and tells you, so you add the car |
+| One-time wash | its list price | tells you, book untouched |
+| Tip (₹20 to ₹500), app store order or upgrade (up to ₹20,000) | the app's amount, range-checked | tells you, book untouched |
+
+The order carries `kind`, the car and the expected amount in its tags; the hook refuses if the
+amount paid falls short.
 
 `wd-pay-hook` refuses anything that is not signed with your Cashfree secret, and anything more
 than five minutes old. It is also idempotent: each `cf_payment_id` is stored on the Notion row,
