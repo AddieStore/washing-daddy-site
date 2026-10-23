@@ -178,7 +178,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 @keyframes idle{50%{transform:translateY(-3px)}}
 .ghost-car{width:100%;color:rgba(255,246,233,.55)}
 .ghost-car svg{width:100%;height:auto;display:block}
-.ghost-note{position:absolute;left:0;right:0;top:38%;text-align:center;font-size:12.5px;font-weight:600;color:rgba(255,246,233,.85)}
+.ghost-note{position:absolute;left:50%;top:6%;transform:translateX(-50%);display:grid;justify-items:center;gap:4px;width:max-content;max-width:90%;text-align:center;font-size:15px;font-weight:700;color:#FFF6E9;pointer-events:auto}
+.ghost-note small{font-size:12px;font-weight:500;color:rgba(255,246,233,.75)}
+.ghost-cam{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:#1A0A33;margin-bottom:4px;box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.ghost-cam svg,.hero-cam svg{width:24px;height:24px}
+.hero-cam{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:rgba(18,7,36,.45);border:1px solid rgba(255,246,233,.16);color:#FFF6E9;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.hero-cam svg{width:19px;height:19px}
+.hero-r{display:flex;gap:8px;align-items:center}
+.cut-busy{display:none}
+.hero.cutting .cut-busy{display:grid;position:absolute;inset:0;z-index:4;place-items:center;align-content:center;gap:10px;background:rgba(26,10,51,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:#FFF6E9;font-weight:700;text-align:center}
+.cut-busy i{width:38px;height:38px;border-radius:50%;border:3px solid rgba(255,246,233,.25);border-top-color:var(--gold);animation:spin .9s linear infinite}
+.cut-busy small{font-weight:500;opacity:.75}
 .hero-top{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;z-index:3}
 .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px 8px 10px;border-radius:999px;background:rgba(18,7,36,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,246,233,.16);font-size:12.5px;font-weight:600;color:var(--cream)}
 .pulse{width:8px;height:8px;border-radius:50%;background:#2EE6A6;box-shadow:0 0 0 0 rgba(46,230,166,.7);animation:pulse 2s infinite}
@@ -599,8 +609,9 @@ button.row:active{background:var(--tile-2)}
       <canvas id="spray" aria-hidden="true"></canvas>
       <div class="hero-top">
         <span class="chip"><span class="pulse" id="chipDot"></span><span id="washedChip">Washed today · 6:42 AM</span></span>
-        <button class="garage-dots" id="gDots" aria-label="Switch car" data-act="nextCar"></button>
+        <span class="hero-r"><button class="hero-cam" id="heroCam" data-act="carPhoto" aria-label="Change your car's photo" hidden></button><button class="garage-dots" id="gDots" aria-label="Switch car" data-act="nextCar"></button></span>
       </div>
+      <div class="cut-busy" aria-live="polite"><i></i>Cutting out your car…<small>Takes a few seconds the first time</small></div>
       <div class="car-wrap"><div class="car" id="car"></div></div>
       <div class="hero-info">
         <div style="min-width:0">
@@ -989,6 +1000,7 @@ function art(kind,c){
   };
   return `<svg viewBox="0 0 200 200" aria-hidden="true">${defs}${S[kind]}</svg>`;
 }
+const ICAM=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
 const GHOST_CAR=`<svg viewBox="0 0 400 160" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="8 7" stroke-linecap="round"><path d="M20 118c0-22 14-30 44-34l40-34c10-8 22-12 38-12h92c18 0 30 6 42 18l26 28c32 2 58 10 70 22 6 6 8 14 8 22v4H20z"/><circle cx="98" cy="122" r="26"/><circle cx="306" cy="122" r="26"/><path d="M120 52h76v34h-108zM214 52h56l30 34h-86z"/></svg>`;
 
 /* ---------- schedule: weekly extras spread by a hash of the registration ---------- */
@@ -1005,6 +1017,14 @@ function extras(c,dt){const k=[...weekPlan(c)[dayKey(dt)]];if(detDays(c).include
 const dayKey=d=>DAYS[(d.getDay()+6)%7];
 const LABEL={foam:'Foam wash',int:'Interior cleaning',tyre:'Tyre & trim polish',det:'Detailing'};
 const isPaused=(c,d)=>c.paused&&iso(d)>=c.paused.from&&iso(d)<=c.paused.to;
+// Pausing is a WD Pro (and up) perk: at most PAUSE_MAX days in any calendar month, on whichever days the customer picks
+const PAUSE_PLANS=['pro','exc','res'],PAUSE_MAX=7;
+const canPause=c=>PAUSE_PLANS.includes(c.plan);
+const pauseLog=c=>{if(!c.pauses)c.pauses=c.paused?[{...c.paused}]:[];return c.pauses};
+function pauseUsed(c,ym){let n=0;pauseLog(c).forEach(r=>{for(let d=parse(r.from);iso(d)<=r.to;d=addDays(d,1))if(iso(d).startsWith(ym))n++});return n}
+function pauseFits(c,from,days){const per={};for(let i=0;i<days;i++){const ym=iso(addDays(from,i)).slice(0,7);per[ym]=(per[ym]||0)+1}
+  return Object.keys(per).every(ym=>pauseUsed(c,ym)+per[ym]<=PAUSE_MAX)}
+const pauseLeft=(c,d)=>Math.max(0,PAUSE_MAX-pauseUsed(c,iso(d).slice(0,7)));
 // ---- real accounts: only what really happened is shown (no test data) ----
 const REALACCT=()=>!!(S.session&&S.session.real);
 const startOf=c=>c.start?parse(c.start):null;
@@ -1046,12 +1066,47 @@ async function watchCarPhotos(){
     const t=A().cars.find(q=>q.id===cid),v=g.exists?g.data().photo:null;
     if(t&&v&&t.photo!==v){t.photo=v;save();renderAll()}},()=>{}))});
 }
+let _bgMod;
+// Our own cut-out (ISNet model + ONNX Runtime Web), served from washingdaddy.com/bg/ for both apps
+async function loadBgLib(){try{return await import('/bg/cutout.js')}catch(e){console.warn('bg cutout lib',e);return null}}
+async function removeBg(blob){
+  if(!_bgMod){_bgMod=await loadBgLib();if(!_bgMod)return null}
+  try{return await _bgMod.removeBackground(blob)}catch(e){console.warn('bg cutout run',e);return null}
+}
+async function fileCanvas(file,max){
+  const url=URL.createObjectURL(file),img=new Image();
+  try{await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url})}finally{URL.revokeObjectURL(url)}
+  const k=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),cv=document.createElement('canvas');
+  cv.width=Math.round(img.naturalWidth*k);cv.height=Math.round(img.naturalHeight*k);
+  cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);return cv;
+}
+// crop to the car, then pad the sides so every cut-out sits in the hero like the sample cars do
+async function cutoutCanvas(png){
+  const url=URL.createObjectURL(png),img=new Image();
+  try{await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url})}finally{URL.revokeObjectURL(url)}
+  const w=img.naturalWidth,h=img.naturalHeight,cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const x=cv.getContext('2d');x.drawImage(img,0,0);const a=x.getImageData(0,0,w,h).data;
+  let t=h,b=-1,l=w,r=-1;
+  for(let y=0;y<h;y++)for(let i=0;i<w;i++)if(a[(y*w+i)*4+3]>24){if(y<t)t=y;if(y>b)b=y;if(i<l)l=i;if(i>r)r=i}
+  if(b<0||(r-l)*(b-t)<w*h*.04)return null;
+  const cw=r-l+1,ch=b-t+1,W=Math.max(cw,Math.round(ch*2)),k=Math.min(1,900/W),out=document.createElement('canvas');
+  out.width=Math.round(W*k);out.height=Math.round(ch*k);
+  out.getContext('2d').drawImage(cv,l,t,cw,ch,Math.round((W-cw)/2*k),0,Math.round(cw*k),Math.round(ch*k));return out;
+}
 function pickCarPhoto(){
   const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
-  inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;
-    try{const c=car();c.photo=await shrinkPhoto(f,600);save();renderAll();toast('Photo saved');
+  inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;const c=car();
+    if(current!=='home')go('home');$('#hero').classList.add('cutting');
+    try{
+      const src=await fileCanvas(f,1280);
+      const png=await new Promise(r=>src.toBlob(r,'image/png'));
+      const cut=await removeBg(png),cv=cut&&await cutoutCanvas(cut);
+      if(cv){let u=cv.toDataURL('image/webp',.85);if(!u.startsWith('data:image/webp'))u=cv.toDataURL('image/png');c.photo=u;c.photoCut=true}
+      else{c.photo=await shrinkPhoto(f,600);c.photoCut=false}
+      save();$('#hero').classList.remove('cutting');renderAll();driveIn();
+      toast(cv?'Your car is in. Background removed.':"Couldn't remove the background, so the photo is saved as it is.");
       if(REALACCT())await saveCarPhotoReal(c)}
-    catch(e){console.warn(e);toast("Couldn't save the photo. Check your signal and try again.")}};
+    catch(e){console.warn(e);$('#hero').classList.remove('cutting');toast("Couldn't save the photo. Check your signal and try again.")}};
   inp.click();
 }
 
@@ -1122,7 +1177,7 @@ function renderAuth(){
       if(miss){$('#suErr').textContent='Add '+miss+' to continue.';return}auth.step='plan';renderAuth()};
   } else if(auth.step==='plan'){
     const s=auth.signup;
-    el.innerHTML=`<div class="step-dots"><i class="on"></i><i class="on"></i></div><h2>Pick a plan for your ${esc(s.model)}</h2><p>Pay after the first wash. Change or pause any time.</p>
+    el.innerHTML=`<div class="step-dots"><i class="on"></i><i class="on"></i></div><h2>Pick a plan for your ${esc(s.model)}</h2><p>Pay after the first wash. Change any time. WD Pro and above can pause up to a week a month.</p>
       ${PLANS.filter(p=>!p.old).map(p=>`<button class="opt ${s.plan===p.id?'on':''}" data-v="${p.id}"><span class="radio"></span><span><b>${p.name}</b><br><small style="color:var(--fg-3)">${p.rows.slice(1,4).map(r=>r[0]+' '+r[1].toLowerCase()).join(' · ')}</small></span><b class="num">${inr(p.price)}</b></button>`).join('')}
       <button class="btn gold" id="suGo" style="margin-top:8px">Start tomorrow morning</button><button class="link" id="suBack" style="display:block;margin:14px auto 0">Back</button>`;
     $$('.opt').forEach(b=>b.onclick=()=>{s.plan=b.dataset.v;$$('.opt').forEach(x=>x.classList.toggle('on',x===b))});
@@ -1294,7 +1349,8 @@ function renderHero(){
   const el=$('#car');
   const carSrc=carImg(c);
   if(carSrc){el.innerHTML=`<img src="${carSrc}" alt="${esc(c.make+' '+c.name)}, the customer's own car" draggable="false"><div class="sheen" style="-webkit-mask-image:url(${carSrc});mask-image:url(${carSrc})"></div>`}
-  else el.innerHTML=`<div class="ghost-car">${GHOST_CAR}</div><div class="ghost-note">Your car's photo arrives after the first wash</div>`;
+  else el.innerHTML=`<div class="ghost-car">${GHOST_CAR}</div><button class="ghost-note" data-act="carPhoto"><span class="ghost-cam">${ICAM}</span>Add your car's photo<small>Pick one from your gallery. We cut out the background.</small></button>`;
+  $('#heroCam').hidden=!carSrc;$('#heroCam').innerHTML=ICAM;
   $('#carName').textContent=c.name; $('#carPlate').textContent=maskPlate(c.plate); $('#carTier').textContent=p.name;
   const d=doc(c);
   $('#chipDot').className='pulse'+(d.status==='done'||d.status==='washing'?'':' amber');
@@ -1407,8 +1463,9 @@ function renderPlan(){
   $('#usage').innerHTML=cols.map(u=>`<div class="card u"><div class="ul"><i style="background:${u[3]}"></i>${u[0]}</div><div class="uv num"><span data-to="${u[1]*used}">0</span> <small>of ${u[2]}</small></div><div class="bar"><i style="background:${u[3]}" data-w="${u[2]?u[1]/u[2]*100*used:0}"></i></div></div>`).join('');
   $('#plans').innerHTML=PLANS.filter(pl=>!pl.old||pl.id===p.id).map(pl=>`<div class="plan ${pl.id===p.id?'cur on-violet':''} ${pl.id==='res'&&pl.id!==p.id?'res on-violet':''}">${pl.id===p.id?'<span class="cur-tag">Your plan</span>':''}<div class="pn">${pl.name}</div><div class="pp num">${inr(pl.price)} <small>/ month</small></div><ul>${pl.rows.map(r=>`<li><span>${r[0]}</span><b class="${r[1]==='—'?'no':''}">${r[1]}</b></li>`).join('')}</ul>${pl.id===p.id?`<button class="btn gold cta" data-act="payPlan">${c.till?'Pay next month':'Pay first month'}</button>`:''}</div>`).join('');
   const pz=c.paused&&c.paused.to>=iso(TODAY);
-  $('#pauseCard').innerHTML=`<div style="display:flex;gap:12px;align-items:center"><div style="font-size:26px" aria-hidden="true">✈︎</div><div><div style="font-weight:700">${pz?`Paused ${fmt(c.paused.from)} – ${fmt(c.paused.to)}`:'Going out of town?'}</div><div style="font-size:12.5px;color:var(--fg-2)">${pz?'Paused days are added to the end of your plan.':'Pause washes and the days get added to your plan.'}</div></div></div>
-    ${pz?`<button class="btn ghost" style="margin-top:12px" data-act="resume">Resume washes now</button>`:`<button class="btn ghost" style="margin-top:12px" data-act="pause">Choose dates</button>`}`;
+  const cp=canPause(c),pzLeft=cp?pauseLeft(c,TODAY):0;
+  $('#pauseCard').innerHTML=`<div style="display:flex;gap:12px;align-items:center"><div style="font-size:26px" aria-hidden="true">✈︎</div><div><div style="font-weight:700">${pz?`Paused ${fmt(c.paused.from)} – ${fmt(c.paused.to)}`:'Going out of town?'}</div><div style="font-size:12.5px;color:var(--fg-2)">${pz?'Paused days are added to the end of your plan.':cp?`Pause up to ${PAUSE_MAX} days a month, any days you like. ${pzLeft} of ${PAUSE_MAX} left in ${fmt(TODAY,{month:'long'})}.`:`Pausing comes with WD Pro and above: up to ${PAUSE_MAX} days a month.`}</div></div></div>
+    ${pz?`<button class="btn ghost" style="margin-top:12px" data-act="resume">Resume washes now</button>`:cp?`<button class="btn ghost" style="margin-top:12px" data-act="pause">Choose dates</button>`:''}`;
   const pays=A().payments.slice().sort((a,b)=>b.d.localeCompare(a.d));
   $('#payCount').textContent=pays.length?pays.length+' receipts':'';
   $('#payments').innerHTML=pays.length?pays.slice(0,6).map(x=>`<div class="row"><span class="ri" style="background:rgba(20,192,138,.15);color:var(--ok)">₹</span><span class="rt"><b>${esc(x.what)}</b><small>${fmt(x.d,{day:'numeric',month:'short',year:'numeric'})} · ${x.via}${x.ref?' · '+x.ref:''}</small></span><span class="rv2 num">${inr(x.amt)}</span></div>`).join(''):`<div class="row"><span class="rt"><b>No payments yet</b><small>Your first receipt shows up here.</small></span></div>`;
@@ -1543,14 +1600,28 @@ const ACT={
       ${up&&diff?UPI:''}<button class="btn violet" id="swGo" style="margin-top:12px">${up&&diff?'Pay '+inr(diff)+' and upgrade':'Confirm '+np.name}</button>`,()=>{
       segPick('#upi');$('#swGo').onclick=e=>{const fin=()=>{c.plan=id;save();renderAll();success('Done',`From tomorrow, ${c.washer} follows the ${np.name} checklist for your ${esc(c.name)}.`)};
         if(up&&diff)checkout(e.currentTarget,'upgrade',diff,`Upgrade to ${np.name} · ${c.name}`,fin);else fin()}})},
-  pause(){const c=car();if(c.status==='new'){toast('You can pause once washes have started');return}let days=7;
-    openSheet(`<h3>Pause washes</h3><p class="sub">From tomorrow. ${c.washer} skips your car and the days are added to your plan.</p><div class="seg" id="pz"><button data-v="3">3 days</button><button class="on" data-v="7">1 week</button><button data-v="14">2 weeks</button><button data-v="30">1 month</button></div>
+  pause(){const c=car();if(c.status==='new'){toast('You can pause once washes have started');return}
+    if(!canPause(c)){openSheet(`<h3>Pausing comes with WD Pro</h3><p class="sub">On WD Pro and above you can pause up to ${PAUSE_MAX} days a month, on any days you like. The days are added to the end of your plan.</p><p class="sub">Your ${esc(c.name)} is on ${planOf(c).name}.</p><button class="btn violet" data-act="seePlans">See plans</button>`);return}
+    if(c.paused&&c.paused.to>=iso(TODAY)){toast(`Already paused till ${fmt(c.paused.to)}. Resume it from the Plan tab first.`);return}
+    let start=addDays(TODAY,1),days=1;
+    const starts=Array.from({length:21},(_,i)=>addDays(TODAY,i+1));
+    openSheet(`<h3>Pause washes</h3><p class="sub">Up to ${PAUSE_MAX} days a month, on any days. ${c.washer} skips your car and the days are added to your plan.</p>
+      <div class="eyebrow">Starting</div><div class="chips" id="pzFrom" style="flex-wrap:nowrap;overflow-x:auto;margin-bottom:14px">${starts.map((d,i)=>`<button data-i="${i}" class="${i?'':'on'}" style="white-space:nowrap">${i?fmt(d,{weekday:'short',day:'numeric',month:'short'}):'Tomorrow'}</button>`).join('')}</div>
+      <div class="eyebrow">For</div><div class="seg" id="pz">${[1,2,3,4,5,6,7].map(n=>`<button data-v="${n}">${n}${n===1?' day':''}</button>`).join('')}</div>
       <div class="confirm" id="pzSum"></div><button class="btn violet" id="pzGo">Pause washes</button>`,()=>{
-      const sum=()=>{$('#pzSum').innerHTML=`<div class="cv"><small>No washes</small><b>${fmt(addDays(TODAY,1))} – ${fmt(addDays(TODAY,days))}</b></div><span>·</span><div class="cv"><small>Plan now ends</small><b style="color:var(--accent)">${c.till?fmt(addDays(parse(c.till),days)):'–'}</b></div>`};
-      sum();segPick('#pz',b=>{days=+b.dataset.v;sum()});
-      $('#pzGo').onclick=async e=>{const undo=busy(e.currentTarget,'Telling '+c.washer+'…');const pz={from:iso(addDays(TODAY,1)),to:iso(addDays(TODAY,days))};if(!(await API.pause(c,pz.from,pz.to)).ok)return sendFailed(undo);c.paused=pz;if(c.till)c.till=iso(addDays(parse(c.till),days));save();renderAll();success('Paused',`No washes till ${fmt(c.paused.to)}. ${c.washer} has been told.`)}})},
+      const draw=()=>{
+        $$('#pz button').forEach(b=>{const n=+b.dataset.v,ok=pauseFits(c,start,n);b.disabled=!ok;b.style.opacity=ok?'':'.35';b.classList.toggle('on',n===days)});
+        const ok=days>0&&pauseFits(c,start,days),end=addDays(start,days-1);$('#pzGo').disabled=!ok;
+        $('#pzSum').innerHTML=ok?`<div class="cv"><small>No washes</small><b>${days===1?fmt(start):fmt(start)+' – '+fmt(end)}</b></div><span>·</span><div class="cv"><small>Left in ${fmt(start,{month:'long'})}</small><b style="color:var(--accent)">${pauseLeft(c,start)-Math.min(days,[...Array(days)].filter((_,i)=>iso(addDays(start,i)).slice(0,7)===iso(start).slice(0,7)).length)} of ${PAUSE_MAX} days</b></div>`
+          :`<div class="cv"><small>No pause days left</small><b>You've used all ${PAUSE_MAX} for ${fmt(start,{month:'long'})}</b></div>`};
+      const fit=()=>{if(!pauseFits(c,start,days)){days=[7,6,5,4,3,2,1].find(n=>pauseFits(c,start,n))||0}draw()};
+      $$('#pzFrom button').forEach(b=>b.onclick=()=>{$$('#pzFrom button').forEach(x=>x.classList.toggle('on',x===b));start=starts[+b.dataset.i];fit()});
+      $$('#pz button').forEach(b=>b.onclick=()=>{if(b.disabled)return;days=+b.dataset.v;draw()});
+      fit();
+      $('#pzGo').onclick=async e=>{if(!days||!pauseFits(c,start,days))return;const undo=busy(e.currentTarget,'Telling '+c.washer+'…');const pz={from:iso(start),to:iso(addDays(start,days-1))};if(!(await API.pause(c,pz.from,pz.to)).ok)return sendFailed(undo);c.paused=pz;pauseLog(c).push({...pz});if(c.till)c.till=iso(addDays(parse(c.till),days));save();renderAll();success('Paused',`No washes ${days===1?'on '+fmt(pz.from):fmt(pz.from)+' – '+fmt(pz.to)}. ${c.washer} has been told.`)}})},
+  seePlans(){closeSheet();go('plan')},
   async resume(){const c=car();if(!c.paused)return;const unused=Math.max(0,Math.round((parse(c.paused.to)-Math.max(TODAY,addDays(parse(c.paused.from),-1)))/864e5));
-    if(!(await API.pause(c,null,null)).ok)return sendFailed();if(c.till)c.till=iso(addDays(parse(c.till),-unused));c.paused=null;save();renderAll();toast(`Washes resume tomorrow. ${c.washer} has been told.`)},
+    if(!(await API.pause(c,null,null)).ok)return sendFailed();if(c.till)c.till=iso(addDays(parse(c.till),-unused));const log=pauseLog(c),last=log.find(r=>r.from===c.paused.from&&r.to===c.paused.to);if(last){if(last.from>iso(TODAY))log.splice(log.indexOf(last),1);else last.to=iso(TODAY)}c.paused=null;save();renderAll();toast(`Washes resume tomorrow. ${c.washer} has been told.`)},
   note(){const c=car();openSheet(`<h3>Note for ${c.washer}</h3><p class="sub">He sees it on tomorrow's round, in Hinglish.</p><label for="noteTxt" class="eyebrow">Your note</label><textarea id="noteTxt" class="field" rows="3" maxlength="1000" style="resize:none" placeholder="e.g. Please do the boot area too">${esc(c.note||'')}</textarea>
       <div class="chips" id="noteQuick"><button>Car is in the basement</button><button>Skip tomorrow</button><button>Extra interior please</button><button>Clean the boot</button></div>
       <button class="btn violet" id="noteGo">Send to ${c.washer}</button>${c.note?'<button class="btn ghost" id="noteDel" style="margin-top:8px">Remove note</button>':''}`,()=>{

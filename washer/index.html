@@ -1145,15 +1145,11 @@ function toDataURL(img,max,q){const c=drawScaled(img,max);let u=c.toDataURL('ima
 
 /* ---------- selfie background removal ---------- */
 let _bgMod;
+// Our own cut-out (ISNet model + ONNX Runtime Web), served from washingdaddy.com/bg/ for both apps
+async function loadBgLib(){try{return await import('/bg/cutout.js')}catch(e){console.warn('bg cutout lib',e);return null}}
 async function removeBg(blob){
-  if(!_bgMod){
-    try{_bgMod=await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/dist/index.js')}
-    catch(e){console.warn('bg-removal lib',e);return blob}
-  }
-  const fn=_bgMod.removeBackground||_bgMod.default;
-  if(!fn){console.warn('bg-removal: no export');return blob}
-  try{return await fn(blob,{model:'small',output:{format:'image/png',quality:.9}})}
-  catch(e){console.warn('bg-removal run',e);return blob}
+  if(!_bgMod){_bgMod=await loadBgLib();if(!_bgMod)return blob}
+  try{return await _bgMod.removeBackground(blob)}catch(e){console.warn('bg cutout run',e);return blob}
 }
 
 /* ---------- writes to a wash doc: always the whole doc, one at a time ---------- */
