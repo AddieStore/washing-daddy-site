@@ -1067,12 +1067,11 @@ async function watchCarPhotos(){
     if(t&&v&&t.photo!==v){t.photo=v;save();renderAll()}},()=>{}))});
 }
 let _bgMod;
-// @imgly/background-removal 1.5.5, bundled into vendor/ so it loads from our own site (its model files still come from img.ly's CDN)
-async function loadBgLib(){for(const u of ['./vendor/bg-removal.js','https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm']){try{return await import(u)}catch(e){console.warn('bg-removal lib',u,e)}}return null}
+// Our own cut-out (ISNet model + ONNX Runtime Web), served from washingdaddy.com/bg/ for both apps
+async function loadBgLib(){try{return await import('/bg/cutout.js')}catch(e){console.warn('bg cutout lib',e);return null}}
 async function removeBg(blob){
-  if(!_bgMod)_bgMod=await loadBgLib();if(!_bgMod)return null;
-  const fn=_bgMod.removeBackground||_bgMod.default;if(!fn)return null;
-  try{return await fn(blob,{model:'small',output:{format:'image/png',quality:.9}})}catch(e){console.warn('bg-removal run',e);return null}
+  if(!_bgMod){_bgMod=await loadBgLib();if(!_bgMod)return null}
+  try{return await _bgMod.removeBackground(blob)}catch(e){console.warn('bg cutout run',e);return null}
 }
 async function fileCanvas(file,max){
   const url=URL.createObjectURL(file),img=new Image();
