@@ -888,9 +888,10 @@ const API={
     const r=await fetch(N8N+'/wd-pay-order',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({amount:detail.amt,name:a.name||'',phone:window.WDAuth.phone10(),
         car:c.name,num:c.plate,area:c.area||a.area||'',kind,label:detail.what,
+        planId:detail.planId,toPlan:detail.toPlan,fromPlan:detail.fromPlan,till:detail.till,items:detail.items,service:detail.service,
         page:location.origin+location.pathname})});
     const j=await r.json().catch(()=>null);
-    if(!r.ok||!j||!j.paymentSessionId)throw new Error((j&&j.message)||'order');
+    if(!r.ok||!j||!j.paymentSessionId){const e=new Error((j&&j.message)||'order');e.server=!!(j&&j.message);throw e}
     const CF=await loadCashfree();
     const out=await CF({mode:CF_MODE}).checkout({paymentSessionId:j.paymentSessionId,redirectTarget:'_modal'});
     if(out&&out.error){const e=new Error(out.error.message||'payment');e.cancelled=/cancel/i.test(out.error.code||out.error.message||'');throw e}
@@ -1461,7 +1462,7 @@ function renderPlan(){
   const cols=[['Pressure washes',pick('pressure',td),30,'var(--violet)'],['Interior',pick('interior',Math.round(f.int*td/7)),Math.round(f.int*30/7),'var(--orange)'],['Foam wash',pick('foam',Math.round(f.foam*td/7)),Math.round(f.foam*30/7),'var(--sky)'],f.det?['Detailing',pick('detailing',f.det>=16?8:Math.floor(f.det/2)),f.det>=16?17:f.det,'var(--gold)']:['Tyre & trim',pick('tyre',Math.min(Math.round(f.tyre*30/7),Math.round(f.tyre*td/7))),Math.round(f.tyre*30/7),'var(--mint)']];
   $('#usageWrap').hidden=c.status==='new';
   $('#usage').innerHTML=cols.map(u=>`<div class="card u"><div class="ul"><i style="background:${u[3]}"></i>${u[0]}</div><div class="uv num"><span data-to="${u[1]*used}">0</span> <small>of ${u[2]}</small></div><div class="bar"><i style="background:${u[3]}" data-w="${u[2]?u[1]/u[2]*100*used:0}"></i></div></div>`).join('');
-  $('#plans').innerHTML=PLANS.filter(pl=>!pl.old||pl.id===p.id).map(pl=>`<div class="plan ${pl.id===p.id?'cur on-violet':''} ${pl.id==='res'&&pl.id!==p.id?'res on-violet':''}">${pl.id===p.id?'<span class="cur-tag">Your plan</span>':''}<div class="pn">${pl.name}</div><div class="pp num">${inr(pl.price)} <small>/ month</small></div><ul>${pl.rows.map(r=>`<li><span>${r[0]}</span><b class="${r[1]==='—'?'no':''}">${r[1]}</b></li>`).join('')}</ul>${pl.id===p.id?`<button class="btn gold cta" data-act="payPlan">${c.till?'Pay next month':'Pay first month'}</button>`:''}</div>`).join('');
+  $('#plans').innerHTML=PLANS.filter(pl=>!pl.old||pl.id===p.id).map(pl=>`<div class="plan ${pl.id===p.id?'cur on-violet':''} ${pl.id==='res'&&pl.id!==p.id?'res on-violet':''}">${pl.id===p.id?'<span class="cur-tag">Your plan</span>':''}<div class="pn">${pl.name}</div><div class="pp num">${inr(pl.price)} <small>/ month</small></div><ul>${pl.rows.map(r=>`<li><span>${r[0]}</span><b class="${r[1]==='—'?'no':''}">${r[1]}</b></li>`).join('')}</ul>${pl.id===p.id?`<button class="btn gold cta" data-act="payPlan">${c.till?'Pay next month':'Pay first month'}</button>`:`<button class="btn ghost cta" data-act="switchPlan" data-arg="${pl.id}">${pl.price>p.price?'Upgrade to':'Switch to'} ${pl.name}</button>`}</div>`).join('');
   const pz=c.paused&&c.paused.to>=iso(TODAY);
   const cp=canPause(c),pzLeft=cp?pauseLeft(c,TODAY):0;
   $('#pauseCard').innerHTML=`<div style="display:flex;gap:12px;align-items:center"><div style="font-size:26px" aria-hidden="true">✈︎</div><div><div style="font-weight:700">${pz?`Paused ${fmt(c.paused.from)} – ${fmt(c.paused.to)}`:'Going out of town?'}</div><div style="font-size:12.5px;color:var(--fg-2)">${pz?'Paused days are added to the end of your plan.':cp?`Pause up to ${PAUSE_MAX} days a month, any days you like. ${pzLeft} of ${PAUSE_MAX} left in ${fmt(TODAY,{month:'long'})}.`:`Pausing comes with WD Pro and above: up to ${PAUSE_MAX} days a month.`}</div></div></div>
@@ -1560,19 +1561,17 @@ async function pollPaidTo(c,was){
     }
   }
 }
-// The payment server (n8n workflow 8) only prices monthly plans and tips. Anything else sent there is charged
-// as the car's whole monthly fee and moves its paid-up date, so store orders and upgrades are paid to the washer in person for now.
-const IN_PERSON=kind=>PAYREAL()&&!/^(plan|tip)$/.test(kind);
-async function checkout(btn,kind,amt,what,onPaid){
-  if(IN_PERSON(kind)){A().payments.push({d:iso(TODAY),what,amt,via:'Pay '+car().washer+' in person',ref:''});await onPaid({ref:''});save();renderAll();return}
+// The payment server (n8n workflow 8) prices every order itself: plans from the book, upgrades from the
+// plan prices and days left, store items and one-time washes from its own price list. `extra` carries what it needs.
+async function checkout(btn,kind,amt,what,onPaid,extra){
   const via=$('#upi .on')?.textContent||'UPI',done=busy(btn,PAYREAL()?'Opening…':'Opening '+via+'…');
-  try{const r=await API.pay(kind,{amt,what});
-    A().payments.push({d:iso(TODAY),what,amt,via,ref:r.ref,pending:!!r.pending});
-    if(r.pending){const c=car(),was=c.till||'';save();renderAll();
+  try{const r=await API.pay(kind,Object.assign({amt,what},extra));
+    A().payments.push({d:iso(TODAY),what,amt,via,ref:r.ref,pending:!!r.pending&&kind==='plan'});
+    if(r.pending&&kind==='plan'){const c=car(),was=c.till||'';save();renderAll();
       success('Payment received',"We're checking it with the bank. Your plan updates by itself as soon as it clears.");
       pollPaidTo(c,was);return}
     onPaid(r);save();renderAll()}
-  catch(e){done();toast(e&&e.cancelled?'Payment cancelled. Nothing was charged.':'Payment didn\'t go through. Nothing was charged.')}}
+  catch(e){done();toast(e&&e.cancelled?'Payment cancelled. Nothing was charged.':e&&e.server?e.message+' Nothing was charged.':'Payment didn\'t go through. Nothing was charged.')}}
 
 const ACT={
   carPhoto(){pickCarPhoto()},
@@ -1596,14 +1595,14 @@ const ACT={
     openSheet(`<div class="eyebrow">${esc(c.name)} · ${p.name}</div><h3 style="margin-top:4px">Pay ${inr(p.price)} for ${c.till?'one more month':'your first month'}</h3>
       <div class="confirm"><div class="cv"><small>${c.till?'Paid up till':'Starts'}</small><b>${fmt(from)}</b></div><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg><div class="cv"><small>After paying</small><b style="color:var(--accent)">${fmt(nt)}</b></div></div>
       ${UPI}<button class="btn violet" id="payGo" style="margin-top:16px">Pay ${inr(p.price)}</button>${PAYREAL()?'':'<div class="demo-note">Test version. No money moves. Live payments go through Cashfree.</div>'}`,()=>{
-      segPick('#upi');$('#payGo').onclick=e=>checkout(e.currentTarget,'plan',p.price,`${p.name} · ${c.name}`,()=>{c.till=iso(nt);success('Paid',`Your ${esc(c.name)} is covered till ${fmt(nt)}. Receipt sent on WhatsApp.`)})})},
+      segPick('#upi');$('#payGo').onclick=e=>checkout(e.currentTarget,'plan',p.price,`${p.name} · ${c.name}`,()=>{c.till=iso(nt);success('Paid',`Your ${esc(c.name)} is covered till ${fmt(nt)}. Receipt sent on WhatsApp.`)},{planId:p.id})})},
   switchPlan(id){const np=PLANS.find(p=>p.id===id),c=car(),cp=planOf(c),left=c.till?Math.max(0,Math.round((parse(c.till)-TODAY)/864e5)):0,diff=Math.max(0,Math.round((np.price-cp.price)*left/30)),up=np.price>cp.price;
     openSheet(`<div class="eyebrow">${esc(c.name)}</div><h3 style="margin-top:4px">${up?'Upgrade':'Switch'} to ${np.name}</h3>
       <div class="confirm"><div class="cv"><small>Now</small><b>${cp.name}</b><div class="num" style="font-size:12px">${inr(cp.price)}/mo</div></div><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg><div class="cv"><small>From tomorrow</small><b style="color:var(--accent)">${np.name}</b><div class="num" style="font-size:12px">${inr(np.price)}/mo</div></div></div>
       <p class="sub">${up&&diff?`You pay ${inr(diff)} today for the ${left} days left this month. After that it's ${inr(np.price)} a month.`:'No charge today. The new price starts from your next payment.'}</p>
-      ${up&&diff&&!IN_PERSON('upgrade')?UPI:''}<button class="btn violet" id="swGo" style="margin-top:12px">${up&&diff?(IN_PERSON('upgrade')?'Upgrade, pay '+esc(c.washer)+' '+inr(diff)+' at the next wash':'Pay '+inr(diff)+' and upgrade'):'Confirm '+np.name}</button>`,()=>{
+      ${up&&diff?UPI:''}<button class="btn violet" id="swGo" style="margin-top:12px">${up&&diff?'Pay '+inr(diff)+' and upgrade':'Confirm '+np.name}</button>`,()=>{
       segPick('#upi');$('#swGo').onclick=e=>{const fin=()=>{c.plan=id;save();renderAll();success('Done',`From tomorrow, ${c.washer} follows the ${np.name} checklist for your ${esc(c.name)}.`)};
-        if(up&&diff)checkout(e.currentTarget,'upgrade',diff,`Upgrade to ${np.name} · ${c.name}`,fin);else fin()}})},
+        if(up&&diff)checkout(e.currentTarget,'upgrade',diff,`Upgrade to ${np.name} · ${c.name}`,fin,{toPlan:np.id,fromPlan:cp.id,till:c.till||''});else fin()}})},
   pause(){const c=car();if(c.status==='new'){toast('You can pause once washes have started');return}
     if(!canPause(c)){openSheet(`<h3>Pausing comes with WD Pro</h3><p class="sub">On WD Pro and above you can pause up to ${PAUSE_MAX} days a month, on any days you like. The days are added to the end of your plan.</p><p class="sub">Your ${esc(c.name)} is on ${planOf(c).name}.</p><button class="btn violet" data-act="seePlans">See plans</button>`);return}
     if(c.paused&&c.paused.to>=iso(TODAY)){toast(`Already paused till ${fmt(c.paused.to)}. Resume it from the Plan tab first.`);return}
@@ -1644,23 +1643,25 @@ const ACT={
       {id:'combo',name:'Wash + Interior',price:169,d:'Outside wash + full interior clean'}
     ];
     let svc=SVCS[0];
-    openSheet(`<h3>Book a wash</h3><p class="sub">Washer arrives in 45–60 min. Pay them on arrival — no advance needed.</p>
+    openSheet(`<h3>Book a wash</h3><p class="sub">Washer arrives in 45–60 min. ${PAYREAL()?'Pay now by UPI or card.':'Pay them on arrival — no advance needed.'}</p>
       ${SVCS.map(s=>`<button class="opt ${s===SVCS[0]?'on':''}" data-v="${s.id}"><span class="radio"></span><span><b>${s.name}</b><br><small style="color:var(--fg-3)">${s.d}</small></span><b class="num">${inr(s.price)}</b></button>`).join('')}
       <div class="eyebrow" style="margin-top:14px">Which car</div><input class="field" id="bkCar" value="${esc(c.name+' · '+maskPlate(c.plate))}" style="margin-top:6px">
-      <button class="btn violet" id="bkGo" style="margin-top:16px">Book · ${inr(svc.price)}</button>`,()=>{
-      $$('.opt').forEach(b=>b.onclick=()=>{svc=SVCS.find(s=>s.id===b.dataset.v);$$('.opt').forEach(x=>x.classList.toggle('on',x===b));$('#bkGo').textContent=`Book · ${inr(svc.price)}`});
-      $('#bkGo').onclick=async e=>{
-        const db=DB||await realDb();if(!db){toast('App offline. Try again.');return}
-        const undo=busy(e.currentTarget,'Booking…');
+      ${PAYREAL()?UPI:''}<button class="btn violet" id="bkGo" style="margin-top:16px">${PAYREAL()?'Pay':'Book'} · ${inr(svc.price)}</button>`,()=>{
+      segPick('#upi');$$('.opt').forEach(b=>b.onclick=()=>{svc=SVCS.find(s=>s.id===b.dataset.v);$$('.opt').forEach(x=>x.classList.toggle('on',x===b));$('#bkGo').textContent=`${PAYREAL()?'Pay':'Book'} · ${inr(svc.price)}`});
+      // Live: pay first (n8n prices it from its own list), then the booking goes to the washers.
+      $('#bkGo').onclick=e=>PAYREAL()?checkout(e.currentTarget,'onetime',svc.price,`${svc.name} · ${c.name}`,r=>place(null,r.ref||'paid'),{service:svc.id}):place(e.currentTarget,'');
+      const place=async(btn,paid)=>{
+        const db=DB||await realDb();if(!db){paid?success('Paid',"We have your payment. We'll call you to send a washer."):toast('App offline. Try again.');return}
+        const undo=btn?busy(btn,'Booking…'):()=>{};
         try{
-          const ref=await db.collection('ondemand').add({service:svc.name,service_id:svc.id,price:svc.price,car:c.name,reg:c.plate,area:c.area||'',phone:window.WDAuth.phone(),customer_id:window.WDAuth.phone(),status:'new',washer_id:'',created_at:nowIST(),date:iso(TODAY)});
+          const ref=await db.collection('ondemand').add({service:svc.name,service_id:svc.id,price:svc.price,paid:!!paid,pay_ref:paid||'',car:c.name,reg:c.plate,area:c.area||'',phone:window.WDAuth.phone(),customer_id:window.WDAuth.phone(),status:'new',washer_id:'',created_at:nowIST(),date:iso(TODAY)});
           fetch('https://n8n.washingdaddy.com/webhook/wd-ondemand-dispatch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({doc_id:ref.id,area:c.area||''})}).catch(()=>{});
           const _docId=ref.id;
           closeSheet();
-          openSheet(`<div class="success"><div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg></div><h3>Booked!</h3><p class="sub" style="max-width:32ch;margin:6px auto 10px">${esc(svc.name)} request sent. Pay ₹${svc.price} on arrival.</p><button class="btn violet" id="bkTrackBtn" style="margin-bottom:8px">📍 Track washer live</button><button class="btn gold" data-act="close">Done</button></div>`);
+          openSheet(`<div class="success"><div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg></div><h3>Booked!</h3><p class="sub" style="max-width:32ch;margin:6px auto 10px">${esc(svc.name)} request sent. ${paid?'Paid ₹'+svc.price+'.':'Pay ₹'+svc.price+' on arrival.'}</p><button class="btn violet" id="bkTrackBtn" style="margin-bottom:8px">📍 Track washer live</button><button class="btn gold" data-act="close">Done</button></div>`);
           confetti();
           setTimeout(()=>{const b=$('#bkTrackBtn');if(b)b.onclick=()=>{closeSheet();ACT.trackWasher(_docId)}},0);
-        }catch(err){undo();toast('Booking failed. Try again.')}}})},
+        }catch(err){console.warn('booking',err);undo();paid?success('Paid',"We have your payment. We'll call you to send a washer."):toast('Booking failed. Try again.')}}})},
   bookings(){const bs=A().bookings.slice().reverse();openSheet(`<h3>One-time washes</h3><div class="rows" style="margin-top:12px">${bs.map(b=>`<div class="row"><span class="rt"><b>${b.type} · ${esc(b.what)}</b><small>${fmt(b.date,{weekday:'short',day:'numeric',month:'short'})}, ${b.slot}</small></span><button class="mini-btn link" data-act="cancelBooking" data-arg="${b.id}">Cancel</button></div>`).join('')||'<div class="row"><span class="rt"><b>Nothing booked</b></span></div>'}</div>`)},
   cancelBooking(id){const a=A(),b=a.bookings.find(x=>x.id===id);a.bookings=a.bookings.filter(x=>x.id!==id);save();renderAll();closeSheet();toast(`Cancelled. Refund on its way to your ${a.payments.find(p=>p.what.includes(b.type))?.via||'UPI'}.`)},
   issue(){const c=car();if(c.status==='new'){toast('You can report a spot after your first wash');return}let spots=new Set(['Rims']);
@@ -1677,10 +1678,10 @@ const ACT={
     const sub=ids.reduce((s,k)=>s+PRODUCTS.find(p=>p.id===k).price*S.cart[k],0),mrp=ids.reduce((s,k)=>s+PRODUCTS.find(p=>p.id===k).mrp*S.cart[k],0);
     openSheet(`<h3>Your cart</h3><p class="sub">${car().washer} brings it with tomorrow's wash, to ${esc(car().parking)}.</p>${ids.map(line).join('')}
       <div class="sum"><div><span style="color:var(--fg-2)">Items</span><span class="num">${inr(sub)}</span></div><div><span style="color:var(--fg-2)">You save</span><span class="num ok">−${inr(mrp-sub)}</span></div><div><span style="color:var(--fg-2)">Delivery with your wash</span><span class="ok">Free</span></div><div class="tot"><span>Total</span><span class="num">${inr(sub)}</span></div></div>
-      ${IN_PERSON('order')?'':UPI}<button class="btn gold" id="coGo" style="margin-top:16px">${IN_PERSON('order')?'Place order, pay '+esc(car().washer)+' '+inr(sub)+' on delivery':'Pay '+inr(sub)}</button>${PAYREAL()?'':'<div class="demo-note">Test version. No money moves.</div>'}`,()=>{
+      ${UPI}<button class="btn gold" id="coGo" style="margin-top:16px">Pay ${inr(sub)}</button>${PAYREAL()?'':'<div class="demo-note">Test version. No money moves.</div>'}`,()=>{
       segPick('#upi');$('#coGo').onclick=e=>checkout(e.currentTarget,'order',sub,'Store order',async()=>{const r=await API.order(ids);
         A().orders.unshift({id:r.id,total:sub,status:`Arriving tomorrow with ${car().washer}'s wash`,items:ids.map(k=>({name:pName(PRODUCTS.find(p=>p.id===k)),q:S.cart[k]}))});
-        A().payments[A().payments.length-1].what='Store order '+r.id;S.cart={};save();renderAll();success('Order placed',`${car().washer} brings it tomorrow before 7:30 AM and sends a photo when it's in your car.`)})})},
+        A().payments[A().payments.length-1].what='Store order '+r.id;S.cart={};save();renderAll();success('Order placed',`${car().washer} brings it tomorrow before 7:30 AM and sends a photo when it's in your car.`)},{items:ids.map(k=>({id:k,q:S.cart[k]}))})})},
   qty(arg){const [k,d]=arg.split(':');S.cart[k]=Math.max(0,(S.cart[k]||0)+ +d);if(!S.cart[k])delete S.cart[k];save();syncBadges();ACT.cart()},
   shop(){closeSheet();go('store')},
   addCar(){let area=A().area,plan='std';openSheet(`<h3>Add a car</h3><p class="sub">Your washer takes its first photo tomorrow morning.</p>
