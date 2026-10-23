@@ -1143,6 +1143,19 @@ function drawScaled(img,max){const w=img.width,h=img.height,k=Math.min(1,max/Mat
 function toBlob(img,max,q){const c=drawScaled(img,max);return new Promise(r=>c.toBlob(b=>{if(b&&b.type==='image/webp')return r(b);c.toBlob(j=>r(j),'image/jpeg',q)},'image/webp',q))}
 function toDataURL(img,max,q){const c=drawScaled(img,max);let u=c.toDataURL('image/webp',q);if(!u.startsWith('data:image/webp'))u=c.toDataURL('image/jpeg',q);return Promise.resolve(u)}
 
+/* ---------- selfie background removal ---------- */
+let _bgMod;
+async function removeBg(blob){
+  if(!_bgMod){
+    try{_bgMod=await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/dist/index.js')}
+    catch(e){console.warn('bg-removal lib',e);return blob}
+  }
+  const fn=_bgMod.removeBackground||_bgMod.default;
+  if(!fn){console.warn('bg-removal: no export');return blob}
+  try{return await fn(blob,{model:'small',output:{format:'image/png',quality:.9}})}
+  catch(e){console.warn('bg-removal run',e);return blob}
+}
+
 /* ---------- writes to a wash doc: always the whole doc, one at a time ---------- */
 function newWash(c,seq,eta){
   return {date:DAY,reg:c.reg,car_label:c.label,washer:washerObj(),washer_id:me().id,status:'scheduled',eta,
@@ -1606,7 +1619,15 @@ $('#camIn').addEventListener('change',async e=>{
 });
 $('#selfieIn').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0];if(!f)return;const fl=$('#flash');fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');
-  try{const r=await Sync.uploadPhoto(f,640);S.selfie=Object.assign({date:DAY,washer:me().id},r.asset_id?{asset_id:r.asset_id}:{url:r.url});save();
+  try{
+    toast('Background hata rahe hain…');
+    const bmp=await loadImage(f);
+    const png=await new Promise(r=>drawScaled(bmp,640).toBlob(b=>r(b),'image/png'));
+    const clean=await removeBg(png);
+    let r;
+    if(Sync.assets){try{const u=await Sync.assets.upload(clean,{type:'image/png'});r={asset_id:u.id,display:u.url}}catch(ae){console.warn('selfie upload',ae)}}
+    if(!r){const c=document.createElement('canvas'),img=await loadImage(clean),w=img.width,h=img.height;c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0);const u=c.toDataURL('image/png');r={url:u,display:u}}
+    S.selfie=Object.assign({date:DAY,washer:me().id},r.asset_id?{asset_id:r.asset_id}:{url:r.url});save();
     // show the face on every car still to come today
     route().forEach(c=>{const w=W(c.reg);if(w&&!['done','skipped'].includes(w.status))mutate(c.reg,()=>{})});
     renderMe();toast('Photo save ho gayi. Customers ko dikhegi.');confetti(.3)}catch(err){toast('Selfie nahi lagi. Dobara try karo')}
@@ -2058,6 +2079,7 @@ const HI = {
   "Aaj ki selfie lo: customer dekhega kaun aaya":"आज की सेल्फ़ी लो: कस्टमर देखेगा कौन आया",
   "✓ Aaj ki selfie customers ko dikh rahi hai":"✓ आज की सेल्फ़ी कस्टमर को दिख रही है",
   "Selfie lag gayi. Customers ko dikhegi":"सेल्फ़ी लग गई. कस्टमर को दिखेगी",
+  "Background hata rahe hain…":"बैकग्राउंड हटा रहे हैं…",
   "Selfie nahi lagi. Dobara try karo":"सेल्फ़ी नहीं लगी. दोबारा कोशिश करो",
   "Settings":"सेटिंग्स",
   "Bhasha":"भाषा",
