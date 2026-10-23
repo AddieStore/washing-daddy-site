@@ -204,6 +204,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .stop.skipped .sq{background:var(--fg-3);color:var(--bg)}
 .stop.live .sq{background:var(--violet);color:#fff;animation:pulseV 1.6s infinite}
 @keyframes pulseV{70%{box-shadow:0 0 0 10px rgba(84,9,218,0)}0%{box-shadow:0 0 0 0 rgba(84,9,218,.5)}}
+.route li{display:flex;gap:8px;align-items:center}
+.route li .stop{flex:1;min-width:0;width:auto}
+.callbtn{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:#14C08A;color:#fff;box-shadow:var(--card-shadow);transition:transform .25s var(--spring);-webkit-tap-highlight-color:transparent}
+.callbtn:active{transform:scale(.92)}
+.callbtn svg{width:24px;height:24px}
+.callbtn.sm{width:auto;height:44px;border-radius:22px;padding:0 16px;gap:8px;grid-auto-flow:column;font-weight:800;font-size:15px}
+.callbtn.sm svg{width:20px;height:20px}
 .stop .th{height:48px;display:flex;align-items:center;justify-content:center}
 .stop .th img,.stop .th svg{max-width:76px;max-height:48px}
 .stop .nm{font-weight:800;font-size:16px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -700,6 +707,7 @@ function countUp(el,to,dur=1100,f=v=>Math.round(v)){if(!el)return;if(RM){el.text
 const RING=`<svg viewBox="0 0 100 100"><circle class="trk" cx="50" cy="50" r="44" fill="none" stroke-width="9"/><circle class="val" cx="50" cy="50" r="44" fill="none" stroke-width="9" stroke-dasharray="276.5" stroke-dashoffset="276.5"/></svg>`;
 function ring(el,frac){if(!el)return;const c=el.querySelector('.val');requestAnimationFrame(()=>requestAnimationFrame(()=>c.style.strokeDashoffset=276.5*(1-Math.max(0,Math.min(1,frac)))))}
 const I={
+  phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>',
   pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
   arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
@@ -738,6 +746,19 @@ const PLAN={
   exc:{name:'WD Exclusive',f:{interior:3,tyre:7,foam:4},det:'m2'},
   res:{name:'WD Reserve',f:{interior:7,tyre:7,foam:7},det:'w4'},
 };
+// Monthly list price per plan (customer app PLANS; the handbook says legacy cars pay anywhere from 500 up, so the washer can still adjust it)
+const PLAN_PRICE={legacy:500,std:999,pro:1800,exc:2500,res:5555};
+// tel: link for a customer's number. Null when there is no usable number, so no dead button is drawn.
+const telOf=p=>{const d=String(p||'').replace(/\D/g,'').slice(-10);return d.length===10?'tel:+91'+d:null};
+const callBtn=(c,cls)=>{const t=telOf(c&&c.phone);return t?`<a class="callbtn ${cls||''}" href="${t}" aria-label="Customer ko call karo">${I.phone}${cls==='sm'?'<span>Call</span>':''}</a>`:''};
+// where an area sits on the map, same table the customer app draws its map from [lng,lat]
+const AREA_LL={'GH-9 Paschim Vihar':[77.0989,28.6680],'GH-6 Paschim Vihar':[77.0970,28.6695],'GH-14 Paschim Vihar':[77.0982,28.6705],'Meera Bagh':[77.1065,28.6720],'Sundar Vihar':[77.1110,28.6710],'Guru Hari Apartments':[77.0960,28.6650]};
+// Google Maps link for an on-demand job: exact pin if the booking has one, else the area, else the plain address text
+const mapsOf=j=>{const lat=Number(j.lat),lng=Number(j.lng);
+  if(j.lat!=null&&j.lng!=null&&isFinite(lat)&&isFinite(lng)&&(lat||lng))return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+  const a=String(j.area||'').trim();if(!a)return null;
+  const ll=AREA_LL[a];
+  return ll?`https://www.google.com/maps/dir/?api=1&destination=${ll[1]},${ll[0]}&travelmode=driving`:`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a+', Delhi')}`};
 // demo round: the two customer-app demo cars are real keys in the contract; the rest are made up
 const ROSTER={
   chotte:[
@@ -816,7 +837,7 @@ const NewCar={
   shape(d){
     return {plate:d.plate||d.reg,reg:normReg(d.reg),make:'',model:d.model||'Gaadi',label:d.model||'Gaadi',
       plan:PLAN[d.plan]?d.plan:'std',type:'suv',color:'#8a8f98',house:d.area||'',spot:'',
-      customer:d.customer_name||'Customer',fee:typeof d.fee==='number'?d.fee:null,
+      customer:d.customer_name||'Customer',phone:d.customer_phone||'',fee:typeof d.fee==='number'?d.fee:null,
       mine:true,pending:d.status!=='approved',status:d.status||'pending'};
   },
   set(docs){
@@ -1092,7 +1113,7 @@ const Sync={
       fee:Number(car.fee)||0,customer_name:car.customer_name||'',customer_phone:car.customer_phone||'',
       note:car.note||'',washer_id:me().id,added_by:(window.WDAuth&&window.WDAuth.phone())||'',
       status:'pending',created_at:isoIST(),updated_at:isoIST()};
-    if(!this.db){NewCar.set(NewCar.mine.map(c=>({reg:c.reg,plate:c.plate,model:c.model,area:c.house,plan:c.plan,fee:c.fee,customer_name:c.customer,status:c.status})).concat([doc]));return {local:true}}
+    if(!this.db){NewCar.set(NewCar.mine.map(c=>({reg:c.reg,plate:c.plate,model:c.model,area:c.house,plan:c.plan,fee:c.fee,customer_name:c.customer,customer_phone:c.phone,status:c.status})).concat([doc]));return {local:true}}
     await this.db.doc('newcars/'+doc.reg).set(doc);
     return {local:false};
   },
@@ -1200,7 +1221,7 @@ function renderRound(){
       <div class="nx-meta"><span class="plate">${esc(c.plate)}</span><span class="tier">${PLAN[c.plan].name}</span>${xchips(c)}</div>
       <div class="where">${I.pin}<span>${esc(c.house)} · ${esc(c.spot)}</span></div>
       ${q?`<div class="where" style="color:var(--orange)">${I.note}<span>${q} customer request${q>1?'s':''}</span></div>`:''}
-      <button class="btn violet" style="margin-top:14px" data-open="${nr}">${wd.status==='scheduled'?'Chalo':'Kholo'} ${I.arrow}</button></div>`}
+      <div style="display:flex;gap:8px;align-items:center;margin-top:14px"><button class="btn violet" style="margin-top:0;flex:1" data-open="${nr}">${wd.status==='scheduled'?'Chalo':'Kholo'} ${I.arrow}</button>${callBtn(c)}</div></div>`}
   else if(started){nw.innerHTML=`<div class="empty"><b>Aaj ka round poora 🎉</b>${cn.done} gaadi chamka di. Hisaab tab mein poora din dekho.</div>`}
   else nw.innerHTML='';
   // list
@@ -1208,7 +1229,7 @@ function renderRound(){
   $('#route').innerHTML=!cn.total?`<li><div class="empty">${Book.state==='loading'?'<b>List aa rahi hai…</b>Book se aaj ka round padha ja raha hai.':'<b>Koi gaadi nahi</b>Book mein aaj aapke naam koi active gaadi nahi hai.'}</div></li>`:route().map((c,i)=>{const wd=W(c.reg),s=wd?wd.status:'scheduled',live=['on_the_way','arrived','washing'].includes(s),q=openReqs(c.reg).length;
     return `<li><button class="stop ${s} ${live?'live':''}" data-open="${c.reg}" style="--i:${i}"><span class="sq">${s==='done'?'✓':s==='skipped'?'–':i+1}</span><span class="th">${carArt(c,true)}</span>
       <span style="min-width:0"><div class="nm">${esc(c.model)} ${q?`<span class="reqdot">${q}</span>`:''}</div><div class="sb">${esc(c.house)} · ${esc(c.plate)}</div><div class="xs">${xchips(c)}</div></span>
-      <span class="rt"><span class="eta num">${s==='done'&&wd.finished_at?t12(wd.finished_at).replace(/ (AM|PM)/,''):hm12(wd?wd.eta:etas[i]).replace(/ (AM|PM)/,'')}</span>${stHTML(wd)}</span></button></li>`}).join('');
+      <span class="rt"><span class="eta num">${s==='done'&&wd.finished_at?t12(wd.finished_at).replace(/ (AM|PM)/,''):hm12(wd?wd.eta:etas[i]).replace(/ (AM|PM)/,'')}</span>${stHTML(wd)}</span></button>${callBtn(c)}</li>`}).join('');
   if(booted&&!renderRound._did&&!RM){renderRound._did=true;$$('#route .stop').forEach((el,i)=>{el.animate([{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'none'}],{duration:500,delay:200+i*60,easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'})})}
 }
 
@@ -1230,7 +1251,7 @@ function renderJob(){
   // chips + info
   $('#jobChip').innerHTML=`<span class="sdot ${st==='washing'?'live':st==='done'?'live':''}"></span>${STATUS[st]}${wd&&st==='scheduled'?' · '+hm12(wd.eta):''}`;
   $('#jobSeq').textContent=`${route().findIndex(x=>x.reg===reg)+1} / ${route().length}`;
-  $('#stageInfo').innerHTML=`<div class="car-name">${esc(c.model)}</div><div class="car-sub"><span class="plate">${esc(c.plate)}</span><span class="tier">${PLAN[c.plan].name}</span><span class="cust">${esc(c.customer)}</span></div>`;
+  $('#stageInfo').innerHTML=`<div class="car-name">${esc(c.model)}</div><div class="car-sub"><span class="plate">${esc(c.plate)}</span><span class="tier">${PLAN[c.plan].name}</span><span class="cust">${esc(c.customer)}</span>${callBtn(c,'sm')}</div>`;
   const carEl=$('#car');carEl.classList.toggle('wash',st==='washing'&&!RM);
   st==='washing'?startSpray(wd):stopSpray();
   // timer
@@ -1376,6 +1397,7 @@ function renderExtra(){
     return `<div class="sec" style="margin-bottom:14px"><div class="sec-head"><h2>${esc(j.service||'Extra kaam')}</h2><span class="muted">${rupee(j.price)} · aapke ${rupee(Money.share(j.price))}</span></div>
       <div class="where">${I.pin}<span>${esc(j.car||j.reg||'Gaadi')}${j.area?' · '+esc(j.area):''}${j.customer_name?' · '+esc(j.customer_name):''}</span></div>
       ${j.note?`<div class="demo-note">${esc(j.note)}</div>`:''}
+      ${(()=>{const m=mapsOf(j),t=telOf(j.phone);return (m||t)?`<div style="display:flex;gap:8px;margin:10px 0 4px">${m?`<a class="btn ghost" style="flex:1;margin:0;display:flex;align-items:center;justify-content:center;gap:8px" href="${m}" target="_blank" rel="noopener">${I.pin}<span>Location / Raasta</span></a>`:''}${t?callBtn({phone:j.phone},'sm'):''}</div>`:''})()}
       ${j.photo?`<img class="bigimg" src="${esc(j.photo)}" alt="Kaam ki photo" style="margin:10px 0">`:''}
       ${act}</div>`;
   };
@@ -1489,16 +1511,16 @@ const ACT={
       <div class="eyebrow" style="margin-top:10px">Plan</div>
       <div class="jchips" id="acPlan">${plans.map((k,i)=>`<button type="button" data-v="${k}" class="${i===1?'on':''}">${PLAN[k].name}</button>`).join('')}</div>
       <div class="eyebrow" style="margin-top:10px">Mahine ka kitna tay hua?</div>
-      <div class="stepperN"><button id="acM" aria-label="Kam">−</button><div class="sv num">₹<span id="acFee">1000</span><small>mahina</small></div><button id="acP" aria-label="Zyada">+</button></div>
+      <div class="stepperN"><button id="acM" aria-label="Kam">−</button><div class="sv num">₹<span id="acFee">999</span><small>mahina</small></div><button id="acP" aria-label="Zyada">+</button></div>
       <div class="demo-note" id="acShare"></div>
       <div class="err" id="acErr"></div>
       <button class="btn violet" id="acGo">Round pe daalo</button>
       <button class="linkbtn" data-act="close">Rehne do</button>`,()=>{
-      let plan='std',fee=1000;
+      let plan='std',fee=PLAN_PRICE.std;
       const shareLine=()=>{$('#acShare').textContent=`Aapka aadha: ${rupee(fee*SHARE)} mahina, ${rupee(fee*SHARE/daysInMonth(DAY))} roz. Ravi ki manzoori ke baad ginna shuru hoga.`};
       shareLine();
-      chipPick('#acPlan',false,b=>{plan=b.dataset.v});
       const setFee=v=>{fee=Math.max(0,Math.min(20000,v));$('#acFee').textContent=fee;shareLine()};
+      chipPick('#acPlan',false,b=>{plan=b.dataset.v;setFee(PLAN_PRICE[plan]);haptic(4)});
       $('#acM').onclick=()=>{setFee(fee-100);haptic(4)};$('#acP').onclick=()=>{setFee(fee+100);haptic(4)};
       $('#acGo').onclick=async()=>{
         const model=$('#acModel').value.trim(),plate=$('#acPlate').value.trim().toUpperCase();
