@@ -1503,7 +1503,7 @@ const ACT={
   needPhoto(){toast('Pehle gaadi ki photo lo, phir wash band hogi');haptic(14)},
   /* ---------- a car the washer sold himself ---------- */
   addCar(){
-    const plans=Object.keys(PLAN);
+    const plans=Object.keys(PLAN).filter(k=>k!=='legacy');   // Legacy is closed to new cars; old Legacy cars keep it
     openSheet(`<h3>Nayi gaadi add karo</h3><p class="sub">Aaj se aapke round pe aa jayegi. Ravi manzoori denge aur book mein daalenge.</p>
       <div class="eyebrow">Gaadi</div><input id="acModel" class="jfield" maxlength="60" placeholder="Jaise: Swift">
       <div class="eyebrow" style="margin-top:10px">Gaadi ka number</div><input id="acPlate" class="jfield" maxlength="20" placeholder="DL 8C AB 1234">
@@ -1511,7 +1511,7 @@ const ACT={
       <div class="eyebrow" style="margin-top:10px">Customer</div><input id="acName" class="jfield" maxlength="80" placeholder="Naam">
       <input id="acPhone" class="jfield" inputmode="numeric" maxlength="10" placeholder="Phone (10 number)" style="margin-top:8px">
       <div class="eyebrow" style="margin-top:10px">Plan</div>
-      <div class="jchips" id="acPlan">${plans.map((k,i)=>`<button type="button" data-v="${k}" class="${i===1?'on':''}">${PLAN[k].name}</button>`).join('')}</div>
+      <div class="jchips" id="acPlan">${plans.map((k,i)=>`<button type="button" data-v="${k}" class="${k==='std'?'on':''}">${PLAN[k].name}</button>`).join('')}</div>
       <div class="eyebrow" style="margin-top:10px">Mahine ka kitna tay hua?</div>
       <div class="stepperN"><button id="acM" aria-label="Kam">−</button><div class="sv num">₹<span id="acFee">999</span><small>mahina</small></div><button id="acP" aria-label="Zyada">+</button></div>
       <div class="demo-note" id="acShare"></div>
