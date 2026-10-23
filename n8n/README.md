@@ -14,10 +14,23 @@ nothing was carried over except what `pay/README.md` in the site repo described.
 | `wd-pay-order` | both | Prices the order **itself**, then asks Cashfree for a payment session |
 | `wd-pay-hook` | Cashfree | Checks the signature, moves the paid-up date, reduces what is owed, messages you |
 
-The browser sends an amount, but `wd-pay-order` ignores it and prices **always from the car's
-own Notion row** (Monthly Fee and Owes Now). The page cannot be used to pay a different amount
-than the book says. The order carries the car's Notion page id and the expected amount in its
-tags; the hook refuses if the amount paid falls short.
+The browser sends an amount, but `wd-pay-order` never trusts it for anything that moves a
+paid-up date:
+
+| What is paid | Priced from | What the hook does |
+|---|---|---|
+| Plan or bill, car on the book | the car's Notion row (Monthly Fee, Owes Now) | moves Service Paid Up To, reduces Owes Now |
+| Plan, car not on the book yet (signed up in the app) | the plan's list price | logs a lead and tells you, so you add the car |
+| Mid-month upgrade | (new plan price − current Monthly Fee) × days left ÷ 30, from the car's row | tells you, book untouched: change the car's Monthly Fee yourself |
+| App store order | the item ids and quantities, priced from the workflow's own list | tells you what to deliver |
+| One-time wash | the service id, priced from the workflow's own list | tells you, book untouched |
+| Tip (₹20 to ₹500) | the app's amount, range-checked | tells you, book untouched |
+
+The order carries `kind`, the car and the expected amount in its tags; the hook refuses if the
+amount paid falls short.
+
+Store and one-time wash prices live in **Daam tay karo** (`STORE`, `WASHES`). Change them there
+whenever you change them in the customer app, or the app's price and the charge will differ.
 
 `wd-pay-hook` refuses anything that is not signed with your Cashfree secret, and anything more
 than five minutes old. It is also idempotent: each `cf_payment_id` is stored on the Notion row,
@@ -40,7 +53,7 @@ webhook test signs with Node and verifies with this code, which is the same path
 2. **Notion account** — a Notion API credential named `Notion account`, holding your Notion
    integration token as the Internal Integration Secret. Used by the five Notion nodes.
    (n8n's own Notion credential, not Header Auth: it adds the Authorization header itself.)
-3. **Cashfree keys** — a Custom Auth credential named `Cashfree keys` holding
+3. **Cashfree live** — a Custom Auth credential named `Cashfree live` holding
    `{"headers":{"x-client-id":"YOUR_APP_ID","x-client-secret":"YOUR_SECRET_KEY"}}`.
 4. **The secret, once more, in the open.** Open the node **Sach mein Cashfree hai?** and replace
    `PASTE_YOUR_CASHFREE_SECRET_KEY` with the same Secret Key. A credential cannot be read from a
