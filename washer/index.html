@@ -1145,11 +1145,10 @@ function toDataURL(img,max,q){const c=drawScaled(img,max);let u=c.toDataURL('ima
 
 /* ---------- selfie background removal ---------- */
 let _bgMod;
+// @imgly/background-removal 1.5.5, bundled into vendor/ so it loads from our own site (its model files still come from img.ly's CDN)
+async function loadBgLib(){for(const u of ['./vendor/bg-removal.js','https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm']){try{return await import(u)}catch(e){console.warn('bg-removal lib',u,e)}}return null}
 async function removeBg(blob){
-  if(!_bgMod){
-    try{_bgMod=await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/dist/index.js')}
-    catch(e){console.warn('bg-removal lib',e);return blob}
-  }
+  if(!_bgMod){_bgMod=await loadBgLib();if(!_bgMod)return blob}
   const fn=_bgMod.removeBackground||_bgMod.default;
   if(!fn){console.warn('bg-removal: no export');return blob}
   try{return await fn(blob,{model:'small',output:{format:'image/png',quality:.9}})}
