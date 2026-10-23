@@ -17,6 +17,8 @@ import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
+import android.webkit.ServiceWorkerClient;
+import android.webkit.ServiceWorkerController;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -101,27 +103,20 @@ public class MainActivity extends Activity {
       @JavascriptInterface public void setBarColor(final String c) { runOnUiThread(() -> MainActivity.this.setBarColor(c)); }
     }, "WDNative");
 
+    // The web apps register a service worker, and its fetches skip the WebViewClient below. Without this,
+    // every launch after the first loads the app from the live website (or the worker's old cache)
+    // instead of the copy bundled in this APK.
+    ServiceWorkerController.getInstance().setServiceWorkerClient(new ServiceWorkerClient() {
+      @Override
+      public WebResourceResponse shouldInterceptRequest(WebResourceRequest req) {
+        return bundled(req);
+      }
+    });
+
     web.setWebViewClient(new WebViewClient() {
       @Override
       public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest req) {
-        Uri u = req.getUrl();
-        if (!ORIGIN_HOST.equals(u.getHost()) || !"GET".equals(req.getMethod())) return null;
-        String path = u.getPath() == null ? "/" : u.getPath();
-        if (!path.startsWith(BuildConfig.SCOPE)) return null;
-        String rel = path.substring(BuildConfig.SCOPE.length());
-        if (rel.isEmpty() || rel.endsWith("/")) rel += "index.html";
-        try {
-          InputStream in = getAssets().open("www/" + rel);
-          String ext = rel.substring(rel.lastIndexOf('.') + 1).toLowerCase();
-          String mime = MIME.containsKey(ext) ? MIME.get(ext) : "application/octet-stream";
-          WebResourceResponse r = new WebResourceResponse(mime, "utf-8", in);
-          Map<String, String> h = new HashMap<>();
-          h.put("Cache-Control", "no-cache");
-          r.setResponseHeaders(h);
-          return r;
-        } catch (IOException e) {
-          return null;   // not bundled: let it go to the network
-        }
+        return bundled(req);
       }
 
       // If the page's renderer dies (low memory), Android kills the whole app unless we handle it here.
@@ -145,7 +140,22 @@ public class MainActivity extends Activity {
         if (ORIGIN_HOST.equals(u.getHost()) && path.startsWith(BuildConfig.SCOPE)) return false;
         // Everything else (WhatsApp, phone, UPI, other pages of the site) opens outside the app.
         try {
-          startActivity(new Intent(Intent.ACTION_VIEW, u));
+          if ("intent".equals(u.getScheme())) {
+            // Payment pages open UPI apps with intent:// links; fall back to the link's web page if no app takes it
+            Intent i = Intent.parseUri(u.toString(), Intent.URI_INTENT_SCHEME);
+            i.addCategory(Intent.CATEGORY_BROWSABLE);
+            i.setComponent(null);
+            i.setSelector(null);
+            try {
+              startActivity(i);
+            } catch (Exception none) {
+              String fb = i.getStringExtra("browser_fallback_url");
+              if (fb == null) throw none;
+              startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(fb)));
+            }
+          } else {
+            startActivity(new Intent(Intent.ACTION_VIEW, u));
+          }
         } catch (Exception e) {
           Toast.makeText(MainActivity.this, u.toString(), Toast.LENGTH_SHORT).show();
         }
@@ -280,4 +290,27 @@ public class MainActivity extends Activity {
     if (web != null) { web.setWebChromeClient(null); web.destroy(); web = null; }
     super.onDestroy();
   }
+
+  /** The bundled copy of a file under https://washingdaddy.com + SCOPE, or null to let it go to the network. */
+  private WebResourceResponse bundled(WebResourceRequest req) {
+    Uri u = req.getUrl();
+    if (!ORIGIN_HOST.equals(u.getHost()) || !"GET".equals(req.getMethod())) return null;
+    String path = u.getPath() == null ? "/" : u.getPath();
+    if (!path.startsWith(BuildConfig.SCOPE)) return null;
+    String rel = path.substring(BuildConfig.SCOPE.length());
+    if (rel.isEmpty() || rel.endsWith("/")) rel += "index.html";
+    try {
+      InputStream in = getAssets().open("www/" + rel);
+      String ext = rel.substring(rel.lastIndexOf('.') + 1).toLowerCase();
+      String mime = MIME.containsKey(ext) ? MIME.get(ext) : "application/octet-stream";
+      WebResourceResponse r = new WebResourceResponse(mime, "utf-8", in);
+      Map<String, String> h = new HashMap<>();
+      h.put("Cache-Control", "no-cache");
+      r.setResponseHeaders(h);
+      return r;
+    } catch (IOException e) {
+      return null;   // not bundled: let it go to the network
+    }
+  }
+
 }

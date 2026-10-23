@@ -1,8 +1,3 @@
 --------- beginning of main
-10-23 14:14:18.606  1985  2132 W chromium: [WARNING:dns_config_service_android.cc(115)] Failed to read DnsConfig.
-10-23 14:14:18.646  1985  2133 E chromium: [ERROR:simple_file_enumerator.cc(21)] opendir /data/user/0/com.washingdaddy.customer/cache/WebView/Default/HTTP Cache/Code Cache/webui_js: No such file or directory (2)
-10-23 14:14:18.647  1985  2133 E chromium: [ERROR:simple_index_file.cc(614)] Could not reconstruct index from disk
-10-23 14:14:18.648  1985  2132 E chromium: [ERROR:simple_file_enumerator.cc(21)] opendir /data/user/0/com.washingdaddy.customer/cache/WebView/Default/HTTP Cache/Code Cache/js: No such file or directory (2)
-10-23 14:14:18.649  1985  2132 E chromium: [ERROR:simple_index_file.cc(614)] Could not reconstruct index from disk
-10-23 14:14:18.825  1985  2191 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
-10-23 14:14:44.429  1985  2191 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-23 15:41:19.749  2076  2285 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-23 15:41:46.006  2076  2285 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!

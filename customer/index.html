@@ -1560,7 +1560,11 @@ async function pollPaidTo(c,was){
     }
   }
 }
+// The payment server (n8n workflow 8) only prices monthly plans and tips. Anything else sent there is charged
+// as the car's whole monthly fee and moves its paid-up date, so store orders and upgrades are paid to the washer in person for now.
+const IN_PERSON=kind=>PAYREAL()&&!/^(plan|tip)$/.test(kind);
 async function checkout(btn,kind,amt,what,onPaid){
+  if(IN_PERSON(kind)){A().payments.push({d:iso(TODAY),what,amt,via:'Pay '+car().washer+' in person',ref:''});await onPaid({ref:''});save();renderAll();return}
   const via=$('#upi .on')?.textContent||'UPI',done=busy(btn,PAYREAL()?'Opening…':'Opening '+via+'…');
   try{const r=await API.pay(kind,{amt,what});
     A().payments.push({d:iso(TODAY),what,amt,via,ref:r.ref,pending:!!r.pending});
@@ -1597,7 +1601,7 @@ const ACT={
     openSheet(`<div class="eyebrow">${esc(c.name)}</div><h3 style="margin-top:4px">${up?'Upgrade':'Switch'} to ${np.name}</h3>
       <div class="confirm"><div class="cv"><small>Now</small><b>${cp.name}</b><div class="num" style="font-size:12px">${inr(cp.price)}/mo</div></div><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg><div class="cv"><small>From tomorrow</small><b style="color:var(--accent)">${np.name}</b><div class="num" style="font-size:12px">${inr(np.price)}/mo</div></div></div>
       <p class="sub">${up&&diff?`You pay ${inr(diff)} today for the ${left} days left this month. After that it's ${inr(np.price)} a month.`:'No charge today. The new price starts from your next payment.'}</p>
-      ${up&&diff?UPI:''}<button class="btn violet" id="swGo" style="margin-top:12px">${up&&diff?'Pay '+inr(diff)+' and upgrade':'Confirm '+np.name}</button>`,()=>{
+      ${up&&diff&&!IN_PERSON('upgrade')?UPI:''}<button class="btn violet" id="swGo" style="margin-top:12px">${up&&diff?(IN_PERSON('upgrade')?'Upgrade, pay '+esc(c.washer)+' '+inr(diff)+' at the next wash':'Pay '+inr(diff)+' and upgrade'):'Confirm '+np.name}</button>`,()=>{
       segPick('#upi');$('#swGo').onclick=e=>{const fin=()=>{c.plan=id;save();renderAll();success('Done',`From tomorrow, ${c.washer} follows the ${np.name} checklist for your ${esc(c.name)}.`)};
         if(up&&diff)checkout(e.currentTarget,'upgrade',diff,`Upgrade to ${np.name} · ${c.name}`,fin);else fin()}})},
   pause(){const c=car();if(c.status==='new'){toast('You can pause once washes have started');return}
@@ -1673,7 +1677,7 @@ const ACT={
     const sub=ids.reduce((s,k)=>s+PRODUCTS.find(p=>p.id===k).price*S.cart[k],0),mrp=ids.reduce((s,k)=>s+PRODUCTS.find(p=>p.id===k).mrp*S.cart[k],0);
     openSheet(`<h3>Your cart</h3><p class="sub">${car().washer} brings it with tomorrow's wash, to ${esc(car().parking)}.</p>${ids.map(line).join('')}
       <div class="sum"><div><span style="color:var(--fg-2)">Items</span><span class="num">${inr(sub)}</span></div><div><span style="color:var(--fg-2)">You save</span><span class="num ok">−${inr(mrp-sub)}</span></div><div><span style="color:var(--fg-2)">Delivery with your wash</span><span class="ok">Free</span></div><div class="tot"><span>Total</span><span class="num">${inr(sub)}</span></div></div>
-      ${UPI}<button class="btn gold" id="coGo" style="margin-top:16px">Pay ${inr(sub)}</button>${PAYREAL()?'':'<div class="demo-note">Test version. No money moves.</div>'}`,()=>{
+      ${IN_PERSON('order')?'':UPI}<button class="btn gold" id="coGo" style="margin-top:16px">${IN_PERSON('order')?'Place order, pay '+esc(car().washer)+' '+inr(sub)+' on delivery':'Pay '+inr(sub)}</button>${PAYREAL()?'':'<div class="demo-note">Test version. No money moves.</div>'}`,()=>{
       segPick('#upi');$('#coGo').onclick=e=>checkout(e.currentTarget,'order',sub,'Store order',async()=>{const r=await API.order(ids);
         A().orders.unshift({id:r.id,total:sub,status:`Arriving tomorrow with ${car().washer}'s wash`,items:ids.map(k=>({name:pName(PRODUCTS.find(p=>p.id===k)),q:S.cart[k]}))});
         A().payments[A().payments.length-1].what='Store order '+r.id;S.cart={};save();renderAll();success('Order placed',`${car().washer} brings it tomorrow before 7:30 AM and sends a photo when it's in your car.`)})})},
