@@ -204,8 +204,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .stop.skipped .sq{background:var(--fg-3);color:var(--bg)}
 .stop.live .sq{background:var(--violet);color:#fff;animation:pulseV 1.6s infinite}
 @keyframes pulseV{70%{box-shadow:0 0 0 10px rgba(84,9,218,0)}0%{box-shadow:0 0 0 0 rgba(84,9,218,.5)}}
-.route li{display:flex;gap:8px;align-items:center}
-.route li .stop{flex:1;min-width:0;width:auto}
 .callbtn{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:#14C08A;color:#fff;box-shadow:var(--card-shadow);transition:transform .25s var(--spring);-webkit-tap-highlight-color:transparent}
 .callbtn:active{transform:scale(.92)}
 a.btn,a.callbtn{text-decoration:none}
@@ -1223,7 +1221,7 @@ function renderRound(){
       <div class="nx-meta"><span class="plate">${esc(c.plate)}</span><span class="tier">${PLAN[c.plan].name}</span>${xchips(c)}</div>
       <div class="where">${I.pin}<span>${esc(c.house)} · ${esc(c.spot)}</span></div>
       ${q?`<div class="where" style="color:var(--orange)">${I.note}<span>${q} customer request${q>1?'s':''}</span></div>`:''}
-      <div style="display:flex;gap:8px;align-items:center;margin-top:14px"><button class="btn violet" style="margin-top:0;flex:1" data-open="${nr}">${wd.status==='scheduled'?'Chalo':'Kholo'} ${I.arrow}</button>${callBtn(c)}</div></div>`}
+      <button class="btn violet" style="margin-top:14px" data-open="${nr}">${wd.status==='scheduled'?'Chalo':'Kholo'} ${I.arrow}</button></div>`}
   else if(started){nw.innerHTML=`<div class="empty"><b>Aaj ka round poora 🎉</b>${cn.done} gaadi chamka di. Hisaab tab mein poora din dekho.</div>`}
   else nw.innerHTML='';
   // list
@@ -1231,7 +1229,7 @@ function renderRound(){
   $('#route').innerHTML=!cn.total?`<li><div class="empty">${Book.state==='loading'?'<b>List aa rahi hai…</b>Book se aaj ka round padha ja raha hai.':'<b>Koi gaadi nahi</b>Book mein aaj aapke naam koi active gaadi nahi hai.'}</div></li>`:route().map((c,i)=>{const wd=W(c.reg),s=wd?wd.status:'scheduled',live=['on_the_way','arrived','washing'].includes(s),q=openReqs(c.reg).length;
     return `<li><button class="stop ${s} ${live?'live':''}" data-open="${c.reg}" style="--i:${i}"><span class="sq">${s==='done'?'✓':s==='skipped'?'–':i+1}</span><span class="th">${carArt(c,true)}</span>
       <span style="min-width:0"><div class="nm">${esc(c.model)} ${q?`<span class="reqdot">${q}</span>`:''}</div><div class="sb">${esc(c.house)} · ${esc(c.plate)}</div><div class="xs">${xchips(c)}</div></span>
-      <span class="rt"><span class="eta num">${s==='done'&&wd.finished_at?t12(wd.finished_at).replace(/ (AM|PM)/,''):hm12(wd?wd.eta:etas[i]).replace(/ (AM|PM)/,'')}</span>${stHTML(wd)}</span></button>${callBtn(c)}</li>`}).join('');
+      <span class="rt"><span class="eta num">${s==='done'&&wd.finished_at?t12(wd.finished_at).replace(/ (AM|PM)/,''):hm12(wd?wd.eta:etas[i]).replace(/ (AM|PM)/,'')}</span>${stHTML(wd)}</span></button></li>`}).join('');
   if(booted&&!renderRound._did&&!RM){renderRound._did=true;$$('#route .stop').forEach((el,i)=>{el.animate([{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'none'}],{duration:500,delay:200+i*60,easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'})})}
 }
 
