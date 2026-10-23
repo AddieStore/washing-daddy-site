@@ -204,10 +204,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .stop.skipped .sq{background:var(--fg-3);color:var(--bg)}
 .stop.live .sq{background:var(--violet);color:#fff;animation:pulseV 1.6s infinite}
 @keyframes pulseV{70%{box-shadow:0 0 0 10px rgba(84,9,218,0)}0%{box-shadow:0 0 0 0 rgba(84,9,218,.5)}}
-.route li{display:flex;gap:8px;align-items:center}
-.route li .stop{flex:1;min-width:0;width:auto}
 .callbtn{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:#14C08A;color:#fff;box-shadow:var(--card-shadow);transition:transform .25s var(--spring);-webkit-tap-highlight-color:transparent}
 .callbtn:active{transform:scale(.92)}
+a.btn,a.callbtn{text-decoration:none}
+a.wherelink{text-decoration:none;color:var(--fg-2)}
+a.wherelink u{text-decoration-color:var(--orange);text-underline-offset:3px}
+a.btn{color:var(--fg)}
 .callbtn svg{width:24px;height:24px}
 .callbtn.sm{width:auto;height:44px;border-radius:22px;padding:0 16px;gap:8px;grid-auto-flow:column;font-weight:800;font-size:15px}
 .callbtn.sm svg{width:20px;height:20px}
@@ -424,6 +426,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .tab svg{width:25px;height:25px;transition:transform .45s var(--spring)}
 .tab.on{color:var(--cream)}
 .tab.on svg{transform:translateY(-1px) scale(1.1)}
+.tab svg .f{fill:currentColor;fill-opacity:0;transition:fill-opacity .3s}
+.tab.on svg .f{fill-opacity:.22}
 .tab .badge{position:absolute;top:2px;right:calc(50% - 26px);min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--orange);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center}
 .tab .live{position:absolute;top:6px;right:calc(50% - 20px);width:10px;height:10px;border-radius:50%;background:#14C08A;box-shadow:0 0 0 2px var(--tab-bg);animation:pulse 1.6s infinite}
 .tab-ind{position:absolute;z-index:0;top:8px;bottom:8px;border-radius:22px;background:var(--violet);transition:left .5s var(--spring),width .5s var(--spring);box-shadow:0 6px 20px rgba(84,9,218,.4)}
@@ -641,10 +645,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 <nav class="tabbar" aria-label="Main">
   <div class="tabs" id="tabs" role="tablist">
     <span class="tab-ind" id="tabInd"></span>
-    <button class="tab on" data-tab="round" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg>Round<span class="badge" id="tabReq" hidden>0</span></button>
-    <button class="tab" data-tab="extra" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>Extra<span class="badge" id="tabExtra" hidden>0</span></button>
-    <button class="tab" data-tab="day" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.8 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/></svg>Paisa</button>
-    <button class="tab" data-tab="me" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Profile</button>
+    <button class="tab on" data-tab="round" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle class="f" cx="6" cy="18" r="2.5"/><circle class="f" cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg>Round<span class="badge" id="tabReq" hidden>0</span></button>
+    <button class="tab" data-tab="extra" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="f" d="M13 2.5 4.5 13.5h6.5l-1 8 8.5-11H12z"/></svg>Extra<span class="badge" id="tabExtra" hidden>0</span></button>
+    <button class="tab" data-tab="day" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect class="f" x="2.5" y="5.5" width="19" height="14" rx="3"/><path d="M9 9h6M9 11.5h6M10.5 9c1.6 0 2.7.8 2.7 2.5s-1.1 2.5-2.7 2.5H9.5l3.8 3"/></svg>Paisa</button>
+    <button class="tab" data-tab="me" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle class="f" cx="12" cy="12" r="9.5"/><circle cx="12" cy="10" r="3.2"/><path d="M6.3 18.4c1.4-1.9 3.4-2.9 5.7-2.9s4.3 1 5.7 2.9"/></svg>Profile</button>
   </div>
 </nav>
 
@@ -1139,6 +1143,19 @@ function drawScaled(img,max){const w=img.width,h=img.height,k=Math.min(1,max/Mat
 function toBlob(img,max,q){const c=drawScaled(img,max);return new Promise(r=>c.toBlob(b=>{if(b&&b.type==='image/webp')return r(b);c.toBlob(j=>r(j),'image/jpeg',q)},'image/webp',q))}
 function toDataURL(img,max,q){const c=drawScaled(img,max);let u=c.toDataURL('image/webp',q);if(!u.startsWith('data:image/webp'))u=c.toDataURL('image/jpeg',q);return Promise.resolve(u)}
 
+/* ---------- selfie background removal ---------- */
+let _bgMod;
+async function removeBg(blob){
+  if(!_bgMod){
+    try{_bgMod=await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/dist/index.js')}
+    catch(e){console.warn('bg-removal lib',e);return blob}
+  }
+  const fn=_bgMod.removeBackground||_bgMod.default;
+  if(!fn){console.warn('bg-removal: no export');return blob}
+  try{return await fn(blob,{model:'small',output:{format:'image/png',quality:.9}})}
+  catch(e){console.warn('bg-removal run',e);return blob}
+}
+
 /* ---------- writes to a wash doc: always the whole doc, one at a time ---------- */
 function newWash(c,seq,eta){
   return {date:DAY,reg:c.reg,car_label:c.label,washer:washerObj(),washer_id:me().id,status:'scheduled',eta,
@@ -1221,7 +1238,7 @@ function renderRound(){
       <div class="nx-meta"><span class="plate">${esc(c.plate)}</span><span class="tier">${PLAN[c.plan].name}</span>${xchips(c)}</div>
       <div class="where">${I.pin}<span>${esc(c.house)} · ${esc(c.spot)}</span></div>
       ${q?`<div class="where" style="color:var(--orange)">${I.note}<span>${q} customer request${q>1?'s':''}</span></div>`:''}
-      <div style="display:flex;gap:8px;align-items:center;margin-top:14px"><button class="btn violet" style="margin-top:0;flex:1" data-open="${nr}">${wd.status==='scheduled'?'Chalo':'Kholo'} ${I.arrow}</button>${callBtn(c)}</div></div>`}
+      <button class="btn violet" style="margin-top:14px" data-open="${nr}">${wd.status==='scheduled'?'Chalo':'Kholo'} ${I.arrow}</button></div>`}
   else if(started){nw.innerHTML=`<div class="empty"><b>Aaj ka round poora 🎉</b>${cn.done} gaadi chamka di. Hisaab tab mein poora din dekho.</div>`}
   else nw.innerHTML='';
   // list
@@ -1229,7 +1246,7 @@ function renderRound(){
   $('#route').innerHTML=!cn.total?`<li><div class="empty">${Book.state==='loading'?'<b>List aa rahi hai…</b>Book se aaj ka round padha ja raha hai.':'<b>Koi gaadi nahi</b>Book mein aaj aapke naam koi active gaadi nahi hai.'}</div></li>`:route().map((c,i)=>{const wd=W(c.reg),s=wd?wd.status:'scheduled',live=['on_the_way','arrived','washing'].includes(s),q=openReqs(c.reg).length;
     return `<li><button class="stop ${s} ${live?'live':''}" data-open="${c.reg}" style="--i:${i}"><span class="sq">${s==='done'?'✓':s==='skipped'?'–':i+1}</span><span class="th">${carArt(c,true)}</span>
       <span style="min-width:0"><div class="nm">${esc(c.model)} ${q?`<span class="reqdot">${q}</span>`:''}</div><div class="sb">${esc(c.house)} · ${esc(c.plate)}</div><div class="xs">${xchips(c)}</div></span>
-      <span class="rt"><span class="eta num">${s==='done'&&wd.finished_at?t12(wd.finished_at).replace(/ (AM|PM)/,''):hm12(wd?wd.eta:etas[i]).replace(/ (AM|PM)/,'')}</span>${stHTML(wd)}</span></button>${callBtn(c)}</li>`}).join('');
+      <span class="rt"><span class="eta num">${s==='done'&&wd.finished_at?t12(wd.finished_at).replace(/ (AM|PM)/,''):hm12(wd?wd.eta:etas[i]).replace(/ (AM|PM)/,'')}</span>${stHTML(wd)}</span></button></li>`}).join('');
   if(booted&&!renderRound._did&&!RM){renderRound._did=true;$$('#route .stop').forEach((el,i)=>{el.animate([{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'none'}],{duration:500,delay:200+i*60,easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'})})}
 }
 
@@ -1395,7 +1412,8 @@ function renderExtra(){
                  :`<button class="btn violet" data-act="exPhoto" data-arg="${esc(j.id)}">Kaam ki photo lo</button><div class="demo-note">Photo ke bina kaam band nahi hoga</div><button class="btn ghost" style="margin-top:10px;opacity:.55" data-act="exNeedPhoto">Kaam khatam karo</button>`)
           : `<button class="btn violet" data-act="exStart" data-arg="${esc(j.id)}">Shuru karo</button>`;
     return `<div class="sec" style="margin-bottom:14px"><div class="sec-head"><h2>${esc(j.service||'Extra kaam')}</h2><span class="muted">${rupee(j.price)} · aapke ${rupee(Money.share(j.price))}</span></div>
-      <div class="where">${I.pin}<span>${esc(j.car||j.reg||'Gaadi')}${j.area?' · '+esc(j.area):''}${j.customer_name?' · '+esc(j.customer_name):''}</span></div>
+      ${(()=>{const m=mapsOf(j),t=`${I.pin}<span>${esc(j.car||j.reg||'Gaadi')}${j.area?' · <u>'+esc(j.area)+'</u>':''}${j.customer_name?' · '+esc(j.customer_name):''}</span>`;
+        return m?`<a class="where wherelink" href="${m}" target="_blank" rel="noopener" aria-label="Google Maps mein kholo">${t}</a>`:`<div class="where">${t}</div>`})()}
       ${j.note?`<div class="demo-note">${esc(j.note)}</div>`:''}
       ${(()=>{const m=mapsOf(j),t=telOf(j.phone);return (m||t)?`<div style="display:flex;gap:8px;margin:10px 0 4px">${m?`<a class="btn ghost" style="flex:1;margin:0;display:flex;align-items:center;justify-content:center;gap:8px" href="${m}" target="_blank" rel="noopener">${I.pin}<span>Location / Raasta</span></a>`:''}${t?callBtn({phone:j.phone},'sm'):''}</div>`:''})()}
       ${j.photo?`<img class="bigimg" src="${esc(j.photo)}" alt="Kaam ki photo" style="margin:10px 0">`:''}
@@ -1501,7 +1519,7 @@ const ACT={
   needPhoto(){toast('Pehle gaadi ki photo lo, phir wash band hogi');haptic(14)},
   /* ---------- a car the washer sold himself ---------- */
   addCar(){
-    const plans=Object.keys(PLAN);
+    const plans=Object.keys(PLAN).filter(k=>k!=='legacy');   // Legacy is closed to new cars; old Legacy cars keep it
     openSheet(`<h3>Nayi gaadi add karo</h3><p class="sub">Aaj se aapke round pe aa jayegi. Ravi manzoori denge aur book mein daalenge.</p>
       <div class="eyebrow">Gaadi</div><input id="acModel" class="jfield" maxlength="60" placeholder="Jaise: Swift">
       <div class="eyebrow" style="margin-top:10px">Gaadi ka number</div><input id="acPlate" class="jfield" maxlength="20" placeholder="DL 8C AB 1234">
@@ -1509,7 +1527,7 @@ const ACT={
       <div class="eyebrow" style="margin-top:10px">Customer</div><input id="acName" class="jfield" maxlength="80" placeholder="Naam">
       <input id="acPhone" class="jfield" inputmode="numeric" maxlength="10" placeholder="Phone (10 number)" style="margin-top:8px">
       <div class="eyebrow" style="margin-top:10px">Plan</div>
-      <div class="jchips" id="acPlan">${plans.map((k,i)=>`<button type="button" data-v="${k}" class="${i===1?'on':''}">${PLAN[k].name}</button>`).join('')}</div>
+      <div class="jchips" id="acPlan">${plans.map((k,i)=>`<button type="button" data-v="${k}" class="${k==='std'?'on':''}">${PLAN[k].name}</button>`).join('')}</div>
       <div class="eyebrow" style="margin-top:10px">Mahine ka kitna tay hua?</div>
       <div class="stepperN"><button id="acM" aria-label="Kam">−</button><div class="sv num">₹<span id="acFee">999</span><small>mahina</small></div><button id="acP" aria-label="Zyada">+</button></div>
       <div class="demo-note" id="acShare"></div>
@@ -1601,7 +1619,15 @@ $('#camIn').addEventListener('change',async e=>{
 });
 $('#selfieIn').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0];if(!f)return;const fl=$('#flash');fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');
-  try{const r=await Sync.uploadPhoto(f,640);S.selfie=Object.assign({date:DAY,washer:me().id},r.asset_id?{asset_id:r.asset_id}:{url:r.url});save();
+  try{
+    toast('Background hata rahe hain…');
+    const bmp=await loadImage(f);
+    const png=await new Promise(r=>drawScaled(bmp,640).toBlob(b=>r(b),'image/png'));
+    const clean=await removeBg(png);
+    let r;
+    if(Sync.assets){try{const u=await Sync.assets.upload(clean,{type:'image/png'});r={asset_id:u.id,display:u.url}}catch(ae){console.warn('selfie upload',ae)}}
+    if(!r){const c=document.createElement('canvas'),img=await loadImage(clean),w=img.width,h=img.height;c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0);const u=c.toDataURL('image/png');r={url:u,display:u}}
+    S.selfie=Object.assign({date:DAY,washer:me().id},r.asset_id?{asset_id:r.asset_id}:{url:r.url});save();
     // show the face on every car still to come today
     route().forEach(c=>{const w=W(c.reg);if(w&&!['done','skipped'].includes(w.status))mutate(c.reg,()=>{})});
     renderMe();toast('Photo save ho gayi. Customers ko dikhegi.');confetti(.3)}catch(err){toast('Selfie nahi lagi. Dobara try karo')}
@@ -2053,6 +2079,7 @@ const HI = {
   "Aaj ki selfie lo: customer dekhega kaun aaya":"आज की सेल्फ़ी लो: कस्टमर देखेगा कौन आया",
   "✓ Aaj ki selfie customers ko dikh rahi hai":"✓ आज की सेल्फ़ी कस्टमर को दिख रही है",
   "Selfie lag gayi. Customers ko dikhegi":"सेल्फ़ी लग गई. कस्टमर को दिखेगी",
+  "Background hata rahe hain…":"बैकग्राउंड हटा रहे हैं…",
   "Selfie nahi lagi. Dobara try karo":"सेल्फ़ी नहीं लगी. दोबारा कोशिश करो",
   "Settings":"सेटिंग्स",
   "Bhasha":"भाषा",

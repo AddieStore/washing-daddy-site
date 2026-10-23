@@ -1,3 +1,5 @@
 --------- beginning of main
-10-23 05:09:26.224  2520  2578 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
-10-23 05:09:51.555  2520  2578 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-23 05:22:41.660  2553  2586 E chromium: [ERROR:simple_file_enumerator.cc(21)] opendir /data/user/0/com.washingdaddy.washer/cache/WebView/Default/HTTP Cache/Code Cache/webui_js: No such file or directory (2)
+10-23 05:22:41.660  2553  2586 E chromium: [ERROR:simple_index_file.cc(614)] Could not reconstruct index from disk
+10-23 05:22:41.763  2553  2615 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-23 05:23:07.158  2553  2615 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
