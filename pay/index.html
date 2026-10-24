@@ -181,9 +181,9 @@ var MONTHLY = [
   { id:"res",  nm:"WD Reserve",   pr:5555, ds:"Everything daily · partnered stores across Delhi NCR" }
 ];
 var ONCE = [
-  { id:"o-std", nm:"Standard wash",  pr:500,  ds:"Foam, pressure wash and hand dry" },
-  { id:"o-pro", nm:"Pro wash",       pr:1200, ds:"Standard plus interior and tyre polish" },
-  { id:"o-exc", nm:"Exclusive wash", pr:2100, ds:"Full detail inside and out" }
+  { id:"wash",      nm:"WD Wash",          pr:199,  ds:"Pressure wash · tyre & trim polish · interior cleaning" },
+  { id:"deep",      nm:"WD Deep Cleaning", pr:800,  ds:"Interior vacuum · foam · glass · wheels" },
+  { id:"exclusive", nm:"WD Exclusive",     pr:2100, ds:"Engine bay · fender lining · ceramic spray · glass coating" }
 ];
 
 var $ = function(id){ return document.getElementById(id); };
@@ -214,15 +214,15 @@ function planList(host, rows, kind, unit){
     var pr = el("span","pr", rs(p.pr));
     if(unit) pr.appendChild(el("small", null, unit));
     b.appendChild(pr);
-    b.addEventListener("click", function(){ choose(kind, p.nm, p.pr); });
+    b.addEventListener("click", function(){ choose(kind, p.nm, p.pr, p.id); });
     host.appendChild(b);
   });
 }
 planList($("monthly-list"), MONTHLY, "Monthly plan", "per month");
 planList($("once-list"), ONCE, "One-time wash", "one wash");
 
-function choose(kind, label, amount){
-  picked = { kind:kind, label:label, amount:amount };
+function choose(kind, label, amount, id){
+  picked = { kind:kind, label:label, amount:amount, id:id };
   $("sum").textContent = label + " — " + rs(amount);
   $("f-amt").value = amount;
   $("err").hidden = true;
@@ -291,6 +291,8 @@ $("pay").addEventListener("click", function(){
     body: JSON.stringify({
       amount: amt, name: name, phone: phone, car: car, num: numb, area: area,
       kind: picked.kind, label: picked.label,
+      planId: picked.kind === "Monthly plan" ? picked.id : undefined,
+      service: picked.kind === "One-time wash" ? picked.id : undefined,
       page: location.origin + location.pathname
     })
   })
