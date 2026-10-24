@@ -312,6 +312,51 @@ img{max-width:100%; display:block}
 .bar .btn{flex:1; padding:13px 10px; font-size:15px}
 @media(max-width:700px){ .bar{display:flex} body{padding-bottom:86px} }
 @media(prefers-reduced-motion:reduce){ *{transition:none!important; scroll-behavior:auto!important} }
+
+/* ---------- hero headline + plans + dotted base, brought over from the new site ---------- */
+body{background-image:radial-gradient(circle, rgba(255,246,233,.09) 1.3px, transparent 1.6px); background-size:18px 18px}
+.hero .wrap{grid-template-columns:1.35fr .65fr}
+.hl{min-width:0}
+.hl h1{font-family:var(--shout); font-weight:400; font-size:clamp(58px,9.6vw,150px); line-height:.88; text-transform:uppercase; color:var(--cream); margin:0 0 20px}
+.hl h1 .strike{position:relative; display:inline-block; color:rgba(255,246,233,.55)}
+.hl h1 .strike::after{content:""; position:absolute; left:-2%; right:-2%; top:52%; height:.11em; background:var(--gold); transform:rotate(-3deg)}
+.hl h1 em{font-style:normal; color:var(--gold); display:block; text-shadow:5px 5px 0 var(--ink)}
+.hl .lede{font-size:19px; font-weight:500; max-width:27em}
+.hl .cta{justify-content:flex-start; margin-top:28px}
+@media(max-width:980px){ .hero .wrap{grid-template-columns:1fr} .hl .lede{margin-inline:auto} .hl .cta{justify-content:center} }
+
+.plans-v2{background:var(--cream); color:var(--ink); padding-block:84px;
+  background-image:radial-gradient(circle, rgba(26,10,51,.12) 1.4px, transparent 1.8px); background-size:22px 22px}
+.plans-v2 .shead{margin-bottom:36px; text-align:left; padding-top:0}
+.plans-v2 .shead .kicker{display:inline-block; opacity:1; background:var(--ink); color:var(--gold); font-weight:800; font-size:13px; letter-spacing:.1em; text-transform:uppercase; padding:5px 14px; border-radius:999px; margin:0 0 14px}
+.plans-v2 .shead h2{font-family:var(--shout); font-weight:400; font-size:clamp(48px,9vw,120px); line-height:.92; text-transform:uppercase; color:var(--ink); text-shadow:none}
+.plans-v2 .shead h2 b{font-weight:400; color:var(--violet)}
+.plans-v2 .shead p:not(.kicker){margin:16px 0 0; opacity:1; max-width:36em; font-size:18px; font-weight:500; color:var(--ink)}
+.plans-v2 .seg{display:inline-flex; gap:4px; padding:5px; background:#fff; border-radius:999px; margin-bottom:34px; box-shadow:0 8px 20px rgba(26,10,51,.16)}
+.plans-v2 .seg button{font-family:var(--shout); font-size:19px; letter-spacing:.05em; text-transform:uppercase; border:0; background:none; color:var(--ink); padding:11px 22px; border-radius:999px; cursor:pointer}
+.plans-v2 .seg button[aria-selected=true]{background:var(--ink); color:var(--gold)}
+.plans-v2 .plans{display:grid; grid-template-columns:repeat(4,1fr); gap:26px; align-items:stretch}
+.plans-v2 .plans.once{grid-template-columns:repeat(3,1fr)}
+.plans-v2 .plan{display:flex; flex-direction:column; position:relative; background:#fff; color:var(--ink); padding:26px; border-radius:32px;
+  box-shadow:0 18px 40px rgba(26,10,51,.16); transition:transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s}
+.plans-v2 .plan:hover{transform:translateY(-6px); box-shadow:0 26px 50px rgba(26,10,51,.2)}
+.plans-v2 .plan h3{font-family:var(--shout); font-weight:400; font-size:26px; text-transform:uppercase; letter-spacing:.02em}
+.plans-v2 .plan .price{font-family:var(--slab); font-size:clamp(34px,3.2vw,42px); line-height:1; margin:10px 0 18px; color:var(--violet)}
+.plans-v2 .plan .price small{font-family:var(--body); font-size:14px; font-weight:700; color:rgba(26,10,51,.55)}
+.plans-v2 .plan ul{list-style:none; margin:0 0 22px; padding:0}
+.plans-v2 .plan li{display:flex; gap:10px; justify-content:space-between; align-items:baseline; padding:9px 0; border-top:2px dashed rgba(26,10,51,.25); font-size:14.5px; font-weight:600}
+.plans-v2 .plan li .q{font-size:12.5px; font-weight:800; text-align:right; background:var(--gold); color:var(--ink); padding:2px 10px; border-radius:999px; white-space:nowrap}
+.plans-v2 .plan .btn{margin-top:auto; width:100%; background:var(--violet); color:var(--cream); border:0; box-shadow:none}
+.plans-v2 .plan.feat{background:var(--violet); color:var(--cream); box-shadow:0 26px 50px rgba(84,9,218,.35); transform:translateY(-14px)}
+.plans-v2 .plan.feat:hover{transform:translateY(-20px)}
+.plans-v2 .plan.feat .price{color:var(--gold)}
+.plans-v2 .plan.feat .price small{color:rgba(255,246,233,.7)}
+.plans-v2 .plan.feat li{border-top-color:rgba(255,246,233,.3)}
+.plans-v2 .plan.feat .btn{background:var(--gold); color:var(--ink)}
+.plans-v2 .plan .flag{position:absolute; top:-16px; right:16px; background:var(--orange); color:var(--cream); font-family:var(--shout); font-size:16px; padding:3px 14px; border-radius:999px; letter-spacing:.06em; text-transform:uppercase}
+.plans-v2 .note{margin-top:34px; font-weight:600; font-size:15px; color:var(--ink)}
+@media(max-width:1020px){ .plans-v2 .plans, .plans-v2 .plans.once{grid-template-columns:repeat(2,1fr)} .plans-v2 .plan.feat{transform:none} }
+@media(max-width:600px){ .plans-v2{padding-block:60px} .plans-v2 .plans, .plans-v2 .plans.once{grid-template-columns:1fr} .plans-v2 .plan{padding:22px} .plans-v2 .seg button{font-size:16px; padding:10px 16px} }
 </style></head><body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
@@ -345,13 +390,9 @@ img{max-width:100%; display:block}
   <!-- ===== hero ===== -->
   <section class="hero">
     <div class="wrap">
-      <h2 class="pocha" aria-label="Still using pocha on your car?">
-        <span>Still using</span><span>pocha on</span><span>your car?</span>
-      </h2>
-      <div class="howabout">
-        <p class="q">How about</p>
-        <h1>PRESSURE WASH?</h1>
-        <p class="every">Everyday!!!</p>
+      <div class="hl">
+        <h1><span class="strike">Pocha?</span> <em>Pressure wash everyday!</em></h1>
+        <p class="lede">A washer comes to where your car is parked, foams it, pressure-rinses it and dries it by hand. Daily. From ₹999 a month.</p>
         <div class="cta">
           <a class="btn" href="#plans">See the plans</a>
           <a class="btn btn-ghost" id="wa-hero" href="#">WhatsApp us</a>
@@ -366,114 +407,39 @@ img{max-width:100%; display:block}
   </section>
 
   <!-- ===== monthly / one-time ===== -->
-  <section id="plans">
-    <div class="switchband">
-      <div class="wrap" role="tablist" aria-label="Type of service">
-        <button class="tab" role="tab" id="tab-monthly" aria-selected="true" aria-controls="panel-monthly" data-mode="monthly">Monthly plans</button>
-        <button class="tab" role="tab" id="tab-once" aria-selected="false" aria-controls="panel-once" data-mode="once">One-time wash</button>
-      </div>
-    </div>
-    <div class="goldbar"></div>
-
-    <div class="board board--monthly" id="panel-monthly" role="tabpanel" aria-labelledby="tab-monthly">
-      <div class="col">
-        <h3>WD Standard</h3>
-        <p class="price num">₹999/month</p>
-        <ul>
-          <li><span class="f">Daily Pressure-wash</span></li>
-          <li><span class="f">Interior cleaning</span><span class="q">1 time a week</span></li>
-          <li><span class="f">Tyre &amp; trim polish</span><span class="q">2 times a week</span></li>
-          <li><span class="f">Foam wash</span><span class="q">1 time a week</span></li>
-        </ul>
-        <div class="pick"><a class="btn" href="#enquire" data-plan="WD Standard — ₹999 a month">Choose Standard</a></div>
-      </div>
-      <div class="col">
-        <h3>WD Pro</h3>
-        <p class="price num">₹1,800/month</p>
-        <ul>
-          <li><span class="f">Daily Pressure-wash</span></li>
-          <li><span class="f">Interior cleaning</span><span class="q">2 times a week</span></li>
-          <li><span class="f">Tyre &amp; trim polish</span><span class="q">Daily</span></li>
-          <li><span class="f">Foam wash</span><span class="q">2 times a week</span></li>
-          <li><span class="f">Detailing car wash</span><span class="q">1 time a month</span></li>
-        </ul>
-        <div class="pick"><a class="btn" href="#enquire" data-plan="WD Pro — ₹1,800 a month">Choose Pro</a></div>
-      </div>
-      <div class="col">
-        <h3>WD Exclusive</h3>
-        <p class="price num">₹2,500/month</p>
-        <ul>
-          <li><span class="f">Daily Pressure-wash</span></li>
-          <li><span class="f">Interior cleaning</span><span class="q">3 times a week</span></li>
-          <li><span class="f">Tyre &amp; trim polish</span><span class="q">Daily</span></li>
-          <li><span class="f">Foam wash</span><span class="q">4 times a week</span></li>
-          <li><span class="f">Detailing car wash</span><span class="q">2 times a month</span></li>
-          <li><span class="f">Exclusive car perfume</span><span class="q">Worth ₹499</span></li>
-          <li><span class="f">1 on-demand</span><span class="q">Service</span></li>
-        </ul>
-        <div class="pick"><a class="btn" href="#enquire" data-plan="WD Exclusive — ₹2,500 a month">Choose Exclusive</a></div>
-      </div>
-      <div class="col reserve">
-        <h3>WD Reserve</h3>
-        <p class="price num">₹5,555/month</p>
-        <ul>
-          <li><span class="f">Daily Pressure-wash</span></li>
-          <li><span class="f">Interior cleaning</span><span class="q">Daily</span></li>
-          <li><span class="f">Tyre &amp; trim polish</span><span class="q">Daily</span></li>
-          <li><span class="f">Foam wash</span><span class="q">Daily</span></li>
-          <li><span class="f">Detailing car wash</span><span class="q">4 times a week</span></li>
-          <li><span class="f">Exclusive car perfume</span><span class="q">Worth ₹499</span></li>
-          <li><span class="f">3 on-demand</span><span class="q">Services</span></li>
-          <li><span class="f">Access to WD partnered stores</span><span class="q">Delhi NCR</span></li>
-        </ul>
-        <div class="pick"><a class="btn btn-cream" href="#enquire" data-plan="WD Reserve — ₹5,555 a month">Choose Reserve</a></div>
-      </div>
-    </div>
-
-    <div class="board board--once" id="panel-once" role="tabpanel" aria-labelledby="tab-once" hidden>
-      <div class="col">
-        <h3>WD Standard</h3>
-        <p class="price num">₹500</p>
-        <ul>
-          <li><span class="f">Pressure-wash</span></li>
-          <li><span class="f">Tyre &amp; trim polish</span></li>
-          <li><span class="f">Foam wash</span></li>
-        </ul>
-        <div class="pick"><a class="btn" id="wa-once1" href="#">Book on WhatsApp</a></div>
-      </div>
-      <div class="col">
-        <h3>WD Pro</h3>
-        <p class="price num">₹1,200</p>
-        <ul>
-          <li><span class="f">Pressure-wash</span></li>
-          <li><span class="f">Interior vacuum</span></li>
-          <li><span class="f">Tyre &amp; trim polish</span></li>
-          <li><span class="f">Foam wash</span></li>
-          <li><span class="f">Glass cleaning</span></li>
-          <li><span class="f">Wheel cleaning</span></li>
-        </ul>
-        <div class="pick"><a class="btn" id="wa-once2" href="#">Book on WhatsApp</a></div>
-      </div>
-      <div class="col reserve">
-        <h3>WD Exclusive</h3>
-        <p class="price num">₹2,100</p>
-        <ul>
-          <li><span class="f">Pressure-wash</span></li>
-          <li><span class="f">Tyre &amp; trim polish</span></li>
-          <li><span class="f">Foam wash</span></li>
-          <li><span class="f">Glass cleaning</span></li>
-          <li><span class="f">Fender lining cleaning</span></li>
-          <li><span class="f">Engine bay cleaning</span></li>
-          <li><span class="f">Ceramic spray finish</span></li>
-          <li><span class="f">Glass hydrophobic coating</span></li>
-        </ul>
-        <div class="pick"><a class="btn btn-cream" id="wa-once3" href="#">Book on WhatsApp</a></div>
-      </div>
-    </div>
-
-    <div class="goldbar"></div>
-    <p class="boardnote" id="boardnote">Your month runs from the day you start. One payment in advance, no per-wash charges.</p>
-  </section>
+  <section id="plans" class="plans-v2"><div class="wrap">
+  <div class="shead"><p class="kicker">Plans</p><h2>Pick your <b>wash</b></h2><p>One payment in advance. No per-wash charges, no bargaining at the gate.</p></div>
+  <div class="seg" role="tablist" aria-label="Type of service">
+    <button role="tab" id="tab-monthly" aria-selected="true" data-mode="monthly">Monthly plans</button>
+    <button role="tab" id="tab-once" aria-selected="false" data-mode="once">One-time wash</button>
+  </div>
+  <div class="plans" id="panel-monthly" role="tabpanel" aria-labelledby="tab-monthly">
+    <article class="tile plan"><h3>WD Standard</h3><p class="price num">₹999<small>/month</small></p>
+      <ul><li>Daily pressure-wash</li><li>Interior cleaning<span class="q">1× a week</span></li><li>Tyre &amp; trim polish<span class="q">2× a week</span></li><li>Foam wash<span class="q">1× a week</span></li></ul>
+      <a class="btn" href="#enquire" data-plan="WD Standard — ₹999 a month">Choose Standard</a></article>
+    <article class="tile plan feat"><span class="flag">Popular</span><h3>WD Pro</h3><p class="price num">₹1,800<small>/month</small></p>
+      <ul><li>Daily pressure-wash</li><li>Interior cleaning<span class="q">2× a week</span></li><li>Tyre &amp; trim polish<span class="q">Daily</span></li><li>Foam wash<span class="q">2× a week</span></li><li>Detailing car wash<span class="q">1× a month</span></li></ul>
+      <a class="btn" href="#enquire" data-plan="WD Pro — ₹1,800 a month">Choose Pro</a></article>
+    <article class="tile plan"><h3>WD Exclusive</h3><p class="price num">₹2,500<small>/month</small></p>
+      <ul><li>Daily pressure-wash</li><li>Interior cleaning<span class="q">3× a week</span></li><li>Tyre &amp; trim polish<span class="q">Daily</span></li><li>Foam wash<span class="q">4× a week</span></li><li>Detailing car wash<span class="q">2× a month</span></li><li>Exclusive car perfume<span class="q">Worth ₹499</span></li><li>On-demand service<span class="q">1</span></li></ul>
+      <a class="btn" href="#enquire" data-plan="WD Exclusive — ₹2,500 a month">Choose Exclusive</a></article>
+    <article class="tile plan"><h3>WD Reserve</h3><p class="price num">₹5,555<small>/month</small></p>
+      <ul><li>Daily pressure-wash</li><li>Interior cleaning<span class="q">Daily</span></li><li>Tyre &amp; trim polish<span class="q">Daily</span></li><li>Foam wash<span class="q">Daily</span></li><li>Detailing car wash<span class="q">4× a week</span></li><li>Exclusive car perfume<span class="q">Worth ₹499</span></li><li>On-demand services<span class="q">3</span></li><li>WD partnered stores<span class="q">Delhi NCR</span></li></ul>
+      <a class="btn" href="#enquire" data-plan="WD Reserve — ₹5,555 a month">Choose Reserve</a></article>
+  </div>
+  <div class="plans once" id="panel-once" role="tabpanel" aria-labelledby="tab-once" hidden>
+    <article class="tile plan"><h3>WD Standard</h3><p class="price num">₹500</p>
+      <ul><li>Pressure-wash</li><li>Tyre &amp; trim polish</li><li>Foam wash</li></ul>
+      <a class="btn" id="wa-once1" href="#">Book on WhatsApp</a></article>
+    <article class="tile plan feat"><h3>WD Pro</h3><p class="price num">₹1,200</p>
+      <ul><li>Pressure-wash</li><li>Interior vacuum</li><li>Tyre &amp; trim polish</li><li>Foam wash</li><li>Glass cleaning</li><li>Wheel cleaning</li></ul>
+      <a class="btn" id="wa-once2" href="#">Book on WhatsApp</a></article>
+    <article class="tile plan"><h3>WD Exclusive</h3><p class="price num">₹2,100</p>
+      <ul><li>Pressure-wash</li><li>Tyre &amp; trim polish</li><li>Foam wash</li><li>Glass cleaning</li><li>Fender lining cleaning</li><li>Engine bay cleaning</li><li>Ceramic spray finish</li><li>Glass hydrophobic coating</li></ul>
+      <a class="btn" id="wa-once3" href="#">Book on WhatsApp</a></article>
+  </div>
+  <p class="note" id="boardnote">Your month runs from the day you start. One payment in advance, no per-wash charges.</p>
+</div></section>
 
   <!-- ===== on the street ===== -->
   <section class="wrap" id="street">
@@ -757,7 +723,7 @@ img{max-width:100%; display:block}
   function wa(t){ return "https://wa.me/" + PHONE + "?text=" + encodeURIComponent(t); }
 
   /* ---------- monthly / one-time ---------- */
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('#plans [data-mode]'));
   var NOTE = {
     monthly: 'Your month runs from the day you start. One payment in advance, no per-wash charges.',
     once:    'A single visit while the car stays parked. Pay once the wash is done.'
