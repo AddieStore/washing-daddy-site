@@ -234,6 +234,42 @@ footer .big{display:block;font-weight:800;font-size:22px;text-decoration:none;pa
 .plan.feat.rv.in{transform:translateY(-14px)}
 @media (max-width:1020px){.plan.feat.rv.in{transform:none}}
 
+
+/* soft edges: keep the poster type and colours, round everything off like
+   the apps, and swap the hard ink outlines/shadows for soft ones */
+:root{--bw:0px;--sh:0 18px 40px rgba(26,10,51,.16);--sh-s:0 8px 20px rgba(26,10,51,.16);--r-l:32px;--r-m:22px}
+.btn,.top .btn,.seg,.seg button,.chips button,.pill,.kicker,.sticker,.plan .flag,.plan li .q,.ba .tag{border-radius:999px}
+.btn:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(26,10,51,.22)}
+.btn:active{transform:scale(.97);box-shadow:var(--sh-s)}
+.top .btn{box-shadow:none}
+.pill,.kicker{transform:none}
+.plan li .q{border:0;padding:2px 10px}
+.seg{padding:5px;gap:4px}
+.tile,.block,.plan,.areabox{border-radius:var(--r-l)}
+.plan:hover{transform:translateY(-6px);box-shadow:0 26px 50px rgba(26,10,51,.2)}
+.plan.feat{box-shadow:0 26px 50px rgba(84,9,218,.35)}
+.chips button{box-shadow:var(--sh-s)}
+.chips button[aria-pressed=true]{transform:none;box-shadow:0 8px 20px rgba(84,9,218,.35)}
+.heroshot{border-radius:var(--r-l);overflow:visible;transform:rotate(2deg);box-shadow:0 30px 60px rgba(0,0,0,.35)}
+.heroshot img{border-radius:var(--r-l)}
+.badge{border:4px solid var(--violet)}
+.appicons img{border-radius:20px}
+.ba figure{border-radius:var(--r-l);overflow:hidden;border-width:0;box-shadow:0 20px 44px rgba(0,0,0,.4);transform:none!important}
+.ba .tag{left:14px;top:14px}
+.shot{border-radius:var(--r-m);padding:0;overflow:hidden;box-shadow:0 16px 36px rgba(0,0,0,.35);transform:none!important}
+.shot img{border:0}
+input,select{border-radius:14px;border:1.5px solid rgba(26,10,51,.18);background:#fff}
+input:focus,select:focus{border-color:var(--violet);box-shadow:0 0 0 4px rgba(84,9,218,.2)}
+.fig{border-left:1.5px solid rgba(26,10,51,.15)}
+.stat{border-left:1.5px solid rgba(26,10,51,.2)}
+.hero{border-radius:0 0 48px 48px}
+section.s.gold,section.s.dark,section.s.vio{margin:20px 14px;border-radius:48px}
+.strip{margin:20px 14px 0;border-radius:999px}
+.statsband{margin:14px 14px 0;border-radius:var(--r-l)}
+footer{border-radius:48px 48px 0 0;margin-top:20px}
+@media (max-width:900px){.bar{left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));padding:8px;border-radius:999px;box-shadow:0 10px 30px rgba(26,10,51,.3)}.bar .btn{box-shadow:none}}
+@media (max-width:600px){section.s.gold,section.s.dark,section.s.vio{margin:12px 8px;border-radius:32px}.hero{border-radius:0 0 32px 32px}.strip,.statsband{margin-inline:8px}}
+.plan.feat .price small{color:rgba(255,246,233,.7)}
 </style></head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="wa" viewBox="0 0 24 24"><path fill="currentColor" d="M20 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h3v3l4-3h9a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></symbol></svg>
