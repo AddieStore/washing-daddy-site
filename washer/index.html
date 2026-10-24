@@ -204,6 +204,17 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .stop.skipped .sq{background:var(--fg-3);color:var(--bg)}
 .stop.live .sq{background:var(--violet);color:#fff;animation:pulseV 1.6s infinite}
 @keyframes pulseV{70%{box-shadow:0 0 0 10px rgba(84,9,218,0)}0%{box-shadow:0 0 0 0 rgba(84,9,218,.5)}}
+/* ---------- online switch, nav row, SOS ---------- */
+.onl{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px 16px;text-align:left;font:inherit;color:var(--fg);border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.onl-t{display:flex;flex-direction:column;gap:2px;min-width:0}.onl-t b{font-size:16px}.onl-t small{font-size:13px;color:var(--fg-3);font-weight:600}
+.onl-sw{flex:none;width:52px;height:30px;border-radius:99px;background:var(--fg-3);padding:3px;transition:background .25s}
+.onl-sw i{display:block;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .25s var(--spring)}
+.onl.on .onl-sw{background:var(--mint)}.onl.on .onl-sw i{transform:translateX(22px)}
+.actrow{display:flex;gap:8px;align-items:center;margin-top:10px}
+.actrow .navbtn{flex:1;margin:0;display:flex;align-items:center;justify-content:center;gap:8px}
+a.row{color:inherit;text-decoration:none}
+.btn.sos{background:var(--red);color:#fff;display:flex;justify-content:center;text-decoration:none}
+.refcode{font-size:34px;font-weight:800;letter-spacing:.08em;text-align:center;padding:14px;border-radius:16px;background:rgba(84,9,218,.08);margin-top:8px}
 .callbtn{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:#14C08A;color:#fff;box-shadow:var(--card-shadow);transition:transform .25s var(--spring);-webkit-tap-highlight-color:transparent}
 .callbtn:active{transform:scale(.92)}
 a.btn,a.callbtn{text-decoration:none}
@@ -753,6 +764,7 @@ a.btn{color:var(--fg)}
       <img class="wd-logo" alt="Washing Daddy" width="118" height="71" src="data:image/webp;base64,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">
       <div class="greet" style="min-width:0"><div class="hi" id="greetHi">Subah bakhair</div><div class="name" id="greetName">Chotte</div></div>
       <div class="tb-right">
+        <button class="iconbtn" data-act="help" aria-label="Madad / SOS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4.2M12 17.7h.01"/></svg></button>
         <button class="iconbtn" data-act="addCar" aria-label="Nayi gaadi add karo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
         <button class="sync" data-act="syncInfo" aria-label="Sync status"><span class="sdot" data-sdot></span><span data-stxt>Jud raha hai</span></button>
       </div>
@@ -760,7 +772,8 @@ a.btn{color:var(--fg)}
     <h1 class="wd-hello"><small id="wdHelloHi">Subah bakhair</small><span id="wdHelloName">Chotte</span>, <em>aaj ka round!</em></h1>
     <div class="hero on-violet" id="roundHero"></div>
     <div class="pad">
-      <div class="sec" id="roundAction" style="margin-top:16px"></div>
+      <div class="sec" id="onlineWrap" style="margin-top:16px"></div>
+      <div class="sec" id="roundAction" style="margin-top:12px"></div>
       <div class="sec rv" id="nextWrap"></div>
       <div class="sec rv">
         <div class="sec-head"><h2>Aaj ka round</h2><span class="muted" id="routeMeta"></span></div>
@@ -866,6 +879,8 @@ a.btn{color:var(--fg)}
       <div class="sec rv">
         <div class="sec-head"><h2>Settings</h2></div>
         <div class="rows">
+          <button class="row" data-act="help"><span class="ri" style="color:var(--red)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.8 19.5h18.4z"/><path d="M12 10v4.2M12 17h.01"/></svg></span><span class="rt"><b>Madad / SOS</b><small>Paisa, customer ya accident ki problem</small></span></button>
+          <button class="row" data-act="refer"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M18 8v6M15 11h6"/></svg></span><span class="rt"><b>Dost ko laao</b><small>Apna code share karo, bonus pao</small></span></button>
           <div class="row"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14 0 18M12 3c-3 3.5-3 14 0 18"/></svg></span><span class="rt"><b>Bhasha</b><small>Poora app Hindi mein</small></span>
             <span class="seg" id="langSeg" data-notr><button data-lang-set="hinglish">Hinglish</button><button data-lang-set="hi">हिंदी</button></span></div>
           <div class="row"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2"/></svg></span><span class="rt"><b>Screen</b><small>Dhoop mein "Din" saaf dikhta hai</small></span>
@@ -1003,6 +1018,9 @@ const PLAN={
 const PLAN_PRICE={legacy:500,std:999,pro:1800,exc:2500,res:5555};
 // tel: link for a customer's number. Null when there is no usable number, so no dead button is drawn.
 const telOf=p=>{const d=String(p||'').replace(/\D/g,'').slice(-10);return d.length===10?'tel:+91'+d:null};
+const isOnline=()=>S.online!==false;
+const OWNER_WA='917701808924';
+const waTo=t=>`https://wa.me/${OWNER_WA}?text=${encodeURIComponent(t)}`;
 const callBtn=(c,cls)=>{const t=telOf(c&&c.phone);return t?`<a class="callbtn ${cls||''}" href="${t}" aria-label="Customer ko call karo">${I.phone}${cls==='sm'?'<span>Call</span>':''}</a>`:''};
 // where an area sits on the map, same table the customer app draws its map from [lng,lat]
 const AREA_LL={'GH-9 Paschim Vihar':[77.0989,28.6680],'GH-6 Paschim Vihar':[77.0970,28.6695],'GH-14 Paschim Vihar':[77.0982,28.6705],'Meera Bagh':[77.1065,28.6720],'Sundar Vihar':[77.1110,28.6710],'Guru Hari Apartments':[77.0960,28.6650]};
@@ -1012,6 +1030,10 @@ const mapsOf=j=>{const lat=Number(j.lat),lng=Number(j.lng);
   const a=String(j.area||'').trim();if(!a)return null;
   const ll=AREA_LL[a];
   return ll?`https://www.google.com/maps/dir/?api=1&destination=${ll[1]},${ll[0]}&travelmode=driving`:`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a+', Delhi')}`};
+// Google Maps link for a round car: the area pin if we know it, else a search on society, spot and Paschim Vihar
+const navOf=c=>{const a=String(c&&c.house||'').trim();if(!a)return null;
+  return AREA_LL[a]?mapsOf({area:a}):`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([a,c.spot,'Paschim Vihar, Delhi'].filter(Boolean).join(', '))}`};
+const navBtn=c=>{const m=navOf(c);return m?`<a class="btn ghost navbtn" href="${m}" target="_blank" rel="noopener">${I.pin}<span>Raasta</span></a>`:''};
 // demo round: the two customer-app demo cars are real keys in the contract; the rest are made up
 const ROSTER={
   chotte:[
@@ -1116,6 +1138,8 @@ const Extra={
   today(){return this.jobs.filter(j=>j.date===DAY)},
   open(){return this.jobs.filter(j=>j.status!=='done'&&j.status!=='declined')},
   allOpen(){return [...this.open(),...this.pending]},
+  // offline washers do not see (or get alerted about) unassigned customer bookings
+  shown(){return isOnline()?this.allOpen():this.open()},
   doneOn(day){return this.jobs.filter(j=>j.status==='done'&&(j.finished_at||j.date||'').slice(0,10)===day)},
   doneIn(month){return this.jobs.filter(j=>j.status==='done'&&(j.finished_at||j.date||'').slice(0,7)===month)},
   byId(id){return this.jobs.find(j=>j.id===id)||this.pending.find(j=>j.id===id)||null},
@@ -1221,7 +1245,7 @@ const carArt=(c,small)=>c.img&&IMG[c.img]?`<img src="${IMG[c.img]}" alt="">`:car
    State kept on this phone. The round and every unsent change survive
    no signal and an app restart (handbook §5).
    ===================================================================== */
-let S={session:null,theme:'light',lang:'hinglish',day:null,outbox:{},current:null,selfie:null,hist:{}};
+let S={session:null,online:true,theme:'light',lang:'hinglish',day:null,outbox:{},current:null,selfie:null,hist:{}};
 const KEY='wd-washer-v1';
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&typeof x==='object')S=Object.assign(S,x)}catch(e){}
@@ -1298,7 +1322,7 @@ const Sync={
     this.unsubs.push(db.collection('ondemand').where('washer_id','==','').onSnapshot(sn=>{
       const prevIds=new Set(Extra.pending.map(j=>j.id));
       Extra.setPending(sn.docs.map(d=>Object.assign({id:d.id},d.data())).filter(j=>j.status==='new'));
-      if(booted){const nj=Extra.pending.find(j=>!prevIds.has(j.id));if(nj)showJobAlert(nj)}
+      if(booted&&isOnline()){const nj=Extra.pending.find(j=>!prevIds.has(j.id));if(nj)showJobAlert(nj)}
       refresh();
     },err));
     // today's ratings, one doc per car
@@ -1468,6 +1492,8 @@ function renderRound(){
       <div class="hero-sub">${!started?`Pehli ${hm12(first)} · aakhri ~${hm12(last)}`:left?`${left} baaki · ${cn.skipped?cn.skipped+' skip · ':''}aakhri ~${hm12(last)}`:'Round poora! Shabash.'}</div></div>
     <div class="hero-bar"><i id="heroBar"></i></div>`;
   requestAnimationFrame(()=>requestAnimationFrame(()=>{const b=$('#heroBar');if(b)b.style.width=(started?(cn.done+cn.skipped)/cn.total*100:4)+'%'}));
+  const on=isOnline();
+  $('#onlineWrap').innerHTML=`<button class="card onl ${on?'on':''}" data-act="toggleOnline" role="switch" aria-checked="${on}"><span class="onl-t"><b>${on?'Aap online ho':'Aap offline ho'}</b><small>${on?'Naye extra kaam aapko dikhenge':'Naye extra kaam nahi aayenge. Round chalta rahega'}</small></span><span class="onl-sw" aria-hidden="true"><i></i></span></button>`;
   // primary action
   const act=$('#roundAction');
   if(!cn.total){act.innerHTML=Book.state==='loading'
@@ -1483,6 +1509,7 @@ function renderRound(){
       <div class="nx-name">${esc(c.model)}</div>
       <div class="nx-meta"><span class="plate">${esc(c.plate)}</span><span class="tier">${PLAN[c.plan].name}</span>${xchips(c)}</div>
       <div class="where">${I.pin}<span>${esc(c.house)} · ${esc(c.spot)}</span></div>
+      ${(navBtn(c)||callBtn(c))?`<div class="actrow">${navBtn(c)}${callBtn(c,'sm')}</div>`:''}
       ${q?`<div class="where" style="color:var(--orange)">${I.note}<span>${q} customer request${q>1?'s':''}</span></div>`:''}
       <button class="btn violet" style="margin-top:14px" data-open="${nr}">${wd.status==='scheduled'?'Chalo':'Kholo'} ${I.arrow}</button></div>`}
   else if(started){nw.innerHTML=`<div class="empty"><b>Aaj ka round poora 🎉</b>${cn.done} gaadi chamka di. Hisaab tab mein poora din dekho.</div>`}
@@ -1545,7 +1572,7 @@ function renderMain(c,wd){
   const sk=skipAsk(c.reg);
   const skipBanner=sk&&!['done','skipped'].includes(st)?`<div class="warn">${I.pause}<span><b>Customer ne aaj mana kiya hai.</b> ${esc(sk.text||'Kal wash mat karna.')}</span></div><button class="btn ink" data-act="skipNow" data-arg="Customer ne mana kiya" style="margin-bottom:10px">Skip karo · customer ne mana kiya</button>`:'';
   if(['scheduled','on_the_way','arrived'].includes(st))
-    el.innerHTML=skipBanner+slideHTML('startWash','Wash shuru karo',false)+`<div class="where" style="justify-content:center;margin-top:10px">${I.pin}<span>${esc(c.house)}${c.spot?' · '+esc(c.spot):''}${c.keys?' · '+esc(c.keys):''}</span></div><div class="demo-note">Pehla kadam. Slide karte hi timer chalega aur ${esc(c.customer)} ko "Wash chal raha" dikhega</div>`;
+    el.innerHTML=skipBanner+slideHTML('startWash','Wash shuru karo',false)+`<div class="where" style="justify-content:center;margin-top:10px">${I.pin}<span>${esc(c.house)}${c.spot?' · '+esc(c.spot):''}${c.keys?' · '+esc(c.keys):''}</span></div>${navBtn(c)?`<div class="actrow">${navBtn(c)}</div>`:''}<div class="demo-note">Pehla kadam. Slide karte hi timer chalega aur ${esc(c.customer)} ko "Wash chal raha" dikhega</div>`;
   else if(st==='washing'){const shot=wd.photos.some(p=>p.kind==='after');
     // step two is the photo, step three closes the wash. No photo, no closing.
     el.innerHTML=shot
@@ -1644,7 +1671,7 @@ function renderPay(){
 /* ---------- extra (on-demand) work ---------- */
 const EX_STEP={offered:'Shuru karo',doing:'Photo ke baad khatam',done:'Ho gaya'};
 function renderExtra(){
-  const open=Extra.allOpen(),done=Extra.jobs.filter(j=>j.status==='done');
+  const open=Extra.shown(),done=Extra.jobs.filter(j=>j.status==='done');
   $('#extraMeta').textContent=open.length?`${open.length} kaam baaki`:'Sab ho gaya';
   const card=j=>{
     const shot=!!j.photo;
@@ -1666,7 +1693,8 @@ function renderExtra(){
       ${act}</div>`;
   };
   $('#extraOpen').innerHTML=open.length?open.map(card).join('')
-    :`<div class="empty"><b>Abhi koi extra kaam nahi</b>Customer ya Ravi ka koi kaam aaya toh yahan dikhega.</div>`;
+    :isOnline()?`<div class="empty"><b>Abhi koi extra kaam nahi</b>Customer ya Ravi ka koi kaam aaya toh yahan dikhega.</div>`
+      :`<div class="empty"><b>Aap offline ho</b>Naye customer kaam nahi dikhenge. Round tab pe online karo.</div>`;
   $('#extraDoneMeta').textContent=done.length?`${rupee(done.reduce((a,j)=>a+Money.share(j.price),0))} ab tak`:'';
   $('#extraDone').innerHTML=done.length?`<div class="rows">${done.slice(0,20).map(j=>`<div class="row"><span class="rt"><b>${esc(j.service||'Extra kaam')}</b><small>${esc(j.car||j.reg||'')} · ${esc((j.finished_at||j.date||'').slice(0,10))}</small></span><b class="num">${rupee(Money.share(j.price))}</b></div>`).join('')}</div>`
     :`<div class="empty"><b>Abhi kuch nahi</b>Jo extra kaam khatam karoge woh yahan jama hoga.</div>`;
@@ -1706,7 +1734,7 @@ function refresh(soft){ // re-render the visible screen after state changes, coa
 function paintBadges(){
   const n=route().reduce((a,c)=>a+openReqs(c.reg).filter(q=>q.status==='open').length,0),b=$('#tabReq');b.hidden=!n;b.textContent=n;
   const live=$('#tabLive');if(live)live.hidden=!(S.day&&route().some(c=>W(c.reg)?.status==='washing'));
-  const x=Extra.allOpen().length,xb=$('#tabExtra');if(xb){xb.hidden=!x;xb.textContent=x}
+  const x=Extra.shown().length,xb=$('#tabExtra');if(xb){xb.hidden=!x;xb.textContent=x}
 }
 function prepReveal(scope){if(RM||!('IntersectionObserver' in window))return;
   const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.remove('pre');io.unobserve(e.target)}}),{threshold:.1});
@@ -1805,6 +1833,19 @@ const ACT={
       };
     })},
   /* ---------- extra (on-demand) work: same three steps, its own photo ---------- */
+  toggleOnline(){S.online=!isOnline();save();haptic(S.online?[10,30,10]:12);toast(S.online?'Aap online ho. Naye kaam aayenge':'Aap offline ho. Naye kaam nahi aayenge');renderRound();renderExtra();refresh()},
+  help(){const w=me(),who=`${w.name} (+91 ${w.phone})`;
+    const items=[['Paisa nahi mila / hisaab galat','Payment ya hisaab ki problem'],['Customer se problem','Customer ne kuch kaha ya mana kiya'],['App ya photo ki dikkat','App chal nahi raha'],['Gaadi ko nuksaan hua','Scratch ya toot-phoot']];
+    openSheet(`<h3>Madad chahiye?</h3><p class="sub">Kya hua? Ravi ko WhatsApp pe seedha message jayega.</p>
+      <div class="rows">${items.map(([t,d])=>`<a class="row" href="${waTo(`Namaste Ravi ji, ${who}. ${t}.`)}" target="_blank" rel="noopener"><span class="rt"><b>${t}</b><small>${d}</small></span></a>`).join('')}</div>
+      <a class="btn sos" href="tel:+917701808924" style="margin-top:14px">SOS · Ravi ko abhi call karo</a><div class="demo-note">Accident ya khatre mein pehle 112 pe call karo.</div><button class="linkbtn" data-act="close">Band karo</button>`)},
+  refer(){const w=me(),code='WD'+String(w.phone||'').replace(/\D/g,'').slice(-5);S.refCode=code;
+    const msg=`Washing Daddy mein washer bano! Roz kaam, pressure wash, seedhi kamai. Yahan se jao: https://washingdaddy.com/washer/ Mera code: ${code}`;
+    openSheet(`<h3>Dost ko laao</h3><p class="sub">Dost sign-up pe aapka code bataye aur kaam shuru kare, toh Ravi aapko bonus denge.</p>
+      <div class="refcode num" id="refCode">${code}</div>
+      <a class="btn mint" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" style="margin-top:12px">WhatsApp pe bhejo</a>
+      <button class="btn ghost" data-act="copyRef" data-arg="${esc(msg)}" style="margin-top:10px">Code copy karo</button><button class="linkbtn" data-act="close">Band karo</button>`)},
+  copyRef(msg){const done=()=>toast('Copy ho gaya');try{navigator.clipboard.writeText(msg).then(done,()=>toast('Code upar likha hai'))}catch(e){toast('Code upar likha hai')}},
   exClaim(id){Sync.extraSet(id,{washer_id:me().id});haptic([20,40,20]);toast('Kaam mila! Shuru karo.')},
   exStart(id){Sync.extraSet(id,{status:'doing',started_at:isoIST()});haptic([20,40,20]);toast('Shuru. Ab kaam ki photo lo')},
   exNeedPhoto(){toast('Pehle kaam ki photo lo, phir kaam band hoga');haptic(14)},
@@ -2096,6 +2137,26 @@ addEventListener('scroll',()=>{const y=scrollY>8;$$('[data-bar]').forEach(b=>b.c
    and remembers each original so switching back is exact. Car names, plates, plans,
    areas and people's names are data: they are never touched. */
 const HI = {
+  "Aap online ho":"आप ऑनलाइन हो",
+  "Aap offline ho":"आप ऑफ़लाइन हो",
+  "Naye extra kaam aapko dikhenge":"नए एक्स्ट्रा काम आपको दिखेंगे",
+  "Naye extra kaam nahi aayenge. Round chalta rahega":"नए एक्स्ट्रा काम नहीं आएँगे. राउंड चलता रहेगा",
+  "Naye customer kaam nahi dikhenge. Round tab pe online karo.":"नए कस्टमर काम नहीं दिखेंगे. राउंड टैब पे ऑनलाइन करो.",
+  "Raasta":"रास्ता",
+  "Madad / SOS":"मदद / SOS",
+  "Paisa, customer ya accident ki problem":"पैसा, कस्टमर या एक्सीडेंट की दिक्कत",
+  "Dost ko laao":"दोस्त को लाओ",
+  "Apna code share karo, bonus pao":"अपना कोड शेयर करो, बोनस पाओ",
+  "Madad chahiye?":"मदद चाहिए?",
+  "Kya hua? Ravi ko WhatsApp pe seedha message jayega.":"क्या हुआ? रवि को WhatsApp पे सीधा मैसेज जाएगा.",
+  "Paisa nahi mila / hisaab galat":"पैसा नहीं मिला / हिसाब गलत",
+  "Customer se problem":"कस्टमर से दिक्कत",
+  "Gaadi ko nuksaan hua":"गाड़ी को नुकसान हुआ",
+  "SOS · Ravi ko abhi call karo":"SOS · रवि को अभी कॉल करो",
+  "Accident ya khatre mein pehle 112 pe call karo.":"एक्सीडेंट या ख़तरे में पहले 112 पे कॉल करो.",
+  "Dost sign-up pe aapka code bataye aur kaam shuru kare, toh Ravi aapko bonus denge.":"दोस्त साइन-अप पे आपका कोड बताए और काम शुरू करे, तो रवि आपको बोनस देंगे.",
+  "WhatsApp pe bhejo":"WhatsApp पे भेजो",
+  "Code copy karo":"कोड कॉपी करो",
   "Nayi gaadi add karo":"नई गाड़ी जोड़ो",
   "+ Nayi gaadi add karo":"+ नई गाड़ी जोड़ो",
   "Naya customer mila? Gaadi yahan add karo, aaj se dhona shuru. Ravi manzoori denge.":"नया कस्टमर मिला? गाड़ी यहाँ जोड़ो, आज से धोना शुरू. रवि मंज़ूरी देंगे.",
