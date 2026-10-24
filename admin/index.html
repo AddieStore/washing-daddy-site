@@ -225,8 +225,14 @@ function washerCard(w) {
   return `<div class="card ${st === 'pending' ? 'pending' : ''}"><div class="row"><div class="av">${esc((w.name || '?')[0].toUpperCase())}</div><div class="grow">
     <div class="nm">${esc(w.name || 'No name')} ${pill}</div>
     <div class="meta">${contact(w.phone || w.id)}</div>
+    ${w.ref ? `<div class="meta">Friend code <b>${esc(w.ref)}</b>${referrerOf(w.ref) ? ' · from <b>' + esc(referrerOf(w.ref)) + '</b>' : ''}</div>` : ''}
     <div class="meta">${esc(w.area || '')}${w.area ? ' · ' : ''}${st === 'approved' && ROUNDS[w.route_id] ? esc(ROUNDS[w.route_id]) : st === 'approved' ? '<b style="color:var(--red)">No round yet</b>' : 'Signed up ' + esc(when(w.created_at))}</div>
     </div></div><div class="acts">${acts}</div></div>`;
+}
+// a washer's friend code is WD + last 5 digits of their phone (same rule as the Partner app)
+function referrerOf(code) {
+  const w = W.find(x => 'WD' + String(x.phone || x.id || '').replace(/\D/g, '').slice(-5) === code);
+  return w ? w.name || w.phone || '' : '';
 }
 function renderWashers() {
   const p = W.filter(w => (w.status || 'pending') === 'pending').sort(byNew), a = W.filter(w => w.status === 'approved').sort((x, y) => String(x.name).localeCompare(String(y.name))), b = W.filter(w => w.status === 'blocked');
