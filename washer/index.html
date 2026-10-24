@@ -546,6 +546,48 @@ a.btn{color:var(--fg)}
 .wd-dots{display:flex;gap:6px;justify-content:center;margin-top:8px}
 .wd-dots i{width:6px;height:6px;border-radius:3px;background:rgba(255,246,233,.4);transition:width .4s var(--spring),background .3s}
 .wd-dots i.on{width:18px;background:var(--gold)}
+
+/* ---------- website look (Day), after the My account page: violet header band with a gold bar,
+   cream page with dots, white rounded cards, Anton headings ---------- */
+.wd-day{--card-shadow:0 14px 34px rgba(26,10,51,.10); --bar-bg:#5409DA; --tab-bg:rgba(26,10,51,.9)}
+.wd-day .app{background-color:var(--cream)}
+.wd-day .topbar,.wd-day .wd-band,.wd-day .wd-work{background:radial-gradient(circle,rgba(255,246,233,.13) 1.4px,transparent 1.6px) 0 0/14px 14px,var(--violet)}
+.wd-day .topbar.stuck{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:0 6px 0 var(--gold)}
+.wd-day .topbar .iconbtn,.wd-day .topbar .sync{background:rgba(255,246,233,.14);border-color:transparent;box-shadow:none;color:var(--cream)}
+.wd-day :is(.topbar,.wd-band,.wd-work){--fg:#FFF6E9;--fg-2:rgba(255,246,233,.82);--fg-3:rgba(255,246,233,.62);--em:#FFBA08;--line:rgba(255,246,233,.18);color:var(--fg)}
+.wd-band{margin:0 calc(-1 * var(--gut-r)) 4px calc(-1 * var(--gut-l));padding:2px var(--gut-r) 26px var(--gut-l);border-bottom:10px solid var(--gold)}
+.wd-band .big-title{color:var(--cream)}
+.wd-band .big-title em{color:var(--gold);text-shadow:4px 4px 0 var(--ink)}
+.wd-band .eyebrow{color:var(--gold)}
+:root:not(.wd-day) .wd-band{background:none;border:0;padding-bottom:0;margin-bottom:0}
+.wd-day :is(.card,.rows,.plan:not(.cur):not(.res),.garage-card:not(.on),.p-card,.banner,.deliver,.wd:not(.today),.next,.stop,.task,.notebox,.tile,.tl-list,.qa .qi){border-color:transparent}
+.wd-day :is(.card,.rows,.plan,.garage-card,.p-card,.banner,.deliver,.next,.tile,.tl-list,.notebox){border-radius:26px}
+.wd-day .sec-head h2{color:var(--ink)}
+.wd-day .sec-head h2 em{font-style:normal;color:var(--violet)}
+.wd-day .tabs{border-color:transparent}
+.wd-day .tab{color:rgba(255,246,233,.7)}
+/* gold ticker under the header, as on the website */
+.wd-ticker{background:var(--gold);color:var(--ink);overflow:hidden;white-space:nowrap}
+.wd-ticker .run{display:inline-flex;animation:wdTick 26s linear infinite}
+.wd-ticker span{font-family:var(--f-shout);font-size:15px;letter-spacing:.06em;text-transform:uppercase;padding:7px 0}
+.wd-ticker span::after{content:"\2605";margin:0 14px;color:var(--violet)}
+@keyframes wdTick{to{transform:translateX(-50%)}}
+:root:not(.wd-day) .wd-ticker{display:none}
+.wd-day .wd-ticker{margin-bottom:18px}
+/* our work: a violet band of photo polaroids, like the website's gallery */
+.wd-work{padding:26px 0 8px;border-block:10px solid var(--gold)}
+.wd-work h2{color:var(--cream)!important}
+.wd-work h2 em{font-style:normal;color:var(--gold)!important}
+:root:not(.wd-day) .wd-work{border:0}
+.wd-polas{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:10px var(--gut-r) 22px var(--gut-l);scrollbar-width:none}
+.wd-polas::-webkit-scrollbar{display:none}
+.wd-pola{flex:none;width:58%;max-width:230px;scroll-snap-align:start;margin:0;background:var(--cream);color:var(--ink);padding:8px 8px 12px;border-radius:14px;box-shadow:0 14px 28px rgba(18,7,36,.4)}
+.wd-pola:nth-child(odd){transform:rotate(-2deg)} .wd-pola:nth-child(even){transform:rotate(1.6deg)}
+.wd-pola img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px}
+.wd-pola figcaption{font-family:var(--f-shout);font-size:17px;letter-spacing:.02em;text-transform:uppercase;line-height:1.05;margin-top:9px}
+.wd-pola small{display:block;font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:11.5px;font-weight:600;color:rgba(26,10,51,.6);margin-top:3px}
+@media (prefers-reduced-motion:reduce){.wd-ticker .run{animation:none}}
+
 </style>
 </head>
 <body>
@@ -561,6 +603,7 @@ a.btn{color:var(--fg)}
         <button class="sync" data-act="syncInfo" aria-label="Sync status"><span class="sdot" data-sdot></span><span data-stxt>Jud raha hai</span></button>
       </div>
     </header>
+    <div class="wd-ticker" aria-hidden="true"><div class="run"><span>No more pocha</span><span>Sirf pressure wash</span><span>Car wash in 10 min</span><span>Paschim Vihar</span><span>Meera Bagh</span><span>Sundar Vihar</span><span>No more pocha</span><span>Sirf pressure wash</span><span>Car wash in 10 min</span><span>Paschim Vihar</span><span>Meera Bagh</span><span>Sundar Vihar</span></div></div>
     <div class="hero on-violet" id="roundHero"></div>
     <div class="pad">
       <div class="sec" id="roundAction" style="margin-top:16px"></div>
@@ -571,6 +614,10 @@ a.btn{color:var(--fg)}
         <button class="btn ghost" data-act="addCar" style="margin-top:12px">+ Nayi gaadi add karo</button>
         <div class="demo-note">Naya customer mila? Gaadi yahan add karo, aaj se dhona shuru. Ravi manzoori denge.</div>
       </div>
+    </div>
+    <div class="sec rv wd-work">
+      <div class="sec-head pad"><h2>No pocha. <em>Sirf pressure wash.</em></h2></div>
+      <div class="wd-polas" id="wdPolas"></div>
     </div>
   </section>
 
@@ -615,8 +662,8 @@ a.btn{color:var(--fg)}
   <section class="screen" id="s-extra" aria-label="Extra kaam">
     <header class="topbar" data-bar><div style="font-weight:800;font-size:17px">Extra kaam</div><button class="sync" data-act="syncInfo" aria-label="Sync status"><span class="sdot" data-sdot></span><span data-stxt>Jud raha hai</span></button></header>
     <div class="pad">
-      <div class="eyebrow" id="extraMeta"></div>
-      <h1 class="big-title">On-demand <em>kaam.</em></h1>
+      <div class="wd-band"><div class="eyebrow" id="extraMeta"></div>
+      <h1 class="big-title">On-demand <em>kaam.</em></h1></div>
       <div class="sec rv" style="margin-top:18px"><div id="extraOpen"></div></div>
       <div class="sec rv">
         <div class="sec-head"><h2>Ho gaye</h2><span class="muted" id="extraDoneMeta"></span></div>
@@ -628,8 +675,8 @@ a.btn{color:var(--fg)}
   <section class="screen" id="s-day" aria-label="Aaj ka hisaab">
     <header class="topbar" data-bar><div style="font-weight:800;font-size:17px">Hisaab</div><button class="sync" data-act="syncInfo" aria-label="Sync status"><span class="sdot" data-sdot></span><span data-stxt>Jud raha hai</span></button></header>
     <div class="pad">
-      <div class="eyebrow" id="dayDate"></div>
-      <h1 class="big-title">Aaj ki <em>kamai.</em></h1>
+      <div class="wd-band"><div class="eyebrow" id="dayDate"></div>
+      <h1 class="big-title">Aaj ki <em>kamai.</em></h1></div>
       <div class="sec rv" style="margin-top:18px"><div class="dayhero on-violet" id="payHero"></div></div>
       <div class="sec rv"><div class="tiles" id="payTiles"></div></div>
       <div class="sec rv">
@@ -1020,6 +1067,7 @@ let S={session:null,theme:'light',lang:'hinglish',day:null,outbox:{},current:nul
 const KEY='wd-washer-v1';
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&typeof x==='object')S=Object.assign(S,x)}catch(e){}
+document.documentElement.classList.toggle('wd-day',!(S.theme==='dark'||(S.theme==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)));
 let DAY=dateIST();
 let R={};   // requests by id, from the customer app
 let RT={};  // today's ratings by reg
@@ -1506,7 +1554,7 @@ function prepReveal(scope){if(RM||!('IntersectionObserver' in window))return;
   const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.remove('pre');io.unobserve(e.target)}}),{threshold:.1});
   $$('.rv',scope).forEach(el=>{el.classList.add('pre');io.observe(el)})}
 function applyTheme(){const t=S.theme;if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t);
-  const dark=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);$('#metaTheme').setAttribute('content',dark?'#1A0A33':'#FFF6E9')}
+  const dark=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('wd-day',!dark);$('#metaTheme').setAttribute('content',dark?'#1A0A33':'#5409DA')}
 
 /* ---------- sheet ---------- */
 const sheet=$('#sheet'),scrim=$('#scrim');
@@ -2318,6 +2366,10 @@ boot();
   r.addEventListener('scroll',mark,{passive:true});['pointerdown','touchstart','wheel'].forEach(e=>r.addEventListener(e,()=>{held=true},{passive:true}));
   mark();setInterval(()=>{if(held||r.offsetParent===null)return;const w=r.firstElementChild.getBoundingClientRect().width+12;
     const n=(i+1)%r.children.length;r.scrollTo({left:n*w,behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'})},2800)})();
+
+// Round screen polaroids reuse the sign-in slideshow photos
+(function(){const r=document.getElementById('wdPolas'),src=document.querySelectorAll('#wdRail .wd-slide');if(!r)return;
+  r.innerHTML=[...src].map(f=>{const i=f.querySelector('img'),c=f.querySelector('figcaption');return `<figure class="wd-pola"><img src="${i.src}" alt="${i.alt}" loading="lazy"><figcaption>${c.innerHTML}</figcaption></figure>`}).join('')})();
 </script>
 </body>
 </html>

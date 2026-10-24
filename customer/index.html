@@ -625,71 +625,47 @@ button.row:active{background:var(--tile-2)}
 .wd-dots{display:flex;gap:6px;justify-content:center;margin-top:8px}
 .wd-dots i{width:6px;height:6px;border-radius:3px;background:rgba(255,246,233,.4);transition:width .4s var(--spring),background .3s}
 .wd-dots i.on{width:18px;background:var(--gold)}
-/* ---------- website look (Day): violet + cream dots, white rounded cards, Anton, gold bars ---------- */
-.wd-day{
-  --bg:#5409DA; --stage:#3A06A0;
-  --fg:#FFF6E9; --fg-2:rgba(255,246,233,.82); --fg-3:rgba(255,246,233,.62);
-  --line:rgba(255,246,233,.18); --tile:rgba(255,255,255,.12); --tile-2:rgba(255,255,255,.16);
-  --accent:#FFBA08; --accent-ink:#1A0A33; --em:#FFBA08;
-  --bar-bg:#5409DA; --tab-bg:rgba(26,10,51,.86);
-  --sheet-bg:#FFF6E9; --input-bg:#FFFFFF;
-  --today-bg:#FFBA08; --today-fg:#1A0A33;
-  --card-shadow:0 14px 34px rgba(18,7,36,.28); --ticket-bg:#FFFFFF; --ok:#2EE6A6; --dash:rgba(255,246,233,.35);
-}
-/* cards, sheets and forms keep ink on white, like the website's plan cards */
-.wd-day :is(.card,.rows,.plan,.garage-card,.p-card,.banner,.deliver,.wd,.qa .qi,.sheet,.auth-card,.ticket-body,.usage>*,.pause,.photos .ph,.th,.cal,.confirm):not(.on-violet){
-  --fg:#1A0A33; --fg-2:rgba(26,10,51,.70); --fg-3:rgba(26,10,51,.50);
-  --line:rgba(26,10,51,.10); --tile:#FFFFFF; --tile-2:rgba(26,10,51,.06);
-  --accent:#5409DA; --accent-ink:#FFF6E9; --em:#5409DA; --ok:#0E9F6E; --dash:rgba(26,10,51,.25);
-  --today-bg:#5409DA; --today-fg:#FFF6E9; color:var(--fg)}
-.wd-day :is(.card,.rows,.plan,.garage-card,.p-card,.banner,.deliver,.wd,.th):not(.on-violet){background:#fff;border-color:transparent}
-.wd-day :is(.card,.rows,.plan,.garage-card,.p-card,.banner,.deliver){border-radius:26px}
-.wd-day .wd.today{background:var(--gold);color:var(--ink)}
-.wd-day .qa .qi{background:#fff;border:0}
-.wd-day .qa{color:var(--cream)}
-.wd-day .pause{background:#fff;border:0;box-shadow:var(--card-shadow)}
-.wd-day .sheet{background:var(--cream)}
-.wd-day .sheet .field,.wd-day .auth-card .field{color:var(--ink)}
-.wd-day .auth-card{background:var(--cream)}
-.wd-day .app{background-color:var(--violet);background-image:radial-gradient(circle,rgba(255,246,233,.09) 1.3px,transparent 1.6px);background-size:18px 18px}
-.wd-day .stage{background:var(--violet-deep)}
-/* header: website bar, gold underline once scrolled */
-.wd-day .topbar.stuck{background:radial-gradient(circle,rgba(255,246,233,.13) 1.4px,transparent 1.6px) 0 0/14px 14px,var(--violet);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:0 8px 0 var(--gold)}
-.wd-day .iconbtn{background:rgba(255,246,233,.14);border-color:transparent;color:var(--cream)}
-/* type */
-.wd-day .big-title{color:var(--cream)}
-.wd-day .big-title em{color:var(--gold);text-shadow:4px 4px 0 var(--ink)}
-.wd-day .sec-head h2{color:var(--cream)}
-.wd-day .eyebrow{color:var(--gold)}
-.wd-day :is(.card,.rows,.plan,.garage-card,.p-card,.banner,.deliver,.sheet) .eyebrow{color:var(--fg-3)}
-.wd-day .link{color:var(--gold)}
-.wd-day :is(.card,.rows,.plan,.sheet,.banner) .link{color:var(--violet)}
-/* violet blocks sit a shade deeper on the violet page, with the website's cream photo frame */
-.wd-day :is(.hero,.ritual,.live-hero,.store-hero){box-shadow:0 18px 40px rgba(18,7,36,.4)}
-.wd-day .ritual{background:linear-gradient(160deg,var(--violet-deep),#2A0478)}
-.wd-day .hero{border:6px solid var(--cream)}
-.wd-day .store-hero{border:6px solid var(--cream)}
-.wd-day .proof{border:7px solid var(--cream);transform:rotate(-1.2deg);box-shadow:0 18px 40px rgba(18,7,36,.4)}
-.wd-day .ticket-top{background:linear-gradient(135deg,var(--violet-deep),#2A0478)}
-.wd-day .tabs{background:rgba(26,10,51,.88);border-color:transparent}
+
+/* ---------- website look (Day), after the My account page: violet header band with a gold bar,
+   cream page with dots, white rounded cards, Anton headings ---------- */
+.wd-day{--card-shadow:0 14px 34px rgba(26,10,51,.10); --bar-bg:#5409DA; --tab-bg:rgba(26,10,51,.9)}
+.wd-day .app{background-color:var(--cream)}
+.wd-day .topbar,.wd-day .wd-band,.wd-day .wd-work{background:radial-gradient(circle,rgba(255,246,233,.13) 1.4px,transparent 1.6px) 0 0/14px 14px,var(--violet)}
+.wd-day .topbar.stuck{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:0 6px 0 var(--gold)}
+.wd-day .topbar .iconbtn,.wd-day .topbar .sync{background:rgba(255,246,233,.14);border-color:transparent;box-shadow:none;color:var(--cream)}
+.wd-day :is(.topbar,.wd-band,.wd-work){--fg:#FFF6E9;--fg-2:rgba(255,246,233,.82);--fg-3:rgba(255,246,233,.62);--em:#FFBA08;--line:rgba(255,246,233,.18);color:var(--fg)}
+.wd-band{margin:0 calc(-1 * var(--gut-r)) 4px calc(-1 * var(--gut-l));padding:2px var(--gut-r) 26px var(--gut-l);border-bottom:10px solid var(--gold)}
+.wd-band .big-title{color:var(--cream)}
+.wd-band .big-title em{color:var(--gold);text-shadow:4px 4px 0 var(--ink)}
+.wd-band .eyebrow{color:var(--gold)}
+:root:not(.wd-day) .wd-band{background:none;border:0;padding-bottom:0;margin-bottom:0}
+.wd-day :is(.card,.rows,.plan:not(.cur):not(.res),.garage-card:not(.on),.p-card,.banner,.deliver,.wd:not(.today),.next,.stop,.task,.notebox,.tile,.tl-list,.qa .qi){border-color:transparent}
+.wd-day :is(.card,.rows,.plan,.garage-card,.p-card,.banner,.deliver,.next,.tile,.tl-list,.notebox){border-radius:26px}
+.wd-day .sec-head h2{color:var(--ink)}
+.wd-day .sec-head h2 em{font-style:normal;color:var(--violet)}
+.wd-day .tabs{border-color:transparent}
 .wd-day .tab{color:rgba(255,246,233,.7)}
-.wd-day .refer{box-shadow:0 18px 40px rgba(18,7,36,.35)}
-.wd-day .foot{color:var(--fg-2)}
-/* gold ticker, as on the website */
-.wd-ticker{background:var(--gold);color:var(--ink);overflow:hidden;white-space:nowrap;margin:14px 0 0}
+/* gold ticker under the header, as on the website */
+.wd-ticker{background:var(--gold);color:var(--ink);overflow:hidden;white-space:nowrap}
 .wd-ticker .run{display:inline-flex;animation:wdTick 26s linear infinite}
 .wd-ticker span{font-family:var(--f-shout);font-size:15px;letter-spacing:.06em;text-transform:uppercase;padding:7px 0}
 .wd-ticker span::after{content:"\2605";margin:0 14px;color:var(--violet)}
 @keyframes wdTick{to{transform:translateX(-50%)}}
-/* "Our work" polaroids on Home */
-.wd-work h2 em{font-style:normal;color:var(--gold)}
-.wd-polas{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:10px var(--gut-r) 18px var(--gut-l);scrollbar-width:none}
+:root:not(.wd-day) .wd-ticker{display:none}
+.wd-day .wd-ticker{margin-bottom:18px}
+/* our work: a violet band of photo polaroids, like the website's gallery */
+.wd-work{padding:26px 0 8px;border-block:10px solid var(--gold)}
+.wd-work h2{color:var(--cream)!important}
+.wd-work h2 em{font-style:normal;color:var(--gold)!important}
+:root:not(.wd-day) .wd-work{border:0}
+.wd-polas{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:10px var(--gut-r) 22px var(--gut-l);scrollbar-width:none}
 .wd-polas::-webkit-scrollbar{display:none}
 .wd-pola{flex:none;width:58%;max-width:230px;scroll-snap-align:start;margin:0;background:var(--cream);color:var(--ink);padding:8px 8px 12px;border-radius:14px;box-shadow:0 14px 28px rgba(18,7,36,.4)}
 .wd-pola:nth-child(odd){transform:rotate(-2deg)} .wd-pola:nth-child(even){transform:rotate(1.6deg)}
 .wd-pola img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px}
 .wd-pola figcaption{font-family:var(--f-shout);font-size:17px;letter-spacing:.02em;text-transform:uppercase;line-height:1.05;margin-top:9px}
 .wd-pola small{display:block;font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:11.5px;font-weight:600;color:rgba(26,10,51,.6);margin-top:3px}
+@media (prefers-reduced-motion:reduce){.wd-ticker .run{animation:none}}
 /* "Still using pocha?" poster */
 .wd-poster{position:relative;border-radius:26px;padding:22px 20px 20px;background:var(--violet-deep);overflow:hidden;box-shadow:0 18px 40px rgba(18,7,36,.4)}
 .wd-poster h3{font-family:var(--f-shout);font-weight:400;font-size:44px;line-height:.92;text-transform:uppercase;color:var(--gold);margin:0;transform:rotate(-4deg) skew(-4deg);transform-origin:left;text-shadow:3px 3px 0 var(--orange),6px 6px 0 var(--sky),9px 9px 0 var(--ink)}
@@ -700,8 +676,6 @@ button.row:active{background:var(--tile-2)}
 .wd-poster .tk ul{list-style:none;padding:8px 0 0;margin:8px 0 0;border-top:2px dashed rgba(26,10,51,.35);font-size:12px;font-weight:700;display:grid;gap:3px}
 .wd-poster .tk li::before{content:"\2713  "}
 .wd-poster .btn{margin-top:18px}
-:root:not(.wd-day) .wd-ticker{display:none}
-@media (prefers-reduced-motion:reduce){.wd-ticker .run{animation:none}}
 
 </style>
 
@@ -801,7 +775,7 @@ button.row:active{background:var(--tile-2)}
   <section class="screen" id="s-live" aria-label="Live wash">
     <header class="topbar" data-bar><div class="eyebrow">Live from your washer</div><span class="mini">Live</span><span class="sync" id="syncChip"><i></i>Test data</span></header>
     <div class="pad">
-      <h1 class="big-title">Your wash, <em>as it happens.</em></h1>
+      <div class="wd-band"><h1 class="big-title">Your wash, <em>as it happens.</em></h1></div>
       <div class="sec" style="margin-top:18px"><div class="live-hero on-violet" id="liveHero"></div></div>
       <div class="sec" id="liveNote"></div>
       <div class="sec"><div class="sec-head"><h2>This morning</h2><span class="muted" id="liveDate"></span></div><div class="card" style="padding:6px 16px"><ul class="tl" id="timeline"></ul></div></div>
@@ -815,8 +789,8 @@ button.row:active{background:var(--tile-2)}
   <section class="screen" id="s-plan" aria-label="Plan">
     <header class="topbar" data-bar><span class="mini">Plan</span><span></span><button class="iconbtn" aria-label="Plan questions" data-act="help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"/></svg></button></header>
     <div class="pad">
-      <div class="eyebrow">Your plan</div>
-      <h1 class="big-title">Daily <em>pressure</em> wash. Zero pocha.</h1>
+      <div class="wd-band"><div class="eyebrow">Your plan</div>
+      <h1 class="big-title">Daily <em>pressure</em> wash. Zero pocha.</h1></div>
       <div class="sec rv" style="margin-top:22px" id="ticketWrap"></div>
       <div class="sec rv" id="usageWrap">
         <div class="sec-head"><h2>Used this month</h2><span class="muted" id="usageRange"></span></div>
@@ -844,7 +818,7 @@ button.row:active{background:var(--tile-2)}
       <button class="iconbtn" aria-label="Cart" data-act="cart" id="cartBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7A2 2 0 0 1 6.5 18z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span class="badge" id="cartBadge" hidden>0</span></button>
     </header>
     <div class="pad">
-      <h1 class="big-title">Gear for a car that's <em>washed daily.</em></h1>
+      <div class="wd-band"><h1 class="big-title">Gear for a car that's <em>washed daily.</em></h1></div>
       <div class="store-hero on-violet rv">
         <div class="sh-rays" aria-hidden="true"></div>
         <div class="sh-txt"><span class="kicker">Drop 01</span><h3>Daddy's Own Car Perfume</h3><p>Oud and vetiver, made for Delhi heat. Free with WD Exclusive.</p></div>
@@ -861,7 +835,7 @@ button.row:active{background:var(--tile-2)}
   <section class="screen" id="s-profile" aria-label="Profile">
     <header class="topbar" data-bar><span class="mini">Profile</span><span></span><button class="iconbtn" aria-label="Edit profile" data-act="editName"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button></header>
     <div class="pad">
-      <div class="me rv"><div class="avatar" id="avatar">AM</div><div style="min-width:0"><div class="mn" id="meName">Arjun Malhotra</div><div class="ms" id="meSub"></div></div></div>
+      <div class="wd-band"><div class="me rv"><div class="avatar" id="avatar">AM</div><div style="min-width:0"><div class="mn" id="meName">Arjun Malhotra</div><div class="ms" id="meSub"></div></div></div></div>
       <div class="stats rv">
         <div class="card stat"><b class="num" id="stWashes">0</b><small>Washes</small></div>
         <div class="card stat"><b class="num" id="stLitres">0</b><small>Litres saved*</small></div>
