@@ -1,12 +1,6 @@
 --------- beginning of main
-10-24 14:12:09.293  1961  2151 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
-10-24 14:12:13.420  1961  1961 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(186)] Invalid first_paint (unset) for first_contentful_paint 1.21 s
-10-24 14:12:15.541  1961  1961 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(186)] Invalid first_paint 4.214 s for first_contentful_paint 1.21 s
-10-24 14:12:15.543  1961  1961 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(186)] Invalid first_paint 4.214 s for first_contentful_paint 1.21 s
-10-24 14:12:15.543  1961  1961 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(186)] Invalid first_paint 4.214 s for first_contentful_paint 1.21 s
-10-24 14:12:16.004  1961  1961 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(186)] Invalid first_paint 4.214 s for first_contentful_paint 1.21 s
-10-24 14:12:16.004  1961  1961 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(186)] Invalid first_paint 4.214 s for first_contentful_paint 1.21 s
-10-24 14:12:16.818  1961  1961 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(186)] Invalid first_paint 4.214 s for first_contentful_paint 1.21 s
-10-24 14:12:17.704  1961  1961 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(186)] Invalid first_paint 4.214 s for first_contentful_paint 1.21 s
-10-24 14:12:18.509  1961  1961 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(186)] Invalid first_paint 4.214 s for first_contentful_paint 1.21 s
-10-24 14:12:35.290  1961  2151 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-24 14:21:18.536  1956  2094 W chromium: [WARNING:dns_config_service_android.cc(115)] Failed to read DnsConfig.
+10-24 14:21:18.930  1956  2168 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-24 14:21:45.002  1956  2168 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-24 14:21:47.801  1956  1956 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint (unset) for first_image_paint 0.46 s
+10-24 14:21:47.861  1956  1956 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 2.607 s for first_image_paint 0.46 s
