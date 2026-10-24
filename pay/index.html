@@ -214,15 +214,15 @@ function planList(host, rows, kind, unit){
     var pr = el("span","pr", rs(p.pr));
     if(unit) pr.appendChild(el("small", null, unit));
     b.appendChild(pr);
-    b.addEventListener("click", function(){ choose(kind, p.nm, p.pr); });
+    b.addEventListener("click", function(){ choose(kind, p.nm, p.pr, p.id); });
     host.appendChild(b);
   });
 }
 planList($("monthly-list"), MONTHLY, "Monthly plan", "per month");
 planList($("once-list"), ONCE, "One-time wash", "one wash");
 
-function choose(kind, label, amount){
-  picked = { kind:kind, label:label, amount:amount };
+function choose(kind, label, amount, id){
+  picked = { kind:kind, label:label, amount:amount, id:id };
   $("sum").textContent = label + " — " + rs(amount);
   $("f-amt").value = amount;
   $("err").hidden = true;
@@ -291,6 +291,8 @@ $("pay").addEventListener("click", function(){
     body: JSON.stringify({
       amount: amt, name: name, phone: phone, car: car, num: numb, area: area,
       kind: picked.kind, label: picked.label,
+      planId: picked.kind === "Monthly plan" ? picked.id : undefined,
+      service: picked.kind === "One-time wash" ? picked.id : undefined,
       page: location.origin + location.pathname
     })
   })

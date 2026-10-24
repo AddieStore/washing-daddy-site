@@ -917,7 +917,7 @@ const PLANS=[
   {id:'std',name:'WD Standard',price:999,f:{int:1,tyre:2,foam:1,det:0},rows:[['Pressure wash','Daily'],['Interior','1× / week'],['Tyre & trim','2× / week'],['Foam wash','1× / week'],['Detailing','—']]},
   {id:'pro',name:'WD Pro',price:1800,f:{int:2,tyre:7,foam:2,det:1},rows:[['Pressure wash','Daily'],['Interior','2× / week'],['Tyre & trim','Daily'],['Foam wash','2× / week'],['Detailing','1× / month']]},
   {id:'exc',name:'WD Exclusive',price:2500,f:{int:3,tyre:7,foam:4,det:2},rows:[['Pressure wash','Daily'],['Interior','3× / week'],['Tyre & trim','Daily'],['Foam wash','4× / week'],['Detailing','2× / month'],['Car perfume','Free, worth ₹499'],['On-demand wash','1 a month']]},
-  {id:'res',name:'WD Reserve',price:5555,f:{int:7,tyre:7,foam:7,det:16},rows:[['Pressure wash','Daily'],['Interior','Daily'],['Tyre & trim','Daily'],['Foam wash','Daily'],['Detailing','4× / week'],['Car perfume','Free, worth ₹499'],['On-demand wash','5 a month']]},
+  {id:'res',name:'WD Reserve',price:5555,f:{int:7,tyre:7,foam:7,det:4},rows:[['Pressure wash','Daily'],['Interior','Daily'],['Tyre & trim','Daily'],['Foam wash','Daily'],['Detailing','4× / month'],['Car perfume','Free, worth ₹499'],['On-demand wash','5 a month']]},
 ];
 const ONE_TIME=[{id:'std',name:'Standard',price:500,d:'Pressure wash, hand dry, tyre shine'},{id:'pro',name:'Pro',price:1200,d:'Adds foam wash and full interior'},{id:'exc',name:'Exclusive',price:2100,d:'Adds detailing, dashboard and trim polish'}];
 const AREAS=['GH-9 Paschim Vihar','GH-6 Paschim Vihar','GH-14 Paschim Vihar','Meera Bagh','Sundar Vihar','Guru Hari Apartments'];
@@ -1013,7 +1013,7 @@ function weekPlan(c){const f=planOf(c).f,h=hash(regOf(c)),w={};DAYS.forEach(d=>w
   if(f.det>=16)spread('det',4,(h>>>9)%7);
   return w}
 // Weekly extras for that weekday, plus Pro/Exclusive detailing on fixed days of the month (sync-contract.md)
-function detDays(c){const f=planOf(c).f;if(!f.det||f.det>=16)return [];const d=((hash(regOf(c))>>>9)%28)+1;return f.det===1?[d]:[d,d+14<=28?d+14:d-14]}
+function detDays(c){const f=planOf(c).f;if(!f.det||f.det>=16)return [];const d=((hash(regOf(c))>>>9)%28),gap=Math.floor(28/f.det);return Array.from({length:f.det},(_,i)=>(d+i*gap)%28+1)}
 function extras(c,dt){const k=[...weekPlan(c)[dayKey(dt)]];if(detDays(c).includes(dt.getDate()))k.push('det');return k}
 const dayKey=d=>DAYS[(d.getDay()+6)%7];
 const LABEL={foam:'Foam wash',int:'Interior cleaning',tyre:'Tyre & trim polish',det:'Detailing'};
