@@ -1836,12 +1836,12 @@ const ACT={
   toggleOnline(){S.online=!isOnline();save();haptic(S.online?[10,30,10]:12);toast(S.online?'Aap online ho. Naye kaam aayenge':'Aap offline ho. Naye kaam nahi aayenge');renderRound();renderExtra();refresh()},
   help(){const w=me(),who=`${w.name} (+91 ${w.phone})`;
     const items=[['Paisa nahi mila / hisaab galat','Payment ya hisaab ki problem'],['Customer se problem','Customer ne kuch kaha ya mana kiya'],['App ya photo ki dikkat','App chal nahi raha'],['Gaadi ko nuksaan hua','Scratch ya toot-phoot']];
-    openSheet(`<h3>Madad chahiye?</h3><p class="sub">Kya hua? Ravi ko WhatsApp pe seedha message jayega.</p>
-      <div class="rows">${items.map(([t,d])=>`<a class="row" href="${waTo(`Namaste Ravi ji, ${who}. ${t}.`)}" target="_blank" rel="noopener"><span class="rt"><b>${t}</b><small>${d}</small></span></a>`).join('')}</div>
-      <a class="btn sos" href="tel:+917701808924" style="margin-top:14px">SOS · Ravi ko abhi call karo</a><div class="demo-note">Accident ya khatre mein pehle 112 pe call karo.</div><button class="linkbtn" data-act="close">Band karo</button>`)},
+    openSheet(`<h3>Madad chahiye?</h3><p class="sub">Kya hua? Support ko WhatsApp pe seedha message jayega.</p>
+      <div class="rows">${items.map(([t,d])=>`<a class="row" href="${waTo(`Namaste Support, ${who}. ${t}.`)}" target="_blank" rel="noopener"><span class="rt"><b>${t}</b><small>${d}</small></span></a>`).join('')}</div>
+      <a class="btn sos" href="tel:+917701808924" style="margin-top:14px">SOS · Support ko abhi call karo</a><div class="demo-note">Accident ya khatre mein pehle 112 pe call karo.</div><button class="linkbtn" data-act="close">Band karo</button>`)},
   refer(){const w=me(),code='WD'+String(w.phone||'').replace(/\D/g,'').slice(-5);S.refCode=code;
     const msg=`Washing Daddy mein washer bano! Roz kaam, pressure wash, seedhi kamai. Yahan se jao: https://washingdaddy.com/washer/ Mera code: ${code}`;
-    openSheet(`<h3>Dost ko laao</h3><p class="sub">Dost sign-up pe aapka code bataye aur kaam shuru kare, toh Ravi aapko bonus denge.</p>
+    openSheet(`<h3>Dost ko laao</h3><p class="sub">Dost sign-up pe aapka code bataye aur kaam shuru kare, toh aapko bonus milega.</p>
       <div class="refcode num" id="refCode">${code}</div>
       <a class="btn mint" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" style="margin-top:12px">WhatsApp pe bhejo</a>
       <button class="btn ghost" data-act="copyRef" data-arg="${esc(msg)}" style="margin-top:10px">Code copy karo</button><button class="linkbtn" data-act="close">Band karo</button>`)},
@@ -1993,14 +1993,21 @@ function renderAuth(step,phone){
       <input id="jName" class="jfield" maxlength="60" autocomplete="name" placeholder="Jaise: Ramesh Kumar">
       <div style="font-weight:700;margin:14px 0 8px">Kaunsa area?</div>
       <div class="jchips" id="jArea">${JOIN_AREAS.map(a=>`<button type="button" data-v="${esc(a)}">${esc(a)}</button>`).join('')}</div>
+      <label class="eyebrow" for="jRef" style="display:block;font-weight:700;margin:14px 0 6px">Dost ka code (agar hai)</label>
+      <input id="jRef" class="jfield" maxlength="7" autocapitalize="characters" autocomplete="off" placeholder="Jaise: WD12345">
       <div class="err" id="jErr"></div><button class="btn violet" id="jGo">Approval ke liye bhejo ${I.arrow}</button>
       <button class="linkbtn" id="jBack">Number badlo</button>`;
     $$('#jArea button').forEach(b=>b.onclick=()=>{area=b.dataset.v;$$('#jArea button').forEach(x=>x.classList.toggle('on',x===b));haptic(6)});
     $('#jBack').onclick=async()=>{await window.WDAuth.signOut();renderAuth('phone')};
     $('#jGo').onclick=async()=>{const name=$('#jName').value.trim().replace(/\s+/g,' ');
       if(name.length<2){$('#jErr').textContent='Apna naam likho';return}if(!area){$('#jErr').textContent='Area chuno';return}
+      const ref=$('#jRef').value.trim().toUpperCase().replace(/\s+/g,'');
+      if(ref&&!/^WD\d{5}$/.test(ref)){$('#jErr').textContent='Code aisa hota hai: WD12345. Nahi pata toh khali chhodo';return}
       const b=$('#jGo');b.disabled=true;b.textContent='Bhej raha hoon…';
-      try{const db=await window.claude.use('db');await db.doc('washers/'+window.WDAuth.phone()).set({phone:window.WDAuth.phone(),name,area,status:'pending',created_at:isoIST(),updated_at:isoIST()});renderAuth('wait')}
+      try{const db=await window.claude.use('db');const doc={phone:window.WDAuth.phone(),name,area,status:'pending',created_at:isoIST(),updated_at:isoIST()};
+        // the code rides along when the Firestore rules accept it; if they have not been published yet, sign-up still goes through without it
+        try{await db.doc('washers/'+window.WDAuth.phone()).set(ref?Object.assign({ref},doc):doc)}catch(e1){if(!ref)throw e1;console.warn(e1);await db.doc('washers/'+window.WDAuth.phone()).set(doc)}
+        renderAuth('wait')}
       catch(e){console.warn(e);b.disabled=false;b.innerHTML='Approval ke liye bhejo '+I.arrow;$('#jErr').textContent='Nahi gaya. Internet dekh ke dobara try karo.'}};
   }else if(step==='wait'||step==='blocked'||step==='noround'){
     const txt={wait:['Approval ka intezaar ⏳','Aapki details owner ke paas pahunch gayi. Jaise hi woh approve karenge, app khud khul jayega. App band bhi kar sakte ho.'],
@@ -2147,14 +2154,16 @@ const HI = {
   "Paisa, customer ya accident ki problem":"पैसा, कस्टमर या एक्सीडेंट की दिक्कत",
   "Dost ko laao":"दोस्त को लाओ",
   "Apna code share karo, bonus pao":"अपना कोड शेयर करो, बोनस पाओ",
+  "Dost ka code (agar hai)":"दोस्त का कोड (अगर है)",
+  "Code aisa hota hai: WD12345. Nahi pata toh khali chhodo":"कोड ऐसा होता है: WD12345. नहीं पता तो खाली छोड़ो",
   "Madad chahiye?":"मदद चाहिए?",
-  "Kya hua? Ravi ko WhatsApp pe seedha message jayega.":"क्या हुआ? रवि को WhatsApp पे सीधा मैसेज जाएगा.",
+  "Kya hua? Support ko WhatsApp pe seedha message jayega.":"क्या हुआ? सपोर्ट को WhatsApp पे सीधा मैसेज जाएगा.",
   "Paisa nahi mila / hisaab galat":"पैसा नहीं मिला / हिसाब गलत",
   "Customer se problem":"कस्टमर से दिक्कत",
   "Gaadi ko nuksaan hua":"गाड़ी को नुकसान हुआ",
-  "SOS · Ravi ko abhi call karo":"SOS · रवि को अभी कॉल करो",
+  "SOS · Support ko abhi call karo":"SOS · सपोर्ट को अभी कॉल करो",
   "Accident ya khatre mein pehle 112 pe call karo.":"एक्सीडेंट या ख़तरे में पहले 112 पे कॉल करो.",
-  "Dost sign-up pe aapka code bataye aur kaam shuru kare, toh Ravi aapko bonus denge.":"दोस्त साइन-अप पे आपका कोड बताए और काम शुरू करे, तो रवि आपको बोनस देंगे.",
+  "Dost sign-up pe aapka code bataye aur kaam shuru kare, toh aapko bonus milega.":"दोस्त साइन-अप पे आपका कोड बताए और काम शुरू करे, तो आपको बोनस मिलेगा.",
   "WhatsApp pe bhejo":"WhatsApp पे भेजो",
   "Code copy karo":"कोड कॉपी करो",
   "Nayi gaadi add karo":"नई गाड़ी जोड़ो",

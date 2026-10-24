@@ -34,9 +34,9 @@ service cloud.firestore {
       allow read: if isAdmin() || (signedIn() && phone == me());
       // a new washer signs up and waits: status must start as 'pending', with no round
       allow create: if isAdmin() || (signedIn() && phone == me()
-        && d().keys().hasOnly(['phone', 'name', 'area', 'status', 'created_at', 'updated_at'])
+        && d().keys().hasOnly(['phone', 'name', 'area', 'ref', 'status', 'created_at', 'updated_at'])
         && d().phone == me() && d().status == 'pending'
-        && str(d().name, 60) && d().name.size() > 0 && optStr(d(), 'area', 80));
+        && str(d().name, 60) && d().name.size() > 0 && optStr(d(), 'area', 80) && optStr(d(), 'ref', 12));
       allow update: if isAdmin()
         || (signedIn() && phone == me()
             && d().diff(resource.data).affectedKeys().hasOnly(['name', 'area', 'updated_at', 'last_seen_at'])
