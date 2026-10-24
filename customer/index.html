@@ -625,6 +625,84 @@ button.row:active{background:var(--tile-2)}
 .wd-dots{display:flex;gap:6px;justify-content:center;margin-top:8px}
 .wd-dots i{width:6px;height:6px;border-radius:3px;background:rgba(255,246,233,.4);transition:width .4s var(--spring),background .3s}
 .wd-dots i.on{width:18px;background:var(--gold)}
+/* ---------- website look (Day): violet + cream dots, white rounded cards, Anton, gold bars ---------- */
+.wd-day{
+  --bg:#5409DA; --stage:#3A06A0;
+  --fg:#FFF6E9; --fg-2:rgba(255,246,233,.82); --fg-3:rgba(255,246,233,.62);
+  --line:rgba(255,246,233,.18); --tile:rgba(255,255,255,.12); --tile-2:rgba(255,255,255,.16);
+  --accent:#FFBA08; --accent-ink:#1A0A33; --em:#FFBA08;
+  --bar-bg:#5409DA; --tab-bg:rgba(26,10,51,.86);
+  --sheet-bg:#FFF6E9; --input-bg:#FFFFFF;
+  --today-bg:#FFBA08; --today-fg:#1A0A33;
+  --card-shadow:0 14px 34px rgba(18,7,36,.28); --ticket-bg:#FFFFFF; --ok:#2EE6A6; --dash:rgba(255,246,233,.35);
+}
+/* cards, sheets and forms keep ink on white, like the website's plan cards */
+.wd-day :is(.card,.rows,.plan,.garage-card,.p-card,.banner,.deliver,.wd,.qa .qi,.sheet,.auth-card,.ticket-body,.usage>*,.pause,.photos .ph,.th,.cal,.confirm):not(.on-violet){
+  --fg:#1A0A33; --fg-2:rgba(26,10,51,.70); --fg-3:rgba(26,10,51,.50);
+  --line:rgba(26,10,51,.10); --tile:#FFFFFF; --tile-2:rgba(26,10,51,.06);
+  --accent:#5409DA; --accent-ink:#FFF6E9; --em:#5409DA; --ok:#0E9F6E; --dash:rgba(26,10,51,.25);
+  --today-bg:#5409DA; --today-fg:#FFF6E9; color:var(--fg)}
+.wd-day :is(.card,.rows,.plan,.garage-card,.p-card,.banner,.deliver,.wd,.th):not(.on-violet){background:#fff;border-color:transparent}
+.wd-day :is(.card,.rows,.plan,.garage-card,.p-card,.banner,.deliver){border-radius:26px}
+.wd-day .wd.today{background:var(--gold);color:var(--ink)}
+.wd-day .qa .qi{background:#fff;border:0}
+.wd-day .qa{color:var(--cream)}
+.wd-day .pause{background:#fff;border:0;box-shadow:var(--card-shadow)}
+.wd-day .sheet{background:var(--cream)}
+.wd-day .sheet .field,.wd-day .auth-card .field{color:var(--ink)}
+.wd-day .auth-card{background:var(--cream)}
+.wd-day .app{background-color:var(--violet);background-image:radial-gradient(circle,rgba(255,246,233,.09) 1.3px,transparent 1.6px);background-size:18px 18px}
+.wd-day .stage{background:var(--violet-deep)}
+/* header: website bar, gold underline once scrolled */
+.wd-day .topbar.stuck{background:radial-gradient(circle,rgba(255,246,233,.13) 1.4px,transparent 1.6px) 0 0/14px 14px,var(--violet);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:0 8px 0 var(--gold)}
+.wd-day .iconbtn{background:rgba(255,246,233,.14);border-color:transparent;color:var(--cream)}
+/* type */
+.wd-day .big-title{color:var(--cream)}
+.wd-day .big-title em{color:var(--gold);text-shadow:4px 4px 0 var(--ink)}
+.wd-day .sec-head h2{color:var(--cream)}
+.wd-day .eyebrow{color:var(--gold)}
+.wd-day :is(.card,.rows,.plan,.garage-card,.p-card,.banner,.deliver,.sheet) .eyebrow{color:var(--fg-3)}
+.wd-day .link{color:var(--gold)}
+.wd-day :is(.card,.rows,.plan,.sheet,.banner) .link{color:var(--violet)}
+/* violet blocks sit a shade deeper on the violet page, with the website's cream photo frame */
+.wd-day :is(.hero,.ritual,.live-hero,.store-hero){box-shadow:0 18px 40px rgba(18,7,36,.4)}
+.wd-day .ritual{background:linear-gradient(160deg,var(--violet-deep),#2A0478)}
+.wd-day .hero{border:6px solid var(--cream)}
+.wd-day .store-hero{border:6px solid var(--cream)}
+.wd-day .proof{border:7px solid var(--cream);transform:rotate(-1.2deg);box-shadow:0 18px 40px rgba(18,7,36,.4)}
+.wd-day .ticket-top{background:linear-gradient(135deg,var(--violet-deep),#2A0478)}
+.wd-day .tabs{background:rgba(26,10,51,.88);border-color:transparent}
+.wd-day .tab{color:rgba(255,246,233,.7)}
+.wd-day .refer{box-shadow:0 18px 40px rgba(18,7,36,.35)}
+.wd-day .foot{color:var(--fg-2)}
+/* gold ticker, as on the website */
+.wd-ticker{background:var(--gold);color:var(--ink);overflow:hidden;white-space:nowrap;margin:14px 0 0}
+.wd-ticker .run{display:inline-flex;animation:wdTick 26s linear infinite}
+.wd-ticker span{font-family:var(--f-shout);font-size:15px;letter-spacing:.06em;text-transform:uppercase;padding:7px 0}
+.wd-ticker span::after{content:"\2605";margin:0 14px;color:var(--violet)}
+@keyframes wdTick{to{transform:translateX(-50%)}}
+/* "Our work" polaroids on Home */
+.wd-work h2 em{font-style:normal;color:var(--gold)}
+.wd-polas{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:10px var(--gut-r) 18px var(--gut-l);scrollbar-width:none}
+.wd-polas::-webkit-scrollbar{display:none}
+.wd-pola{flex:none;width:58%;max-width:230px;scroll-snap-align:start;margin:0;background:var(--cream);color:var(--ink);padding:8px 8px 12px;border-radius:14px;box-shadow:0 14px 28px rgba(18,7,36,.4)}
+.wd-pola:nth-child(odd){transform:rotate(-2deg)} .wd-pola:nth-child(even){transform:rotate(1.6deg)}
+.wd-pola img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px}
+.wd-pola figcaption{font-family:var(--f-shout);font-size:17px;letter-spacing:.02em;text-transform:uppercase;line-height:1.05;margin-top:9px}
+.wd-pola small{display:block;font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:11.5px;font-weight:600;color:rgba(26,10,51,.6);margin-top:3px}
+/* "Still using pocha?" poster */
+.wd-poster{position:relative;border-radius:26px;padding:22px 20px 20px;background:var(--violet-deep);overflow:hidden;box-shadow:0 18px 40px rgba(18,7,36,.4)}
+.wd-poster h3{font-family:var(--f-shout);font-weight:400;font-size:44px;line-height:.92;text-transform:uppercase;color:var(--gold);margin:0;transform:rotate(-4deg) skew(-4deg);transform-origin:left;text-shadow:3px 3px 0 var(--orange),6px 6px 0 var(--sky),9px 9px 0 var(--ink)}
+.wd-poster .tk{margin:22px 0 0 auto;width:62%;background:var(--gold);color:var(--ink);border-radius:16px;padding:12px 14px;transform:rotate(3deg);box-shadow:0 10px 24px rgba(18,7,36,.35)}
+.wd-poster .tk small{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.wd-poster .tk b{font-family:var(--f-hero);font-weight:400;font-size:34px;line-height:1}
+.wd-poster .tk b i{font-style:normal;font-family:var(--f-body);font-size:13px;font-weight:700}
+.wd-poster .tk ul{list-style:none;padding:8px 0 0;margin:8px 0 0;border-top:2px dashed rgba(26,10,51,.35);font-size:12px;font-weight:700;display:grid;gap:3px}
+.wd-poster .tk li::before{content:"\2713  "}
+.wd-poster .btn{margin-top:18px}
+:root:not(.wd-day) .wd-ticker{display:none}
+@media (prefers-reduced-motion:reduce){.wd-ticker .run{animation:none}}
+
 </style>
 
 <div class="stage"><div class="app" id="app"><main class="scroller" id="scroller">
@@ -640,6 +718,7 @@ button.row:active{background:var(--tile-2)}
       </div>
     </header>
 
+    <div class="wd-ticker" aria-hidden="true"><div class="run"><span>No more pocha</span><span>Only pressure wash</span><span>Monthly from ₹999</span><span>Car wash in 10 min</span><span>Paschim Vihar</span><span>Meera Bagh</span><span>Sundar Vihar</span><span>No more pocha</span><span>Only pressure wash</span><span>Monthly from ₹999</span><span>Car wash in 10 min</span><span>Paschim Vihar</span><span>Meera Bagh</span><span>Sundar Vihar</span></div></div>
     <div class="hero on-violet" id="hero">
       <div class="hero-bg" aria-hidden="true"><div class="beam"></div><div class="marquee" id="marq"></div><div class="stripe"></div><div class="floor"></div></div>
       <canvas id="spray" aria-hidden="true"></canvas>
@@ -703,6 +782,15 @@ button.row:active{background:var(--tile-2)}
       </div>
     </div>
 
+    <div class="sec rv wd-work">
+      <div class="sec-head pad"><h2>No pocha. <em>Only pressure wash.</em></h2></div>
+      <div class="wd-polas" id="wdPolas"></div>
+    </div>
+    <div class="sec rv pad">
+      <div class="wd-poster"><h3>Still using pocha?<br>Switch today.</h3>
+        <div class="tk"><small>Monthly plans from</small><b>₹999<i>/month</i></b><ul><li>Pressure wash every day</li><li>Same washer every morning</li><li>Car never leaves its spot</li></ul></div>
+        <button class="btn gold" data-act="copyRef">Invite a neighbour · ₹200 off</button></div>
+    </div>
     <div class="sec rv">
       <div class="sec-head pad"><h2>Picked for your car</h2><button class="link" data-tab="store">Open store</button></div>
       <div class="rail" id="homeRail"></div>
@@ -790,9 +878,9 @@ button.row:active{background:var(--tile-2)}
       <div class="sec rv">
         <div class="sec-head"><h2>Look</h2></div>
         <div class="themes" id="themes">
-          <button class="th" data-theme-pick="light"><div class="sw" style="background:#FFF6E9;border:1px solid rgba(26,10,51,.1)"></div>Day</button>
+          <button class="th" data-theme-pick="light"><div class="sw" style="background:#5409DA"></div>Day</button>
           <button class="th" data-theme-pick="dark"><div class="sw" style="background:#1A0A33"></div>Night</button>
-          <button class="th" data-theme-pick="system"><div class="sw" style="background:linear-gradient(90deg,#FFF6E9 50%,#1A0A33 50%)"></div>Auto</button>
+          <button class="th" data-theme-pick="system"><div class="sw" style="background:linear-gradient(90deg,#5409DA 50%,#1A0A33 50%)"></div>Auto</button>
         </div>
       </div>
 
@@ -1005,6 +1093,7 @@ let S={session:null,acct:null,carIdx:0,cart:{},theme:'light'};
 function save(){try{localStorage.setItem('wd-app-v2',JSON.stringify(S))}catch(e){}}
 function load(){try{const x=JSON.parse(localStorage.getItem('wd-app-v2')||'null');if(x&&typeof x==='object')S=Object.assign(S,x)}catch(e){}}
 load();
+document.documentElement.classList.toggle('wd-day',!(S.theme==='dark'||(S.theme==='system'&&matchMedia('(prefers-color-scheme: dark)').matches)));
 // older saves showed masked plates; keep the full number and mask it only on screen
 if(S.acct)S.acct.cars.forEach(c=>{if(c.plate==='DL 4C •• 2731')c.plate='DL 4C AB 2731';if(c.plate==='DL 3C •• 0419'||c.plate==='DL 3C AF 0419')c.plate='DL 3C BK 0419'});
 const maskPlate=p=>String(p).replace(/^([A-Z]{2}\s?\d{1,2}\s?[A-Z]{0,1})\s?([A-Z]{1,3})\s?(\d{1,4})$/i,(m,a,b,c)=>`${a.trim()} •• ${c}`);
@@ -1159,7 +1248,8 @@ function applyTheme(){
   const t=S.theme, root=document.documentElement;
   if(t==='system')root.removeAttribute('data-theme');else root.setAttribute('data-theme',t);
   const dark=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);
-  $('#metaTheme').setAttribute('content',dark?'#1A0A33':'#FFF6E9');
+  root.classList.toggle('wd-day',!dark);
+  $('#metaTheme').setAttribute('content',dark?'#1A0A33':'#5409DA');
   $('#themeIco').innerHTML=t==='light'?ICONS.sun:t==='dark'?ICONS.moon:ICONS.auto;
   $$('[data-theme-pick]').forEach(b=>b.classList.toggle('on',b.dataset.themePick===t));
 }
@@ -2076,6 +2166,10 @@ ACT.trackWasher=function(docId){
   r.addEventListener('scroll',mark,{passive:true});['pointerdown','touchstart','wheel'].forEach(e=>r.addEventListener(e,()=>{held=true},{passive:true}));
   mark();setInterval(()=>{if(held||r.offsetParent===null)return;const w=r.firstElementChild.getBoundingClientRect().width+12;
     const n=(i+1)%r.children.length;r.scrollTo({left:n*w,behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'})},2800)})();
+
+// Home "our work" polaroids reuse the sign-in slideshow photos
+(function(){const r=document.getElementById('wdPolas'),src=document.querySelectorAll('#wdRail .wd-slide');if(!r)return;
+  r.innerHTML=[...src].map(f=>{const i=f.querySelector('img'),c=f.querySelector('figcaption');return `<figure class="wd-pola"><img src="${i.src}" alt="${i.alt}" loading="lazy"><figcaption>${c.innerHTML}</figcaption></figure>`}).join('')})();
 </script>
 
 </body></html>
