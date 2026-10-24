@@ -239,7 +239,7 @@ function renderWashers() {
   $('#bW').textContent = p.length || ''; $('#bW').dataset.n = p.length;
   $('#t-washers').innerHTML = `
     <h2>Waiting for you <span class="n">${p.length}</span></h2>
-    ${p.length ? p.map(washerCard).join('') : '<div class="empty">No new washers waiting. When someone signs up in the WD Washer app, they show up here.</div>'}
+    ${p.length ? p.map(washerCard).join('') : '<div class="empty">No new washers waiting. When someone signs up in the WD Partner app, they show up here.</div>'}
     <h2>Approved <span class="n">${a.length}</span></h2>
     ${a.length ? a.map(washerCard).join('') : '<div class="empty">Nobody approved yet.</div>'}
     <details class="add card"><summary>+ Add a washer yourself</summary>

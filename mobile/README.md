@@ -5,7 +5,7 @@ Two apps, each one web app that installs three ways:
 | App | Website (iPhone: Add to Home Screen) | Android APK | iPhone App Store build |
 |---|---|---|---|
 | Washing Daddy (customers) | `washingdaddy.com/customer/` | `washingdaddy.com/app/washing-daddy-customer.apk` | `ios/customer/` |
-| WD Washer | `washingdaddy.com/washer/` | `washingdaddy.com/app/wd-washer.apk` | `ios/washer/` |
+| WD Partner | `washingdaddy.com/washer/` | `washingdaddy.com/app/wd-washer.apk` | `ios/washer/` |
 
 Download page for both: `washingdaddy.com/get/`.
 

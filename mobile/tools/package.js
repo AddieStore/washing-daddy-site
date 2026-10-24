@@ -17,7 +17,7 @@ const APPS = {
     theme: '#FFF6E9', bg: '#FFF6E9', lang: 'en',
   },
   washer: {
-    src: washerSrc, scope: '/washer/', name: 'WD Washer', short: 'WD Washer',
+    src: washerSrc, scope: '/washer/', name: 'WD Partner', short: 'WD Partner',
     desc: 'Aaj ka round, har car ke kaam aur photo proof.',
     theme: '#5409DA', bg: '#5409DA', lang: 'hi-Latn',
   },
