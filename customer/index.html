@@ -1637,10 +1637,9 @@ const ACT={
       $('#tipGo').onclick=e=>checkout(e.currentTarget,'tip',amt,`Tip for ${c.washer}`,()=>success('Sent',`${c.washer} gets ${inr(amt)} and a thank-you from you on WhatsApp.`))})},
   book(){const c=car();
     const SVCS=[
-      {id:'wash',name:'One-time Wash',price:99,d:'Pressure wash, hand dry, tyre shine'},
-      {id:'interior',name:'Interior Cleaning',price:99,d:'Vacuum, dashboard wipe, seats and windows'},
-      {id:'detailing',name:'Full Detailing',price:800,d:'Clay bar, polish, wax — showroom finish'},
-      {id:'combo',name:'Wash + Interior',price:169,d:'Outside wash + full interior clean'}
+      {id:'wash',name:'WD Wash',price:199,d:'Pressure wash, tyre & trim polish, interior cleaning'},
+      {id:'deep',name:'WD Deep Cleaning',price:800,d:'Pressure wash, interior vacuum, tyre polish, foam, glass and wheels'},
+      {id:'exclusive',name:'WD Exclusive',price:2100,d:'Foam, glass, interior vacuum, fender lining, engine bay, ceramic spray, glass coating'}
     ];
     let svc=SVCS[0];
     openSheet(`<h3>Book a wash</h3><p class="sub">Washer arrives in 45–60 min. ${PAYREAL()?'Pay now by UPI or card.':'Pay them on arrival — no advance needed.'}</p>

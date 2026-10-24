@@ -456,7 +456,7 @@ body.co-open{overflow:hidden}
   <div class="shead"><p class="kicker">Plans</p><h2>Pick your <b>wash</b></h2><p>One payment in advance. No per-wash charges, no bargaining at the gate.</p></div>
   <div class="seg" role="tablist" aria-label="Type of service">
     <button role="tab" id="tab-monthly" aria-selected="true" data-mode="monthly">Monthly plans</button>
-    <button role="tab" id="tab-once" aria-selected="false" data-mode="once">One-time wash</button>
+    <button role="tab" id="tab-once" aria-selected="false" data-mode="once">On-demand wash</button>
   </div>
   <div class="plans" id="panel-monthly" role="tabpanel" aria-labelledby="tab-monthly">
     <article class="tile plan"><h3>WD Standard</h3><p class="price num">₹999<small>/month</small></p>
@@ -473,15 +473,15 @@ body.co-open{overflow:hidden}
       <button class="btn" type="button" data-buy="res">Choose Reserve</button></article>
   </div>
   <div class="plans once" id="panel-once" role="tabpanel" aria-labelledby="tab-once" hidden>
-    <article class="tile plan"><h3>WD Standard</h3><p class="price num">₹500</p>
-      <ul><li>Pressure-wash</li><li>Tyre &amp; trim polish</li><li>Foam wash</li></ul>
-      <button class="btn" type="button" data-buy="o-std">Book &amp; pay</button></article>
-    <article class="tile plan feat"><h3>WD Pro</h3><p class="price num">₹1,200</p>
+    <article class="tile plan"><h3>WD Wash</h3><p class="price num">₹199</p>
+      <ul><li>Pressure-wash</li><li>Tyre &amp; trim polish</li><li>Interior cleaning</li></ul>
+      <button class="btn" type="button" data-buy="wash">Book &amp; pay</button></article>
+    <article class="tile plan feat"><h3>WD Deep Cleaning</h3><p class="price num">₹800</p>
       <ul><li>Pressure-wash</li><li>Interior vacuum</li><li>Tyre &amp; trim polish</li><li>Foam wash</li><li>Glass cleaning</li><li>Wheel cleaning</li></ul>
-      <button class="btn" type="button" data-buy="o-pro">Book &amp; pay</button></article>
+      <button class="btn" type="button" data-buy="deep">Book &amp; pay</button></article>
     <article class="tile plan"><h3>WD Exclusive</h3><p class="price num">₹2,100</p>
-      <ul><li>Pressure-wash</li><li>Tyre &amp; trim polish</li><li>Foam wash</li><li>Glass cleaning</li><li>Fender lining cleaning</li><li>Engine bay cleaning</li><li>Ceramic spray finish</li><li>Glass hydrophobic coating</li></ul>
-      <button class="btn" type="button" data-buy="o-exc">Book &amp; pay</button></article>
+      <ul><li>Pressure-wash</li><li>Tyre &amp; trim polish</li><li>Foam wash</li><li>Glass cleaning</li><li>Interior vacuum</li><li>Fender lining cleaning</li><li>Engine bay cleaning</li><li>Ceramic spray finish</li><li>Glass hydrophobic coating</li></ul>
+      <button class="btn" type="button" data-buy="exclusive">Book &amp; pay</button></article>
   </div>
   <p class="note" id="boardnote">Your month runs from the day you start. One payment in advance, no per-wash charges.</p>
 </div></section>
@@ -721,7 +721,7 @@ body.co-open{overflow:hidden}
         <li><a href="#plans" data-plan="WD Pro — ₹1,800 a month">WD Pro</a><span class="pr num">₹1,800</span></li>
         <li><a href="#plans" data-plan="WD Exclusive — ₹2,500 a month">WD Exclusive</a><span class="pr num">₹2,500</span></li>
         <li><a href="#plans" data-plan="WD Reserve — ₹5,555 a month">WD Reserve</a><span class="pr num">₹5,555</span></li>
-        <li><a href="#plans" id="foot-once">One-time wash</a><span class="pr num">from ₹500</span></li>
+        <li><a href="#plans" id="foot-once">On-demand wash</a><span class="pr num">from ₹199</span></li>
       </ul>
     </div>
     <div>
@@ -749,7 +749,7 @@ body.co-open{overflow:hidden}
   </div>
   <div class="base">
     <div class="wrap">
-      <span>&copy; <span id="yr">2026</span> Washing Daddy, New Delhi</span>
+      <span>&copy; <span id="yr">2026</span> Washing Daddy Private Limited, New Delhi</span>
       <span>www.washingdaddy.com</span>
     </div>
   </div>
@@ -939,9 +939,9 @@ body.co-open{overflow:hidden}
     "pro":   { kind:"Monthly plan", nm:"WD Pro",         pr:1800, unit:"/month", ds:"Daily pressure wash at your gate",       inc:["Interior 2× a week","Tyre polish daily","Foam 2× a week","Detailing 1× a month"] },
     "exc":   { kind:"Monthly plan", nm:"WD Exclusive",   pr:2500, unit:"/month", ds:"Daily pressure wash at your gate",       inc:["Interior 3× a week","Tyre polish daily","Foam 4× a week","Detailing 2× a month","Car perfume","1 on-demand service"] },
     "res":   { kind:"Monthly plan", nm:"WD Reserve",     pr:5555, unit:"/month", ds:"Daily pressure wash at your gate",       inc:["Interior daily","Tyre polish daily","Foam daily","Detailing 4× a month","Car perfume","3 on-demand services","WD partnered stores"] },
-    "o-std": { kind:"One-time wash", nm:"Standard wash", pr:500,  unit:"",       ds:"One visit, car stays parked",            inc:["Pressure wash","Tyre & trim polish","Foam wash"] },
-    "o-pro": { kind:"One-time wash", nm:"Pro wash",      pr:1200, unit:"",       ds:"One visit, car stays parked",            inc:["Pressure wash","Interior vacuum","Tyre & trim polish","Foam wash","Glass","Wheels"] },
-    "o-exc": { kind:"One-time wash", nm:"Exclusive wash",pr:2100, unit:"",       ds:"One visit, car stays parked",            inc:["Pressure wash","Tyre & trim polish","Foam wash","Glass","Fender lining","Engine bay","Ceramic spray","Glass coating"] }
+    "wash":      { kind:"One-time wash", nm:"WD Wash",          pr:199,  unit:"", ds:"One visit, car stays parked", inc:["Pressure wash","Tyre & trim polish","Interior cleaning"] },
+    "deep":      { kind:"One-time wash", nm:"WD Deep Cleaning", pr:800,  unit:"", ds:"One visit, car stays parked", inc:["Pressure wash","Interior vacuum","Tyre & trim polish","Foam wash","Glass","Wheels"] },
+    "exclusive": { kind:"One-time wash", nm:"WD Exclusive",     pr:2100, unit:"", ds:"One visit, car stays parked", inc:["Pressure wash","Tyre & trim polish","Foam wash","Glass","Interior vacuum","Fender lining","Engine bay","Ceramic spray","Glass coating"] }
   };
   var $ = function(id){ return document.getElementById(id); };
   var co = $('co'), picked = null, busy = false;

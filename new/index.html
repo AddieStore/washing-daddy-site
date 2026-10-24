@@ -305,7 +305,7 @@ footer{border-radius:48px 48px 0 0;margin-top:20px}
   <div class="shead rv"><p class="kicker">Plans</p><h2>Pick your <b>wash</b></h2><p>One payment in advance. No per-wash charges, no bargaining at the gate.</p></div>
   <div class="seg rv" role="tablist" aria-label="Type of service">
     <button role="tab" id="tab-monthly" aria-selected="true" data-mode="monthly">Monthly plans</button>
-    <button role="tab" id="tab-once" aria-selected="false" data-mode="once">One-time wash</button>
+    <button role="tab" id="tab-once" aria-selected="false" data-mode="once">On-demand wash</button>
   </div>
   <div class="plans" id="panel-monthly" role="tabpanel" aria-labelledby="tab-monthly">
     <article class="tile plan rv"><h3>WD Standard</h3><p class="price num">₹999<small>/month</small></p>
@@ -322,14 +322,14 @@ footer{border-radius:48px 48px 0 0;margin-top:20px}
       <a class="btn" href="#enquire" data-plan="WD Reserve — ₹5,555 a month">Choose Reserve</a></article>
   </div>
   <div class="plans once" id="panel-once" role="tabpanel" aria-labelledby="tab-once" hidden>
-    <article class="tile plan"><h3>WD Standard</h3><p class="price num">₹500</p>
-      <ul><li>Pressure-wash</li><li>Tyre &amp; trim polish</li><li>Foam wash</li></ul>
+    <article class="tile plan"><h3>WD Wash</h3><p class="price num">₹199</p>
+      <ul><li>Pressure-wash</li><li>Tyre &amp; trim polish</li><li>Interior cleaning</li></ul>
       <a class="btn" id="wa-once1" href="#">Book on WhatsApp</a></article>
-    <article class="tile plan feat"><h3>WD Pro</h3><p class="price num">₹1,200</p>
+    <article class="tile plan feat"><h3>WD Deep Cleaning</h3><p class="price num">₹800</p>
       <ul><li>Pressure-wash</li><li>Interior vacuum</li><li>Tyre &amp; trim polish</li><li>Foam wash</li><li>Glass cleaning</li><li>Wheel cleaning</li></ul>
       <a class="btn" id="wa-once2" href="#">Book on WhatsApp</a></article>
     <article class="tile plan"><h3>WD Exclusive</h3><p class="price num">₹2,100</p>
-      <ul><li>Pressure-wash</li><li>Tyre &amp; trim polish</li><li>Foam wash</li><li>Glass cleaning</li><li>Fender lining cleaning</li><li>Engine bay cleaning</li><li>Ceramic spray finish</li><li>Glass hydrophobic coating</li></ul>
+      <ul><li>Pressure-wash</li><li>Tyre &amp; trim polish</li><li>Foam wash</li><li>Glass cleaning</li><li>Interior vacuum</li><li>Fender lining cleaning</li><li>Engine bay cleaning</li><li>Ceramic spray finish</li><li>Glass hydrophobic coating</li></ul>
       <a class="btn" id="wa-once3" href="#">Book on WhatsApp</a></article>
   </div>
   <p class="note" id="boardnote">Your month runs from the day you start. One payment in advance, no per-wash charges.</p>
@@ -424,7 +424,7 @@ footer{border-radius:48px 48px 0 0;margin-top:20px}
     <div><h4>More</h4><ul>
       <li><a href="/get/">Get the apps</a></li><li><a href="/customer/">Customer app</a></li><li><a href="/pay/">Pay online</a></li><li><a href="/privacy.html">Privacy</a></li></ul></div>
   </div>
-  <div class="base"><span>&copy; <span id="yr">2026</span> Washing Daddy, New Delhi</span><a href="/classic">View the classic site</a></div>
+  <div class="base"><span>&copy; <span id="yr">2026</span> Washing Daddy Private Limited, New Delhi</span><a href="/classic">View the classic site</a></div>
 </div></footer>
 
 <div class="bar"><a class="btn btn-ghost" id="wa-bar" href="#">WhatsApp</a><a class="btn" href="#enquire">Start a plan</a></div>
@@ -461,8 +461,8 @@ footer{border-radius:48px 48px 0 0;margin-top:20px}
   pick('gh9');
 
   var links={'wa-top':"Hi Washing Daddy, I'd like to know about your plans.",'wa-bar':"Hi Washing Daddy, I'd like a monthly car wash plan.",'wa-side':"Hi Washing Daddy, I'd like a monthly car wash plan.",
-    'wa-join':"Hi Washing Daddy, I want to join as a washer.",'wa-once1':"Hi Washing Daddy, I'd like to book a one-time WD Standard wash (₹500).",
-    'wa-once2':"Hi Washing Daddy, I'd like to book a one-time WD Pro wash (₹1,200).",'wa-once3':"Hi Washing Daddy, I'd like to book a one-time WD Exclusive wash (₹2,100)."};
+    'wa-join':"Hi Washing Daddy, I want to join as a washer.",'wa-once1':"Hi Washing Daddy, I'd like to book a WD Wash (₹199).",
+    'wa-once2':"Hi Washing Daddy, I'd like to book a WD Deep Cleaning (₹800).",'wa-once3':"Hi Washing Daddy, I'd like to book a WD Exclusive on-demand wash (₹2,100)."};
   Object.keys(links).forEach(function(id){var el=$(id);if(el){el.href=wa(links[id]);el.target='_blank';el.rel='noopener'}});
   $('yr').textContent=new Date().getFullYear();
 
