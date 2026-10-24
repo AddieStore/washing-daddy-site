@@ -1,0 +1,8 @@
+	# --- classic / new site switch (see deploy/README.md) ---
+	@usenew {
+		path /
+		file /srv/.use-new
+	}
+	rewrite @usenew /new/index.html
+	@classic path /classic
+	rewrite @classic /index.html
