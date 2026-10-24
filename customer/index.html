@@ -589,6 +589,19 @@ button.row:active{background:var(--tile-2)}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+/* ---------- type + dots from washingdaddy.com ---------- */
+.app{background-image:radial-gradient(circle,rgba(26,10,51,.12) 1.4px,transparent 1.8px);background-size:22px 22px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .app{background-image:radial-gradient(circle,rgba(255,246,233,.08) 1.4px,transparent 1.8px)}}
+:root[data-theme="dark"] .app{background-image:radial-gradient(circle,rgba(255,246,233,.08) 1.4px,transparent 1.8px)}
+.auth-in{background-image:radial-gradient(circle,rgba(255,246,233,.1) 1.3px,transparent 1.6px);background-size:18px 18px}
+.big-title{font-size:52px;line-height:.92}
+.sec-head h2{font-family:var(--f-shout);font-weight:400;font-size:26px;line-height:1;text-transform:uppercase;letter-spacing:.01em}
+.wd-hl{font-family:var(--f-shout);font-weight:400;font-size:72px;line-height:.88;text-transform:uppercase;color:var(--cream);margin:6px 0 0;animation:slam .8s var(--spring) both}
+.wd-hl .strike{position:relative;display:inline-block;color:rgba(255,246,233,.55)}
+.wd-hl .strike::after{content:"";position:absolute;left:-2%;right:-2%;top:52%;height:.11em;background:var(--gold);transform:rotate(-3deg)}
+.wd-hl em{font-style:normal;color:var(--gold);display:block;text-shadow:5px 5px 0 var(--ink)}
+@media (max-width:380px){.wd-hl{font-size:60px}}
 </style>
 
 <div class="stage"><div class="app" id="app"><main class="scroller" id="scroller">
@@ -799,9 +812,7 @@ button.row:active{background:var(--tile-2)}
 
 <div class="auth" id="auth" hidden><div class="auth-in">
   <div class="auth-poster" aria-hidden="true">
-    <div class="still">Still using<br>pocha on<br>your car?</div>
-    <div class="how">Pressure<br>wash?</div>
-    <div class="every">Everyday!!!</div>
+    <h1 class="wd-hl"><span class="strike">Pocha?</span> <em>Pressure wash everyday!</em></h1>
     <div class="road"></div>
     <div class="acar"><img id="authCar" alt=""></div>
   </div>
