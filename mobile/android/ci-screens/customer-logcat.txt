@@ -1,4 +1,4 @@
 --------- beginning of main
-10-24 15:22:46.139  1922  2082 W chromium: [WARNING:dns_config_service_android.cc(115)] Failed to read DnsConfig.
-10-24 15:22:46.553  1922  2115 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
-10-24 15:23:12.539  1922  2115 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-24 15:27:32.462  1913  2030 W chromium: [WARNING:dns_config_service_android.cc(115)] Failed to read DnsConfig.
+10-24 15:27:32.788  1913  2062 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-24 15:27:58.777  1913  2062 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!

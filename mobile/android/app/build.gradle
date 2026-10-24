@@ -38,7 +38,7 @@ android {
     washer {
       dimension "app"
       applicationId "com.washingdaddy.washer"
-      resValue "string", "app_name", "WD Washer"
+      resValue "string", "app_name", "WD Partner"
       resValue "color", "launcher_bg", "#FFBA08"
       buildConfigField "String", "SCOPE", '"/washer/"'
       buildConfigField "String", "BAR", '"#5409DA"'

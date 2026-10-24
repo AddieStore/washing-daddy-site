@@ -1,4 +1,4 @@
-/* Offline shell for WD Washer. Pages: network first, cache when there is no signal.
+/* Offline shell for WD Partner. Pages: network first, cache when there is no signal.
    Fonts: cached after first use. Firestore traffic is never touched (it keeps its own offline store). */
 var CACHE='wd-washer-cutout-1023';
 var SHELL=['./','index.html','wd-sync.js','manifest.webmanifest','icon-192.png','icon-512.png','apple-touch-icon.png','favicon.png'];
