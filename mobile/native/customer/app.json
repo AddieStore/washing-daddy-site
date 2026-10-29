@@ -58,7 +58,8 @@
             "useFrameworks": "static"
           },
           "android": {
-            "minSdkVersion": 24
+            "minSdkVersion": 24,
+            "kotlinVersion": "2.3.21"
           }
         }
       ],
