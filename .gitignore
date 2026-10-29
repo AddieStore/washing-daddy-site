@@ -8,3 +8,12 @@ mobile/android/app/src/*/assets/
 mobile/tools/node_modules/
 mobile/tools/build/
 .use-new
+
+# signing material and local secrets
+*.p12
+*.jks
+*.keystore
+signing.properties
+.env
+.env.*
+!.env.example

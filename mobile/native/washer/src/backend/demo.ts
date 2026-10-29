@@ -60,6 +60,7 @@ export function demoAuth(): Auth {
       phone = pending; pending = null; subs.forEach(f => f(phone));
     },
     async signOut() { phone = null; subs.forEach(f => f(null)) },
+    async idToken() { return null },
   };
 }
 

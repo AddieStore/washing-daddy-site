@@ -41,6 +41,7 @@ export interface Auth {
   send(phone10: string): Promise<void>;
   confirm(code: string): Promise<void>;
   signOut(): Promise<void>;
+  idToken(): Promise<string | null>;   // Firebase ID token for server calls (n8n); null in the demo
 }
 // Thrown by send/confirm: a short reason plus Hinglish wording for the screen
 export type AuthError = Error & { code: string; hi: string };

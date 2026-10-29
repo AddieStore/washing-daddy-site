@@ -10,6 +10,16 @@ const iosGoogleServices = './firebase/GoogleService-Info.plist';
 const hasAndroidFirebase = fs.existsSync(path.join(__dirname, androidGoogleServices));
 const hasIosFirebase = fs.existsSync(path.join(__dirname, iosGoogleServices));
 
+// WD_RELEASE=1 (set by the release build jobs) must never produce a demo build: without Firebase config the
+// app silently falls back to the demo backend (OTP 1234, fake data). Fail the build instead.
+if (process.env.WD_RELEASE === '1') {
+  const ios = process.env.EAS_BUILD_PLATFORM === 'ios' || process.argv.some(a => a === 'ios');
+  const android = process.env.EAS_BUILD_PLATFORM === 'android' || !ios;
+  if (android && !hasAndroidFirebase) throw new Error('WD_RELEASE=1: firebase/google-services.json is missing, refusing to build a demo app');
+  if (ios && !hasIosFirebase) throw new Error('WD_RELEASE=1: firebase/GoogleService-Info.plist is missing, refusing to build a demo app');
+  if (process.env.EXPO_PUBLIC_DEMO) throw new Error('WD_RELEASE=1: EXPO_PUBLIC_DEMO must not be set in a release build');
+}
+
 const PACKAGE = 'com.washingdaddy.washer'; // must not change: store listings carry over
 
 const config: ExpoConfig = {

@@ -19,6 +19,82 @@
     },
     {
       "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// F1: only a signed-in washer may read a round. The app sends  Authorization: Bearer <Firebase ID token>.\n// We verify the RS256 signature against Google's published securetoken certificates, check the\n// claims, and require the token's phone number to belong to the washer being asked for.\n// Needs n8n env NODE_FUNCTION_ALLOW_BUILTIN=crypto (Code nodes must be allowed to require('crypto')),\n// FIREBASE_PROJECT_ID, and optionally WASHER_PHONES (see README). Any failure answers 401.\nconst crypto = require('crypto');\nconst PROJECT = String($env.FIREBASE_PROJECT_ID || '').trim();\nif (!PROJECT) throw new Error('FIREBASE_PROJECT_ID env var is not set');\nconst CERT_URL = 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';\n\n// phone (E.164) -> washer id: the same two washers as WASHERS / PHONE_TO_WASHER in the washer apps.\n// Override with env WASHER_PHONES = {\"+91XXXXXXXXXX\":\"chotte\",\"+91YYYYYYYYYY\":\"shahrukh\"}\nlet WASHER_BY_PHONE = { '+919000000001': 'chotte', '+919000000002': 'shahrukh' };\nif ($env.WASHER_PHONES) {\n  try { WASHER_BY_PHONE = JSON.parse($env.WASHER_PHONES) } catch (e) { throw new Error('WASHER_PHONES env var is not valid JSON') }\n}\n\nconst deny = why => [{ json: { ok: false, status: 401, error: 'unauthorized', why } }];\nconst b64u = s => Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64');\n\nconst asked = String((($('Round maango (webhook)').first().json.query) || {}).washer || '').toLowerCase();\nconst authz = String((($('Round maango (webhook)').first().json.headers) || {}).authorization || '');\nconst m = /^Bearer ([A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+)$/.exec(authz.trim());\nif (!m) return deny('no bearer token');\nif (m[1].length > 6000) return deny('token too long');\nconst [h64, p64, s64] = m[1].split('.');\n\nlet header, claims;\ntry { header = JSON.parse(b64u(h64).toString('utf8')); claims = JSON.parse(b64u(p64).toString('utf8')) }\ncatch (e) { return deny('unreadable token') }\nif (!header || header.alg !== 'RS256' || typeof header.kid !== 'string') return deny('bad header');\n\n// Google's signing certs, cached in workflow static data for max-age (default 1 h, at most 24 h).\n// A kid we do not know triggers one refetch, at most every 5 minutes.\nconst sd = $getWorkflowStaticData('global');\nconst nowMs = Date.now();\nasync function fetchCerts() {\n  const resp = await this.helpers.httpRequest({ method: 'GET', url: CERT_URL, json: true, returnFullResponse: true, timeout: 8000 });\n  const certs = resp.body;\n  if (!certs || typeof certs !== 'object' || !Object.keys(certs).length) throw new Error('no certs');\n  const mm = /max-age=(\\d+)/.exec(String((resp.headers || {})['cache-control'] || ''));\n  const ttl = Math.min(Math.max(Number(mm && mm[1]) || 3600, 300), 86400) * 1000;\n  sd.fbCerts = { certs, fetchedAt: nowMs, expiresAt: nowMs + ttl };\n}\nconst cached = sd.fbCerts && sd.fbCerts.certs && sd.fbCerts.expiresAt > nowMs;\ntry {\n  if (!cached) await fetchCerts.call(this);\n  else if (!sd.fbCerts.certs[header.kid] && nowMs - sd.fbCerts.fetchedAt > 300000) await fetchCerts.call(this);\n} catch (e) {\n  if (!(sd.fbCerts && sd.fbCerts.certs)) return deny('certs unavailable');   // fail closed; stale certs are still fine\n}\nconst pem = sd.fbCerts && sd.fbCerts.certs && sd.fbCerts.certs[header.kid];\nif (!pem) return deny('unknown kid');\n\nlet sigOk = false;\ntry { sigOk = crypto.createVerify('RSA-SHA256').update(h64 + '.' + p64).verify(pem, b64u(s64)) } catch (e) { sigOk = false }\nif (!sigOk) return deny('bad signature');\n\nconst nowS = Math.floor(nowMs / 1000), SKEW = 300;\nif (claims.aud !== PROJECT) return deny('wrong aud');\nif (claims.iss !== 'https://securetoken.google.com/' + PROJECT) return deny('wrong iss');\nif (typeof claims.exp !== 'number' || claims.exp <= nowS) return deny('expired');\nif (typeof claims.iat !== 'number' || claims.iat > nowS + SKEW) return deny('iat in future');\nif (typeof claims.auth_time !== 'number' || claims.auth_time > nowS + SKEW) return deny('auth_time in future');\nif (typeof claims.sub !== 'string' || !claims.sub || claims.sub.length > 128) return deny('bad sub');\n\nconst washer = Object.prototype.hasOwnProperty.call(WASHER_BY_PHONE, claims.phone_number) ? WASHER_BY_PHONE[claims.phone_number] : null;\nif (!washer) return deny('phone is not a washer');\nif (washer !== asked) return deny('token belongs to another washer');\nreturn [{ json: { ok: true, washer } }];"
+      },
+      "id": "token-check",
+      "name": "Token check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        230,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "tok",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "token-theek",
+      "name": "Token theek?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: \"unauthorized\" }) }}",
+        "options": {
+          "responseCode": 401,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://washingdaddy.com"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "mana-401",
+      "name": "Mana kar do (401)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        690,
+        200
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://api.notion.com/v1/databases/ca0440e9f6ab4e15bf35b9d720e2952b/query",
         "authentication": "predefinedCredentialType",
@@ -48,7 +124,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        230,
+        690,
         0
       ],
       "credentials": {
@@ -61,14 +137,14 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Turns Notion \"Monthly Customers\" rows into the round each washer sees in the app.\n// Kept in one place so the n8n node and the tests run the exact same code.\n\n// Notion's Service Level names, as the app's PLAN keys.\nconst PLANS = {\n  'legacy ₹500': 'legacy',\n  'wd standard': 'std',\n  'wd pro': 'pro',\n  'wd exclusive': 'exc',\n  'wd reserve': 'res',\n};\n\n// Only these washers have a round in the app. Anything else, including\n// \"Unassigned\", is left out rather than guessed at.\nconst WASHERS = { chotte: 'chotte', shahrukh: 'shahrukh' };\n\n// A car with no body type drawn for it gets a silhouette; 'suv' is the app's own\n// fallback, and these are the words that actually appear in the book.\nconst SHAPES = [\n  [/innova|hycross|carrens|carens|ertiga/i, 'mpv'],\n  [/swift|baleno|i20|altroz|punch|ignis|jazz|clubman/i, 'hatch'],\n  [/city|slavia|rapid|verna|tigor|camry|530|amaze|taisor/i, 'sedan'],\n];\nfunction shapeOf(name) {\n  for (const [re, t] of SHAPES) if (re.test(name)) return t;\n  return 'suv';\n}\n\nconst txt = p => ((p && (p.rich_text || p.title)) || []).map(t => t.plain_text).join('').trim();\nconst pick = p => (p && p.select && p.select.name) || '';\nconst num = p => (p && typeof p.number === 'number' ? p.number : null);\n\n// One Notion page -> one car on a round, or null if it does not belong on one.\nfunction carOf(page) {\n  const p = page.properties || {};\n  if (pick(p['Account Status']) !== 'Active') return null;\n  const washer = WASHERS[pick(p['Washer']).toLowerCase()];\n  if (!washer) return null;\n\n  const name = txt(p['Car']), plate = txt(p['Car Number']);\n  // A row still waiting for its registration cannot be matched to a wash, so it\n  // would silently never sync. Better the washer sees it is missing.\n  const reg = plate.toUpperCase().replace(/[^A-Z0-9]/g, '');\n  if (!reg || /NUMBERNEEDED/.test(reg)) return null;\n\n  return {\n    washer,\n    order: typeof (p['Round Order'] || {}).number === 'number' ? p['Round Order'].number : 9999,\n    car: {\n      plate, reg, make: '', model: name || 'Gaadi', label: name || 'Gaadi',\n      plan: PLANS[pick(p['Service Level']).toLowerCase()] || 'std',\n      type: shapeOf(name),\n      color: '#8a8f98',\n      house: txt(p['Area']) || '',\n      spot: '',\n      customer: 'Customer',\n      // what this car pays us a month, so the washer's share can be worked out on his phone\n      fee: num(p['Monthly Fee']),\n      // so the washer can call the customer from the round (Notion 'Phone' column)\n      phone: (p['Phone'] && p['Phone'].phone_number) || '',\n    },\n  };\n}\n\n// Round Order first where it is set, then area so a washer walks one street at a\n// time, then the car's name so the list never reshuffles between loads.\nfunction roundsOf(pages) {\n  const out = { chotte: [], shahrukh: [] };\n  (pages || []).map(carOf).filter(Boolean)\n    .sort((a, b) => a.order - b.order ||\n      a.car.house.localeCompare(b.car.house) ||\n      a.car.model.localeCompare(b.car.model))\n    .forEach(r => out[r.washer].push(r.car));\n  return out;\n}\n\n// P6: washer is required; the 'all rounds' mode is removed to prevent bulk data exposure.\nconst res = $input.first().json;\nconst asked = String(($('Round maango (webhook)').first().json.query || {}).washer || '').toLowerCase();\nif (!WASHERS[asked]) {\n  return [{ json: { ok: false, error: 'washer parameter is required' } }];\n}\nconst rounds = roundsOf(res.results);\n\n// 100 rows is one Notion page. If the book ever outgrows that, say so in the\n// answer rather than quietly handing the washer a short round.\nconst truncated = !!res.has_more;\nreturn [{ json: { ok: Array.isArray(res.results), washer: asked, cars: rounds[asked] || [], truncated } }];"
+        "jsCode": "// Turns Notion \"Monthly Customers\" rows into the round each washer sees in the app.\n// Kept in one place so the n8n node and the tests run the exact same code.\n\n// Notion's Service Level names, as the app's PLAN keys.\nconst PLANS = {\n  'legacy ₹500': 'legacy',\n  'wd standard': 'std',\n  'wd pro': 'pro',\n  'wd exclusive': 'exc',\n  'wd reserve': 'res',\n};\n\n// Only these washers have a round in the app. Anything else, including\n// \"Unassigned\", is left out rather than guessed at.\nconst WASHERS = { chotte: 'chotte', shahrukh: 'shahrukh' };\n\n// A car with no body type drawn for it gets a silhouette; 'suv' is the app's own\n// fallback, and these are the words that actually appear in the book.\nconst SHAPES = [\n  [/innova|hycross|carrens|carens|ertiga/i, 'mpv'],\n  [/swift|baleno|i20|altroz|punch|ignis|jazz|clubman/i, 'hatch'],\n  [/city|slavia|rapid|verna|tigor|camry|530|amaze|taisor/i, 'sedan'],\n];\nfunction shapeOf(name) {\n  for (const [re, t] of SHAPES) if (re.test(name)) return t;\n  return 'suv';\n}\n\nconst txt = p => ((p && (p.rich_text || p.title)) || []).map(t => t.plain_text).join('').trim();\nconst pick = p => (p && p.select && p.select.name) || '';\nconst num = p => (p && typeof p.number === 'number' ? p.number : null);\n\n// One Notion page -> one car on a round, or null if it does not belong on one.\nfunction carOf(page) {\n  const p = page.properties || {};\n  if (pick(p['Account Status']) !== 'Active') return null;\n  const washer = WASHERS[pick(p['Washer']).toLowerCase()];\n  if (!washer) return null;\n\n  const name = txt(p['Car']), plate = txt(p['Car Number']);\n  // A row still waiting for its registration cannot be matched to a wash, so it\n  // would silently never sync. Better the washer sees it is missing.\n  const reg = plate.toUpperCase().replace(/[^A-Z0-9]/g, '');\n  if (!reg || /NUMBERNEEDED/.test(reg)) return null;\n\n  return {\n    washer,\n    order: typeof (p['Round Order'] || {}).number === 'number' ? p['Round Order'].number : 9999,\n    car: {\n      plate, reg, make: '', model: name || 'Gaadi', label: name || 'Gaadi',\n      plan: PLANS[pick(p['Service Level']).toLowerCase()] || 'std',\n      type: shapeOf(name),\n      color: '#8a8f98',\n      house: txt(p['Area']) || '',\n      spot: '',\n      customer: 'Customer',\n      // what this car pays us a month, so the washer's share can be worked out on his phone\n      fee: num(p['Monthly Fee']),\n      // so the washer can call the customer from the round (Notion 'Phone' column)\n      phone: (p['Phone'] && p['Phone'].phone_number) || '',\n    },\n  };\n}\n\n// Round Order first where it is set, then area so a washer walks one street at a\n// time, then the car's name so the list never reshuffles between loads.\nfunction roundsOf(pages) {\n  const out = { chotte: [], shahrukh: [] };\n  (pages || []).map(carOf).filter(Boolean)\n    .sort((a, b) => a.order - b.order ||\n      a.car.house.localeCompare(b.car.house) ||\n      a.car.model.localeCompare(b.car.model))\n    .forEach(r => out[r.washer].push(r.car));\n  return out;\n}\n\n// P6: washer is required; the 'all rounds' mode is removed to prevent bulk data exposure.\nconst res = $input.first().json;\nconst asked = String(($('Round maango (webhook)').first().json.query || {}).washer || '').toLowerCase();\nif (!WASHERS[asked]) {\n  return [{ json: { ok: false, error: 'washer parameter is required' } }];\n}\n// F1: the verified token must be for exactly this washer\nif ($('Token check').first().json.washer !== asked) {\n  return [{ json: { ok: false, error: 'not allowed' } }];\n}\nconst rounds = roundsOf(res.results);\n\n// 100 rows is one Notion page. If the book ever outgrows that, say so in the\n// answer rather than quietly handing the washer a short round.\nconst truncated = !!res.has_more;\nreturn [{ json: { ok: Array.isArray(res.results), washer: asked, cars: rounds[asked] || [], truncated } }];"
       },
       "id": "round-banao",
       "name": "Round banao",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        460,
+        920,
         0
       ]
     },
@@ -96,7 +172,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        690,
+        1150,
         0
       ]
     }
@@ -106,7 +182,7 @@
       "main": [
         [
           {
-            "node": "Book se gaadiyan",
+            "node": "Token check",
             "type": "main",
             "index": 0
           }
@@ -129,6 +205,35 @@
         [
           {
             "node": "Round bhejo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token check": {
+      "main": [
+        [
+          {
+            "node": "Token theek?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token theek?": {
+      "main": [
+        [
+          {
+            "node": "Book se gaadiyan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mana kar do (401)",
             "type": "main",
             "index": 0
           }

@@ -1091,7 +1091,11 @@ const Book={
     const cached=this.readCache(id);
     if(cached){this.setRound(id,cached.cars);this.state='cached';refresh()}
     try{
-      const r=await fetch(BOOK_URL+'?washer='+encodeURIComponent(id),{cache:'no-store',signal:AbortSignal.timeout?AbortSignal.timeout(15000):undefined});
+      // wd-washer-cars needs the washer's Firebase ID token (n8n checks it and the washer's phone)
+      const u=window.WDAuth.user&&window.WDAuth.user();
+      if(!u)throw new Error('not signed in');
+      const tok=await u.getIdToken();
+      const r=await fetch(BOOK_URL+'?washer='+encodeURIComponent(id),{cache:'no-store',headers:{Authorization:'Bearer '+tok},signal:AbortSignal.timeout?AbortSignal.timeout(15000):undefined});
       const j=await r.json();
       if(!r.ok||!j||j.ok===false||!Array.isArray(j.cars))throw new Error('book');
       this.setRound(id,j.cars);this.writeCache(id,j.cars);

@@ -1,6 +1,6 @@
 # Native customer app (mobile/native/customer): typecheck and web export on every change, then an Android
 # release build (APK + Play bundle) uploaded as a workflow artifact. The Firebase config comes from the
-# CUSTOMER_GOOGLE_SERVICES_JSON secret; without it the APK is built in demo mode (test data, OTP 1234).
+# CUSTOMER_GOOGLE_SERVICES_JSON secret; without it the Android job fails (WD_RELEASE=1) instead of shipping a demo APK.
 # The build is signed with Expo's debug key: re-sign with the release key from mobile/signing/ outside CI,
 # the same as the old APKs, so installed apps update in place.
 name: native-customer
@@ -42,9 +42,9 @@ jobs:
         env: { GS: '${{ secrets.CUSTOMER_GOOGLE_SERVICES_JSON }}' }
         run: |
           mkdir -p firebase
-          if [ -n "$GS" ]; then printf '%s' "$GS" > firebase/google-services.json; echo "Firebase: on"; else echo "Firebase: off (demo build)"; fi
+          if [ -n "$GS" ]; then printf '%s' "$GS" > firebase/google-services.json; echo "Firebase: on"; else echo "Firebase: off, the prebuild step will fail (WD_RELEASE=1)"; fi
       - run: npx expo prebuild --platform android --no-install
-        env: { CI: 1 }
+        env: { CI: 1, WD_RELEASE: 1 }   # app.config.ts refuses to build a demo app
       - run: ./gradlew assembleRelease bundleRelease --no-daemon
         working-directory: mobile/native/customer/android
       - uses: actions/upload-artifact@v4

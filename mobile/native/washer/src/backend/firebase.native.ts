@@ -115,6 +115,7 @@ function makeAuth(): Auth {
       }
     },
     async signOut() { confirmer = null; try { await signOut(auth) } catch (e) { } },
+    async idToken() { try { return auth.currentUser ? await auth.currentUser.getIdToken() : null } catch (e) { return null } },
   };
 }
 

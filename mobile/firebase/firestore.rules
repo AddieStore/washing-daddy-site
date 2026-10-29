@@ -24,6 +24,9 @@ service cloud.firestore {
     function myRound() { return get(washerPath()).data.route_id; }
 
     function customerPath() { return /databases/$(database)/documents/customers/$(me()); }
+    function isActiveCustomer() {
+      return signedIn() && exists(customerPath()) && get(customerPath()).data.status == 'active';
+    }
     function ownsReg(reg) {
       return signedIn() && exists(customerPath())
         && get(customerPath()).data.status == 'active'
@@ -48,13 +51,16 @@ service cloud.firestore {
       allow read: if isAdmin() || (signedIn() && phone == me());
       // a new customer signs up as 'new'; an admin checks the car and makes the account 'active'
       allow create: if isAdmin() || (signedIn() && phone == me()
+        && d().keys().hasOnly(['phone', 'name', 'area', 'status', 'cars', 'regs', 'since', 'created_at', 'updated_at'])
         && d().phone == me() && d().status == 'new'
-        && str(d().name, 80) && d().cars is list && d().cars.size() <= 5
+        && str(d().name, 80) && optStr(d(), 'area', 80) && optStr(d(), 'since', 40)
+        && optStr(d(), 'created_at', 40) && optStr(d(), 'updated_at', 40) && d().cars is list && d().cars.size() <= 5
         && d().regs is list && d().regs.size() <= 5);
       // the customer can change their name and preferences, and ask for another car (an admin adds it)
       allow update: if isAdmin()
         || (signedIn() && phone == me()
             && d().diff(resource.data).affectedKeys().hasOnly(['name', 'prefs', 'requested_cars', 'updated_at'])
+            && str(d().name, 80)
             && (!('requested_cars' in d()) || (d().requested_cars is list && d().requested_cars.size() <= 5)));
       allow delete: if isAdmin();
     }
@@ -62,11 +68,11 @@ service cloud.firestore {
     // a customer's own car photo, stored as carphotos/{+91number}_{carId} (kept out of the account doc)
     match /carphotos/{id} {
       allow read: if isAdmin() || (signedIn() && id.split('_')[0] == me());
-      allow create: if signedIn() && id.split('_')[0] == me() && id.size() <= 60 && exists(customerPath())
+      allow create: if isActiveCustomer() && id.split('_')[0] == me() && id.matches('^[+0-9]{13}_[A-Za-z0-9]{1,16}$')
         && d().keys().hasOnly(['photo', 'updated_at'])
         && d().photo is string && d().photo.size() <= 400000
         && str(d().updated_at, 40);
-      allow update: if signedIn() && id.split('_')[0] == me() && id.size() <= 60 && exists(customerPath())
+      allow update: if isActiveCustomer() && id.split('_')[0] == me() && id.matches('^[+0-9]{13}_[A-Za-z0-9]{1,16}$')
         && d().diff(resource.data).affectedKeys().hasOnly(['photo', 'updated_at'])
         && d().photo is string && d().photo.size() <= 400000
         && str(d().updated_at, 40);
@@ -106,7 +112,7 @@ service cloud.firestore {
     // a car the washer sold himself, waiting for the owner to accept it and put it in the book.
     // The washer may put it on his own round; only an admin may approve it or change the fee.
     match /newcars/{reg} {
-      allow read: if isAdmin() || isWasher();
+      allow read: if isAdmin() || (isWasher() && resource.data.washer_id == myRound());
       allow create: if isAdmin() || (isWasher()
         && d().keys().hasOnly(['reg', 'plate', 'model', 'area', 'plan', 'fee', 'customer_name',
                                'customer_phone', 'washer_id', 'added_by', 'status', 'note',
@@ -119,7 +125,7 @@ service cloud.firestore {
         && d().fee is number && d().fee >= 0 && d().fee <= 20000);
       // the washer can correct what he typed while it is still pending; the owner decides the rest
       allow update: if isAdmin()
-        || (isWasher() && resource.data.status == 'pending'
+        || (isWasher() && resource.data.status == 'pending' && resource.data.washer_id == myRound()
             && d().diff(resource.data).affectedKeys().hasOnly(
                  ['plate', 'model', 'area', 'plan', 'customer_name', 'customer_phone', 'note', 'updated_at'])
             && str(d().model, 60) && d().model.size() > 0);
@@ -132,30 +138,42 @@ service cloud.firestore {
         || ownsReg(resource.data.reg)
         || (signedIn() && resource.data.customer_id == me());
       allow create: if isAdmin()
-        || (signedIn()
-            && d().customer_id == me()
-            && d().status == 'new'
-            && d().price is number && d().price >= 0 && d().price <= 100000
-            && str(d()['service'], 80));
+        || (isActiveCustomer()
+            && d().keys().hasOnly(['service', 'service_id', 'price', 'paid', 'pay_ref', 'car', 'reg', 'area',
+                                   'phone', 'customer_id', 'status', 'washer_id', 'created_at', 'date'])
+            && d().customer_id == me() && d().phone == me()
+            && d().status == 'new' && d().washer_id == ''
+            && d().service_id in ['wash', 'deep', 'exclusive']
+            && d().price == {'wash': 199, 'deep': 800, 'exclusive': 2100}[d().service_id]
+            && str(d()['service'], 80) && optStr(d(), 'car', 80) && optStr(d(), 'reg', 20)
+            && optStr(d(), 'area', 120) && optStr(d(), 'pay_ref', 80) && optStr(d(), 'created_at', 40)
+            && optStr(d(), 'date', 10) && d().paid is bool);
       allow update: if isAdmin()
-        || (isWasher() && resource.data.washer_id == myRound()
+        || (isWasher() && (resource.data.washer_id == myRound() || resource.data.washer_id == '')
+            && d().washer_id == myRound()          // a claim puts his own round on the job, nobody else's
             && d().diff(resource.data).affectedKeys().hasOnly(
-                 ['status', 'started_at', 'finished_at', 'photo', 'photo_at', 'washer_note', 'updated_at'])
-            && d().status in ['new', 'doing', 'done']
+                 ['status', 'started_at', 'finished_at', 'photo', 'photo_at', 'washer_note', 'updated_at',
+                  'washer_id', 'declined_at'])
+            && d().status in ['new', 'doing', 'done', 'declined']
             && (!('photo' in d()) || d().photo == null || (d().photo is string && d().photo.size() <= 400000))
             && optStr(d(), 'washer_note', 300));
       allow delete: if isAdmin();
     }
 
     match /locations/{washerId} {
-      allow read: if signedIn();
-      allow write: if isWasher() && washerId == me();
+      // the doc id is the washer's ROUND id (what both apps write), not his phone number
+      allow read: if isAdmin() || isWasher() || isActiveCustomer();
+      allow create, update: if isWasher() && washerId == myRound()
+        && d().keys().hasOnly(['lat', 'lng', 'accuracy', 'washer_id', 'updated_at'])
+        && d().lat is number && d().lng is number && d().washer_id == washerId && optStr(d(), 'updated_at', 40);
+      allow delete: if isAdmin() || (isWasher() && washerId == myRound());
     }
 
     match /ratings/{id} {
       allow read: if isAdmin() || isWasher() || ownsReg(resource.data.reg);
       allow write: if (isAdmin() || ownsReg(d().reg))
-        && id == d().date + '_' + d().reg
+        && d().keys().hasOnly(['reg', 'date', 'stars', 'at'])
+        && id == d().date + '_' + d().reg && optStr(d(), 'at', 40)
         && d().stars is int && d().stars >= 1 && d().stars <= 5;
     }
 

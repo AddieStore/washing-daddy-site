@@ -82,6 +82,7 @@ jobs:
         env:
           EXPO_OFFLINE: '1'
           CI: '1'
+          WD_RELEASE: '1'   # app.config.ts refuses to build a demo app
 
       # The release APK is signed with Expo's default debug keystore; we re-sign it with the
       # Washing Daddy release key outside CI (tools/sign-apk.sh).
