@@ -1,0 +1,113 @@
+name: Native washer app (Expo)
+
+# Checks the Expo / React Native rewrite of WD Partner in mobile/native/washer.
+# The native build is unsigned; signing is done outside CI with the Washing Daddy release key, like today.
+on:
+  push:
+    paths:
+      - 'mobile/native/washer/**'
+      - '.github/workflows/native-washer.yml'
+  pull_request:
+    paths:
+      - 'mobile/native/washer/**'
+      - '.github/workflows/native-washer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-washer-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: mobile/native/washer
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/native/washer/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Tests
+        run: npm test
+
+      - name: Web export
+        run: npx expo export -p web
+        env:
+          EXPO_OFFLINE: '1'
+
+  android:
+    needs: check
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_SERVICES_JSON: ${{ secrets.WASHER_GOOGLE_SERVICES_JSON }}
+    steps:
+      - name: Check for Firebase config secret
+        id: gate
+        working-directory: .
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; else echo "WASHER_GOOGLE_SERVICES_JSON is empty, skipping native build"; fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.go == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.go == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/native/washer/package-lock.json
+
+      - uses: actions/setup-java@v4
+        if: steps.gate.outputs.go == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.gate.outputs.go == 'true'
+
+      - name: Install
+        if: steps.gate.outputs.go == 'true'
+        run: npm ci
+
+      - name: Write google-services.json
+        if: steps.gate.outputs.go == 'true'
+        run: |
+          mkdir -p firebase
+          printf '%s' "$GOOGLE_SERVICES_JSON" > firebase/google-services.json
+
+      - name: Prebuild
+        if: steps.gate.outputs.go == 'true'
+        run: npx expo prebuild -p android --no-install
+        env:
+          EXPO_OFFLINE: '1'
+
+      - name: Build release APK and AAB
+        if: steps.gate.outputs.go == 'true'
+        working-directory: mobile/native/washer/android
+        run: ./gradlew bundleRelease assembleRelease --no-daemon --stacktrace
+
+      - name: Upload unsigned release builds
+        if: steps.gate.outputs.go == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wd-partner-android-unsigned
+          path: |
+            mobile/native/washer/android/app/build/outputs/bundle/release/*.aab
+            mobile/native/washer/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
