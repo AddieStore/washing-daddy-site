@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { ExpoConfig } from 'expo/config';
 
-// Firebase native config files are not committed (see firebase/README.md). Without them the
-// app still builds and runs in demo mode.
+// Firebase native config files are committed in firebase/ (see firebase/README.md). If they are
+// missing the app still builds and runs in demo mode.
 const androidGoogleServices = './firebase/google-services.json';
 const iosGoogleServices = './firebase/GoogleService-Info.plist';
 const hasAndroidFirebase = fs.existsSync(path.join(__dirname, androidGoogleServices));
@@ -85,7 +85,14 @@ const config: ExpoConfig = {
           'WD Partner lets you pick a photo from your library when you cannot take one with the camera.',
       },
     ],
-    ['expo-build-properties', { ios: { useFrameworks: 'static' } }],
+    [
+      'expo-build-properties',
+      {
+        ios: { useFrameworks: 'static' },
+        // Firebase Android BoM 35 needs Kotlin 2.3 (the customer app hit the same)
+        android: { minSdkVersion: 24, kotlinVersion: '2.3.21' },
+      },
+    ],
     ...(hasAndroidFirebase
       ? ['@react-native-firebase/app', '@react-native-firebase/auth']
       : []),
