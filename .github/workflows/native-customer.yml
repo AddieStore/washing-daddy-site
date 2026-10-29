@@ -1,0 +1,55 @@
+# Native customer app (mobile/native/customer): typecheck and web export on every change, then an Android
+# release build (APK + Play bundle) uploaded as a workflow artifact. The Firebase config comes from the
+# CUSTOMER_GOOGLE_SERVICES_JSON secret; without it the APK is built in demo mode (test data, OTP 1234).
+# The build is signed with Expo's debug key: re-sign with the release key from mobile/signing/ outside CI,
+# the same as the old APKs, so installed apps update in place.
+name: native-customer
+on:
+  push:
+    paths: ['mobile/native/customer/**', '.github/workflows/native-customer.yml']
+  pull_request:
+    paths: ['mobile/native/customer/**', '.github/workflows/native-customer.yml']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: mobile/native/customer
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/native/customer/package-lock.json }
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx expo export --platform web --output-dir dist-web
+        env: { CI: 1 }
+
+  android:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/native/customer/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - name: Firebase config
+        env: { GS: '${{ secrets.CUSTOMER_GOOGLE_SERVICES_JSON }}' }
+        run: |
+          mkdir -p firebase
+          if [ -n "$GS" ]; then printf '%s' "$GS" > firebase/google-services.json; echo "Firebase: on"; else echo "Firebase: off (demo build)"; fi
+      - run: npx expo prebuild --platform android --no-install
+        env: { CI: 1 }
+      - run: ./gradlew assembleRelease bundleRelease --no-daemon
+        working-directory: mobile/native/customer/android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: washing-daddy-customer-native
+          path: |
+            mobile/native/customer/android/app/build/outputs/apk/release/*.apk
+            mobile/native/customer/android/app/build/outputs/bundle/release/*.aab

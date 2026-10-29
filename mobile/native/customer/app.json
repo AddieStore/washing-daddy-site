@@ -1,0 +1,78 @@
+{
+  "expo": {
+    "name": "Washing Daddy",
+    "slug": "washing-daddy-customer",
+    "scheme": "washingdaddy",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#5409DA",
+    "ios": {
+      "bundleIdentifier": "com.washingdaddy.customer",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "phonepe",
+          "tez",
+          "paytm",
+          "bhim",
+          "whatsapp"
+        ],
+        "NSPhotoLibraryUsageDescription": "Pick a photo of your car to show it on your home screen."
+      }
+    },
+    "android": {
+      "package": "com.washingdaddy.customer",
+      "versionCode": 20,
+      "adaptiveIcon": {
+        "backgroundColor": "#5409DA",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "permissions": [],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#5409DA"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          },
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pick a photo of your car to show it on your home screen.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "@maplibre/maplibre-react-native"
+    ]
+  }
+}
