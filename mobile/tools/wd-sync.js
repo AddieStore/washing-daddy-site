@@ -89,9 +89,11 @@ const DEFAULT_CONFIG = {
     };
   }
 
+  // The emulator switch and the config override are developer tools: honour them on localhost only, never on the live site
+  const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   let emu = null;
-  try { emu = localStorage.getItem('wd-firestore-emulator') } catch (e) {}
-  const cfg = window.WD_FIREBASE || DEFAULT_CONFIG;
+  try { if (local) emu = localStorage.getItem('wd-firestore-emulator') } catch (e) {}
+  const cfg = (local && window.WD_FIREBASE) || DEFAULT_CONFIG;
   const app = initializeApp(cfg, 'wd-sync');
 
   /* ---------- phone sign-in ---------- */

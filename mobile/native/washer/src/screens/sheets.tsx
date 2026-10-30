@@ -177,9 +177,9 @@ export function openLogoutSheet() {
   sheet.open(close => (
     <ConfirmBody
       title={t('Log out?')}
-      sub={t(outboxSize() ? 'Kuch update abhi bheje nahi gaye. Log out karne pe bhi phone pe rahenge.' : 'Aaj ka round is phone pe safe rahega.')}
-      goLabel={t('Log out')}
-      go={() => { void act.logout() }}
+      sub={t(outboxSize() ? 'Kuch update abhi bheje nahi gaye. Log out karoge to yeh hat jayenge. Pehle net pe bhej do.' : 'Round, customer ke naam aur photos is phone se hat jayenge. Dobara login pe wapas aa jayenge.')}
+      goLabel={t(outboxSize() ? 'Phir bhi log out' : 'Log out')}
+      go={() => { void act.logout(true) }}
       close={close}
     />
   ));

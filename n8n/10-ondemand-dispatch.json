@@ -4,6 +4,7 @@
     {
       "parameters": {
         "path": "wd-ondemand-dispatch",
+        "httpMethod": "POST",
         "options": {},
         "responseMode": "responseNode"
       },
@@ -11,12 +12,159 @@
       "name": "Dispatch maango (webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "wd-ondemand-dispatch"
     },
     {
       "parameters": {
-        "projectId": "YOUR_FIREBASE_PROJECT_ID",
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Config + request check. Fails loudly when the Firebase project id is not configured.\nconst proj = String($env.FIREBASE_PROJECT_ID || '').trim();\nif (!proj) throw new Error('FIREBASE_PROJECT_ID env var is not set (set it on the n8n container)');\nconst body = $('Dispatch maango (webhook)').first().json.body || {};\nconst docId = typeof body.doc_id === 'string' ? body.doc_id : '';\n// Firestore auto-ids are 20 characters of [A-Za-z0-9]; anything else (slashes, paths, odd ids) is refused\nif (!/^[A-Za-z0-9]{20}$/.test(docId)) return [{ json: { ok: false, error: 'bad request' } }];\nreturn [{ json: { ok: true, doc_id: docId } }];"
+      },
+      "id": "request-check",
+      "name": "Request check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "request-theek",
+      "name": "Request theek?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: \"bad request\" }) }}",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "bad-request",
+      "name": "Bad request (400)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        600,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "projectId": "={{ $env.FIREBASE_PROJECT_ID }}",
+        "database": "(default)",
+        "operation": "get",
+        "collection": "ondemand",
+        "documentId": "={{ $json.doc_id }}"
+      },
+      "id": "job-lookup",
+      "name": "Job lookup",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        600,
+        -100
+      ],
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "2",
+          "name": "Firebase service account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// F2: only a real, brand-new, unassigned, recent job can be dispatched. The stored job is the\n// source of truth: the request's area (or anything else it sends) is ignored.\nconst j = $input.first().json || {};\nconst docId = $('Request check').first().json.doc_id;\nconst no = why => [{ json: { ok: false, error: 'not assignable', why, doc_id: docId } }];\nif (j.error || !j.service) return no('no such job');\nif (j.status !== 'new') return no('status is not new');\nif (j.washer_id) return no('already assigned');\nconst tms = v => {\n  if (!v) return NaN;\n  if (typeof v === 'string') return new Date(v).getTime();\n  if (v instanceof Date) return v.getTime();\n  if (typeof v === 'object') {\n    const s = v._seconds != null ? v._seconds : v.seconds;\n    return s != null ? Number(s) * 1000 : NaN;\n  }\n  return NaN;\n};\nconst created = tms(j.created_at), now = Date.now();\nif (!Number.isFinite(created) || now - created > 15 * 60 * 1000 || created - now > 5 * 60 * 1000) return no('not fresh');\nconst price = Number(j.price);\nconst area = String(j.area || '');                        // the stored area, not the request's\nconst orderId = String(j.pay_ref || '');\nconst base = { ok: true, doc_id: docId, area, price, reg: String(j.reg || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase() };\n// Pay on arrival: paid is not true and there is no pay_ref. Dispatched as before, no Cashfree call;\n// the washer collects the cash.\nif (j.paid !== true && !orderId && Number.isFinite(price) && price > 0) {\n  return [{ json: { ...base, orderId: '', cash: true } }];\n}\n// paid=true must carry a Cashfree order id that we can check\nif (j.paid !== true || !Number.isFinite(price) || price <= 0 || !/^[A-Za-z0-9_-]{1,50}$/.test(orderId)) {\n  return [{ json: { ...base, orderId: '', why: 'job is not marked as paid' } }];\n}\nreturn [{ json: { ...base, orderId } }];"
+      },
+      "id": "job-check",
+      "name": "Job check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "job-theek",
+      "name": "Job theek?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "projectId": "={{ $env.FIREBASE_PROJECT_ID }}",
         "database": "(default)",
         "operation": "getAll",
         "collection": "locations"
@@ -25,7 +173,10 @@
       "name": "Washer locations padhna",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
-      "position": [240, 0],
+      "position": [
+        2000,
+        -200
+      ],
       "credentials": {
         "googleFirebaseCloudFirestoreOAuth2Api": {
           "id": "2",
@@ -36,23 +187,33 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// GPS auto-dispatch: pick the nearest active washer to the customer's area.\n// 'Active' means their location doc was updated within the last 30 minutes.\n\n// Approximate centre-point coordinates for each service area (Paschim Vihar, Delhi).\nconst AREA_COORDS = {\n  'GH-9 Paschim Vihar':    {lat: 28.6680, lng: 77.0989},\n  'GH-6 Paschim Vihar':    {lat: 28.6695, lng: 77.0970},\n  'GH-14 Paschim Vihar':   {lat: 28.6705, lng: 77.0982},\n  'Meera Bagh':             {lat: 28.6720, lng: 77.1065},\n  'Sundar Vihar':           {lat: 28.6710, lng: 77.1110},\n  'Guru Hari Apartments':   {lat: 28.6650, lng: 77.0960},\n};\n\nfunction haversine(lat1, lng1, lat2, lng2) {\n  const R = 6371000; // metres\n  const dLat = (lat2 - lat1) * Math.PI / 180;\n  const dLng = (lng2 - lng1) * Math.PI / 180;\n  const a = Math.sin(dLat/2)**2 +\n    Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;\n  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));\n}\n\n// Webhook body: {doc_id, area}\nconst body = $('Dispatch maango (webhook)').first().json.body || {};\nconst docId = String(body.doc_id || '');\nconst area  = String(body.area  || '');\n\nif (!docId) return [{json: {ok: false, error: 'doc_id missing'}}];\n\n// All location docs read by the Firestore node.\nconst now = Date.now();\nconst STALE_MS = 30 * 60 * 1000; // 30 min\n\nconst active = $input.all()\n  .map(i => i.json)\n  .filter(loc => {\n    if (!loc.washer_id || !loc.lat || !loc.lng) return false;\n    // updated_at is an IST ISO string like \"2026-10-18T06:42:00+05:30\"\n    const age = now - new Date(loc.updated_at).getTime();\n    return age <= STALE_MS;\n  });\n\nif (!active.length) {\n  // No washer is broadcasting GPS — leave washer_id blank so both get the job alert.\n  return [{json: {ok: true, assigned: false, reason: 'no_active_washers', doc_id: docId}}];\n}\n\nconst target = AREA_COORDS[area];\nif (!target) {\n  // Unknown area — pick the washer with the most recent location update.\n  active.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));\n  return [{json: {ok: true, assigned: true, washer_id: active[0].washer_id, doc_id: docId, method: 'newest'}}];\n}\n\n// Nearest active washer by Haversine distance.\nlet best = null, bestDist = Infinity;\nfor (const loc of active) {\n  const d = haversine(loc.lat, loc.lng, target.lat, target.lng);\n  if (d < bestDist) { bestDist = d; best = loc; }\n}\n\nreturn [{json: {ok: true, assigned: !!best, washer_id: best ? best.washer_id : null, doc_id: docId, dist_m: Math.round(bestDist), method: 'nearest'}}];"
+        "jsCode": "// GPS auto-dispatch: pick the nearest active washer to the customer's area.\n// 'Active' means their location doc was updated within the last 30 minutes.\n\n// Approximate centre-point coordinates for each service area (Paschim Vihar, Delhi).\nconst AREA_COORDS = {\n  'GH-9 Paschim Vihar':    {lat: 28.6680, lng: 77.0989},\n  'GH-6 Paschim Vihar':    {lat: 28.6695, lng: 77.0970},\n  'GH-14 Paschim Vihar':   {lat: 28.6705, lng: 77.0982},\n  'Meera Bagh':             {lat: 28.6720, lng: 77.1065},\n  'Sundar Vihar':           {lat: 28.6710, lng: 77.1110},\n  'Guru Hari Apartments':   {lat: 28.6650, lng: 77.0960},\n};\n\nfunction haversine(lat1, lng1, lat2, lng2) {\n  const R = 6371000; // metres\n  const dLat = (lat2 - lat1) * Math.PI / 180;\n  const dLng = (lng2 - lng1) * Math.PI / 180;\n  const a = Math.sin(dLat/2)**2 +\n    Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;\n  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));\n}\n\n// Job validated and payment verified upstream. doc id and area come from the STORED job\n// ('Job check'), never from the request.\nconst job = $('Job check').first().json;\nconst docId = job.doc_id;\nconst area  = job.area;\n\n// All location docs read by the Firestore node.\nconst now = Date.now();\nconst STALE_MS = 30 * 60 * 1000; // 30 min\n\nconst active = $input.all()\n  .map(i => i.json)\n  .filter(loc => {\n    if (!loc.washer_id || !loc.lat || !loc.lng) return false;\n    // updated_at is an IST ISO string like \"2026-10-18T06:42:00+05:30\"\n    const age = now - new Date(loc.updated_at).getTime();\n    return age <= STALE_MS;\n  });\n\nif (!active.length) {\n  // No washer is broadcasting GPS — leave washer_id blank so both get the job alert.\n  return [{json: {ok: true, assigned: false, reason: 'no_active_washers', doc_id: docId}}];\n}\n\nconst target = AREA_COORDS[area];\nif (!target) {\n  // Unknown area — pick the washer with the most recent location update.\n  active.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));\n  return [{json: {ok: true, assigned: true, washer_id: active[0].washer_id, doc_id: docId, method: 'newest'}}];\n}\n\n// Nearest active washer by Haversine distance.\nlet best = null, bestDist = Infinity;\nfor (const loc of active) {\n  const d = haversine(loc.lat, loc.lng, target.lat, target.lng);\n  if (d < bestDist) { bestDist = d; best = loc; }\n}\n\nreturn [{json: {ok: true, assigned: !!best, washer_id: best ? best.washer_id : null, doc_id: docId, dist_m: Math.round(bestDist), method: 'nearest'}}];"
       },
       "id": "nearest-washer",
       "name": "Nazdeeki washer dhundo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 0]
+      "position": [
+        2200,
+        -200
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "leftValue": "={{ $json.assigned }}",
               "rightValue": true,
-              "operator": {"type": "boolean", "operation": "equals"}
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -62,11 +223,14 @@
       "name": "Washer mila?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [720, 0]
+      "position": [
+        2400,
+        -200
+      ]
     },
     {
       "parameters": {
-        "projectId": "YOUR_FIREBASE_PROJECT_ID",
+        "projectId": "={{ $env.FIREBASE_PROJECT_ID }}",
         "database": "(default)",
         "operation": "update",
         "collection": "ondemand",
@@ -82,7 +246,10 @@
       "name": "Washer assign karo",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
-      "position": [960, -100],
+      "position": [
+        2600,
+        -300
+      ],
       "credentials": {
         "googleFirebaseCloudFirestoreOAuth2Api": {
           "id": "2",
@@ -93,10 +260,15 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($('Nazdeeki washer dhundo').first().json) }}",
+        "responseBody": "={{ JSON.stringify({ ok: true }) }}",
         "options": {
           "responseHeaders": {
-            "entries": [{"name": "Content-Type", "value": "application/json"}]
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
           }
         }
       },
@@ -104,29 +276,483 @@
       "name": "Jawab do (200)",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1200, 0]
+      "position": [
+        2800,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: \"not assignable\" }) }}",
+        "options": {
+          "responseCode": 409,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "not-assignable",
+      "name": "Not assignable (409)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ !!$json.orderId }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "paid-claimed",
+      "name": "Paid claimed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.cashfree.com/pg/orders/{{ $json.orderId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-version",
+              "value": "2023-08-01"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "cashfree-order-dekho",
+      "name": "Cashfree order dekho",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        -200
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "2",
+          "name": "Cashfree live"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// F3: the browser saying \"paid\" proves nothing. Cashfree's own record of the order must say PAID,\n// in rupees, for exactly the price stored on the job, and the order can pay for one job only.\nconst job = $('Job check').first().json;\nconst cf = $input.first().json || {};\nconst bad = why => [{ json: { ok: false, paid: false, why } }];\nif (cf.error || cf.code || cf.type === 'invalid_request_error' || !cf.order_id) return bad('Cashfree has no such order');\nif (String(cf.order_id) !== job.orderId) return bad('order id mismatch');\nif (String(cf.order_status || '').toUpperCase() !== 'PAID') return bad('order status is ' + String(cf.order_status || '?').slice(0, 20));\nif (String(cf.order_currency || '').toUpperCase() !== 'INR') return bad('order currency is not INR');\nif (Number(cf.order_amount) !== Number(job.price)) return bad('paid ' + Number(cf.order_amount) + ' but the job price is ' + job.price);\nconst tags = cf.order_tags || {};\nif (tags.reg && job.reg && String(tags.reg).replace(/[^A-Za-z0-9]/g, '').toUpperCase() !== job.reg) return bad('order is for another car');\n// one paid order = one job: remember order -> job (bounded to the last 500)\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.usedOrders)) sd.usedOrders = [];\nconst prev = sd.usedOrders.find(u => u.o === job.orderId);\nif (prev && prev.d !== job.doc_id) return bad('order already used for another job');\nif (!prev) { sd.usedOrders.push({ o: job.orderId, d: job.doc_id }); if (sd.usedOrders.length > 500) sd.usedOrders = sd.usedOrders.slice(-500); }\nreturn [{ json: { ok: true, paid: true } }];"
+      },
+      "id": "payment-check",
+      "name": "Payment check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.paid === true }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "paid-hai",
+      "name": "Paid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: \"payment not confirmed\" }) }}",
+        "options": {
+          "responseCode": 402,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "not-paid",
+      "name": "Not paid (402)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Unpaid or unverifiable job: Ravi hears about it, once per job (bounded list), no loops.\nconst job = $('Job check').first().json;\nconst why = String(($input.first().json || {}).why || job.why || 'unknown').slice(0, 120);\nconst sd = $getWorkflowStaticData('global');\nif (!Array.isArray(sd.unpaidAlerted)) sd.unpaidAlerted = [];\nif (sd.unpaidAlerted.includes(job.doc_id)) return [];\nsd.unpaidAlerted.push(job.doc_id);\nif (sd.unpaidAlerted.length > 200) sd.unpaidAlerted = sd.unpaidAlerted.slice(-200);\nreturn [{ json: { text: '⚠ On-demand job NOT dispatched (payment not confirmed): ' + why +\n  '\\nJob ' + job.doc_id + ' - ₹' + (job.price || '?') + (job.reg ? ' - ' + job.reg : '') +\n  '\\nCheck Cashfree, then assign a washer by hand if it was really paid.' } }];"
+      },
+      "id": "unpaid-gate",
+      "name": "Unpaid alert gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID || \"\" }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "id": "unpaid-alert",
+      "name": "Ravi ko batao (unpaid)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2200,
+        100
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "3",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.cash === true }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cash-hai",
+      "name": "Cash on arrival?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        100
+      ]
     }
   ],
   "connections": {
     "Dispatch maango (webhook)": {
-      "main": [[{"node": "Washer locations padhna", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Request check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request check": {
+      "main": [
+        [
+          {
+            "node": "Request theek?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request theek?": {
+      "main": [
+        [
+          {
+            "node": "Job lookup",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bad request (400)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job lookup": {
+      "main": [
+        [
+          {
+            "node": "Job check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job check": {
+      "main": [
+        [
+          {
+            "node": "Job theek?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job theek?": {
+      "main": [
+        [
+          {
+            "node": "Paid claimed?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Not assignable (409)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Paid claimed?": {
+      "main": [
+        [
+          {
+            "node": "Cashfree order dekho",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cash on arrival?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cashfree order dekho": {
+      "main": [
+        [
+          {
+            "node": "Payment check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payment check": {
+      "main": [
+        [
+          {
+            "node": "Paid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Paid?": {
+      "main": [
+        [
+          {
+            "node": "Washer locations padhna",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Not paid (402)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Unpaid alert gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unpaid alert gate": {
+      "main": [
+        [
+          {
+            "node": "Ravi ko batao (unpaid)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Washer locations padhna": {
-      "main": [[{"node": "Nazdeeki washer dhundo", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Nazdeeki washer dhundo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Nazdeeki washer dhundo": {
-      "main": [[{"node": "Washer mila?", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Washer mila?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Washer mila?": {
       "main": [
-        [{"node": "Washer assign karo", "type": "main", "index": 0}],
-        [{"node": "Jawab do (200)", "type": "main", "index": 0}]
+        [
+          {
+            "node": "Washer assign karo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Jawab do (200)",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Washer assign karo": {
-      "main": [[{"node": "Jawab do (200)", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Jawab do (200)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cash on arrival?": {
+      "main": [
+        [
+          {
+            "node": "Washer locations padhna",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Not paid (402)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Unpaid alert gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
-  "settings": {"executionOrder": "v1"}
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

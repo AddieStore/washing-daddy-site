@@ -40,9 +40,5 @@ yarn-error.*
 /ios
 /android
 
-# Firebase native config (supplied locally or by CI secrets, see firebase/README.md)
-/firebase/google-services.json
-/firebase/GoogleService-Info.plist
-
 # preview output
 preview.html

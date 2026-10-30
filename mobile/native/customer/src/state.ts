@@ -336,7 +336,9 @@ export const act = {
   },
   async resendOtp(phone10: string) { await act.sendOtp(phone10); toast('New code sent') },
   async logout() {
+    // wipe the saved account (name, address, cars, orders) from the phone, not just from memory; only the theme stays
     S.session = null; S.acct = null; S.cart = {}; S.carIdx = 0; stopSync(); if (SIM) { clearTimeout(SIM.t); SIM = null }
+    clearTimeout(saveT); try { await AsyncStorage.setItem(KEY, JSON.stringify(S)) } catch (e) {}
     if (AUTH) await AUTH.signOut(); ui = { ...ui, tab: 'home' }; commit();
   },
 

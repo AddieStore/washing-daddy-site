@@ -51,63 +51,71 @@ jobs:
 
   android:
     needs: check
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/')))
     runs-on: ubuntu-latest
-    env:
-      GOOGLE_SERVICES_JSON: ${{ secrets.WASHER_GOOGLE_SERVICES_JSON }}
+    permissions:
+      contents: write   # to commit the APK back to the branch
     steps:
-      - name: Check for Firebase config secret
-        id: gate
-        working-directory: .
-        run: |
-          if [ -n "$GOOGLE_SERVICES_JSON" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; else echo "WASHER_GOOGLE_SERVICES_JSON is empty, skipping native build"; fi
-
       - uses: actions/checkout@v4
-        if: steps.gate.outputs.go == 'true'
+        with:
+          fetch-depth: 0   # the commit below may need rebasing onto a branch that moved
 
       - uses: actions/setup-node@v4
-        if: steps.gate.outputs.go == 'true'
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: mobile/native/washer/package-lock.json
 
       - uses: actions/setup-java@v4
-        if: steps.gate.outputs.go == 'true'
         with:
           distribution: temurin
           java-version: '17'
 
       - uses: gradle/actions/setup-gradle@v4
-        if: steps.gate.outputs.go == 'true'
 
       - name: Install
-        if: steps.gate.outputs.go == 'true'
         run: npm ci
 
-      - name: Write google-services.json
-        if: steps.gate.outputs.go == 'true'
-        run: |
-          mkdir -p firebase
-          printf '%s' "$GOOGLE_SERVICES_JSON" > firebase/google-services.json
-
+      # firebase/google-services.json is committed and used as is
       - name: Prebuild
-        if: steps.gate.outputs.go == 'true'
         run: npx expo prebuild -p android --no-install
         env:
           EXPO_OFFLINE: '1'
+          CI: '1'
+          WD_RELEASE: '1'   # app.config.ts refuses to build a demo app
 
-      - name: Build release APK and AAB
-        if: steps.gate.outputs.go == 'true'
+      # The release APK is signed with Expo's default debug keystore; we re-sign it with the
+      # Washing Daddy release key outside CI (tools/sign-apk.sh).
+      - name: Build release APK
         working-directory: mobile/native/washer/android
-        run: ./gradlew bundleRelease assembleRelease --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
 
-      - name: Upload unsigned release builds
-        if: steps.gate.outputs.go == 'true'
+      - name: Collect APK
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk out/wd-partner-unsigned.apk
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: wd-partner-android-unsigned
-          path: |
-            mobile/native/washer/android/app/build/outputs/bundle/release/*.aab
-            mobile/native/washer/android/app/build/outputs/apk/release/*.apk
+          path: mobile/native/washer/out/wd-partner-unsigned.apk
           if-no-files-found: error
+
+      - name: Commit APK back to the branch
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f mobile/native/washer/out/wd-partner-unsigned.apk
+          git diff --staged --quiet && exit 0
+          # [skip ci] in the message stops this push from triggering workflows again
+          git commit -m "Build WD Partner native APK [skip ci]"
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "push rejected, retrying (try $i)"
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 5))
+          done
+          exit 1

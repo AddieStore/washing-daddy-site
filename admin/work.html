@@ -131,7 +131,7 @@ const photo = p => p && (p.url || (p.asset_id ? '/_blob/' + p.asset_id : ''));
 function carHtml(w) {
   const tasks = Array.isArray(w.tasks) ? w.tasks : [], photos = (Array.isArray(w.photos) ? w.photos : []).filter(photo);
   return `<div class="car"><div class="ch"><div><b>${esc(w.car_label || w.reg)}</b> <span class="plate">${esc(w.reg)}</span></div><span class="pill st-${esc(w.status)}">${STATUS[w.status] || esc(w.status)}</span></div>
-  <div class="times">${w.status === 'skipped' ? '' : `<span>Started ${hm(w.started_at) || '–'}</span><span>Finished ${hm(w.finished_at) || '–'}</span>`}${w.minutes != null ? `<span>${w.minutes} min</span>` : ''}${w.water_litres ? `<span>${w.water_litres} L water</span>` : ''}</div>
+  <div class="times">${w.status === 'skipped' ? '' : `<span>Started ${hm(w.started_at) || '–'}</span><span>Finished ${hm(w.finished_at) || '–'}</span>`}${w.minutes != null ? `<span>${esc(w.minutes)} min</span>` : ''}${w.water_litres ? `<span>${esc(w.water_litres)} L water</span>` : ''}</div>
   ${w.status === 'skipped' ? `<div class="note">Skipped: ${esc(w.skip_reason || 'no reason given')}</div>` : ''}
   ${tasks.length ? `<div class="tasks">${tasks.map(t => `<span class="t ${t.done ? 'y' : ''}">${t.done ? '✓ ' : ''}${esc(t.label || t.key)}</span>`).join('')}</div>` : ''}
   ${w.washer_note ? `<div class="note">Washer's note: ${esc(w.washer_note)}</div>` : ''}
@@ -149,7 +149,9 @@ function render() {
     g.list.sort((a, b) => (a.seq || 99) - (b.seq || 99));
     const n = g.list.length, d = g.list.filter(w => w.status === 'done').length, s = g.list.filter(w => w.status === 'skipped').length, p = n - d - s;
     const times = g.list.map(w => w.started_at).filter(Boolean).sort(), ends = g.list.map(w => w.finished_at).filter(Boolean).sort();
-    const loc = locs[id], live = loc && day === istDay(0) ? `<a style="color:var(--violet)" href="https://maps.google.com/?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener">Live location · ${hm(loc.updated_at)}</a>` : '';
+    // loc is washer-writable: coerce lat/lng to finite numbers and escape the rest
+    const loc = locs[id], la = loc ? Number(loc.lat) : NaN, ln = loc ? Number(loc.lng) : NaN;
+    const live = loc && isFinite(la) && isFinite(ln) && day === istDay(0) ? `<a style="color:var(--violet)" href="https://maps.google.com/?q=${la},${ln}" target="_blank" rel="noopener">Live location · ${esc(hm(loc.updated_at))}</a>` : '';
     h += `<section class="w"><div class="wh"><h2>${esc(g.name)}</h2><small>${d} of ${n} cars</small></div>
      <div class="bar"><i class="d" style="width:${d / n * 100}%"></i><i class="s" style="width:${s / n * 100}%"></i><i class="p" style="width:${p / n * 100}%"></i></div>
      <div class="meta"><span>Round: ${esc(id)}</span>${times.length ? `<span>First car ${hm(times[0])}</span>` : ''}${ends.length ? `<span>Last finished ${hm(ends[ends.length - 1])}</span>` : ''}${live}</div>

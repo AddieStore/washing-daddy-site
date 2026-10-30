@@ -110,7 +110,10 @@ const Book = {
     if (cached) { this.setRound(id, cached.cars); view.bookState = 'cached'; emit() }
     try {
       const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 15000);
-      const r = await fetch(BOOK_URL + '?washer=' + encodeURIComponent(id), { cache: 'no-store', signal: ctl.signal });
+      // wd-washer-cars needs the washer's Firebase ID token (demo backend has none, and never reaches this call)
+      const tok = await backend.auth.idToken();
+      if (!tok) throw new Error('not signed in');
+      const r = await fetch(BOOK_URL + '?washer=' + encodeURIComponent(id), { cache: 'no-store', headers: { Authorization: 'Bearer ' + tok }, signal: ctl.signal });
       clearTimeout(to);
       const j = await r.json();
       if (!r.ok || !j || j.ok === false || !Array.isArray(j.cars)) throw new Error('book');
@@ -464,9 +467,23 @@ export const act = {
     Object.keys(S.outbox).forEach(k => { if (k.startsWith(DAY)) delete S.outbox[k] });
     S.day = null; S.current = null; ensureDay(); save(); ui.toast(t('Reset ho gaya')); emit();
   },
-  async logout() {
-    S.session = null; save(); Sync.stop(); stopWatch(); stopGps();
+  // Logging out wipes this phone's round: customer names/addresses, the outbox and every photo (they all live in S).
+  // Unsent updates are sent first; if some still cannot go, only an explicit `discard` (the sheet warned) goes on.
+  async logout(discard = false): Promise<boolean> {
+    if (outboxSize()) {
+      view.readOnly = false; refused = 0;
+      await Promise.race([Sync.flush(), new Promise(r => setTimeout(r, 8000))]);
+      if (outboxSize() && !discard) { ui.toast(t('Kuch update abhi bheje nahi gaye. Net aane pe phir try karo.')); return false }
+    }
+    Sync.stop(); stopWatch(); stopGps();
+    const { theme, lang } = S;
+    S = { session: null, online: true, theme, lang, day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
+    if (saveT) { clearTimeout(saveT); saveT = null }
+    try { await AsyncStorage.setItem(KEY, JSON.stringify(S)) } catch (e) { }
+    bookCars = null; R = {}; RT = {}; view.pendingPhotos = {}; view.jobAlert = null; view.readOnly = false;
+    if (REAL) { NewCar.mine = []; Object.keys(ROSTER).forEach(k => delete ROSTER[k]) }
     await auth.signOut(); view.authStep = 'phone'; emit();
+    return true;
   },
 
   /* ----- sign-in ----- */

@@ -3,12 +3,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { ExpoConfig } from 'expo/config';
 
-// Firebase native config files are not committed (see firebase/README.md). Without them the
-// app still builds and runs in demo mode.
+// Firebase native config files are committed in firebase/ (see firebase/README.md). If they are
+// missing the app still builds and runs in demo mode.
 const androidGoogleServices = './firebase/google-services.json';
 const iosGoogleServices = './firebase/GoogleService-Info.plist';
 const hasAndroidFirebase = fs.existsSync(path.join(__dirname, androidGoogleServices));
 const hasIosFirebase = fs.existsSync(path.join(__dirname, iosGoogleServices));
+
+// WD_RELEASE=1 (set by the release build jobs) must never produce a demo build: without Firebase config the
+// app silently falls back to the demo backend (OTP 1234, fake data). Fail the build instead.
+if (process.env.WD_RELEASE === '1') {
+  const ios = process.env.EAS_BUILD_PLATFORM === 'ios' || process.argv.some(a => a === 'ios');
+  const android = process.env.EAS_BUILD_PLATFORM === 'android' || !ios;
+  if (android && !hasAndroidFirebase) throw new Error('WD_RELEASE=1: firebase/google-services.json is missing, refusing to build a demo app');
+  if (ios && !hasIosFirebase) throw new Error('WD_RELEASE=1: firebase/GoogleService-Info.plist is missing, refusing to build a demo app');
+  if (process.env.EXPO_PUBLIC_DEMO) throw new Error('WD_RELEASE=1: EXPO_PUBLIC_DEMO must not be set in a release build');
+}
 
 const PACKAGE = 'com.washingdaddy.washer'; // must not change: store listings carry over
 
@@ -85,7 +95,14 @@ const config: ExpoConfig = {
           'WD Partner lets you pick a photo from your library when you cannot take one with the camera.',
       },
     ],
-    ['expo-build-properties', { ios: { useFrameworks: 'static' } }],
+    [
+      'expo-build-properties',
+      {
+        ios: { useFrameworks: 'static' },
+        // Firebase Android BoM 35 needs Kotlin 2.3 (the customer app hit the same)
+        android: { minSdkVersion: 24, kotlinVersion: '2.3.21' },
+      },
+    ],
     ...(hasAndroidFirebase
       ? ['@react-native-firebase/app', '@react-native-firebase/auth']
       : []),

@@ -40,9 +40,22 @@ and a duplicate delivery from Cashfree moves the date only once.
 only what the payment screen needs — fee, balance and paid-up date — with no plate, address or
 page id in the response.
 
+## Alerts and safety nets (Oct 2026 hardening)
+
+- Rejected webhooks (bad signature, too old, underpaid, wrong currency, order without an
+  `expectedAmount` tag) answer 401 and send Ravi one Telegram line, at most one per reason per
+  10 minutes. Refunds and failed payments are acked 200 quietly.
+- `expectedAmount` is now mandatory and the currency must be INR.
+- If Notion refuses the book update, Ravi gets "NOTION UPDATE FAILED - credit this by hand" and
+  the webhook answers 500, so Cashfree retries (safe: see next point).
+- Idempotency: the last 500 payment ids are kept in the workflow's static data (only works in
+  published/production runs), and **Last Payment Id** in Notion holds the last 5 ids, comma
+  separated (the column must be a Text property; the old single-id value still works).
+  A duplicate delivery answers 200 and creates nothing, not even a lead.
+
 ## A note on the Code nodes
 
-This n8n has `require()` turned off inside Code nodes, so the signature check carries its own
+This n8n has `require()` turned off inside Code nodes (workflow 9 is the exception, see below), so the signature check carries its own
 SHA-256 and base64 rather than calling Node's `crypto` and `Buffer`. That implementation is
 checked byte-for-byte against Node's `crypto.createHmac` over 400 random inputs, and the
 webhook test signs with Node and verifies with this code, which is the same path Cashfree uses.
@@ -55,9 +68,11 @@ webhook test signs with Node and verifies with this code, which is the same path
    (n8n's own Notion credential, not Header Auth: it adds the Authorization header itself.)
 3. **Cashfree live** — a Custom Auth credential named `Cashfree live` holding
    `{"headers":{"x-client-id":"YOUR_APP_ID","x-client-secret":"YOUR_SECRET_KEY"}}`.
-4. **The secret, once more, in the open.** Open the node **Sach mein Cashfree hai?** and replace
-   `PASTE_YOUR_CASHFREE_SECRET_KEY` with the same Secret Key. A credential cannot be read from a
-   Code node, and that node needs it to check the signature.
+4. **The webhook secret, as an environment variable.** Set `CASHFREE_SECRET` on the n8n container
+   to the same Secret Key (like `TELEGRAM_CHAT_ID`; needs `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`).
+   A credential cannot be read from a Code node, and **Sach mein Cashfree hai?** needs it to check
+   the signature. Never paste the key into the node: exports of this workflow are committed. If the
+   variable is empty the node refuses to run (the webhook fails loudly instead of trusting anyone).
 5. **Telegram** — set an n8n environment variable `TELEGRAM_CHAT_ID` to your Telegram chat id.
    The node reads `$env.TELEGRAM_CHAT_ID` and will skip silently if it is not set (it has
    "Continue on error" on, so a missing chat id never blocks a payment).
@@ -69,7 +84,7 @@ webhook test signs with Node and verifies with this code, which is the same path
 With sandbox keys, pay ₹1 from `washingdaddy.com/pay/`. You should see the Cashfree page open,
 then within a few seconds: the car's **Service Paid Up To** moves a month, **Owes Now** drops,
 and you get a Telegram message. If nothing moves, open the workflow's Executions tab; a failed
-`wd-pay-hook` run almost always means the secret in step 4 doesn't match the one in step 3.
+`wd-pay-hook` run almost always means `CASHFREE_SECRET` in step 4 doesn't match the one in step 3.
 
 ## Going live
 
@@ -124,8 +139,29 @@ prevent the full book being read without any credential).
 1. **Import** `9-washer-cars.json` the same way as 8: *Workflows → … → Import from File*.
 2. The Notion node uses the **same `Notion account` credential** you already made for 8, so
    there is nothing new to fill in. If it shows a red triangle, open it and pick that credential.
-3. **Publish.** Then open `https://n8n.washingdaddy.com/webhook/wd-washer-cars?washer=chotte`
-   in a browser: you should see Chotte's round as JSON.
+3. **Environment** on the n8n container: `FIREBASE_PROJECT_ID` (the Firebase project id, required:
+   the node throws if it is empty), `NODE_FUNCTION_ALLOW_BUILTIN=crypto` (the token check uses
+   `require('crypto')`; without it the node errors and every request fails closed), and optionally
+   `WASHER_PHONES` = `{"+91XXXXXXXXXX":"chotte","+91YYYYYYYYYY":"shahrukh"}`. Without it the node
+   uses the same phone map as the washer apps (`WASHERS` in `data.ts` / `washer/index.html`).
+4. **Publish.** The browser test is now a `401` unless you send a token:
+   `curl -H "Authorization: Bearer <washer ID token>" '.../wd-washer-cars?washer=chotte'`.
+
+## Sign-in required (Oct 2026)
+
+Every request must carry `Authorization: Bearer <Firebase ID token>`. The node **Token check**
+verifies the RS256 signature against Google's `securetoken` certificates (cached in static data,
+refetched on expiry or an unknown key), then `aud` and `iss` = `FIREBASE_PROJECT_ID`, `exp`, and
+that the token's `phone_number` is the washer named in `?washer=`. Anything else is a 401 and no
+Notion query is made.
+
+**Deploy order (transition):** ship the updated washer apps first (native build and
+`washer/index.html`, both now send the header), **then** import this workflow. The old apps send
+no token, so importing first would give every washer an empty round. Cached rounds keep working
+offline in the meantime. If the workflow was imported too early, re-import the previous version.
+
+If the web app is called from a browser, the `Authorization` header makes the request
+"preflighted": n8n answers the OPTIONS check itself; confirm once with the app after import.
 
 ## What the washers will see
 
@@ -171,17 +207,30 @@ the six service areas (all Paschim Vihar, Delhi). Add or update area coordinates
    *Google Firebase Cloud Firestore OAuth2 API*, name it `Firebase service account`, and
    paste the JSON key from a Firebase service account that has Firestore read/write access
    (Firebase console → Project settings → Service accounts → Generate new private key).
-3. **Replace `YOUR_FIREBASE_PROJECT_ID`** in both Firestore nodes with your actual Firebase
-   project ID (e.g. `washing-daddy-prod`).
+3. **Environment** on the n8n container: `FIREBASE_PROJECT_ID` (all three Firestore nodes read
+   `$env.FIREBASE_PROJECT_ID`; the first Code node throws if it is empty). Cashfree is checked
+   with the same `Cashfree live` credential as workflow 8, and alerts use `TELEGRAM_CHAT_ID`.
 4. **Publish.**
+
+## How a job is accepted (Oct 2026)
+
+The webhook is now `POST`. A call is refused unless `doc_id` is a 20-character Firestore id, the
+stored `ondemand` doc is `status: new`, unassigned and under 15 minutes old, and Cashfree says the
+`pay_ref` order is `PAID`, in INR, for exactly the doc's `price` (an order can pay for one job
+only). The area used is the one stored on the doc, never the request's. Unverified paid jobs are not
+dispatched and Ravi gets one Telegram alert per job. The response is only `{ok:true}`.
+Pay-on-arrival jobs still work: a doc with `paid:false` and no `pay_ref` is dispatched as
+before, with no Cashfree call (the washer collects the cash). Only `paid:true` jobs are verified
+with Cashfree; `paid:true` that fails verification, or `paid:false` carrying a `pay_ref`, is not
+dispatched, answers 402 and alerts Ravi.
 
 ## Testing it
 
-POST to `https://n8n.washingdaddy.com/webhook/wd-ondemand-dispatch` with body
-`{"doc_id":"test123","area":"GH-9 Paschim Vihar"}`.
-- If a washer's location in Firestore `locations/chotte` was updated in the last 30 min,
-  the response will be `{assigned:true,washer_id:"chotte",...}`.
-- If no location is fresh, it returns `{assigned:false,reason:"no_active_washers"}` — safe.
+Book a real paid on-demand wash in the customer app, or POST to
+`https://n8n.washingdaddy.com/webhook/wd-ondemand-dispatch` with `{"doc_id":"<id of a fresh ondemand doc>"}`.
+- Fresh, paid job: `{"ok":true}`, and the doc's `washer_id` is set if a washer's `locations/…`
+  doc was updated in the last 30 minutes (otherwise it stays unassigned: safe).
+- Anything else: `400 bad request`, `409 not assignable` or `402 payment not confirmed`.
 
 ## GPS on the washer app
 

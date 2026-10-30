@@ -1,7 +1,8 @@
 # Firebase native config
 
-The app uses React Native Firebase (phone auth + Firestore). It needs two files that are
-**not committed** (they are not secret, but are kept out of git via `.gitignore`):
+The app uses React Native Firebase (phone auth + Firestore). It needs two config files, which
+are **committed to git** (they are not secret; the API keys inside are restricted by package
+name / bundle ID):
 
 - `firebase/google-services.json` (Android)
 - `firebase/GoogleService-Info.plist` (iOS)
@@ -9,7 +10,12 @@ The app uses React Native Firebase (phone auth + Firestore). It needs two files 
 `app.config.ts` only enables the Firebase config plugins when `google-services.json` exists.
 Without the files, `expo prebuild` still works and the app runs in demo mode.
 
-## How to get them (Ravi)
+## CI
+
+GitHub Actions uses the committed `firebase/google-services.json` as is when it runs
+`expo prebuild`. No secret is needed.
+
+## How to get them again (Ravi), e.g. to regenerate
 
 1. Open the Firebase console, project `gen-lang-client-0799769592`.
 2. Project settings, Your apps, **Add app, Android**.
@@ -22,9 +28,3 @@ Without the files, `expo prebuild` still works and the app runs in demo mode.
 4. Authentication, Sign-in method: enable **Phone**.
 5. Authentication, Phone, "Phone numbers for testing": add a test number and fixed code so
    Play Store and App Store reviewers can sign in.
-
-## CI
-
-GitHub Actions reads the Android file from the repository secret `WASHER_GOOGLE_SERVICES_JSON`
-and writes it to `firebase/google-services.json` before `expo prebuild`. If the secret is empty,
-the native build job is skipped.
