@@ -1,3 +1,3 @@
 --------- beginning of main
-10-30 09:08:23.159  2570  2631 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
-10-30 09:08:48.746  2570  2631 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-30 12:41:22.929  2503  2566 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-30 12:41:48.489  2503  2566 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
