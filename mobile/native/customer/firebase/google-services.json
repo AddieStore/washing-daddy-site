@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "82190943726",
+    "project_id": "gen-lang-client-0799769592",
+    "storage_bucket": "gen-lang-client-0799769592.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:82190943726:android:bf835fd60d08508d42faff",
+        "android_client_info": {
+          "package_name": "com.washingdaddy.customer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "82190943726-v1msl9hos22e5dfjfvflqtr8oq46vjjb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHaFOn8x1WTUbvfK2wC4VO8R4UIb_btAk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "82190943726-2nihbbt6nqgrequftvk982jfb3bme0p9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "82190943726-va2ujafpmtaspv4qcmc7os78m3l1bkfn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.washingdaddy.washer"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:82190943726:android:eacd398924f303a442faff",
+        "android_client_info": {
+          "package_name": "com.washingdaddy.washer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "82190943726-58m4aooca7kp2c1kl1ehs716qn88p12l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.washingdaddy.washer",
+            "certificate_hash": "612c8298d4a4ed70a1a53532eb43f842d0bf6469"
+          }
+        },
+        {
+          "client_id": "82190943726-v1msl9hos22e5dfjfvflqtr8oq46vjjb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHaFOn8x1WTUbvfK2wC4VO8R4UIb_btAk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "82190943726-2nihbbt6nqgrequftvk982jfb3bme0p9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "82190943726-va2ujafpmtaspv4qcmc7os78m3l1bkfn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.washingdaddy.washer"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
