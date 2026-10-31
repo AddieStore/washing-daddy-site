@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Image, Pressable, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C, InkContext, creamInk } from '../theme';
+import { C, InkContext, creamInk, SP, R as RAD, HIT } from '../theme';
 import { Page, Topbar, IconBtn, Txt, Card, Rows, Row, Pill, Toggle, Hard, CountUp, PAD, useTheme, useInk } from '../ui/kit';
 import { Pen, Pin, Clock, Key, WhatsApp, Warn, Drop, Logout, GhostCar } from '../ui/icons';
 import { inGroup } from '../data/dates';
@@ -13,20 +13,20 @@ import { sheets } from '../sheets';
 function Head({ title, right }: { title: string; right?: string }) {
   const T = useTheme(), ink = useInk();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: SP.l }}>
       <Txt font="shout" size={30} upper style={[{ flexShrink: 1 }, T.day && { textShadowColor: C.violetInk, textShadowOffset: { width: 3, height: 3 }, textShadowRadius: 0 }]}>{title}</Txt>
       {right ? <Txt size={13} color={ink.fg3}>{right}</Txt> : null}
     </View>
   );
 }
-const Sec = ({ children }: { children: React.ReactNode }) => <View style={{ marginTop: 28 }}>{children}</View>;
+const Sec = ({ children }: { children: React.ReactNode }) => <View style={{ marginTop: SP.section }}>{children}</View>;
 const rail = { marginHorizontal: -PAD } as const;
 const tint = (bg: string, icon: React.ReactNode) => ({ tile: bg, icon });
 
 function Garage() {
   const T = useTheme(), a = A();
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rail} contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 8, paddingTop: 4 }}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rail} contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: SP.s, paddingTop: SP.hair }}>
       {a.cars.map((g, i) => {
         const on = i === S.carIdx, im = carImg(g), ink = on ? T.block : T.card;
         const body = (
@@ -34,21 +34,21 @@ function Garage() {
             <View style={{ height: 84, alignItems: 'center', justifyContent: 'center' }}>
               {im ? <Image source={src(im)!} resizeMode="contain" style={{ width: '100%', height: 84 }} /> : <GhostCar width={160} color={ink.fg3} />}
             </View>
-            <Txt weight={700} style={{ marginTop: 6 }}>{(g.make ? g.make + ' ' : '') + g.name}</Txt>
+            <Txt weight={700} style={{ marginTop: SP.s }}>{(g.make ? g.make + ' ' : '') + g.name}</Txt>
             <Txt size={12} color={ink.fg3}>{maskPlate(g.plate)} · {planOf(g).name}{g.status === 'new' ? ' · starts tomorrow' : ''}</Txt>
           </>
         );
         return on ? (
-          <Hard key={g.id} dx={6} dy={6} radius={24} style={{ width: 226, marginRight: 8 }}>
+          <Hard key={g.id} dx={6} dy={6} radius={RAD.card} style={{ width: 226, marginRight: SP.l }}>
             <InkContext.Provider value={ink}>
-              <Pressable onPress={() => act.pickCar(i)} style={{ backgroundColor: T.day ? C.violetDeep : C.violet2, borderWidth: 3, borderColor: T.day ? C.gold : C.gold, borderRadius: 24, padding: 14 }}>{body}</Pressable>
+              <Pressable onPress={() => act.pickCar(i)} style={{ backgroundColor: T.day ? C.violetDeep : C.violet2, borderWidth: 3, borderColor: T.day ? C.gold : C.gold, borderRadius: RAD.card, padding: SP.l }}>{body}</Pressable>
             </InkContext.Provider>
           </Hard>
-        ) : <Card key={g.id} pad={14} style={{ width: 226, marginRight: 8 }} onPress={() => act.pickCar(i)}>{body}</Card>;
+        ) : <Card key={g.id} pad={SP.l} style={{ width: 226, marginRight: SP.l }} onPress={() => act.pickCar(i)}>{body}</Card>;
       })}
-      <Pressable onPress={() => sheets.addCar()} style={{ width: 220, minHeight: 150, marginRight: 8, marginBottom: 6, borderRadius: 24, borderWidth: 3, borderStyle: 'dashed', borderColor: T.page.dash, alignItems: 'center', justifyContent: 'center' }}>
+      <Pressable onPress={() => sheets.addCar()} style={{ width: 220, minHeight: 150, marginRight: SP.l, marginBottom: 6, borderRadius: RAD.card, borderWidth: 3, borderStyle: 'dashed', borderColor: T.page.dash, alignItems: 'center', justifyContent: 'center' }}>
         <Txt size={30} color={T.page.fg2} style={{ lineHeight: 32 }}>＋</Txt>
-        <Txt weight={600} color={T.page.fg2} style={{ marginTop: 6 }}>Add a car</Txt>
+        <Txt weight={600} color={T.page.fg2} style={{ marginTop: SP.s }}>Add a car</Txt>
         <Txt size={12} color={T.page.fg3}>Add a second car</Txt>
       </Pressable>
     </ScrollView>
@@ -63,14 +63,14 @@ function Look() {
     ['system', 'Auto', <View style={{ flex: 1, flexDirection: 'row' }}><View style={{ flex: 1, backgroundColor: '#5409DA' }} /><View style={{ flex: 1, backgroundColor: '#1A0A33' }} /></View>],
   ];
   return (
-    <View style={{ flexDirection: 'row', gap: 8 }}>
+    <View style={{ flexDirection: 'row', gap: SP.m }}>
       {items.map(([k, label, sw]) => {
         const on = cur === k;
         return (
           <View key={k} style={{ flex: 1 }}>
-            <Hard dx={4} dy={4} radius={18} color={on && T.day ? C.ink : null} reserve={false}>
-              <Pressable onPress={() => act.setTheme(k)} style={{ padding: 10, borderRadius: 18, borderWidth: 2.5, borderColor: on && !T.day ? C.gold : T.day ? C.ink : T.card.line, backgroundColor: T.day ? C.cream : T.card.tile, ...(on && T.day ? { outlineWidth: 3, outlineColor: C.gold } as object : null) }}>
-                <View style={{ height: 52, borderRadius: 12, overflow: 'hidden', marginBottom: 8 }}>
+            <Hard dx={4} dy={4} radius={RAD.card} color={on && T.day ? C.ink : null} reserve={false}>
+              <Pressable onPress={() => act.setTheme(k)} style={{ padding: SP.m, borderRadius: RAD.card, borderWidth: 2.5, borderColor: on && !T.day ? C.gold : T.day ? C.ink : T.card.line, backgroundColor: T.day ? C.cream : T.card.tile, ...(on && T.day ? { outlineWidth: 3, outlineColor: C.gold } as object : null) }}>
+                <View style={{ height: 52, borderRadius: RAD.inner, overflow: 'hidden', marginBottom: SP.s }}>
                   {sw}
                   <View style={{ position: 'absolute', left: 10, right: 10, bottom: 8, height: 16, borderRadius: 6, backgroundColor: C.violet }} />
                 </View>
@@ -91,7 +91,7 @@ export default function Profile() {
   const a = A(), c = car(), tt = totals(), open = a.requests.filter(r => r.open).length;
   const initials = a.name.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
   const stat = (n: number, l: string) => (
-    <Card key={l} pad={12} style={{ flex: 1 }} inner={{ paddingVertical: 14 }}>
+    <Card key={l} pad={SP.m} style={{ flex: 1 }} inner={{ paddingVertical: SP.l }}>
       <CountUp to={n} font="shout" size={28} format={v => inGroup(Math.round(v))} />
       <Txt weight={600} size={11} color={T.card.fg3}>{l}</Txt>
     </Card>
@@ -104,7 +104,7 @@ export default function Profile() {
   const prefs = [['photo', 'Photo when my car is done', 'On WhatsApp, every morning'], ['pay', 'Payment reminder', '3 days before my plan runs out'], ['drops', 'New store drops', 'Twice a month at most']] as const;
   return (
     <Page {...({ ref: sc } as any)} header={<Topbar right={<IconBtn label="Edit profile" onPress={() => sheets.editName()}><Pen size={22} /></IconBtn>} />}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.l, marginTop: SP.s }}>
         <Hard dx={4} dy={4} radius={38} color={T.day ? C.ink : null} reserve={false}>
           <LinearGradient colors={[C.gold, C.orange]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 76, height: 76, borderRadius: 38, borderWidth: T.day ? 3 : 0, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' }}>
             <Txt font="hero" size={30} color={C.ink}>{initials}</Txt>
@@ -115,10 +115,10 @@ export default function Profile() {
           <Txt size={13} color={ink.fg2}>{`+91 ${a.phone.slice(0, 2)}•••• •${a.phone.slice(-4)} · Member since ${a.since}`}</Txt>
         </View>
       </View>
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+      <View style={{ flexDirection: 'row', gap: SP.l, marginTop: SP.xl }}>
         {stat(tt.washes, 'Washes')}{stat(tt.litres, 'Litres saved*')}{stat(tt.streak, 'Day streak')}
       </View>
-      <Txt size={13} color={ink.fg3} style={{ marginTop: 2 }}>*Against a bucket wash. A pressure wash uses about 7 litres a car.</Txt>
+      <Txt size={13} color={ink.fg3} style={{ marginTop: SP.s }}>*Against a bucket wash. A pressure wash uses about 7 litres a car.</Txt>
 
       <Sec><Head title="My garage" right="Tap to switch" /><Garage /></Sec>
 
@@ -131,15 +131,15 @@ export default function Profile() {
       <Sec><Head title="Look" /><Look /></Sec>
 
       <Sec>
-        <Hard dx={8} dy={8} radius={24} style={{ transform: [{ rotate: '-1deg' }] }}>
+        <Hard dx={8} dy={8} radius={RAD.card + 4} style={{ transform: [{ rotate: '-1deg' }] }}>
           <InkContext.Provider value={creamInk}>
-            <View style={{ backgroundColor: C.gold, borderRadius: 24, borderWidth: T.day ? 3 : 0, borderColor: C.ink, padding: 20, overflow: 'hidden' }}>
+            <View style={{ backgroundColor: C.gold, borderRadius: RAD.card + 4, borderWidth: T.day ? 3 : 0, borderColor: C.ink, padding: SP.card, overflow: 'hidden' }}>
               <View style={{ position: 'absolute', right: -20, top: -20, width: 110, height: 110, borderRadius: 55, backgroundColor: C.orange, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '12deg' }] }}>
                 <Txt font="shout" size={30} color={C.cream} style={{ marginLeft: -14, marginTop: 14 }}>₹200</Txt>
               </View>
-              <Txt font="shout" size={34} upper style={{ paddingRight: 84, marginBottom: 6 }}>Get a neighbour off pocha</Txt>
-              <Txt size={13} style={{ marginBottom: 14 }}>They get ₹200 off their first month. You get ₹200 off your next.</Txt>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingVertical: 10, paddingLeft: 16, paddingRight: 10, borderRadius: 14, backgroundColor: C.ink }}>
+              <Txt font="shout" size={34} upper style={{ paddingRight: 84, marginBottom: SP.s }}>Get a neighbour off pocha</Txt>
+              <Txt size={13} style={{ marginBottom: SP.l }}>They get ₹200 off their first month. You get ₹200 off your next.</Txt>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingVertical: SP.s, paddingLeft: SP.l, paddingRight: SP.s, borderRadius: RAD.ctl, backgroundColor: C.ink }}>
                 <Txt font="shout" size={22} color={C.cream} style={{ letterSpacing: 2.6 }}>{refCode()}</Txt>
                 <Pill gold label="Copy invite" onPress={() => act.copyRef()} />
               </View>
@@ -166,8 +166,8 @@ export default function Profile() {
         </Rows>
       </Sec>
 
-      <View style={{ alignItems: 'center', marginTop: 30 }}>
-        <Txt font="hero" size={26} color={T.day ? C.gold : ink.fg3} style={{ marginBottom: 6, opacity: T.day ? 1 : 0.6 }}>Washing Daddy!</Txt>
+      <View style={{ alignItems: 'center', marginTop: SP.section }}>
+        <Txt font="hero" size={26} color={T.day ? C.gold : ink.fg3} style={{ marginBottom: SP.s, opacity: T.day ? 1 : 0.6 }}>Washing Daddy!</Txt>
         <Txt size={12} color={T.day ? ink.fg2 : ink.fg3} style={{ textAlign: 'center' }}>{'Washing Daddy Private Limited · New Delhi' + (REAL ? '' : '\nPrototype. Sign-in, payments and orders use test data.')}</Txt>
       </View>
     </Page>

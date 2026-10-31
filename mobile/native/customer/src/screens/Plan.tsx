@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Image, Pressable, ScrollView, Animated, Easing } from 'react-native';
 import { useWindowDimensions } from 'react-native';
-import { C, InkContext } from '../theme';
+import { C, InkContext, SP, R as RAD } from '../theme';
 import { Page, Topbar, IconBtn, Eyebrow, BigTitle, Em, Txt, Card, Rows, Row, Btn, Hard, Ring, CountUp, Gap, PAD, useTheme, useInk } from '../ui/kit';
 import { Help, Card as CardIc } from '../ui/icons';
 import { PLANS } from '../data/reference';
@@ -18,7 +18,7 @@ const COL = { violet: C.violet, orange: C.orange, sky: C.sky, gold: C.gold, mint
 function Head({ title, right }: { title: string; right?: string }) {
   const T = useTheme(), ink = useInk();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: SP.l }}>
       <Txt font="shout" size={30} upper style={[{ flexShrink: 1 }, T.day && { textShadowColor: C.violetInk, textShadowOffset: { width: 3, height: 3 }, textShadowRadius: 0 }]}>{title}</Txt>
       {right ? <Txt size={13} color={ink.fg3}>{right}</Txt> : null}
     </View>
@@ -45,38 +45,38 @@ function Ticket() {
     </View>
   );
   return (
-    <Hard radius={24}>
+    <Hard radius={RAD.card}>
       <InkContext.Provider value={T.card}>
-        <View style={{ backgroundColor: T.cardBg, borderWidth: T.cardBorderW, borderColor: T.cardBorder, borderRadius: 24, overflow: 'hidden' }}>
+        <View style={{ backgroundColor: T.cardBg, borderWidth: T.cardBorderW, borderColor: T.cardBorder, borderRadius: RAD.card, overflow: 'hidden' }}>
           <InkContext.Provider value={T.block}>
-            <View style={{ backgroundColor: T.day ? C.violetDeep : C.violet2, padding: 22, paddingBottom: 18, borderBottomWidth: T.day ? 3 : 0, borderBottomColor: C.ink, overflow: 'hidden' }}>
+            <View style={{ backgroundColor: T.day ? C.violetDeep : C.violet2, padding: SP.card, paddingBottom: SP.card, borderBottomWidth: T.day ? 3 : 0, borderBottomColor: C.ink, overflow: 'hidden' }}>
               <Eyebrow color={C.gold}>{(c.make ? c.make + ' ' : '') + c.name} · {maskPlate(c.plate)}</Eyebrow>
-              <Txt font="shout" size={40} upper style={{ marginTop: 4 }}>{p.name}</Txt>
+              <Txt font="shout" size={40} upper style={{ marginTop: SP.hair }}>{p.name}</Txt>
               <Txt font="shout" size={22} style={{ marginTop: 6, letterSpacing: 0.4 }}>{inr(p.price)} / month</Txt>
               {im ? <Image source={src(im)!} resizeMode="contain" style={{ position: 'absolute', right: -30, bottom: -14, width: carW, height: carW / k }} /> : null}
-              <Pressable onPress={() => run(act.carPhoto)} hitSlop={8} style={{ marginTop: 10, alignSelf: 'flex-start' }}>
+              <Pressable onPress={() => run(act.carPhoto)} hitSlop={8} style={{ marginTop: 8, minHeight: 36, justifyContent: 'center', alignSelf: 'flex-start' }}>
                 <Txt weight={700} size={14} style={{ textDecorationLine: 'underline' }}>{im ? 'Change car photo' : 'Add a photo of your car'}</Txt>
               </Pressable>
             </View>
           </InkContext.Provider>
-          <View style={{ height: 26, justifyContent: 'center', marginHorizontal: 18 }}>
+          <View style={{ height: 26, justifyContent: 'center', marginHorizontal: SP.l }}>
             <View style={{ borderTopWidth: 2, borderStyle: 'dashed', borderColor: 'rgba(26,10,51,.2)' }} />
             {[-31, null].map((l, i) => <View key={i} style={{ position: 'absolute', top: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: T.bg, borderWidth: T.day ? 3 : 1, borderColor: T.cardBorder, ...(l === null ? { right: -31 } : { left: l }) }} />)}
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, paddingHorizontal: 22, paddingBottom: 18 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.l, paddingHorizontal: SP.card, paddingBottom: SP.l }}>
             <Ring frac={left == null ? 0 : left / 30} size={100} color={C.violet} track="rgba(26,10,51,.1)">
               <View style={{ alignItems: 'center' }}>
                 {left == null ? <Txt font="shout" size={30}>–</Txt> : <CountUp to={left} dur={1200} font="shout" size={30} />}
                 <Txt weight={600} size={9} upper color={T.card.fg2} style={{ letterSpacing: 1 }}>{left == null ? 'not paid' : 'days left'}</Txt>
               </View>
             </Ring>
-            <View style={{ flex: 1, gap: 8 }}>
+            <View style={{ flex: 1, gap: SP.m }}>
               {kv('Status', <View style={{ borderRadius: 7, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: st[1] }}><Txt weight={800} size={11} upper color={st[2]} style={{ letterSpacing: 0.7 }}>{st[0]}</Txt></View>)}
               {kv('Paid up till', c.till ? fmt(c.till, { day: 'numeric', month: 'short', year: 'numeric' }) : 'After first wash')}
               {kv('Washer', c.washer)}
             </View>
           </View>
-          <View style={{ paddingHorizontal: 22, paddingBottom: 22 }}>
+          <View style={{ paddingHorizontal: SP.card, paddingBottom: SP.card }}>
             <Btn variant="violet" label={c.till ? 'Pay next month' : 'Pay first month'} icon={<CardIc size={18} color={C.cream} />} onPress={() => sheets.payPlan()} />
           </View>
         </View>
@@ -88,15 +88,15 @@ function PlanCard({ id }: { id: string }) {
   const T = useTheme(), c = car(), p = planOf(c), pl = PLANS.find(x => x.id === id)!, cur = id === p.id, res = id === 'res' && !cur, dark = cur || res;
   const bg = cur ? C.violet : res ? '#2a1200' : T.day ? C.white : 'rgba(255,255,255,.06)', ink = dark ? T.block : T.card;
   return (
-    <View style={{ width: 250, marginRight: 14, marginBottom: 6 }}>
+    <View style={{ width: 250, marginRight: SP.m, marginBottom: 6 }}>
       <InkContext.Provider value={ink}>
-        <View style={{ flex: 1, backgroundColor: bg, borderRadius: 32, padding: 22, gap: 12, overflow: 'hidden', borderWidth: res ? 1.5 : T.day ? 0 : 1, borderColor: res ? 'rgba(255,186,8,.5)' : T.cardBorder }}>
+        <View style={{ flex: 1, backgroundColor: bg, borderRadius: RAD.card + 4, padding: SP.card, gap: SP.m, overflow: 'hidden', borderWidth: res ? 1.5 : T.day ? 0 : 1, borderColor: res ? 'rgba(255,186,8,.5)' : T.cardBorder }}>
           {cur ? <View style={{ position: 'absolute', top: 16, right: 16, backgroundColor: C.orange, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 3 }}><Txt font="shout" size={14} color={C.cream} upper style={{ letterSpacing: 0.8 }}>Your plan</Txt></View> : null}
           <Txt font="shout" size={26} upper style={{ letterSpacing: 0.5, marginTop: cur ? 18 : 0 }}>{pl.name}</Txt>
           <Txt font="hero" size={36} color={dark ? C.gold : C.violet}>{inr(pl.price)} <Txt size={12} weight={600} color={ink.fg3} style={{ fontFamily: undefined }}>/ month</Txt></Txt>
-          <View style={{ gap: 7 }}>
+          <View style={{ gap: SP.s }}>
             {pl.rows.map(r => (
-              <View key={r[0]} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, borderTopWidth: 2, borderStyle: 'dashed', borderColor: dark ? 'rgba(255,246,233,.3)' : 'rgba(26,10,51,.25)', paddingTop: 8 }}>
+              <View key={r[0]} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, borderTopWidth: 2, borderStyle: 'dashed', borderColor: dark ? 'rgba(255,246,233,.3)' : 'rgba(26,10,51,.25)', paddingTop: SP.s }}>
                 <Txt weight={600} size={13} color={ink.fg2}>{r[0]}</Txt>
                 {r[1] === '—' ? <Txt size={13} color={ink.fg3} style={{ paddingRight: 8 }}>–</Txt>
                   : <View style={{ backgroundColor: C.gold, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2 }}><Txt weight={800} size={12} color={C.ink}>{r[1]}</Txt></View>}
@@ -125,20 +125,20 @@ export default function Plan() {
     <Page {...({ ref: sc } as any)} header={<Topbar right={<IconBtn label="Plan questions" onPress={() => sheets.help()}><Help size={22} /></IconBtn>} />}>
       <Eyebrow>Your plan</Eyebrow>
       <BigTitle><>Daily <Em>pressure</Em> wash. Zero pocha.</></BigTitle>
-      <Gap h={22} />
+      <Gap h={SP.xl} />
       <Ticket />
       {c.status !== 'new' && (
-        <View style={{ marginTop: 24 }}>
+        <View style={{ marginTop: SP.section }}>
           <Head title="Used this month" right={u.range} />
           {[u.cols.slice(0, 2), u.cols.slice(2)].map((row, ri) => (
-            <View key={ri} style={{ flexDirection: 'row', gap: 10 }}>
+            <View key={ri} style={{ flexDirection: 'row', gap: SP.l, marginBottom: ri === 0 ? SP.m : 0 }}>
               {row.map(x => (
-                <Card key={x.label} pad={14} style={{ flex: 1 }}>
+                <Card key={x.label} pad={SP.l} style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COL[x.color] }} />
                     <Txt weight={600} size={12} color={T.card.fg2}>{x.label}</Txt>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5, marginTop: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5, marginTop: SP.s }}>
                     <CountUp to={x.used} dur={1000} font="shout" size={32} />
                     <Txt weight={600} size={13} color={T.card.fg3}>of {x.of}</Txt>
                   </View>
@@ -149,9 +149,9 @@ export default function Plan() {
           ))}
         </View>
       )}
-      <View style={[{ marginTop: 24, marginHorizontal: -PAD, paddingTop: 30, paddingBottom: 18 }, band]}>
+      <View style={[{ marginTop: SP.section, marginHorizontal: -PAD, paddingTop: SP.section, paddingBottom: SP.l }, band]}>
         <InkContext.Provider value={bandInk}>
-          <View style={{ paddingHorizontal: PAD, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+          <View style={{ paddingHorizontal: PAD, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: SP.l }}>
             <Txt font="shout" size={T.day ? 40 : 30} upper>All plans</Txt>
             <Txt size={13} color={bandInk.fg3}>Swipe to compare</Txt>
           </View>
@@ -160,9 +160,9 @@ export default function Plan() {
           </ScrollView>
         </InkContext.Provider>
       </View>
-      <View style={{ marginTop: 24 }}>
-        <Card pad={18}>
-          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+      <View style={{ marginTop: SP.section }}>
+        <Card pad={SP.card}>
+          <View style={{ flexDirection: 'row', gap: SP.m, alignItems: 'center' }}>
             <Txt size={26}>✈︎</Txt>
             <View style={{ flex: 1 }}>
               <Txt weight={700}>{pz ? `Paused ${fmt(c.paused!.from)} – ${fmt(c.paused!.to)}` : 'Going out of town?'}</Txt>
@@ -171,11 +171,11 @@ export default function Plan() {
               </Txt>
             </View>
           </View>
-          {pz ? <Btn variant="ghost" label="Resume washes now" style={{ marginTop: 12 }} onPress={() => run(act.resume)} />
-            : cp ? <Btn variant="ghost" label="Choose dates" style={{ marginTop: 12 }} onPress={() => sheets.pause()} /> : null}
+          {pz ? <Btn variant="ghost" label="Resume washes now" style={{ marginTop: SP.l }} onPress={() => run(act.resume)} />
+            : cp ? <Btn variant="ghost" label="Choose dates" style={{ marginTop: SP.l }} onPress={() => sheets.pause()} /> : null}
         </Card>
       </View>
-      <View style={{ marginTop: 24 }}>
+      <View style={{ marginTop: SP.section }}>
         <Head title="Payments" right={pays.length ? pays.length + ' receipts' : undefined} />
         <Rows>
           {pays.length ? pays.slice(0, 6).map((x, i) => (

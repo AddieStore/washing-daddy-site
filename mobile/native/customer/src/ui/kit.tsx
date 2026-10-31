@@ -6,11 +6,11 @@ import {
 } from 'react-native';
 import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
-import { C, F, Ink, Theme, InkContext, creamInk, nightInk, useInk, useTheme } from '../theme';
+import { C, F, SP, R, HIT, Ink, Theme, InkContext, creamInk, nightInk, useInk, useTheme } from '../theme';
 import { Chev, Arrow, useUid } from './icons';
 
 export { useInk, useTheme };
-export const PAD = 16;
+export const PAD = SP.page;
 export const useInsets = () => useContext(SafeAreaInsetsContext) ?? { top: 0, bottom: 0, left: 0, right: 0 };
 const edgeOf = (T: Theme) => (T.day ? C.ink : 'rgba(255,246,233,.22)');
 const withFg = (T: Theme, fg: string): Ink => ({ ...T.card, fg, fg2: fg, fg3: fg });
@@ -41,22 +41,22 @@ export function Hard({ children, dx = 6, dy = 6, color, radius = 24, style, rese
 
 /* ---------- surfaces ---------- */
 type SurfaceProps = { children?: ReactNode; style?: VS; inner?: VS; pad?: number; onPress?: () => void };
-export function Card({ children, style, inner, pad = 18, onPress }: SurfaceProps) {
+export function Card({ children, style, inner, pad = SP.card, onPress }: SurfaceProps) {
   const T = useTheme(), sh = T.shadow ? 6 : 0;
-  const box: ViewStyle = { backgroundColor: T.cardBg, borderWidth: T.cardBorderW, borderColor: T.cardBorder, borderRadius: 24, padding: pad, overflow: 'hidden' };
+  const box: ViewStyle = { backgroundColor: T.cardBg, borderWidth: T.cardBorderW, borderColor: T.cardBorder, borderRadius: R.card, padding: pad, overflow: 'hidden' };
   return (
-    <Hard dx={sh} dy={sh} radius={24} style={style}>
+    <Hard dx={sh} dy={sh} radius={R.card} reserve={false} style={[{ marginBottom: sh }, style]}>
       <InkContext.Provider value={T.card}>
         {onPress ? <Pressable onPress={onPress} style={[box, inner]}>{children}</Pressable> : <View style={[box, inner]}>{children}</View>}
       </InkContext.Provider>
     </Hard>
   );
 }
-export function Block({ children, style, inner, pad = 18, onPress }: SurfaceProps) {
+export function Block({ children, style, inner, pad = SP.card, onPress }: SurfaceProps) {
   const T = useTheme(), sh = T.shadow ? 6 : 0;
-  const box: ViewStyle = { backgroundColor: T.blockBg, borderWidth: T.day ? 3 : 1, borderColor: T.blockBorder, borderRadius: 24, padding: pad, overflow: 'hidden' };
+  const box: ViewStyle = { backgroundColor: T.blockBg, borderWidth: T.day ? 3 : 1, borderColor: T.blockBorder, borderRadius: R.card, padding: pad, overflow: 'hidden' };
   return (
-    <Hard dx={sh} dy={sh} radius={24} style={style}>
+    <Hard dx={sh} dy={sh} radius={R.card} reserve={false} style={[{ marginBottom: sh }, style]}>
       <InkContext.Provider value={T.block}>
         {onPress ? <Pressable onPress={onPress} style={[box, inner]}>{children}</Pressable> : <View style={[box, inner]}>{children}</View>}
       </InkContext.Provider>
@@ -68,9 +68,9 @@ export function Rows({ children, style }: { children: ReactNode; style?: VS }) {
   const T = useTheme(), sh = T.shadow ? 6 : 0, ink = T.card;
   const kids = Children.toArray(children).filter(Boolean);
   return (
-    <Hard dx={sh} dy={sh} radius={24} style={style}>
+    <Hard dx={sh} dy={sh} radius={R.card} reserve={false} style={[{ marginBottom: sh }, style]}>
       <InkContext.Provider value={T.card}>
-        <View style={{ backgroundColor: T.cardBg, borderWidth: T.cardBorderW, borderColor: T.cardBorder, borderRadius: 24, overflow: 'hidden' }}>
+        <View style={{ backgroundColor: T.cardBg, borderWidth: T.cardBorderW, borderColor: T.cardBorder, borderRadius: R.card, overflow: 'hidden' }}>
           {kids.map((k, i) => <Fragment key={i}>{i > 0 && <View style={{ height: 1.5, backgroundColor: ink.line }} />}{k}</Fragment>)}
         </View>
       </InkContext.Provider>
@@ -82,11 +82,11 @@ export function Row({ icon, tile, title, sub, right, chev, onPress, style }: {
 }) {
   const ink = useInk();
   const body = (pressed: boolean) => (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: pressed ? ink.tile2 : undefined }, style]}>
-      {icon != null && <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: tile ?? ink.tile2, alignItems: 'center', justifyContent: 'center' }}>{typeof icon === 'string' ? <Txt weight={800}>{icon}</Txt> : icon}</View>}
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 56, paddingVertical: 12, paddingHorizontal: SP.l, backgroundColor: pressed ? ink.tile2 : undefined }, style]}>
+      {icon != null && <View style={{ width: 36, height: 36, borderRadius: R.inner, backgroundColor: tile ?? ink.tile2, alignItems: 'center', justifyContent: 'center' }}>{typeof icon === 'string' ? <Txt weight={800}>{icon}</Txt> : icon}</View>}
       <View style={{ flex: 1, minWidth: 0 }}>
-        {typeof title === 'string' ? <Txt weight={600} size={14}>{title}</Txt> : title}
-        {sub != null && (typeof sub === 'string' ? <Txt size={12} color={ink.fg3}>{sub}</Txt> : sub)}
+        {typeof title === 'string' ? <Txt weight={600} size={15} style={{ lineHeight: 20 }}>{title}</Txt> : title}
+        {sub != null && (typeof sub === 'string' ? <Txt size={12.5} color={ink.fg3} style={{ lineHeight: 17, marginTop: 1 }}>{sub}</Txt> : sub)}
       </View>
       {right != null && (typeof right === 'string' ? <Txt weight={700} size={14}>{right}</Txt> : right)}
       {chev && <Chev size={16} color={ink.fg3} />}
@@ -110,7 +110,7 @@ export function Btn({ label, onPress, variant = 'gold', icon, busy, disabled, sm
       <Pressable
         disabled={off} onPress={onPress} onPressIn={() => setDn(true)} onPressOut={() => setDn(false)}
         style={{ transform: [{ translateX: sh ? t : 0 }, { translateY: sh ? t : 0 }, { scale: !sh && dn ? 0.97 : 1 }], backgroundColor: bg, borderRadius: 999, borderWidth: T.day ? 3 : 1.5, borderColor: edge,
-          paddingVertical: small ? 9 : 14, paddingHorizontal: small ? 16 : 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          minHeight: small ? HIT : 52, paddingVertical: small ? 8 : 12, paddingHorizontal: small ? 18 : 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
       >
         <InkContext.Provider value={withFg(T, fg)}>
           {icon}
@@ -126,8 +126,8 @@ export function Pill({ label, children, gold, icon, onPress, style }: { label?: 
   const bg = gold ? C.gold : T.day ? C.cream : 'rgba(255,255,255,.1)', fg = gold ? C.ink : T.day ? C.ink : C.cream;
   return (
     <Hard dx={sh} dy={sh} radius={999} color={sh ? edge : null} style={[{ alignSelf: 'flex-start' }, style]}>
-      <Pressable disabled={!onPress} onPress={onPress} onPressIn={() => setDn(true)} onPressOut={() => setDn(false)}
-        style={{ transform: [{ translateX: sh && dn ? 2 : 0 }, { translateY: sh && dn ? 2 : 0 }], backgroundColor: bg, borderRadius: 999, borderWidth: T.day ? 2.5 : 1, borderColor: edge, paddingVertical: 6, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <Pressable disabled={!onPress} onPress={onPress} hitSlop={onPress ? 6 : undefined} onPressIn={() => setDn(true)} onPressOut={() => setDn(false)}
+        style={{ minHeight: 36, transform: [{ translateX: sh && dn ? 2 : 0 }, { translateY: sh && dn ? 2 : 0 }], backgroundColor: bg, borderRadius: 999, borderWidth: T.day ? 2.5 : 1, borderColor: edge, paddingVertical: 6, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
         <InkContext.Provider value={withFg(T, fg)}>
           {icon}
           {label != null ? <Txt weight={700} size={12.5} color={fg}>{label}</Txt> : children}
@@ -141,9 +141,9 @@ export function IconBtn({ children, onPress, dot, badge, label, style }: { child
   const T = useTheme(), edge = edgeOf(T), sh = T.shadow ? 3 : 0, [dn, setDn] = useState(false);
   const bg = T.day ? C.cream : 'rgba(255,255,255,.1)', fg = T.day ? C.ink : C.cream;
   return (
-    <Hard dx={sh} dy={sh} radius={21} color={sh ? edge : null} style={style}>
+    <Hard dx={sh} dy={sh} radius={HIT / 2} color={sh ? edge : null} style={style}>
       <Pressable accessibilityLabel={label} accessibilityRole="button" onPress={onPress} onPressIn={() => setDn(true)} onPressOut={() => setDn(false)}
-        style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: bg, borderWidth: T.day ? 3 : 1, borderColor: edge, alignItems: 'center', justifyContent: 'center', transform: [{ translateX: sh && dn ? 3 : 0 }, { translateY: sh && dn ? 3 : 0 }] }}>
+        style={{ width: HIT, height: HIT, borderRadius: HIT / 2, backgroundColor: bg, borderWidth: T.day ? 3 : 1, borderColor: edge, alignItems: 'center', justifyContent: 'center', transform: [{ translateX: sh && dn ? 3 : 0 }, { translateY: sh && dn ? 3 : 0 }] }}>
         <InkContext.Provider value={withFg(T, fg)}>{children}</InkContext.Provider>
         {dot ? <View style={{ position: 'absolute', top: 6, right: 6, width: 10, height: 10, borderRadius: 5, backgroundColor: C.red, borderWidth: 2, borderColor: bg }} /> : null}
         {badge != null && badge !== 0 ? (
@@ -168,11 +168,11 @@ export function Eyebrow({ children, color, style }: { children: ReactNode; color
 export function SecHead({ title, gold, link, onLink, style }: { title: string; gold?: string; link?: string; onLink?: () => void; style?: VS }) {
   const T = useTheme(), ink = useInk();
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14 }, style]}>
+    <View style={[{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: SP.l }, style]}>
       <Txt font="shout" size={30} upper style={[{ flexShrink: 1 }, tShadow(T, C.violetInk, 3)]}>
         {title}{gold ? <Text style={{ color: C.gold }}>{title ? ' ' : ''}{gold}</Text> : null}
       </Txt>
-      {link ? <Pressable onPress={onLink} hitSlop={10}><Txt weight={700} size={13} color={T.day ? C.gold : ink.accent}>{link}</Txt></Pressable> : null}
+      {link ? <Pressable onPress={onLink} hitSlop={14}><Txt weight={700} size={13} color={T.day ? C.gold : ink.accent}>{link}</Txt></Pressable> : null}
     </View>
   );
 }
@@ -196,11 +196,11 @@ function Choice({ items, value, onChange, multi, onBg, onFg, gap, r, grow }: { i
   const sel = (k: string) => (Array.isArray(value) ? value.includes(k) : value === k);
   const tap = (k: string) => onChange(multi ? (sel(k) ? (value as string[]).filter(x => x !== k) : [...(value as string[]), k]) : k);
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap, marginTop: 8, marginBottom: 14 }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap, marginTop: SP.s, marginBottom: SP.l }}>
       {items.map(kl).map(o => {
         const on = sel(o.key), s = chipBox(T, on, onBg, onFg);
         return (
-          <Pressable key={o.key} onPress={() => tap(o.key)} style={[{ backgroundColor: s.bg, borderColor: s.bd, borderWidth: s.bw, borderRadius: r, paddingVertical: 9, paddingHorizontal: 13 }, grow && { flexGrow: 1, alignItems: 'center' }]}>
+          <Pressable key={o.key} onPress={() => tap(o.key)} style={[{ backgroundColor: s.bg, borderColor: s.bd, borderWidth: s.bw, borderRadius: r, minHeight: HIT, justifyContent: 'center', paddingVertical: 9, paddingHorizontal: 16 }, grow && { flexGrow: 1, alignItems: 'center' }]}>
             <Txt weight={600} size={13} color={s.fg}>{o.label}</Txt>
           </Pressable>
         );
@@ -208,14 +208,14 @@ function Choice({ items, value, onChange, multi, onBg, onFg, gap, r, grow }: { i
     </View>
   );
 }
-export const Chips = (p: { items: Opt[]; value: string | string[]; onChange: (v: any) => void; multi?: boolean }) => <Choice {...p} onBg={C.gold} onFg={C.ink} gap={8} r={12} />;
-export const Seg = (p: { items: Opt[]; value: string; onChange: (v: string) => void }) => <Choice {...p} onBg={C.violet} onFg={C.cream} gap={8} r={12} grow />;
+export const Chips = (p: { items: Opt[]; value: string | string[]; onChange: (v: any) => void; multi?: boolean }) => <Choice {...p} onBg={C.gold} onFg={C.ink} gap={8} r={R.ctl} />;
+export const Seg = (p: { items: Opt[]; value: string; onChange: (v: string) => void }) => <Choice {...p} onBg={C.violet} onFg={C.cream} gap={8} r={R.ctl} grow />;
 
 export function Opt({ on, onPress, title, text, price, style }: { on?: boolean; onPress?: () => void; title: string; text?: string; price?: string; style?: VS }) {
   const T = useTheme(), ink = useInk(), edge = edgeOf(T), sh = T.shadow && on ? 4 : 0;
   return (
-    <Hard dx={4} dy={4} color={sh ? edge : null} radius={18} reserve={false} style={[{ marginBottom: 12 }, style]}>
-      <Pressable onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, borderWidth: T.day ? 2.5 : 1.5, borderColor: on && !T.day ? C.gold : edge, backgroundColor: on ? (T.day ? C.cream : ink.tile2) : ink.tile }}>
+    <Hard dx={4} dy={4} color={sh ? edge : null} radius={R.card} reserve={false} style={[{ marginBottom: SP.m }, style]}>
+      <Pressable onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, padding: SP.l, borderRadius: R.card, borderWidth: T.day ? 2.5 : 1.5, borderColor: on && !T.day ? C.gold : edge, backgroundColor: on ? (T.day ? C.cream : ink.tile2) : ink.tile }}>
         <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: on ? C.violet : ink.fg3, alignItems: 'center', justifyContent: 'center' }}>
           {on ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: C.violet }} /> : null}
         </View>
@@ -233,7 +233,7 @@ export function Toggle({ on, onChange, disabled }: { on: boolean; onChange?: (v:
   const ink = useInk(), T = useTheme(), x = useRef(new Animated.Value(on ? 1 : 0)).current;
   useEffect(() => { Animated.spring(x, { toValue: on ? 1 : 0, useNativeDriver: true, friction: 6, tension: 160 }).start(); }, [on]);
   return (
-    <Pressable accessibilityRole="switch" accessibilityState={{ checked: on, disabled }} disabled={disabled} onPress={() => onChange?.(!on)}
+    <Pressable accessibilityRole="switch" accessibilityState={{ checked: on, disabled }} disabled={disabled} hitSlop={8} onPress={() => onChange?.(!on)}
       style={{ width: 50, height: 30, borderRadius: 15, backgroundColor: on ? C.mint : ink.tile2, borderWidth: T.day ? 2 : 1, borderColor: on ? C.mint : T.day ? C.ink : ink.line, opacity: disabled ? 0.5 : 1 }}>
       <Animated.View style={{ position: 'absolute', top: 1, left: 1, width: 24, height: 24, borderRadius: 12, backgroundColor: C.white, transform: [{ translateX: x.interpolate({ inputRange: [0, 1], outputRange: [0, 20] }) }] }} />
     </Pressable>
@@ -243,12 +243,12 @@ export function Toggle({ on, onChange, disabled }: { on: boolean; onChange?: (v:
 export function Field({ label, style, boxStyle, onFocus, onBlur, ...p }: TextInputProps & { label?: string; boxStyle?: VS }) {
   const T = useTheme(), ink = useInk(), [f, setF] = useState(false), edge = edgeOf(T);
   return (
-    <View style={[{ marginBottom: 14 }, boxStyle]}>
-      {label ? <Eyebrow style={{ marginBottom: 6 }}>{label}</Eyebrow> : null}
-      <Hard dx={4} dy={4} radius={14} reserve={false} color={f && T.shadow ? edge : null}>
+    <View style={[{ marginBottom: SP.l }, boxStyle]}>
+      {label ? <Eyebrow style={{ marginBottom: SP.s }}>{label}</Eyebrow> : null}
+      <Hard dx={4} dy={4} radius={R.ctl} reserve={false} color={f && T.shadow ? edge : null}>
         <TextInput placeholderTextColor={ink.fg3} {...p}
           onFocus={e => { setF(true); onFocus?.(e); }} onBlur={e => { setF(false); onBlur?.(e); }}
-          style={[{ backgroundColor: T.day ? C.cream : 'rgba(255,255,255,.06)', borderWidth: T.day ? 2.5 : 1.5, borderColor: f && !T.day ? C.gold : edge, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, fontFamily: F.b500, fontSize: 16, color: ink.fg } as TextStyle, style]} />
+          style={[{ backgroundColor: T.day ? C.cream : 'rgba(255,255,255,.06)', borderWidth: T.day ? 2.5 : 1.5, borderColor: f && !T.day ? C.gold : edge, borderRadius: R.ctl, minHeight: 52, paddingVertical: 12, paddingHorizontal: SP.l, fontFamily: F.b500, fontSize: 16, color: ink.fg } as TextStyle, style]} />
       </Hard>
     </View>
   );
@@ -285,7 +285,7 @@ export function CountUp({ to, dur = 900, format = n => String(Math.round(n)), ..
 export function Empty({ title, sub, style }: { title: string; sub?: string; style?: VS }) {
   const T = useTheme(), ink = useInk();
   return (
-    <View style={[{ borderRadius: 24, paddingVertical: 26, paddingHorizontal: 20, alignItems: 'center', borderWidth: T.day ? 3 : 1.5, borderStyle: 'dashed', borderColor: T.day ? C.ink : ink.dash, backgroundColor: T.day ? C.cream : 'transparent' }, style]}>
+    <View style={[{ borderRadius: R.card, paddingVertical: 28, paddingHorizontal: SP.card, alignItems: 'center', borderWidth: T.day ? 3 : 1.5, borderStyle: 'dashed', borderColor: T.day ? C.ink : ink.dash, backgroundColor: T.day ? C.cream : 'transparent' }, style]}>
       <InkContext.Provider value={T.card}>
         <Txt weight={700} size={15} style={{ marginBottom: 4, textAlign: 'center' }}>{title}</Txt>
         {sub ? <Txt size={13.5} color={ink.fg2} style={{ textAlign: 'center' }}>{sub}</Txt> : null}
@@ -313,7 +313,7 @@ export function Confirm({ from, to, fromLabel = 'From', toLabel = 'To', style }:
     </View>
   );
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, borderRadius: 20, backgroundColor: ink.tile2, borderWidth: T.day ? 2.5 : 1, borderColor: T.day ? C.ink : ink.line, marginVertical: 14 }, style]}>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: SP.l, borderRadius: R.card, backgroundColor: ink.tile2, borderWidth: T.day ? 2.5 : 1, borderColor: T.day ? C.ink : ink.line, marginVertical: SP.l }, style]}>
       {cell(fromLabel, from)}<Arrow size={20} color={ink.accent} />{cell(toLabel, to)}
     </View>
   );
@@ -362,7 +362,7 @@ export function Dots({ size = 18, r = 1.3, color }: { size?: number; r?: number;
 }
 export const Gap = ({ h = 16 }: { h?: number }) => <View style={{ height: h }} />;
 
-export function Page({ children, header, footer, scroll = true, pad = PAD, bottom = 110, top = 16, style, contentStyle, ...sp }: ScrollViewProps & {
+export function Page({ children, header, footer, scroll = true, pad = PAD, bottom = 120, top = SP.l, style, contentStyle, ...sp }: ScrollViewProps & {
   children?: ReactNode; header?: ReactNode; footer?: ReactNode; scroll?: boolean; pad?: number; bottom?: number; top?: number; style?: VS; contentStyle?: VS;
 }) {
   const T = useTheme();
@@ -387,12 +387,12 @@ export function Topbar({ left, title, right, style }: { left?: ReactNode; title?
   const T = useTheme(), ins = useInsets();
   return (
     <InkContext.Provider value={T.page}>
-      <View style={[{ backgroundColor: T.barBg, borderBottomWidth: T.day ? 12 : 1, borderBottomColor: T.day ? C.gold : T.page.line, paddingTop: ins.top + 8, paddingBottom: 12, paddingHorizontal: PAD, overflow: 'hidden' }, style]}>
+      <View style={[{ backgroundColor: T.barBg, borderBottomWidth: T.day ? 12 : 1, borderBottomColor: T.day ? C.gold : T.page.line, paddingTop: ins.top + SP.s, paddingBottom: SP.m, paddingHorizontal: PAD, overflow: 'hidden' }, style]}>
         {T.day && <Dots size={14} r={1.4} color="rgba(255,246,233,.13)" />}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 46 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>{left}</View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 48 }}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>{left}</View>
           {typeof title === 'string' ? <Txt font="shout" size={20} upper style={{ letterSpacing: 0.8 }}>{title}</Txt> : title}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 42, justifyContent: 'flex-end' }}>{right}</View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: HIT, flex: 1, justifyContent: 'flex-end' }}>{right}</View>
         </View>
       </View>
     </InkContext.Provider>
