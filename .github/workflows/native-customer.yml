@@ -51,7 +51,7 @@ jobs:
           if [ -f firebase/google-services.json ]; then echo "Firebase: on"; echo "WD_RELEASE=1" >> "$GITHUB_ENV"; else echo "::warning::Firebase off: demo build"; fi
       - run: npx expo prebuild --platform android --no-install
         env: { CI: 1, EXPO_OFFLINE: 1 }
-      - run: ./gradlew assembleRelease --no-daemon
+      - run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
         working-directory: mobile/native/customer/android
       - name: Collect APK
         run: |
