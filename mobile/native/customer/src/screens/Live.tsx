@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Image, Animated, Easing, ScrollView, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C, InkContext, useTheme } from '../theme';
+import { C, InkContext, useTheme, SP, R as RAD } from '../theme';
 import { Txt, Card, Hard, Btn, Pill, Page, Topbar, Eyebrow, Rows, Row, BigTitle, Empty } from '../ui/kit';
 import { Heart } from '../ui/icons';
 import { IMG, src } from '../img';
@@ -20,7 +20,7 @@ function Track({ si, photo }: { si: number; photo: any }) {
   const left = p.interpolate({ inputRange: [0, 1], outputRange: [0, tw] });
   return (
     <>
-      <View onLayout={e => setTw(e.nativeEvent.layout.width)} style={{ marginTop: 24, marginHorizontal: 8, height: 46 }}>
+      <View onLayout={e => setTw(e.nativeEvent.layout.width)} style={{ marginTop: SP.xl, marginHorizontal: SP.s, height: 46 }}>
         <View style={{ position: 'absolute', left: 0, right: 0, top: 21, height: 4, borderRadius: 2, backgroundColor: ink.line }} />
         <Animated.View style={{ position: 'absolute', left: 0, top: 21, height: 4, borderRadius: 2, backgroundColor: C.gold, width: left }} />
         {STAGE_LABEL.map((_, i) => (
@@ -30,7 +30,7 @@ function Track({ si, photo }: { si: number; photo: any }) {
           <Image source={photo} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
         </Animated.View>
       </View>
-      <View style={{ flexDirection: 'row', marginTop: 6, marginHorizontal: -6 }}>
+      <View style={{ flexDirection: 'row', marginTop: SP.s, marginHorizontal: -6 }}>
         {STAGE_LABEL.map((l, i) => <Txt key={l} weight={600} size={10.5} color={i <= si ? ink.fg : ink.fg3} style={{ flex: 1, textAlign: 'center' }}>{l}</Txt>)}
       </View>
     </>
@@ -40,15 +40,15 @@ function Track({ si, photo }: { si: number; photo: any }) {
 function LiveHero() {
   const T = useTheme(), ink = T.block, c = car(), h = liveHead(c), d = h.doc;
   return (
-    <Hard dx={8} dy={8} radius={28} color={T.shadow} style={{ marginTop: 18 }}>
-      <View style={{ borderRadius: T.day ? 28 : 24, borderWidth: T.day ? 12 : 1, borderColor: T.day ? C.gold : T.blockBorder, overflow: 'hidden', padding: 20, backgroundColor: C.violet }}>
+    <Hard dx={8} dy={8} radius={24} color={T.shadow} style={{ marginTop: SP.l }}>
+      <View style={{ borderRadius: 24, borderWidth: T.day ? 12 : 1, borderColor: T.day ? C.gold : T.blockBorder, overflow: 'hidden', padding: SP.card, backgroundColor: C.violet }}>
         <LinearGradient colors={[C.violet, C.violet2]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFill} />
         <InkContext.Provider value={ink}>
           <Eyebrow>{`${c.make ? c.make + ' ' : ''}${c.name} · ${maskPlate(c.plate)}`}</Eyebrow>
-          <Txt font="shout" size={40} upper style={{ marginTop: 10, lineHeight: 38 }}>{h.big}</Txt>
-          <Txt size={13.5} color={ink.fg2} style={{ marginTop: 6 }}>{h.sub}</Txt>
+          <Txt font="shout" size={40} upper style={{ marginTop: SP.m, lineHeight: 38 }}>{h.big}</Txt>
+          <Txt size={13.5} color={ink.fg2} style={{ marginTop: SP.s }}>{h.sub}</Txt>
           {h.stage >= 0 ? <Track si={h.stage} photo={avatar(d)} /> : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: ink.line }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.m, marginTop: SP.xl, paddingTop: SP.l, borderTopWidth: 1, borderTopColor: ink.line }}>
             <Image source={avatar(d)} resizeMode="cover" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.violet2 }} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Txt weight={700} size={14}>{h.washer}</Txt>
@@ -66,10 +66,10 @@ function Timeline() {
   const T = useTheme(), ink = T.card, rows = timeline();
   return (
     <Card pad={0} style={{ marginTop: 0 }}>
-      <View style={{ paddingHorizontal: 16, paddingVertical: 6 }}>
+      <View style={{ paddingHorizontal: SP.l, paddingVertical: SP.s }}>
         <View style={{ position: 'absolute', left: 31, top: 28, bottom: 28, width: 2, backgroundColor: ink.line }} />
         {rows.map((r, i) => (
-          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 }}>
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: SP.m, paddingVertical: SP.s }}>
             <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 2, backgroundColor: r.st === 'done' ? '#2EE6A6' : r.st === 'now' ? C.gold : T.cardBg, borderColor: r.st === 'done' ? '#2EE6A6' : r.st === 'now' ? C.gold : ink.line }}>
               <Txt weight={800} size={13} color={r.st === 'todo' ? ink.fg : C.ink}>{r.st === 'done' ? r.icon || '✓' : r.st === 'now' ? '•' : ''}</Txt>
             </View>
@@ -109,7 +109,7 @@ function Photos() {
   );
   // one photo is the norm: the before tile only shows when there is one
   return (
-    <View style={{ flexDirection: 'row', gap: 16 }}>
+    <View style={{ flexDirection: 'row', gap: SP.xl }}>
       {before ? tile(before, 'Before', '') : null}
       {tile(after, before ? 'After' : 'Your car', 'Photo comes the moment the wash is done')}
       {!before ? <View style={{ flex: 1 }} /> : null}
@@ -135,8 +135,8 @@ export default function Live() {
       <BigTitle em="as it happens.">Your wash,</BigTitle>
       <LiveHero />
       {showNote ? (
-        <Card pad={14} style={{ marginTop: 28 }} inner={{ paddingHorizontal: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+        <Card pad={SP.l} style={{ marginTop: SP.section }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: SP.m }}>
             <Image source={IMG.washer} resizeMode="cover" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.violet }} />
             <View style={{ flex: 1 }}>
               <Txt weight={700} size={13.5}>{`From ${d.washer?.name || c.washer}`}</Txt>
@@ -145,19 +145,19 @@ export default function Live() {
           </View>
         </Card>
       ) : null}
-      <View style={{ marginTop: 28 }}>
+      <View style={{ marginTop: SP.section }}>
         <Head title="This morning" right={<Txt size={13} color={T.page.fg3}>{fmt(d.date || iso(TODAY), { weekday: 'long', day: 'numeric', month: 'short' })}</Txt>} />
         <Timeline />
       </View>
-      <View style={{ marginTop: 28 }}>
+      <View style={{ marginTop: SP.section }}>
         <Head title="Photos" right={<LinkTxt label="Compare" onPress={() => sheets.proof()} />} />
         <Photos />
       </View>
-      <View style={{ marginTop: 28 }}>
+      <View style={{ marginTop: SP.section }}>
         <Btn variant="ghost" label="Replay this morning, live" busy={ui.sim ? 'Playing back…' : false} onPress={() => act.replay()} />
-        <Txt size={11} color={T.page.fg3} style={{ textAlign: 'center', marginTop: 10 }}>Plays the morning back step by step, the way it arrives from the washer app.</Txt>
+        <Txt size={12} color={T.page.fg3} style={{ textAlign: 'center', marginTop: SP.m }}>Plays the morning back step by step, the way it arrives from the washer app.</Txt>
       </View>
-      <View style={{ marginTop: 28 }}>
+      <View style={{ marginTop: SP.section }}>
         <Head title="Last 7 mornings" />
         <Rows>
           {hist.length ? hist.map(([dt, title, sub]) => (

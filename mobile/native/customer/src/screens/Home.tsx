@@ -4,7 +4,7 @@ import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { View, Image, Pressable, Animated, Easing, PanResponder, ScrollView, Text, AccessibilityInfo, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, { Defs, RadialGradient, Stop, Rect, Text as SText } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C, F, InkContext, Theme, violetInk, useTheme } from '../theme';
+import { C, F, SP, R, HIT, InkContext, Theme, violetInk, useTheme } from '../theme';
 import { Txt, Em, Card, Block, Hard, Btn, Pill, IconBtn, Page, Topbar, Ticker, Ring, CountUp, Empty, Eyebrow, PAD } from '../ui/kit';
 import { Bell, Sun, Moon, Auto, Book, Pause, Note, Warn, Heart, Camera, Swipe, Plus, Check } from '../ui/icons';
 import { GhostCar, useUid } from '../ui/icons';
@@ -45,7 +45,7 @@ export function Pulse({ color, size = 8, still }: { color: string; size?: number
 export function Head({ title, gold, right, center, style }: { title: string; gold?: string; right?: ReactNode; center?: boolean; style?: any }) {
   const T = useTheme();
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'baseline', justifyContent: center ? 'center' : 'space-between', gap: 12, marginBottom: 14 }, style]}>
+    <View style={[{ flexDirection: 'row', alignItems: 'baseline', justifyContent: center ? 'center' : 'space-between', gap: 12, marginBottom: SP.l }, style]}>
       <Txt font="shout" size={center ? 40 : 30} upper style={[{ flexShrink: 1, textAlign: center ? 'center' : 'left' }, tsh(T, C.violetInk, 3)]}>
         {title}{gold ? <Text style={{ color: C.gold }}>{title ? ' ' : ''}{gold}</Text> : null}
       </Txt>
@@ -55,7 +55,7 @@ export function Head({ title, gold, right, center, style }: { title: string; gol
 }
 export function LinkTxt({ label, onPress }: { label: string; onPress: () => void }) {
   const T = useTheme();
-  return <Pressable onPress={onPress} hitSlop={10}><Txt weight={700} size={13} color={T.day ? C.gold : T.page.accent}>{label}</Txt></Pressable>;
+  return <Pressable onPress={onPress} hitSlop={14}><Txt weight={700} size={14} color={T.day ? C.gold : T.page.accent}>{label}</Txt></Pressable>;
 }
 // pops in (scale from 0) after a delay
 function Pop({ delay = 0, children, style }: { delay?: number; children: ReactNode; style?: any }) {
@@ -95,7 +95,7 @@ function Marquee() {
 function Hero({ W }: { W: number }) {
   const T = useTheme(), ui = useApp(), rm = useReduceMotion(), id = useUid();
   const c = car(), d = doc(c), p = planOf(c), a = A(), carSrc = carImg(c), key = !c.photo && c.img ? c.img : null;
-  const innerW = W - 32 - (T.day ? 24 : 0), carW = Math.min(innerW * 1.04, 460);
+  const innerW = W - PAD * 2 - (T.day ? 24 : 0), carW = Math.min(innerW * 1.04, 460);
   const x = useRef(new Animated.Value(W * 1.1)).current, bob = useRef(new Animated.Value(0)).current, dir = useRef(1), busy = useRef(false);
   // drive in on mount and whenever the car changes
   useEffect(() => {
@@ -126,7 +126,7 @@ function Hero({ W }: { W: number }) {
   const multi = a.cars.length > 1, live = d.status === 'done' || d.status === 'washing';
   const glass = { backgroundColor: 'rgba(18,7,36,.45)', borderWidth: 1, borderColor: 'rgba(255,246,233,.16)' } as const;
   return (
-    <Hard dx={8} dy={8} radius={28} color={T.shadow} style={{ marginLeft: 16, marginRight: 16 }}>
+    <Hard dx={8} dy={8} radius={28} color={T.shadow} reserve={false} style={{ marginHorizontal: PAD, marginBottom: 8 }}>
       <View {...pan.panHandlers} style={{ height: 400, borderRadius: 28, borderWidth: T.day ? 12 : 0, borderColor: C.gold, overflow: 'hidden', backgroundColor: C.violet }}>
         <InkContext.Provider value={violetInk}>
           <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
@@ -154,21 +154,21 @@ function Hero({ W }: { W: number }) {
               </Animated.View>
             </Animated.View>
           </View>
-          <View style={{ position: 'absolute', top: 14, left: 14, right: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+          <View style={{ position: 'absolute', top: SP.m, left: SP.m, right: SP.m, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
             <View style={[glass, { flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingLeft: 10, paddingRight: 12, borderRadius: 999 }]}>
               <Pulse color={live ? '#2EE6A6' : C.gold} still={!live} />
-              <Txt weight={600} size={12.5} color={C.cream} style={{ flexShrink: 1 }}>{chipText(c, d)}</Txt>
+              <Txt weight={600} size={12.5} color={C.cream} style={{ flexShrink: 1, lineHeight: 17 }}>{chipText(c, d)}</Txt>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {carSrc ? <Pressable accessibilityLabel="Change your car's photo" onPress={() => { void act.carPhoto() }} style={[glass, { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }]}><Camera size={19} color={C.cream} /></Pressable> : null}
+              {carSrc ? <Pressable accessibilityLabel="Change your car's photo" onPress={() => { void act.carPhoto() }} style={[glass, { width: HIT, height: HIT, borderRadius: HIT / 2, alignItems: 'center', justifyContent: 'center' }]}><Camera size={19} color={C.cream} /></Pressable> : null}
               {multi ? (
-                <Pressable accessibilityLabel="Switch car" onPress={() => sw(1)} style={[glass, { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 999 }]}>
+                <Pressable accessibilityLabel="Switch car" onPress={() => sw(1)} style={[glass, { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: HIT, paddingHorizontal: 14, borderRadius: 999 }]}>
                   {a.cars.map((_, i) => <View key={i} style={{ height: 6, width: i === S.carIdx ? 18 : 6, borderRadius: 3, backgroundColor: i === S.carIdx ? C.gold : 'rgba(255,246,233,.45)' }} />)}
                 </Pressable>
               ) : null}
             </View>
           </View>
-          <View pointerEvents="none" style={{ position: 'absolute', left: 18, right: 18, bottom: 18, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+          <View pointerEvents="none" style={{ position: 'absolute', left: SP.card, right: SP.card, bottom: SP.card, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
             <View style={{ flexShrink: 1 }}>
               <Txt font="hero" size={34} color={C.cream} style={{ textShadowColor: C.ink, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0 }}>{c.name}</Txt>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
@@ -194,15 +194,15 @@ function Quick() {
     [<Warn size={24} color={C.red} />, 'Missed a spot', () => sheets.issue()],
   ];
   return (
-    <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
+    <View style={{ flexDirection: 'row', gap: SP.s, marginTop: SP.xl }}>
       {items.map(([ic, label, fn]) => (
-        <Pressable key={label} onPress={fn} style={{ flex: 1, alignItems: 'center', gap: 7 }}>
+        <Pressable key={label} onPress={fn} style={{ flex: 1, alignItems: 'center', gap: SP.s, minHeight: HIT }}>
           {({ pressed }) => (
             <>
-              <Hard dx={3} dy={3} radius={29} color={T.day ? C.ink : null} style={{ transform: [{ translateX: pressed ? 3 : 0 }, { translateY: pressed ? 3 : 0 }] }}>
-                <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: T.day ? C.cream : 'rgba(255,255,255,.1)', borderWidth: T.day ? 3 : 1, borderColor: edgeOf(T), alignItems: 'center', justifyContent: 'center' }}>{ic}</View>
+              <Hard dx={3} dy={3} radius={30} color={T.day ? C.ink : null} style={{ transform: [{ translateX: pressed ? 3 : 0 }, { translateY: pressed ? 3 : 0 }] }}>
+                <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: T.day ? C.cream : 'rgba(255,255,255,.1)', borderWidth: T.day ? 3 : 1, borderColor: edgeOf(T), alignItems: 'center', justifyContent: 'center' }}>{ic}</View>
               </Hard>
-              <Txt weight={T.day ? 700 : 600} size={11.5} color={T.day ? C.cream : T.page.fg2} style={{ textAlign: 'center', lineHeight: 14 }}>{label}</Txt>
+              <Txt weight={T.day ? 700 : 600} size={12} color={T.day ? C.cream : T.page.fg2} style={{ textAlign: 'center', lineHeight: 16 }}>{label}</Txt>
             </>
           )}
         </Pressable>
@@ -216,16 +216,16 @@ function Banners() {
   const T = useTheme(), list = banners();
   if (!list.length) return null;
   return (
-    <View style={{ gap: 10, marginTop: 16 }}>
+    <View style={{ gap: SP.m, marginTop: SP.xl }}>
       {list.map((b, i) => (
-        <Card key={i} pad={12} style={{ marginBottom: 0 }} inner={{ borderRadius: 18 }}>
+        <Card key={i} pad={SP.m} style={{ marginBottom: 0 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: b.tint, alignItems: 'center', justifyContent: 'center' }}><Txt size={16}>{b.icon}</Txt></View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Txt weight={700} size={13.5}>{b.title}</Txt>
               <Txt size={12} color={T.card.fg3} numberOfLines={2}>{b.sub}</Txt>
             </View>
-            <Pressable onPress={() => b.act()} style={{ backgroundColor: T.card.tile2, borderRadius: 10, paddingVertical: 6, paddingHorizontal: 10 }}>
+            <Pressable onPress={() => b.act()} style={{ backgroundColor: T.card.tile2, borderRadius: R.inner, minHeight: HIT, justifyContent: 'center', paddingHorizontal: 14 }}>
               <Txt weight={700} size={12} color={T.card.accent}>{b.btn}</Txt>
             </Pressable>
           </View>
@@ -299,7 +299,7 @@ function Ritual() {
       )}
     </>;
   }
-  return <Block pad={20} style={{ marginTop: 28 }}>{body}</Block>;
+  return <Block pad={20} style={{ marginTop: SP.section }}>{body}</Block>;
 }
 
 /* ---------- proof of shine ---------- */
@@ -310,9 +310,9 @@ function Proof() {
   let img: any = null, cover = false;
   if (real) { if (ap) img = typeof ap.src === 'string' ? src(ap.src) : ap.src }
   else if (c.status !== 'new' && c.img) { cover = c.img === 'scorpio'; img = cover ? IMG.proof : IMG[c.img] }
-  if (!img) return <View style={{ marginTop: 28 }}>{none}</View>;
+  if (!img) return <View style={{ marginTop: SP.section }}>{none}</View>;
   return (
-    <View style={{ marginTop: 28 }}>
+    <View style={{ marginTop: SP.section }}>
       <Head title="Proof of shine" right={!real ? <LinkTxt label="Before / after" onPress={() => sheets.proof()} /> : undefined} />
       <Hard dx={10} dy={10} radius={22} color={T.day ? C.ink : null} style={{ transform: [{ rotate: '-1.5deg' }] }}>
         <Pressable accessibilityLabel="Open this morning's photo" onPress={() => sheets.proof()} style={{ aspectRatio: 4 / 3, borderRadius: 22, borderWidth: T.day ? 10 : 0, borderColor: C.cream, overflow: 'hidden', backgroundColor: '#000' }}>
@@ -341,7 +341,7 @@ function Streak() {
     </View>
   );
   return (
-    <Card pad={18} style={{ marginTop: 28 }}>
+    <Card pad={18} style={{ marginTop: SP.section }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10 }}>
         <View style={{ flex: 1 }}>
           <Eyebrow>{cal.month}</Eyebrow>
@@ -375,7 +375,7 @@ function Week() {
   const T = useTheme(), wk = week();
   const dot = (col: string, l: string) => <Text><Text style={{ color: col }}>{'● '}</Text>{l}{'  '}</Text>;
   return (
-    <View style={{ marginTop: 28 }}>
+    <View style={{ marginTop: SP.section }}>
       <Head title="This week" right={<Txt size={11} color={T.page.fg3} style={{ flexShrink: 1, textAlign: 'right' }}>{dot(C.sky, 'Foam')}{dot(C.orange, 'Interior')}{dot(C.mint, 'Tyre')}{dot(C.gold, 'Detail')}</Txt>} />
       <View style={{ flexDirection: 'row', gap: 6 }}>
         {wk.map((w, i) => {
@@ -399,11 +399,11 @@ function Week() {
 function Washer() {
   const c = car(), T = useTheme(), ink = T.block;
   return (
-    <View style={{ marginTop: 28 }}>
+    <View style={{ marginTop: SP.section }}>
       <Head title="Your washer" />
-      <Block pad={0} inner={{ flexDirection: 'row', alignItems: 'flex-end', gap: 16, paddingRight: 18 }}>
+      <Block pad={0} inner={{ flexDirection: 'row', alignItems: 'flex-end', gap: SP.l, paddingRight: SP.card }}>
         <View style={{ width: 96, height: 120, overflow: 'hidden' }}><Image source={IMG.washer} resizeMode="cover" style={{ width: 118, height: 120, marginLeft: -11 }} /></View>
-        <View style={{ flex: 1, paddingVertical: 16 }}>
+        <View style={{ flex: 1, paddingVertical: SP.card }}>
           <Txt weight={700} size={18}>{c.washer}</Txt>
           <Txt size={12} color={ink.fg2}>{c.status === 'new' ? '★ 4.9 · Starts with your car tomorrow' : `★ 4.9 · Has washed your ${c.name} ${c.washes} times`}</Txt>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
@@ -418,7 +418,7 @@ function Washer() {
 
 /* ---------- photo wall ---------- */
 function Wall({ W }: { W: number }) {
-  const T = useTheme(), pw = (W - 32 - 14) / 2;
+  const T = useTheme(), pw = (W - PAD * 2 - 14) / 2;
   return (
     <View style={{ marginTop: 34, paddingTop: 34, paddingBottom: 10, borderTopWidth: 12, borderTopColor: C.gold, backgroundColor: C.violet }}>
       <View style={{ paddingHorizontal: PAD }}><Head center title="No pocha." gold="Only pressure wash." /></View>
@@ -507,7 +507,7 @@ function ProductCard({ p }: { p: (typeof PRODUCTS)[number] }) {
 }
 function Rail() {
   return (
-    <View style={{ marginTop: 28 }}>
+    <View style={{ marginTop: SP.section }}>
       <View style={{ paddingHorizontal: PAD }}><Head title="Picked for your car" right={<LinkTxt label="Open store" onPress={() => go('store')} />} /></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAD, paddingTop: 4, paddingBottom: 12, gap: 12, alignItems: 'flex-start' }}>
         {homeRail().map(p => <ProductCard key={p.id} p={p} />)}
@@ -534,12 +534,12 @@ export default function Home() {
           <IconBtn label="Switch day or night look" onPress={act.cycleTheme}>{themeIco}</IconBtn>
           <IconBtn label="Updates" dot={A().prefs.photo} onPress={() => sheets.notifs()}><Bell size={20} /></IconBtn>
         </>} />
-      <View style={{ paddingTop: 22, paddingBottom: 18, paddingHorizontal: PAD }}>
-        <Txt weight={600} size={20} color={T.page.fg} style={{ marginBottom: 2 }}>{hi}</Txt>
+      <View style={{ paddingTop: SP.xl, paddingBottom: SP.l + SP.s, paddingHorizontal: PAD }}>
+        <Txt weight={600} size={20} color={T.page.fg} style={{ marginBottom: SP.hair }}>{hi}</Txt>
         <Txt font="shout" size={54} upper color={C.cream} style={[{ lineHeight: 50 }, tsh(T, C.violetInk, 4)]}>{name}, <Em>no more pocha!</Em></Txt>
       </View>
       <Hero W={W} />
-      <View style={{ paddingHorizontal: PAD }}>
+      <View style={{ paddingHorizontal: PAD, paddingBottom: SP.s }}>
         <Quick />
         <Banners />
         <Ritual />

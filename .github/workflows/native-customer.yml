@@ -30,9 +30,13 @@ jobs:
 
   android:
     needs: check
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/')))
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: mobile/native/customer/package-lock.json }
       - uses: actions/setup-java@v4
@@ -43,14 +47,33 @@ jobs:
         env: { GS: '${{ secrets.CUSTOMER_GOOGLE_SERVICES_JSON }}' }
         run: |
           mkdir -p firebase
-          if [ -n "$GS" ]; then printf '%s' "$GS" > firebase/google-services.json; echo "Firebase: on"; echo "WD_RELEASE=1" >> "$GITHUB_ENV"; else echo "::warning::Firebase off: demo build (set CUSTOMER_GOOGLE_SERVICES_JSON)"; fi
+          if [ -n "$GS" ]; then printf '%s' "$GS" > firebase/google-services.json; fi
+          if [ -f firebase/google-services.json ]; then echo "Firebase: on"; echo "WD_RELEASE=1" >> "$GITHUB_ENV"; else echo "::warning::Firebase off: demo build"; fi
       - run: npx expo prebuild --platform android --no-install
-        env: { CI: 1 }
-      - run: ./gradlew assembleRelease bundleRelease --no-daemon
+        env: { CI: 1, EXPO_OFFLINE: 1 }
+      - run: ./gradlew assembleRelease --no-daemon
         working-directory: mobile/native/customer/android
+      - name: Collect APK
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk out/customer-unsigned.apk
       - uses: actions/upload-artifact@v4
         with:
           name: washing-daddy-customer-native
-          path: |
-            mobile/native/customer/android/app/build/outputs/apk/release/*.apk
-            mobile/native/customer/android/app/build/outputs/bundle/release/*.aab
+          path: mobile/native/customer/out/customer-unsigned.apk
+          if-no-files-found: error
+      - name: Commit APK back to the branch
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f mobile/native/customer/out/customer-unsigned.apk
+          git diff --staged --quiet && exit 0
+          git commit -m "Build customer native APK [skip ci]"
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 5))
+          done
+          exit 1

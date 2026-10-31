@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Image, Pressable, ScrollView, PanResponder, AccessibilityInfo, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C, InkContext, violetInk, useTheme, useInk } from '../theme';
+import { C, InkContext, violetInk, useTheme, useInk, SP, R as RAD, HIT } from '../theme';
 import { Txt, Btn, Pill, Rows, Row, Card, Chips, Seg, Opt, Field, Eyebrow, Confirm, useInsets } from '../ui/kit';
 import { SheetTitle, SheetSub, Success } from '../ui/hosts';
 import { Art } from '../ui/art';
@@ -20,11 +20,12 @@ import { TrackMap } from './TrackMap';
 /* ---------- small local helpers ---------- */
 const VIAS = ['GPay', 'PhonePe', 'Paytm', 'Card', 'Net banking'];
 function PayWith({ via, set }: { via: string; set: (v: string) => void }) {
-  return <><Txt weight={600} size={13} style={{ marginTop: 4 }}>Pay with</Txt><Seg items={VIAS} value={via} onChange={set} /></>;
+  return <><Txt weight={600} size={13} style={{ marginTop: SP.hair }}>Pay with</Txt>
+    <View style={{ marginBottom: -SP.s }}><Seg items={VIAS.slice(0, 3)} value={via} onChange={set} /></View><Seg items={VIAS.slice(3)} value={via} onChange={set} /></>;
 }
 function Demo({ children }: { children: string }) {
   const ink = useInk();
-  return <View style={{ marginTop: 12, padding: 10, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: ink.dash }}><Txt size={12} color={ink.fg3} style={{ textAlign: 'center' }}>{children}</Txt></View>;
+  return <View style={{ marginTop: SP.m, padding: SP.m, borderRadius: RAD.inner, borderWidth: 1.5, borderStyle: 'dashed', borderColor: ink.dash }}><Txt size={12} color={ink.fg3} style={{ textAlign: 'center' }}>{children}</Txt></View>;
 }
 // run an action; its Error message goes to a toast and the button comes back
 function useRun() {
@@ -33,21 +34,21 @@ function useRun() {
   return [busy, run] as const;
 }
 const Gap = ({ h = 12 }: { h?: number }) => <View style={{ height: h }} />;
-const Link = ({ label, onPress }: { label: string; onPress: () => void }) => <Pressable onPress={onPress} hitSlop={10}><Txt weight={700} size={13} color={useInk().accent}>{label}</Txt></Pressable>;
+const Link = ({ label, onPress }: { label: string; onPress: () => void }) => <Pressable onPress={onPress} hitSlop={14}><Txt weight={700} size={13} color={useInk().accent}>{label}</Txt></Pressable>;
 // a horizontally scrolling row of choices; `off` entries are dimmed and cannot be tapped
 function Pick({ items, value, onChange, seg }: { items: { key: string; label: string; off?: boolean }[]; value: string; onChange: (k: string) => void; seg?: boolean }) {
   const T = useTheme(), edge = T.day ? C.ink : 'rgba(255,246,233,.22)';
   const row = items.map(o => {
     const on = o.key === value;
     return (
-      <Pressable key={o.key} disabled={o.off} onPress={() => onChange(o.key)} style={[{ opacity: o.off ? 0.35 : 1, borderRadius: 12, borderWidth: T.day ? 2.5 : 1.5, borderColor: edge, paddingVertical: 9, paddingHorizontal: 13,
+      <Pressable key={o.key} disabled={o.off} onPress={() => onChange(o.key)} style={[{ opacity: o.off ? 0.35 : 1, borderRadius: RAD.ctl, borderWidth: T.day ? 2.5 : 1.5, borderColor: edge, minHeight: HIT, justifyContent: 'center', paddingHorizontal: SP.l,
         backgroundColor: on ? (seg ? C.violet : C.gold) : T.day ? C.white : 'rgba(255,255,255,.06)' }, seg && { flexGrow: 1, alignItems: 'center' }]}>
         <Txt weight={600} size={13} color={on ? (seg ? C.cream : C.ink) : T.day ? C.ink : C.cream}>{o.label}</Txt>
       </Pressable>
     );
   });
-  return seg ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 14 }}>{row}</View>
-    : <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8, marginBottom: 14, flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingRight: 8 }}>{row}</ScrollView>;
+  return seg ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SP.s, marginTop: SP.s, marginBottom: SP.l }}>{row}</View>
+    : <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: SP.s, marginBottom: SP.l, flexGrow: 0 }} contentContainerStyle={{ gap: SP.s, paddingRight: SP.s }}>{row}</ScrollView>;
 }
 function Tiles({ a, b, al, bl, as, bs }: { a: string; b: string; al: string; bl: string; as?: string; bs?: string }) {
   const T = useTheme(), ink = useInk();
@@ -59,14 +60,14 @@ function Tiles({ a, b, al, bl, as, bs }: { a: string; b: string; al: string; bl:
     </View>
   );
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, borderRadius: 20, backgroundColor: ink.tile2, borderWidth: T.day ? 2.5 : 1, borderColor: T.day ? C.ink : ink.line, marginVertical: 14 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: SP.l, borderRadius: RAD.card, backgroundColor: ink.tile2, borderWidth: T.day ? 2.5 : 1, borderColor: T.day ? C.ink : ink.line, marginVertical: SP.l }}>
       {cell(al, a, as, false)}<Arrow size={20} color={ink.accent} />{cell(bl, b, bs, true)}
     </View>
   );
 }
 const Qty = ({ q, onMinus, onPlus }: { q: number; onMinus: () => void; onPlus: () => void }) => {
-  const ink = useInk(), b = (l: string, f: () => void, a: string) => <Pressable accessibilityLabel={a} onPress={f} hitSlop={6} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}><Txt weight={800} size={18}>{l}</Txt></Pressable>;
-  return <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 14, backgroundColor: ink.tile2, borderWidth: 2, borderColor: ink.line }}>{b('−', onMinus, 'One fewer')}<Txt weight={700} size={15} style={{ minWidth: 24, textAlign: 'center' }}>{q}</Txt>{b('+', onPlus, 'One more')}</View>;
+  const ink = useInk(), b = (l: string, f: () => void, a: string) => <Pressable accessibilityLabel={a} onPress={f} hitSlop={4} style={{ width: 40, height: HIT, alignItems: 'center', justifyContent: 'center' }}><Txt weight={800} size={18}>{l}</Txt></Pressable>;
+  return <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: RAD.ctl, backgroundColor: ink.tile2, borderWidth: 2, borderColor: ink.line, overflow: 'hidden' }}>{b('−', onMinus, 'One fewer')}<Txt weight={700} size={15} style={{ minWidth: 24, textAlign: 'center' }}>{q}</Txt>{b('+', onPlus, 'One more')}</View>;
 };
 
 /* ---------- day ---------- */
@@ -110,7 +111,7 @@ function Compare() {
       <Txt weight={700} size={11.5} color={right ? C.ink : C.cream}>{txt}</Txt>
     </View>);
   return (
-    <View {...pan.panHandlers} onLayout={e => setW(e.nativeEvent.layout.width)} style={{ height: h || 200, borderRadius: 18, overflow: 'hidden', borderWidth: 3, borderColor: C.ink, backgroundColor: C.ink }}>
+    <View {...pan.panHandlers} onLayout={e => setW(e.nativeEvent.layout.width)} style={{ height: h || 200, borderRadius: RAD.card, overflow: 'hidden', borderWidth: 3, borderColor: C.ink, backgroundColor: C.ink }}>
       {w > 0 && <View pointerEvents="none" style={{ flex: 1 }}>
         <Image source={IMG.proof} style={{ width: w, height: h }} />
         <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: k * w, overflow: 'hidden' }}>
@@ -132,12 +133,12 @@ function Proof() {
       <SheetTitle>{'This morning, ' + (ampm(d.finished_at) || '6:40 AM')}</SheetTitle>
       <SheetSub>Drag to compare with how Delhi dust leaves it by evening.</SheetSub>
       <Compare />
-      <Gap h={14} />
+      <Gap h={SP.l} />
       <Rows>
         <Row title={'Washed by ' + c.washer} sub={c.parking} right={`${d.minutes || c.mins} min`} />
         <Row title="Water used" sub="Pressure wash, no bucket" right="7 L" />
       </Rows>
-      <Btn variant="ghost" label="Something missed? Tell us" onPress={() => sheets.issue()} style={{ marginTop: 12 }} />
+      <Btn variant="ghost" label="Something missed? Tell us" onPress={() => sheets.issue()} style={{ marginTop: SP.l }} />
     </View>
   );
 }
@@ -156,7 +157,7 @@ function PayPlan() {
       <SheetTitle>{`Pay ${inr(p.price)} for ${c.till ? 'one more month' : 'your first month'}`}</SheetTitle>
       <Confirm fromLabel={c.till ? 'Paid up till' : 'Starts'} from={fmt(from)} toLabel="After paying" to={fmt(to)} />
       <PayWith via={via} set={setVia} />
-      <Btn variant="violet" label={'Pay ' + inr(p.price)} busy={busy ? (payReal() ? 'Opening…' : `Opening ${via}…`) : false} onPress={go_} style={{ marginTop: 16 }} />
+      <Btn variant="violet" label={'Pay ' + inr(p.price)} busy={busy ? (payReal() ? 'Opening…' : `Opening ${via}…`) : false} onPress={go_} />
       {payReal() ? null : <Demo>Test version. No money moves. Live payments go through Cashfree.</Demo>}
     </View>
   );
@@ -174,7 +175,7 @@ function SwitchPlan({ id }: { id: any }) {
       <Tiles al="Now" a={cp.name} as={inr(cp.price) + '/mo'} bl="From tomorrow" b={np.name} bs={inr(np.price) + '/mo'} />
       <SheetSub>{pay ? `You pay ${inr(diff)} today for the ${left} days left this month. After that it's ${inr(np.price)} a month.` : 'No charge today. The new price starts from your next payment.'}</SheetSub>
       {pay ? <PayWith via={via} set={setVia} /> : null}
-      <Btn variant="violet" label={pay ? 'Pay ' + inr(diff) + ' and upgrade' : 'Confirm ' + np.name} busy={busy ? (pay ? (payReal() ? 'Opening…' : `Opening ${via}…`) : 'Saving…') : false} onPress={go_} style={{ marginTop: 12 }} />
+      <Btn variant="violet" label={pay ? 'Pay ' + inr(diff) + ' and upgrade' : 'Confirm ' + np.name} busy={busy ? (pay ? (payReal() ? 'Opening…' : `Opening ${via}…`) : 'Saving…') : false} onPress={go_} />
     </View>
   );
 }
@@ -198,7 +199,7 @@ function Pause() {
       <Pick items={starts.map((d, i) => ({ key: String(i), label: i ? fmt(d, { weekday: 'short', day: 'numeric', month: 'short' }) : 'Tomorrow' }))} value={String(starts.findIndex(d => iso(d) === iso(start)))} onChange={k => pick(starts[+k])} />
       <Eyebrow>For</Eyebrow>
       <Pick seg items={[1, 2, 3, 4, 5, 6, 7].map(n => ({ key: String(n), label: n + (n === 1 ? ' day' : ''), off: !pauseFits(c, start, n) }))} value={String(days)} onChange={k => setDays(+k)} />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, borderRadius: 20, backgroundColor: ink.tile2, borderWidth: 2.5, borderColor: ink.line, marginBottom: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: SP.l, borderRadius: RAD.card, backgroundColor: ink.tile2, borderWidth: 2.5, borderColor: ink.line, marginBottom: SP.l }}>
         {ok ? <>{box('No washes', days === 1 ? fmt(start) : fmt(start) + ' – ' + fmt(end))}<Txt>·</Txt>{box('Left in ' + fmt(start, { month: 'long' }), `${pauseLeft(c, start) - Math.min(days, inMonth)} of ${PAUSE_MAX} days`, true)}</>
           : box('No pause days left', `You've used all ${PAUSE_MAX} for ${fmt(start, { month: 'long' })}`)}
       </View>
@@ -228,7 +229,7 @@ function NoteSheet() {
       <Field label="Your note" value={text} onChangeText={setText} multiline numberOfLines={3} maxLength={1000} placeholder="e.g. Please do the boot area too" style={{ minHeight: 84, textAlignVertical: 'top' }} />
       <Chips items={['Car is in the basement', 'Skip tomorrow', 'Extra interior please', 'Clean the boot']} value="" onChange={(v: string) => setText(t => (t ? t.trim() + '. ' : '') + v)} />
       <Btn variant="violet" label={'Send to ' + c.washer} busy={busy ? 'Sending…' : false} onPress={() => run(async () => { await act.note(text); closeSheet(); })} />
-      {c.note ? <Btn variant="ghost" label="Remove note" onPress={() => { act.removeNote(); closeSheet(); }} style={{ marginTop: 8 }} /> : null}
+      {c.note ? <Btn variant="ghost" label="Remove note" onPress={() => { act.removeNote(); closeSheet(); }} style={{ marginTop: SP.m }} /> : null}
     </View>
   );
 }
@@ -237,13 +238,13 @@ function Tip() {
   const c = car(), [amt, setAmt] = useState(50), [via, setVia] = useState('GPay'), [busy, run] = useRun();
   return (
     <View>
-      <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
-        <Image source={IMG.washer} style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: C.violet }} resizeMode="cover" />
+      <View style={{ flexDirection: 'row', gap: SP.l, alignItems: 'center', marginBottom: SP.l }}>
+        <Image source={IMG.washer} style={{ width: 64, height: 64, borderRadius: RAD.card, backgroundColor: C.violet }} resizeMode="cover" />
         <View style={{ flex: 1 }}><SheetTitle>{'Tip ' + c.washer}</SheetTitle><Txt size={14} color={fg2}>All of it goes to him, the same day.</Txt></View>
       </View>
       <Seg items={[20, 50, 100, 200].map(n => ({ key: String(n), label: '₹' + n }))} value={String(amt)} onChange={v => setAmt(+v)} />
       <PayWith via={via} set={setVia} />
-      <Btn label={'Send ' + inr(amt)} busy={busy ? (payReal() ? 'Opening…' : `Opening ${via}…`) : false} style={{ marginTop: 16 }}
+      <Btn label={'Send ' + inr(amt)} busy={busy ? (payReal() ? 'Opening…' : `Opening ${via}…`) : false}
         onPress={() => run(async () => { await act.tip(amt, via); openSheet(<Success title="Sent" sub={`${c.washer} gets ${inr(amt)} and a thank-you from you on WhatsApp.`} />); })} />
     </View>
   );
@@ -254,11 +255,11 @@ function Booked({ name, price, paid, id }: { name: string; price: number; paid: 
   const fg2 = useTheme().card.fg2;
   useEffect(() => { confetti(); }, []);
   return (
-    <View style={{ alignItems: 'center', paddingTop: 6 }}>
+    <View style={{ alignItems: 'center', paddingTop: SP.s }}>
       <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: C.mint, borderWidth: 3, borderColor: C.ink, alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}><Check size={40} color={C.white} /></View>
       <Txt font="shout" size={34} upper style={{ textAlign: 'center' }}>Booked!</Txt>
-      <Txt size={14} color={fg2} style={{ textAlign: 'center', maxWidth: 300, marginTop: 6, marginBottom: 10 }}>{`${name} request sent. ${paid ? 'Paid ₹' + price + '.' : 'Pay ₹' + price + ' on arrival.'}`}</Txt>
-      <Btn variant="violet" label="📍 Track washer live" onPress={() => sheets.track(id)} style={{ marginBottom: 8 }} />
+      <Txt size={14} color={fg2} style={{ textAlign: 'center', maxWidth: 300, marginTop: SP.s, marginBottom: SP.l }}>{`${name} request sent. ${paid ? 'Paid ₹' + price + '.' : 'Pay ₹' + price + ' on arrival.'}`}</Txt>
+      <Btn variant="violet" label="📍 Track washer live" onPress={() => sheets.track(id)} style={{ marginBottom: SP.m }} />
       <Btn label="Done" onPress={closeSheet} />
     </View>
   );
@@ -271,9 +272,9 @@ function Book() {
       <SheetTitle>Book a wash</SheetTitle>
       <SheetSub>{`Washer arrives in 45–60 min. ${real ? 'Pay now by UPI or card.' : 'Pay them on arrival — no advance needed.'}`}</SheetSub>
       {SERVICES.map(s => <Opt key={s.id} on={s.id === svcId} onPress={() => setSvc(s.id)} title={s.name} text={s.d} price={inr(s.price)} />)}
-      <Field label="Which car" value={carTxt} onChangeText={setCarTxt} style={{ marginTop: 0 }} boxStyle={{ marginTop: 14 }} />
+      <Field label="Which car" value={carTxt} onChangeText={setCarTxt} style={{ marginTop: 0 }} boxStyle={{ marginTop: SP.s }} />
       {real ? <PayWith via={via} set={setVia} /> : null}
-      <Btn variant="violet" label={`${real ? 'Pay' : 'Book'} · ${inr(svc.price)}`} busy={busy ? (real ? 'Opening…' : 'Booking…') : false} style={{ marginTop: 16 }}
+      <Btn variant="violet" label={`${real ? 'Pay' : 'Book'} · ${inr(svc.price)}`} busy={busy ? (real ? 'Opening…' : 'Booking…') : false}
         onPress={() => run(async () => { const r = await act.book(svc.id, via); openSheet(<Booked name={svc.name} price={svc.price} paid={r.paid} id={r.id} />); })} />
     </View>
   );
@@ -324,7 +325,7 @@ function Issue() {
         {im ? <Image source={im} resizeMode="contain" style={{ width: '100%', aspectRatio: key && key in RATIO ? RATIO[key as ImgKey] : 1.6, marginBottom: 6 }} /> : null}
         <Chips multi items={['Roof', 'Rims', 'Glass', 'Bonnet', 'Doors', 'Interior', 'Boot']} value={spots} onChange={setSpots} />
       </Card>
-      <Btn variant="violet" label={'Send to ' + c.washer} disabled={!spots.length} busy={busy ? 'Sending…' : false} style={{ marginTop: 14 }}
+      <Btn variant="violet" label={'Send to ' + c.washer} disabled={!spots.length} busy={busy ? 'Sending…' : false} style={{ marginTop: SP.m }}
         onPress={() => run(async () => { await act.issue(spots); openSheet(<Success title="We're on it" sub={`${c.washer} will come back by 11 AM and send a new photo.`} />); })} />
     </View>
   );
@@ -352,15 +353,16 @@ function Orders() {
 
 /* ---------- cart + product ---------- */
 const Thumb = ({ p, size, art }: { p: (typeof PRODUCTS)[number]; size: number; art: number }) => (
-  <LinearGradient colors={p.bg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: size, height: size, borderRadius: size > 100 ? 24 : 14, alignItems: 'center', justifyContent: 'center' }}><Art kind={p.art} c={p.c} size={art} /></LinearGradient>
+  <LinearGradient colors={p.bg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: size, height: size, borderRadius: size > 100 ? RAD.card + 4 : RAD.inner, alignItems: 'center', justifyContent: 'center' }}><Art kind={p.art} c={p.c} size={art} /></LinearGradient>
 );
 function Cart() {
   useApp(); const { lines, sub, save } = cartLines(), c = car(), [via, setVia] = useState('GPay'), [busy, run] = useRun(), ink = useInk();
   if (!lines.length) return (
-    <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+    <View style={{ alignItems: 'center', paddingVertical: SP.l }}>
       <Art kind="cloth" c={['#2E8BFF', '#5409DA']} size={120} />
+      <View style={{ height: SP.m }} />
       <SheetTitle>Your cart is empty</SheetTitle>
-      <SheetSub>Anything you add comes with tomorrow morning's wash.</SheetSub>
+      <Txt size={14} color={ink.fg2} style={{ textAlign: 'center', maxWidth: 300, marginBottom: SP.xl }}>Anything you add comes with tomorrow morning's wash.</Txt>
       <Btn label="Browse the store" onPress={() => { closeSheet(); go('store'); }} />
     </View>);
   const sum = (l: string, v: string, o?: { ok?: boolean; tot?: boolean }) => (
@@ -372,19 +374,19 @@ function Cart() {
       <SheetTitle>Your cart</SheetTitle>
       <SheetSub>{`${c.washer} brings it with tomorrow's wash, to ${c.parking}.`}</SheetSub>
       {lines.map(l => (
-        <View key={l.p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }}>
+        <View key={l.p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: SP.m, paddingVertical: SP.s }}>
           <Thumb p={l.p} size={56} art={44} />
-          <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-start', gap: 6 }}>
+          <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-start', gap: SP.s }}>
             <Txt weight={600} size={14}>{pName(l.p)}</Txt>
             <Qty q={l.q} onMinus={() => act.setQty(l.p.id, -1)} onPlus={() => act.setQty(l.p.id, 1)} />
           </View>
           <Txt weight={700}>{inr(l.total)}</Txt>
         </View>))}
-      <View style={{ marginTop: 10, marginBottom: 6 }}>
+      <View style={{ marginTop: SP.m, marginBottom: SP.l }}>
         {sum('Items', inr(sub))}{sum('You save', '−' + inr(save), { ok: true })}{sum('Delivery with your wash', 'Free', { ok: true })}{sum('Total', inr(sub), { tot: true })}
       </View>
       <PayWith via={via} set={setVia} />
-      <Btn label={'Pay ' + inr(sub)} busy={busy ? (payReal() ? 'Opening…' : `Opening ${via}…`) : false} style={{ marginTop: 16 }}
+      <Btn label={'Pay ' + inr(sub)} busy={busy ? (payReal() ? 'Opening…' : `Opening ${via}…`) : false}
         onPress={() => run(async () => { await act.checkoutCart(via); openSheet(<Success title="Order placed" sub={`${car().washer} brings it tomorrow before 7:30 AM and sends a photo when it's in your car.`} />); })} />
       {payReal() ? null : <Demo>Test version. No money moves.</Demo>}
     </View>
@@ -394,8 +396,8 @@ function Product({ id }: { id: string }) {
   const p = PRODUCTS.find(x => x.id === id)!, c = car(), [q, setQ] = useState(1), ink = useInk();
   return (
     <View>
-      <LinearGradient colors={p.bg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ height: 200, borderRadius: 24, alignItems: 'center', justifyContent: 'center', }}><Art kind={p.art} c={p.c} size={160} /></LinearGradient>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginTop: 18 }}>
+      <LinearGradient colors={p.bg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ height: 200, borderRadius: RAD.card + 4, alignItems: 'center', justifyContent: 'center' }}><Art kind={p.art} c={p.c} size={160} /></LinearGradient>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: SP.m, marginTop: SP.xl }}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Eyebrow>{p.cat}</Eyebrow>
           <SheetTitle>{pName(p)}</SheetTitle>
@@ -406,13 +408,13 @@ function Product({ id }: { id: string }) {
           <Txt size={13} color={ink.fg3} style={{ textDecorationLine: 'line-through' }}>{inr(p.mrp)}</Txt>
         </View>
       </View>
-      <Txt size={14} color={ink.fg2} style={{ marginTop: 8 }}>{p.desc}</Txt>
-      <View style={{ marginTop: 10, marginBottom: 14, gap: 4 }}>{p.pts.map((x, i) => <View key={i} style={{ flexDirection: 'row', gap: 8 }}><Txt color={ink.ok} weight={800}>✓</Txt><Txt size={13.5} style={{ flex: 1 }}>{x}</Txt></View>)}</View>
-      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', padding: 12, borderRadius: 16, backgroundColor: ink.tile2, marginBottom: 16 }}>
+      <Txt size={14} color={ink.fg2} style={{ marginTop: SP.s }}>{p.desc}</Txt>
+      <View style={{ marginTop: SP.m, marginBottom: SP.l, gap: SP.hair + 2 }}>{p.pts.map((x, i) => <View key={i} style={{ flexDirection: 'row', gap: 8 }}><Txt color={ink.ok} weight={800}>✓</Txt><Txt size={13.5} style={{ flex: 1 }}>{x}</Txt></View>)}</View>
+      <View style={{ flexDirection: 'row', gap: SP.m, alignItems: 'center', padding: SP.m, borderRadius: RAD.card, backgroundColor: ink.tile2, marginBottom: SP.l }}>
         <Image source={IMG.washer} style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.violet }} />
         <View style={{ flex: 1 }}><Txt weight={700} size={13.5}>Arrives with tomorrow's wash</Txt><Txt size={12} color={ink.fg3}>{c.washer} brings it by 7:30 AM</Txt></View>
       </View>
-      <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', gap: SP.m, alignItems: 'center' }}>
         <Qty q={q} onMinus={() => setQ(Math.max(1, q - 1))} onPlus={() => setQ(q + 1)} />
         <Btn label={'Add · ' + inr(p.price * q)} style={{ flex: 1 }} onPress={() => { closeSheet(); setTimeout(() => act.addToCart(id, q), 250); }} />
       </View>
@@ -453,7 +455,7 @@ function EditDetail({ k }: { k: 'parking' | 'window' | 'keys' }) {
       <SheetTitle>{k === 'window' ? 'Wash window' : 'Interior cleaning access'}</SheetTitle>
       <SheetSub>{k === 'window' ? c.washer + ' plans his round around this.' : 'Interior days need the car unlocked.'}</SheetSub>
       <Seg items={opts} value={v} onChange={setV} />
-      <Btn variant="violet" label="Save" onPress={save} style={{ marginTop: 2 }} />
+      <Btn variant="violet" label="Save" onPress={save} />
     </View>);
 }
 function EditName() {
@@ -463,7 +465,7 @@ function EditName() {
       <SheetTitle>Your details</SheetTitle><Gap h={8} />
       <Field label="Name" value={v} onChangeText={setV} autoComplete="name" />
       <Eyebrow style={{ marginBottom: 6 }}>Phone</Eyebrow>
-      <View style={{ backgroundColor: T.day ? C.cream : 'rgba(255,255,255,.06)', borderWidth: T.day ? 2.5 : 1.5, borderColor: T.day ? C.ink : ink.line, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, marginBottom: 14 }}>
+      <View style={{ backgroundColor: T.day ? C.cream : 'rgba(255,255,255,.06)', borderWidth: T.day ? 2.5 : 1.5, borderColor: T.day ? C.ink : ink.line, borderRadius: RAD.ctl, minHeight: 52, justifyContent: 'center', paddingHorizontal: SP.l, marginBottom: SP.l }}>
         <Txt weight={500} size={16} color={ink.fg3}>{`+91 ${fmtPhone(A().phone)} · verified`}</Txt>
       </View>
       <Btn variant="violet" label="Save" onPress={() => { act.setName(v); closeSheet(); }} />
@@ -492,11 +494,11 @@ function HelpSheet() {
     <View>
       <SheetTitle>Talk to Washing Daddy</SheetTitle>
       <SheetSub>WhatsApp or call, 7 AM to 9 PM.</SheetSub>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 16, backgroundColor: ink.tile2, borderWidth: T.day ? 2.5 : 1, borderColor: T.day ? C.ink : ink.line, marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SP.l, borderRadius: RAD.card, backgroundColor: ink.tile2, borderWidth: T.day ? 2.5 : 1, borderColor: T.day ? C.ink : ink.line, marginBottom: SP.m }}>
         <Txt weight={800} size={20}>{SUPPORT_PHONE_SHOW}</Txt>
         <Pill gold label="Copy" onPress={() => act.copy('7701808924', 'Number copied')} />
       </View>
-      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+      <View style={{ flexDirection: 'row', gap: SP.l, marginBottom: SP.xl }}>
         <Btn variant="violet" label="Call" onPress={act.call} style={{ flex: 1 }} />
         <Btn label="WhatsApp" onPress={() => act.whatsapp()} style={{ flex: 1 }} />
       </View>
@@ -510,7 +512,7 @@ function Logout() {
       <SheetTitle>Log out?</SheetTitle>
       <SheetSub>{`Your washes carry on. Sign in again with +91 ${fmtPhone(A().phone)}.`}</SheetSub>
       <Btn variant="violet" label="Log out" onPress={() => { closeSheet(); act.logout().catch(e => toast(e.message)); }} />
-      <Btn variant="ghost" label="Stay signed in" onPress={closeSheet} style={{ marginTop: 8 }} />
+      <Btn variant="ghost" label="Stay signed in" onPress={closeSheet} style={{ marginTop: SP.m }} />
     </View>
   );
 }
@@ -521,7 +523,7 @@ function DeleteAccount() {
       <SheetSub>We delete your number, your cars and your wash history within 7 days of your request. Your plan stops and anything unused is not refunded.</SheetSub>
       <SheetSub>Tap the button to send the request to us on WhatsApp. You will be signed out.</SheetSub>
       <Btn variant="violet" label="Send delete request on WhatsApp" onPress={() => { closeSheet(); act.deleteAccount().catch(e => toast(e.message)); }} />
-      <Btn variant="ghost" label="Keep my account" onPress={closeSheet} style={{ marginTop: 8 }} />
+      <Btn variant="ghost" label="Keep my account" onPress={closeSheet} style={{ marginTop: SP.m }} />
     </View>
   );
 }

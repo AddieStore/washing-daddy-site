@@ -12,6 +12,13 @@ export const C = {
   white: '#FFFFFF',
 };
 
+// Layout tokens, an 8pt grid (4 for hairline gaps). Screens use these instead of loose numbers:
+// SP.page = side margin, SP.section = space between page sections, SP.card = padding inside a card,
+// SP.stack = gap between items in a list, SP.tight = gap between a title and its sub line.
+export const SP = { hair: 4, tight: 4, s: 8, m: 12, l: 16, stack: 12, page: 20, card: 20, xl: 24, section: 32, xxl: 40 } as const;
+export const R = { card: 16, inner: 12, ctl: 14, pill: 999 } as const;   // card, tile/row icon, field/control, pill
+export const HIT = 44;   // minimum touch target (iOS HIG)
+
 export const F = {
   shout: 'Anton_400Regular',
   hero: 'AlfaSlabOne_400Regular',
