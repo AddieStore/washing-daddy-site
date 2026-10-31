@@ -203,12 +203,19 @@ the six service areas (all Paschim Vihar, Delhi). Add or update area coordinates
 ## Setting it up
 
 1. **Import** `10-ondemand-dispatch.json`: Workflows → ⋯ → Import from File.
-2. **Firebase service account credential** — in n8n, create a new credential of type
-   *Google Firebase Cloud Firestore OAuth2 API*, name it `Firebase service account`, and
-   paste the JSON key from a Firebase service account that has Firestore read/write access
-   (Firebase console → Project settings → Service accounts → Generate new private key).
-3. **Environment** on the n8n container: `FIREBASE_PROJECT_ID` (all three Firestore nodes read
-   `$env.FIREBASE_PROJECT_ID`; the first Code node throws if it is empty). Cashfree is checked
+2. **Firebase service account credential** — the three Firestore calls ("Job lookup", "Washer
+   locations padhna", "Washer assign karo") are HTTP Request nodes calling the Firestore REST API
+   with a service account (the built-in Firestore node only supports OAuth2 client id/secret, not a
+   service account). In n8n: Credentials → Create → **Google Service Account API**, name it
+   `Firebase service account (Google Service Account API)`, and paste `client_email` and
+   `private_key` from the service-account JSON key (Firebase console → Project settings → Service
+   accounts → Generate new private key) into the form; leave region and impersonate blank. Turn on
+   *Set up for use in HTTP Request node* and set its scopes to
+   `https://www.googleapis.com/auth/datastore`. Then open each of the three HTTP nodes and pick this
+   credential. In Google Cloud: the service account needs the IAM role **Cloud Datastore User**
+   (`roles/datastore.user`), and the **Cloud Firestore API** must be enabled for the project.
+3. **Environment** on the n8n container: `FIREBASE_PROJECT_ID` (all three Firestore HTTP nodes
+   read `$env.FIREBASE_PROJECT_ID`; the first Code node throws if it is empty). Cashfree is checked
    with the same `Cashfree live` credential as workflow 8, and alerts use `TELEGRAM_CHAT_ID`.
 4. **Publish.**
 
@@ -223,6 +230,19 @@ Pay-on-arrival jobs still work: a doc with `paid:false` and no `pay_ref` is disp
 before, with no Cashfree call (the washer collects the cash). Only `paid:true` jobs are verified
 with Cashfree; `paid:true` that fails verification, or `paid:false` carrying a `pay_ref`, is not
 dispatched, answers 402 and alerts Ravi.
+
+## Firestore REST notes
+
+The Code nodes "Job check" and "Nazdeeki washer dhundo" each carry a small decoder for Firestore's
+typed values (`stringValue`, `integerValue`/`doubleValue` as strings, `booleanValue`,
+`timestampValue`, `mapValue.fields`, `arrayValue.values`). "Job lookup" uses neverError, so a
+missing doc (404) becomes `409 not assignable`. "Washer locations padhna" reads up to 100 docs
+(`pageSize=100`). "Washer assign karo" PATCHes only `washer_id`
+(`updateMask.fieldPaths=washer_id`) with the precondition
+`currentDocument.updateTime` = the `updateTime` of the doc read by "Job lookup": if anything changed
+the job in the meantime (e.g. a washer accepted it by hand), Firestore refuses the write
+(FAILED_PRECONDITION), the node errors, nothing is overwritten and the job stays as the other party
+left it.
 
 ## Testing it
 

@@ -92,24 +92,30 @@
     },
     {
       "parameters": {
-        "projectId": "={{ $env.FIREBASE_PROJECT_ID }}",
-        "database": "(default)",
-        "operation": "get",
-        "collection": "ondemand",
-        "documentId": "={{ $json.doc_id }}"
+        "method": "GET",
+        "url": "=https://firestore.googleapis.com/v1/projects/{{ $env.FIREBASE_PROJECT_ID }}/databases/(default)/documents/ondemand/{{ $json.doc_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "job-lookup",
       "name": "Job lookup",
-      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         600,
         -100
       ],
       "credentials": {
-        "googleFirebaseCloudFirestoreOAuth2Api": {
+        "googleApi": {
           "id": "2",
-          "name": "Firebase service account"
+          "name": "Firebase service account (Google Service Account API)"
         }
       },
       "continueOnFail": true,
@@ -118,7 +124,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// F2: only a real, brand-new, unassigned, recent job can be dispatched. The stored job is the\n// source of truth: the request's area (or anything else it sends) is ignored.\nconst j = $input.first().json || {};\nconst docId = $('Request check').first().json.doc_id;\nconst no = why => [{ json: { ok: false, error: 'not assignable', why, doc_id: docId } }];\nif (j.error || !j.service) return no('no such job');\nif (j.status !== 'new') return no('status is not new');\nif (j.washer_id) return no('already assigned');\nconst tms = v => {\n  if (!v) return NaN;\n  if (typeof v === 'string') return new Date(v).getTime();\n  if (v instanceof Date) return v.getTime();\n  if (typeof v === 'object') {\n    const s = v._seconds != null ? v._seconds : v.seconds;\n    return s != null ? Number(s) * 1000 : NaN;\n  }\n  return NaN;\n};\nconst created = tms(j.created_at), now = Date.now();\nif (!Number.isFinite(created) || now - created > 15 * 60 * 1000 || created - now > 5 * 60 * 1000) return no('not fresh');\nconst price = Number(j.price);\nconst area = String(j.area || '');                        // the stored area, not the request's\nconst orderId = String(j.pay_ref || '');\nconst base = { ok: true, doc_id: docId, area, price, reg: String(j.reg || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase() };\n// Pay on arrival: paid is not true and there is no pay_ref. Dispatched as before, no Cashfree call;\n// the washer collects the cash.\nif (j.paid !== true && !orderId && Number.isFinite(price) && price > 0) {\n  return [{ json: { ...base, orderId: '', cash: true } }];\n}\n// paid=true must carry a Cashfree order id that we can check\nif (j.paid !== true || !Number.isFinite(price) || price <= 0 || !/^[A-Za-z0-9_-]{1,50}$/.test(orderId)) {\n  return [{ json: { ...base, orderId: '', why: 'job is not marked as paid' } }];\n}\nreturn [{ json: { ...base, orderId } }];"
+        "jsCode": "// F2: only a real, brand-new, unassigned, recent job can be dispatched. The stored job is the\n// source of truth: the request's area (or anything else it sends) is ignored.\n// Firestore REST typed-value decoder (stringValue, integerValue/doubleValue as strings, booleanValue,\n// timestampValue, mapValue.fields, arrayValue.values, nullValue).\nconst dv = v => {\n  if (v === null || typeof v !== 'object') return undefined;\n  if ('stringValue' in v) return String(v.stringValue);\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return Number(v.doubleValue);\n  if ('booleanValue' in v) return v.booleanValue === true;\n  if ('timestampValue' in v) return String(v.timestampValue);\n  if ('nullValue' in v) return null;\n  if ('mapValue' in v) return dfields((v.mapValue || {}).fields);\n  if ('arrayValue' in v) return ((v.arrayValue || {}).values || []).map(dv);\n  return undefined;\n};\nconst dfields = f => { const o = {}; for (const k of Object.keys(f || {})) o[k] = dv(f[k]); return o; };\nconst raw = $input.first().json || {};\n// REST get: {name, fields, createTime, updateTime}; a missing doc is {error:{code:404,...}}\nconst j = raw.error || !raw.fields ? { error: true } : dfields(raw.fields);\nconst updateTime = String(raw.updateTime || '');\nconst docId = $('Request check').first().json.doc_id;\nconst no = why => [{ json: { ok: false, error: 'not assignable', why, doc_id: docId } }];\nif (j.error || !j.service) return no('no such job');\nif (!updateTime) return no('no such job');\nif (j.status !== 'new') return no('status is not new');\nif (j.washer_id) return no('already assigned');\nconst tms = v => {\n  if (!v) return NaN;\n  if (typeof v === 'string') return new Date(v).getTime();\n  if (v instanceof Date) return v.getTime();\n  if (typeof v === 'object') {\n    const s = v._seconds != null ? v._seconds : v.seconds;\n    return s != null ? Number(s) * 1000 : NaN;\n  }\n  return NaN;\n};\nconst created = tms(j.created_at), now = Date.now();\nif (!Number.isFinite(created) || now - created > 15 * 60 * 1000 || created - now > 5 * 60 * 1000) return no('not fresh');\nconst price = Number(j.price);\nconst area = String(j.area || '');                        // the stored area, not the request's\nconst orderId = String(j.pay_ref || '');\nconst base = { ok: true, doc_id: docId, update_time: updateTime, area, price, reg: String(j.reg || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase() };\n// Pay on arrival: paid is not true and there is no pay_ref. Dispatched as before, no Cashfree call;\n// the washer collects the cash.\nif (j.paid !== true && !orderId && Number.isFinite(price) && price > 0) {\n  return [{ json: { ...base, orderId: '', cash: true } }];\n}\n// paid=true must carry a Cashfree order id that we can check\nif (j.paid !== true || !Number.isFinite(price) || price <= 0 || !/^[A-Za-z0-9_-]{1,50}$/.test(orderId)) {\n  return [{ json: { ...base, orderId: '', why: 'job is not marked as paid' } }];\n}\nreturn [{ json: { ...base, orderId } }];"
       },
       "id": "job-check",
       "name": "Job check",
@@ -164,30 +170,40 @@
     },
     {
       "parameters": {
-        "projectId": "={{ $env.FIREBASE_PROJECT_ID }}",
-        "database": "(default)",
-        "operation": "getAll",
-        "collection": "locations"
+        "method": "GET",
+        "url": "=https://firestore.googleapis.com/v1/projects/{{ $env.FIREBASE_PROJECT_ID }}/databases/(default)/documents/locations",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "pageSize",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
       },
       "id": "read-locations",
       "name": "Washer locations padhna",
-      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         2000,
         -200
       ],
       "credentials": {
-        "googleFirebaseCloudFirestoreOAuth2Api": {
+        "googleApi": {
           "id": "2",
-          "name": "Firebase service account"
+          "name": "Firebase service account (Google Service Account API)"
         }
       }
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// GPS auto-dispatch: pick the nearest active washer to the customer's area.\n// 'Active' means their location doc was updated within the last 30 minutes.\n\n// Approximate centre-point coordinates for each service area (Paschim Vihar, Delhi).\nconst AREA_COORDS = {\n  'GH-9 Paschim Vihar':    {lat: 28.6680, lng: 77.0989},\n  'GH-6 Paschim Vihar':    {lat: 28.6695, lng: 77.0970},\n  'GH-14 Paschim Vihar':   {lat: 28.6705, lng: 77.0982},\n  'Meera Bagh':             {lat: 28.6720, lng: 77.1065},\n  'Sundar Vihar':           {lat: 28.6710, lng: 77.1110},\n  'Guru Hari Apartments':   {lat: 28.6650, lng: 77.0960},\n};\n\nfunction haversine(lat1, lng1, lat2, lng2) {\n  const R = 6371000; // metres\n  const dLat = (lat2 - lat1) * Math.PI / 180;\n  const dLng = (lng2 - lng1) * Math.PI / 180;\n  const a = Math.sin(dLat/2)**2 +\n    Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;\n  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));\n}\n\n// Job validated and payment verified upstream. doc id and area come from the STORED job\n// ('Job check'), never from the request.\nconst job = $('Job check').first().json;\nconst docId = job.doc_id;\nconst area  = job.area;\n\n// All location docs read by the Firestore node.\nconst now = Date.now();\nconst STALE_MS = 30 * 60 * 1000; // 30 min\n\nconst active = $input.all()\n  .map(i => i.json)\n  .filter(loc => {\n    if (!loc.washer_id || !loc.lat || !loc.lng) return false;\n    // updated_at is an IST ISO string like \"2026-10-18T06:42:00+05:30\"\n    const age = now - new Date(loc.updated_at).getTime();\n    return age <= STALE_MS;\n  });\n\nif (!active.length) {\n  // No washer is broadcasting GPS — leave washer_id blank so both get the job alert.\n  return [{json: {ok: true, assigned: false, reason: 'no_active_washers', doc_id: docId}}];\n}\n\nconst target = AREA_COORDS[area];\nif (!target) {\n  // Unknown area — pick the washer with the most recent location update.\n  active.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));\n  return [{json: {ok: true, assigned: true, washer_id: active[0].washer_id, doc_id: docId, method: 'newest'}}];\n}\n\n// Nearest active washer by Haversine distance.\nlet best = null, bestDist = Infinity;\nfor (const loc of active) {\n  const d = haversine(loc.lat, loc.lng, target.lat, target.lng);\n  if (d < bestDist) { bestDist = d; best = loc; }\n}\n\nreturn [{json: {ok: true, assigned: !!best, washer_id: best ? best.washer_id : null, doc_id: docId, dist_m: Math.round(bestDist), method: 'nearest'}}];"
+        "jsCode": "// Firestore REST typed-value decoder (stringValue, integerValue/doubleValue as strings, booleanValue,\n// timestampValue, mapValue.fields, arrayValue.values, nullValue).\nconst dv = v => {\n  if (v === null || typeof v !== 'object') return undefined;\n  if ('stringValue' in v) return String(v.stringValue);\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return Number(v.doubleValue);\n  if ('booleanValue' in v) return v.booleanValue === true;\n  if ('timestampValue' in v) return String(v.timestampValue);\n  if ('nullValue' in v) return null;\n  if ('mapValue' in v) return dfields((v.mapValue || {}).fields);\n  if ('arrayValue' in v) return ((v.arrayValue || {}).values || []).map(dv);\n  return undefined;\n};\nconst dfields = f => { const o = {}; for (const k of Object.keys(f || {})) o[k] = dv(f[k]); return o; };\n\n// GPS auto-dispatch: pick the nearest active washer to the customer's area.\n// 'Active' means their location doc was updated within the last 30 minutes.\n\n// Approximate centre-point coordinates for each service area (Paschim Vihar, Delhi).\nconst AREA_COORDS = {\n  'GH-9 Paschim Vihar':    {lat: 28.6680, lng: 77.0989},\n  'GH-6 Paschim Vihar':    {lat: 28.6695, lng: 77.0970},\n  'GH-14 Paschim Vihar':   {lat: 28.6705, lng: 77.0982},\n  'Meera Bagh':             {lat: 28.6720, lng: 77.1065},\n  'Sundar Vihar':           {lat: 28.6710, lng: 77.1110},\n  'Guru Hari Apartments':   {lat: 28.6650, lng: 77.0960},\n};\n\nfunction haversine(lat1, lng1, lat2, lng2) {\n  const R = 6371000; // metres\n  const dLat = (lat2 - lat1) * Math.PI / 180;\n  const dLng = (lng2 - lng1) * Math.PI / 180;\n  const a = Math.sin(dLat/2)**2 +\n    Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;\n  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));\n}\n\n// Job validated and payment verified upstream. doc id and area come from the STORED job\n// ('Job check'), never from the request.\nconst job = $('Job check').first().json;\nconst docId = job.doc_id;\nconst area  = job.area;\n\n// All location docs read by the Firestore REST call (decoded above).\nconst now = Date.now();\nconst STALE_MS = 30 * 60 * 1000; // 30 min\n\n// REST list: one item {documents:[{name, fields, ...}]}; an empty collection is {}.\nconst active = $input.all()\n  .flatMap(i => (i.json && Array.isArray(i.json.documents)) ? i.json.documents : [])\n  .map(doc => dfields(doc.fields))\n  .filter(loc => {\n    if (!loc.washer_id || !loc.lat || !loc.lng) return false;\n    // updated_at is an IST ISO string like \"2026-10-18T06:42:00+05:30\"\n    const age = now - new Date(loc.updated_at).getTime();\n    return age <= STALE_MS;\n  });\n\nif (!active.length) {\n  // No washer is broadcasting GPS — leave washer_id blank so both get the job alert.\n  return [{json: {ok: true, assigned: false, reason: 'no_active_washers', doc_id: docId}}];\n}\n\nconst target = AREA_COORDS[area];\nif (!target) {\n  // Unknown area — pick the washer with the most recent location update.\n  active.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));\n  return [{json: {ok: true, assigned: true, washer_id: active[0].washer_id, doc_id: docId, method: 'newest'}}];\n}\n\n// Nearest active washer by Haversine distance.\nlet best = null, bestDist = Infinity;\nfor (const loc of active) {\n  const d = haversine(loc.lat, loc.lng, target.lat, target.lng);\n  if (d < bestDist) { bestDist = d; best = loc; }\n}\n\nreturn [{json: {ok: true, assigned: !!best, washer_id: best ? best.washer_id : null, doc_id: docId, dist_m: Math.round(bestDist), method: 'nearest'}}];"
       },
       "id": "nearest-washer",
       "name": "Nazdeeki washer dhundo",
@@ -230,30 +246,40 @@
     },
     {
       "parameters": {
-        "projectId": "={{ $env.FIREBASE_PROJECT_ID }}",
-        "database": "(default)",
-        "operation": "update",
-        "collection": "ondemand",
-        "documentId": "={{ $('Nazdeeki washer dhundo').first().json.doc_id }}",
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "washer_id": "={{ $('Nazdeeki washer dhundo').first().json.washer_id }}"
-          }
-        }
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/{{ $env.FIREBASE_PROJECT_ID }}/databases/(default)/documents/ondemand/{{ $('Nazdeeki washer dhundo').first().json.doc_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "updateMask.fieldPaths",
+              "value": "washer_id"
+            },
+            {
+              "name": "currentDocument.updateTime",
+              "value": "={{ $('Job check').first().json.update_time }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fields: { washer_id: { stringValue: String($('Nazdeeki washer dhundo').first().json.washer_id) } } }) }}",
+        "options": {}
       },
       "id": "assign-washer",
       "name": "Washer assign karo",
-      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         2600,
         -300
       ],
       "credentials": {
-        "googleFirebaseCloudFirestoreOAuth2Api": {
+        "googleApi": {
           "id": "2",
-          "name": "Firebase service account"
+          "name": "Firebase service account (Google Service Account API)"
         }
       }
     },
