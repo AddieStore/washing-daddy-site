@@ -53,6 +53,63 @@ page id in the response.
   separated (the column must be a Text property; the old single-id value still works).
   A duplicate delivery answers 200 and creates nothing, not even a lead.
 
+## Invite reward and Referral Credit (1 Nov 2026)
+
+The version with invites is `n8n/2026-11-01/8-cashfree.json` (same workflow, 10 more nodes; the
+older `8-cashfree.json` is kept as it was). Both the friend and the customer who invited them get
+₹200. The rules are in the invite contract; this is what the server does.
+
+**Two new columns in Monthly Customers (add them before importing):**
+
+| Column | Type | Who writes it |
+|---|---|---|
+| `Referred By` | Text | the hook, on the friend's row, the moment their first payment is confirmed (e.g. `WD123456`) |
+| `Referral Credit` | Number | the hook: +200 on the inviter's row per friend, minus whatever a payment used |
+
+Until both columns exist, no discount is ever offered (the order checks the columns are there), so
+importing first is safe, but nobody gets the reward.
+
+**At order time (`wd-pay-order`).** The app sends `ref` (e.g. `WD123456`) with a plan payment and
+always the full list price as `amount`. The friend gets `min(200, price)` off only if: the payment
+is a plan, the code is `WD` plus 6 digits, exactly one row in Monthly Customers has a **Phone**
+ending in those 6 digits (that row is the inviter), the inviter is not the payer (same row, same
+phone, or the payer's phone ends in the code), and the payer is new: the car's row, if there is one,
+and every row under the payer's phone have no Last Payment Id, no Service Paid Up To and no
+Referred By. Anything else: no discount, full price, the payment still goes ahead. Separately, a
+car whose row has Referral Credit gets `min(credit, amount)` off its next plan or monthly-bill
+payment (never tips, store, one-time washes or upgrades). At least ₹1 is always charged
+(Cashfree cannot take ₹0, and a free order would move the paid-up date with no signed payment).
+The answer now has `discount` (total taken off), `inviteDiscount`, `creditUsed` and `amount`.
+
+What was applied is written into the Cashfree order tags: `fullAmount`, `expectedAmount` (what is
+charged), `invite` = `WD123456:<inviter's Notion page id>:200` and `creditUsed`. Only this workflow
+can create orders with our Cashfree keys, and the webhook is signed, so the hook trusts these tags
+and nothing the browser sent.
+
+**At payment (`wd-pay-hook`).** After the signature check and the duplicate check:
+
+- The amount check compares with the discounted `expectedAmount`, and the tags must add up
+  exactly (`fullAmount − invite − creditUsed = expectedAmount`, invite ≤ 200, discounts only on
+  plan/bill orders, credit only with a page id). Otherwise 401 and a "REJECTED" Telegram.
+- The friend's row gets `Referred By` **in the same Notion update** as Last Payment Id and the
+  paid-up date, and the credit they used comes off their `Referral Credit` in that update too.
+  Owes Now drops by the money plus the discounts.
+- Only after Notion accepted that update (or, for a car not on the book, after the lead is logged)
+  the inviter's row is read fresh and gets +200. If that write fails, Ravi gets
+  "INVITE CREDIT FAILED - credit this by hand" and Cashfree is answered 200 (not retried), so the
+  reward can never be paid twice. If the friend's own update fails, nothing is credited, Ravi gets
+  "NOTION UPDATE FAILED", the hook answers 500 and Cashfree's retry does everything once.
+- No second reward: the friend's row already has Referred By or had paid before, or (for cars not
+  on the book) the car's plate or phone already earned one (remembered in workflow static data).
+  Ravi is told on Telegram when a discount was given but no reward was paid, and when credit was
+  spent twice (two unpaid orders made at once).
+- A friend whose car is not on the book yet: the payment is logged as a lead as before, the inviter
+  is credited, and the Telegram line asks Ravi to set `Referred By` when he adds the car.
+
+Tests: `node n8n/2026-11-01/tests/invite.test.js` runs the workflow JSON itself against a fake
+Notion and Cashfree (72 checks). Plates on the book should be typed without spaces (`DL3CXY9999`),
+or the hook's search misses the car (finding F9 in the 29 Oct audit; unchanged here).
+
 ## A note on the Code nodes
 
 This n8n has `require()` turned off inside Code nodes (workflow 9 is the exception, see below), so the signature check carries its own
