@@ -247,7 +247,14 @@ async function pay(kind: string, d: { amt: number; what: string; [k: string]: an
   } catch (e: any) { throw new Error(`Payment didn't go through. Nothing was charged. (no connection to the payment server: ${String(e && e.message || e).slice(0, 60)})`) }
   if (!ok || !j || !j.paymentSessionId) throw new Error(j && j.message ? j.message + ' Nothing was charged.' : `Payment didn't go through. Nothing was charged. (payment server answered ${status}${j ? '' : ', not JSON'})`);
   try { await cashfreeCheckout(j.paymentSessionId, j.orderId || j.order_id) }
-  catch (e: any) { throw new Error(e && e.cancelled ? 'Payment cancelled. Nothing was charged.' : `Payment didn't go through. Nothing was charged. (checkout: ${String(e && e.message || e).slice(0, 80)})`) }
+  catch (e: any) {
+    if (e && e.cancelled) throw new Error('Payment cancelled. Nothing was charged.');
+    // The native checkout refuses apps that were not installed from the Play Store (APK installs). Pay on Cashfree's
+    // hosted page in the browser instead: same order, same webhook, same return page.
+    try { await Linking.openURL('https://washingdaddy.com/pay/go/?s=' + encodeURIComponent(j.paymentSessionId)) }
+    catch (e2) { throw new Error(`Payment didn't go through. Nothing was charged. (checkout: ${String(e && e.message || e).slice(0, 80)})`) }
+    toast('Finish the payment in your browser, then come back here.');
+  }
   if (kind === 'plan') {
     if (Number(j.discount) > 0) toast('Invite applied: ₹200 off');
     if (pendingInvite) setPendingRef('');   // first plan payment is on its way: the code is spent
@@ -257,7 +264,7 @@ async function pay(kind: string, d: { amt: number; what: string; [k: string]: an
 // After a payment the book is the truth, not the app: the webhook moves the paid-up date a second or two later
 async function pollPaidTo(c: Car, was: string) {
   if (!payReal() || !c.plate) return;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 45; i++) {   // up to ~3 minutes: paying in the browser takes longer than the native sheet
     await wait(i < 3 ? 1500 : 4000);
     let j: any = null;
     try { const r = await fetch(N8N + '/wd-pay-lookup?car=' + encodeURIComponent(c.plate), { cache: 'no-store' } as any); j = await r.json() } catch (e) { continue }
