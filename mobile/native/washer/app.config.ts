@@ -88,6 +88,8 @@ const config: ExpoConfig = {
       {
         locationWhenInUsePermission:
           'WD Partner uses your location while the app is open so customers can see you on your way to their car.',
+        // onboarding asks for "Allow all the time" on Android (adds ACCESS_BACKGROUND_LOCATION); the tracking itself is not built yet
+        isAndroidBackgroundLocationEnabled: true,
       },
     ],
     [

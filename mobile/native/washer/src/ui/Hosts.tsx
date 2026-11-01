@@ -5,7 +5,8 @@ import { onConfetti, onFlash, onToast } from './bus';
 import { SheetHost } from './Sheet';
 import { F, brand } from './theme';
 
-function useReducedMotion() {
+/** true when the phone asks for less motion (Settings > Accessibility); loops and entrances should then stay still */
+export function useReducedMotion() {
   const [rm, setRm] = useState(false);
   useEffect(() => {
     let alive = true;

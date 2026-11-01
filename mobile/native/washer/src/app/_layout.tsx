@@ -13,6 +13,7 @@ import { ThemeProvider, useTheme } from '../ui/theme';
 import { UiHosts } from '../ui/Hosts';
 import { boot, onForeground, useStore, view, S } from '../state/store';
 import AuthScreen from '../screens/Auth';
+import OnboardingScreen from '../screens/Onboarding';
 import JobAlert from '../screens/JobAlert';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -25,8 +26,11 @@ function Gate() {
   if (step === 'loading') return <View style={{ flex: 1, backgroundColor: '#5409DA' }} />;
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <StatusBar style={dark ? 'light' : 'dark'} />
-      {step === 'in'
+      {/* sign-in and onboarding sit on violet: light status-bar icons there */}
+      <StatusBar style={dark || step !== 'in' || view.onboarding ? 'light' : 'dark'} />
+      {view.onboarding
+        ? <OnboardingScreen />
+        : step === 'in'
         ? <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="job" options={{ animation: 'slide_from_right' }} />

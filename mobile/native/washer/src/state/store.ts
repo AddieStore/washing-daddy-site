@@ -39,8 +39,11 @@ export const MODE = backend.mode;
 type Session = { washerId: string | null; real?: boolean; name?: string; phone?: string; since?: string; at?: string };
 type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash> };
 type Selfie = { date: string; washer: string; url?: string; asset_id?: string };
+// the app language the washer picked in onboarding; only 'hinglish' and 'hi' are translated today, the rest fall back (see act.setLangPref)
+export type LangPref = 'hinglish' | 'hi' | 'en' | 'pa' | 'mr' | 'gu' | 'bn' | 'ta' | 'te';
 type State = {
   session: Session | null; online: boolean; theme: 'light' | 'dark' | 'auto'; lang: 'hinglish' | 'hi';
+  lang_pref?: LangPref; onboarded?: Record<string, string>;   // onboarded: 10-digit phone -> when the first-run onboarding was finished
   day: Day | null; outbox: Record<string, Wash>; rejected?: Record<string, Wash>; current: string | null;
   selfie: Selfie | null; hist: Record<string, number>; rounds: Record<string, { at: string; cars: Data[] }>;
 };
@@ -66,6 +69,7 @@ export const view = {
   netOk: true,
   jobAlert: null as Job | null,
   pendingPhotos: {} as Record<string, { kind: Photo['kind']; display: string }[]>,
+  onboarding: false,   // the one-time onboarding (screens/Onboarding.tsx) is showing; the sign-in waits for it
 };
 let booted = false;
 
@@ -491,6 +495,16 @@ export const act = {
   },
   setTheme(v: State['theme']) { S.theme = v; save(); emit() },
   setLang(v: State['lang']) { S.lang = v; setHindi(v === 'hi'); save(); emit() },
+  // any language can be picked; until it is translated the app speaks Hindi (Marathi, same script) or Hinglish
+  setLangPref(v: LangPref) { S.lang_pref = v; act.setLang(v === 'hi' || v === 'mr' ? 'hi' : 'hinglish') },
+  // last onboarding screen: remember it for this phone, then carry on with the sign-in it was holding back
+  async finishOnboarding() {
+    const go = afterOnboard;
+    if (go) await go();   // a failure (no net) throws and keeps the onboarding up, so the washer can try again
+    afterOnboard = null;
+    S.onboarded = { ...(S.onboarded || {}), [onboardPhone()]: isoIST() }; save();
+    view.onboarding = false; emit();
+  },
   flushNow() { view.readOnly = false; refused = 0; Sync.flush(); ui.toast(t('Bhej raha hoon…')) },
   resetDay() {
     Object.keys(S.outbox).forEach(k => { if (k.startsWith(DAY)) delete S.outbox[k] });
@@ -506,8 +520,8 @@ export const act = {
       if (outboxSize() && !discard) { ui.toast(t('Kuch update abhi bheje nahi gaye. Net aane pe phir try karo.')); return false }
     }
     Sync.stop(); stopWatch(); stopKit(); stopGps(); void cancelAllWashAlerts();
-    const { theme, lang } = S;
-    S = { session: null, online: true, theme, lang, day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
+    const { theme, lang, lang_pref, onboarded } = S;
+    S = { session: null, online: true, theme, lang, lang_pref, onboarded, day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
     if (saveT) { clearTimeout(saveT); saveT = null }
     try { await AsyncStorage.setItem(KEY, JSON.stringify(S)) } catch (e) { }
     bookCars = null; R = {}; RT = {}; view.pendingPhotos = {}; view.jobAlert = null; view.readOnly = false;
@@ -522,10 +536,14 @@ export const act = {
     if (!REAL && !PHONE_TO_WASHER[p10]) throw Object.assign(new Error(''), { hi: 'Yeh number washer list mein nahi hai. Office se baat karo.' });
     await auth.send(p10); view.otpPhone = p10; view.authStep = 'otp'; emit();
   },
-  async confirmOtp(code: string) {
+  // onOk runs once the code is accepted (the screen's success tick), before anything else changes
+  async confirmOtp(code: string, onOk?: () => Promise<void>) {
     await auth.confirm(code);
-    if (!REAL) { S.session = { washerId: PHONE_TO_WASHER[view.otpPhone], at: isoIST() }; save(); enterApp(); return }
-    await afterRealLogin();
+    if (onOk) await onOk().catch(() => {});
+    const next = REAL ? afterRealLogin
+      : async () => { S.session = { washerId: PHONE_TO_WASHER[view.otpPhone], at: isoIST() }; save(); enterApp() };
+    if (!isOnboarded()) { startOnboarding(next); return }
+    await next();
   },
   async join(name: string, area: string, ref: string) {
     const phone = auth.phone()!; const doc: Data = { phone, name, area, status: 'pending', created_at: isoIST(), updated_at: isoIST() };
@@ -534,10 +552,20 @@ export const act = {
     catch (e) { if (!ref) throw e; await db.doc('washers/' + phone).set(doc) }
     view.authStep = 'wait'; emit(); watchMe();
   },
-  backToPhone() { if (REAL) auth.signOut(); view.authStep = 'phone'; emit() },
+  backToPhone() { if (REAL) auth.signOut(); view.onboarding = false; afterOnboard = null; view.authStep = 'phone'; emit() },
   // remember how many cars were done on a day (the Paisa week bars read this)
   noteHist(day: string, n: number) { S.hist = S.hist || {}; if (S.hist[day] !== n) { S.hist[day] = n; save(); emit() } },
 };
+
+/* ---------- first-run onboarding: once per phone number, between the OTP and join/wait/in ---------- */
+let afterOnboard: (() => Promise<void>) | null = null;
+export const onboardPhone = () => (view.otpPhone || (auth.phone() || '').slice(-10) || S.session?.phone || '');
+const isOnboarded = () => !!S.onboarded?.[onboardPhone()];
+function startOnboarding(next: () => Promise<void>) {
+  afterOnboard = next; view.onboarding = true;
+  if (view.authStep === 'loading') view.authStep = 'phone';
+  emit();
+}
 
 /* ---------- real sign-in: washers/{+91number} decides who gets in ---------- */
 let meUnsub: Unsub | null = null;
@@ -687,6 +715,7 @@ export async function boot() {
     const phone = await auth.ready();
     if (S.session && (!phone || phone.slice(-10) !== S.session.phone)) { S.session = null; save() }
     if (S.session && WASHERS[S.session.washerId || '']) { enterApp(); watchMe() }
+    else if (phone && !isOnboarded()) startOnboarding(afterRealLogin);   // the app was closed half-way through onboarding
     else if (phone) { try { await afterRealLogin() } catch (e) { view.authStep = 'phone' } }
     else view.authStep = 'phone';
   } else if (S.session && WASHERS[S.session.washerId || '']) enterApp();
