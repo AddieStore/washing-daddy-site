@@ -9,7 +9,7 @@ export type Car = {
   mine?: boolean; pending?: boolean; status?: string;   // cars the washer added himself (newcars/)
 };
 export type WashStatus = 'scheduled' | 'on_the_way' | 'arrived' | 'washing' | 'done' | 'skipped';
-export type Photo = { kind: 'before' | 'after' | 'issue'; asset_id?: string; url?: string; at: string };
+export type Photo = { kind: 'before' | 'after' | 'issue'; asset_id?: string; url?: string; at: string; spot?: string };
 export type Wash = {
   date: string; reg: string; car_label: string; washer: { id: string; name: string; photo_url?: string }; washer_id: string;
   status: WashStatus; eta: string;

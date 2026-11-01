@@ -15,14 +15,23 @@ import {
   type Car, type Wash, type Req, type Job, type WasherDoc, type KitItem, type KitKind, type WasherInfo, type Photo,
 } from '../lib/data';
 import { setHindi, t } from '../lib/i18n';
-import { guideAt } from '../lib/washGuide';
+import { guideAt, isSundayIST, nameClip, SPOTS } from '../lib/washGuide';
 import { setupWashAlerts, alertsReady, scheduleWashAlerts, cancelWashAlerts, cancelAllWashAlerts } from '../lib/washAlerts';
 import { ui } from '../ui/bus';
 import { registerPushToken, clearPushToken } from '../lib/pushToken';
 
 const { db, auth } = backend;
 // a wash can only be closed once this many photos of the car are taken
-export const MIN_PHOTOS = 2;
+export const MIN_PHOTOS = 2
+/** What the photo gate needs. Mon-Sat: MIN_PHOTOS of the car. Sunday (interior day): MIN_PHOTOS of the car plus one photo of each inside spot. */
+export function photoNeeds(w: { started_at?: string | null; photos: { kind: string; spot?: string }[] }) {
+  const sunday = isSundayIST(w.started_at);
+  const car = w.photos.filter(p => p.kind === 'after' && !p.spot).length;
+  const have = new Set(w.photos.filter(p => p.spot).map(p => p.spot));
+  const missing = sunday ? SPOTS.filter(s => !have.has(s.key)) : [];
+  // the voice asks for the inside photos once the car photos are done
+  return { sunday, car, missing, nextSpot: car >= MIN_PHOTOS ? missing[0] || null : null, ok: car >= MIN_PHOTOS && missing.length === 0 };
+};
 export const REAL = auth.real;
 export const MODE = backend.mode;
 
@@ -382,7 +391,7 @@ export const act = {
     mutate(reg, d => { d.status = 'washing'; d.started_at = isoIST(); if (!d.arrived_at) d.arrived_at = d.started_at });
     ui.haptic([20, 40, 20]); ui.toast(t(`Timer chalu · ${carBy(reg)?.customer} ko "Wash chal raha" dikh raha hai`)); emit();
     guideTick();
-    const w0 = W(reg); if (w0?.started_at) void scheduleWashAlerts(reg, w0.started_at);
+    const w0 = W(reg); if (w0?.started_at) void scheduleWashAlerts(reg, w0.started_at, me().name.split(' ')[0]);
   },
   task(reg: string, key: TaskKey) {
     const wd = W(reg); if (!wd) return;
@@ -394,9 +403,17 @@ export const act = {
     emit();
   },
   // the photo arrives as a small data: URL (contract: url, ≤ ~30 KB), see lib/photo.ts
-  addPhoto(reg: string, kind: Photo['kind'], url: string) {
-    mutate(reg, d => { if (d.photos.length >= 8) d.photos.shift(); d.photos.push({ kind, at: isoIST(), url }) });
+  addPhoto(reg: string, kind: Photo['kind'], url: string, spot?: string) {
+    // a retake of an inside spot replaces that spot's earlier photo
+    mutate(reg, d => {
+      if (spot) d.photos = d.photos.filter(p => p.spot !== spot);
+      if (d.photos.length >= 12) d.photos.shift();
+      d.photos.push({ kind, at: isoIST(), url, ...(spot ? { spot } : {}) });
+    });
     ui.toast(t(kind === 'issue' ? 'Problem ki photo customer ko gayi' : 'Photo customer ko gayi'));
+    // Sunday: once the car photos are done, the voice asks for the next inside photo
+    const w = W(reg); const nx = w && isSundayIST(w.started_at) && kind === 'after' ? photoNeeds(w).nextSpot : null;
+    if (nx) ui.speak(nx.clip);
   },
   photoPending(reg: string, kind: Photo['kind'], display: string | null) {
     if (display) (view.pendingPhotos[reg] = view.pendingPhotos[reg] || []).push({ kind, display });
@@ -404,7 +421,7 @@ export const act = {
     emit();
   },
   delPhoto(reg: string, kind: Photo['kind']) {
-    mutate(reg, d => { for (let i = d.photos.length - 1; i >= 0; i--) if (d.photos[i].kind === kind) { d.photos.splice(i, 1); break } });
+    mutate(reg, d => { for (let i = d.photos.length - 1; i >= 0; i--) if (d.photos[i].kind === kind && !d.photos[i].spot) { d.photos.splice(i, 1); break } });
     ui.toast(t('Photo hata di'));
   },
   setNote(reg: string, text: string) {
@@ -413,14 +430,17 @@ export const act = {
   // returns false when the photo gate stops it
   finish(reg: string) {
     const wd = W(reg); if (!wd) return false;
-    if (wd.photos.filter(p => p.kind === 'after').length < MIN_PHOTOS) { act.needPhoto(); return false }
+    if (!photoNeeds(wd).ok) { act.needPhoto(reg); return false }
     const litres = wd.tasks.reduce((a, x) => a + (x.done ? TASK[x.key].litres : 0), 0) || TASK.pressure.litres;
     const end = isoIST();
     mutate(reg, d => { d.status = 'done'; d.finished_at = end; d.minutes = Math.max(1, Math.round((Date.parse(end) - Date.parse(d.started_at || end)) / 60000)); d.water_litres = litres });
     void cancelWashAlerts(reg);
     ui.haptic([20, 40, 20, 40, 60]); ui.confetti(1); Route.retime(); emit(); return true;
   },
-  needPhoto() { ui.toast(t(`Kam se kam ${MIN_PHOTOS} gaadi ki photo lo, phir wash band hogi`)); ui.haptic(14) },
+  needPhoto(reg?: string) {
+    const w = reg ? W(reg) : null; const n = w && isSundayIST(w.started_at) ? photoNeeds(w).missing.length : 0;
+    ui.toast(t(n ? `Gaadi ki ${MIN_PHOTOS} photo aur andar ki ${n} photo baaki hain` : `Kam se kam ${MIN_PHOTOS} gaadi ki photo lo, phir wash band hogi`)); ui.haptic(14);
+  },
   skip(reg: string, reason: string) {
     mutate(reg, d => { d.status = 'skipped'; d.skip_reason = reason });
     const sk = skipAsk(reg); if (sk) Sync.setRequest(sk.id, { status: 'done', done_at: isoIST() });
@@ -532,7 +552,7 @@ export function guideTick() {
     if (guided.has(k)) continue;
     guided.add(k);
     // later stages are spoken by the phone's own scheduled alerts (they also work with the app closed); in the app only stage 0, or all if alerts are off
-    if (g.idx === 0 || !alertsReady()) ui.speak(g.step.clip);
+    if (g.idx === 0 || !alertsReady()) ui.speak([nameClip(me().name), g.step.clip]);
     ui.haptic([20, 40, 20]);   // the banner on the car screen shows the stage, so no toast
   }
 }

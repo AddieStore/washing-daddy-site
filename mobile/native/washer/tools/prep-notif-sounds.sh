@@ -4,11 +4,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p assets/notif
-for pair in 3:ph_dry 6:ph_polish 9:ph_check 10:ph_photo; do
+# prefix:minute:clip  (s = Mon-Sat plan, u = Sunday plan; must match src/lib/washGuide.ts)
+for pair in s3:ph_dry s6:ph_polish s9:ph_check s10:ph_photo u3:ph_dry u6:ph_int u10:ph_polish u13:ph_check u14:ph_photo_sun; do
   m=${pair%%:*}; clip=${pair##*:}
   [ -f assets/sound/voice/$clip.mp3 ] || { echo "missing assets/sound/voice/$clip.mp3"; exit 1; }
-  ffmpeg -v error -y -i assets/sound/voice/$clip.mp3 -ar 44100 -ac 1 assets/notif/wd_s$m.wav
-  echo "wd_s$m.wav"
+  ffmpeg -v error -y -i assets/sound/voice/$clip.mp3 -ar 44100 -ac 1 assets/notif/wd_$m.wav
+  echo "wd_$m.wav"
 done
 # the 'extra kaam' push sound (channel wd_extra_v1) is the intro voice clip
 [ -f assets/sound/voice/intro.mp3 ] || { echo "missing assets/sound/voice/intro.mp3"; exit 1; }

@@ -1,13 +1,14 @@
 // The car screen: pushed from the round. Stage, stepper, requests, the one main action, tasks, photos, note, skip.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Linking, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Image, Linking, StyleSheet, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { F, Icon, OnViolet, brand, ui, useTheme } from '../ui';
-import { Button, CallButton, CarArt, Card, Chip, DemoNote, Empty, Eyebrow, LinkButton, Plate, ProgressBar, Section, SlideToConfirm, Stepper, Tier } from '../ui';
+import { Pressy, Button, CallButton, CarArt, Card, Chip, DemoNote, Empty, Eyebrow, LinkButton, Plate, ProgressBar, Section, SlideToConfirm, Stepper, Tier } from '../ui';
 import type { StepItem } from '../ui';
-import { Route, RT, W, act, carBy, ensureDay, openReqs, planName, route, skipAsk, S, useStore, DAY, view, MIN_PHOTOS } from '../state/store';
+import { Route, RT, W, act, photoSrc, carBy, ensureDay, openReqs, planName, route, skipAsk, S, useStore, DAY, view, MIN_PHOTOS, photoNeeds } from '../state/store';
 import { STATUS, navOf, telOf } from '../lib/data';
 import type { Photo } from '../lib/data';
+import { SPOTS, isSundayIST } from '../lib/washGuide';
 import { tasksFor, TASK } from '../lib/schedule';
 import { t } from '../lib/i18n';
 import { hm12, t12 } from '../lib/time';
@@ -127,6 +128,7 @@ export default function JobScreen() {
   const unseen = reg ? openReqs(reg).filter(q => q.status === 'open').length : 0;
   const lastReg = useRef<string | null>(null);
   const [rearm, setRearm] = useState(0);
+  const [spotPend, setSpotPend] = useState<Record<string, string>>({});
 
   // keep S.current in step with what is shown
   useEffect(() => { if (reg && S.current !== reg) act.setCurrent(reg) }, [reg]);
@@ -168,18 +170,24 @@ export default function JobScreen() {
   const sk = skipAsk(reg);
   const pend = view.pendingPhotos[reg] || [];
   const photosOf = (kind: 'after' | 'issue'): ShotItem[] =>
-    ((wd ? wd.photos : []) as ShotItem[]).filter(p => p.kind === kind).concat(pend.filter(p => p.kind === kind).map(p => ({ kind: p.kind, at: '', display: p.display, pending: true } as ShotItem)));
-  const afterN = wd ? wd.photos.filter(p => p.kind === 'after').length : 0;
-  const photosOk = afterN >= MIN_PHOTOS;
+    ((wd ? wd.photos : []) as ShotItem[]).filter(p => p.kind === kind && !p.spot).concat(pend.filter(p => p.kind === kind).map(p => ({ kind: p.kind, at: '', display: p.display, pending: true } as ShotItem)));
+  const need = wd ? photoNeeds(wd) : null;
+  const afterN = need ? need.car : 0;
+  const photosOk = !!need && need.ok;
+  const sunday = !!wd && isSundayIST(wd.started_at) && (st === 'washing' || st === 'done');
 
-  const shoot = async (kind: Photo['kind']) => {
+  const shoot = async (kind: Photo['kind'], spot?: string) => {
     if (!W(reg)) { ui.toast(t('Pehle round shuru karo')); return }
     ui.flash();
     try {
       const r = await takePhoto();
       if (!r) return;
-      act.photoPending(reg, kind, r.preview);
-      try { act.addPhoto(reg, kind, r.url) } finally { act.photoPending(reg, kind, null) }
+      if (spot) setSpotPend(m => ({ ...m, [spot]: r.preview }));
+      else act.photoPending(reg, kind, r.preview);
+      try { act.addPhoto(reg, kind, r.url, spot) } finally {
+        if (spot) setSpotPend(m => { const n = { ...m }; delete n[spot]; return n });
+        else act.photoPending(reg, kind, null);
+      }
     } catch (e: any) { ui.toast(t(e?.hi || 'Photo nahi gayi. Dobara try karo')) }
   };
   const viewShot = (kind: 'after' | 'issue') => {
@@ -308,13 +316,52 @@ export default function JobScreen() {
             </View>
           </Section>
 
+          {sunday && wd ? (
+            <Section title={t('Andar ki photo')} meta={`${SPOTS.filter(sp => wd.photos.some(p => p.spot === sp.key)).length}/${SPOTS.length}`}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 }}>
+                {SPOTS.map(sp => {
+                  const got = wd.photos.filter(p => p.spot === sp.key).slice(-1)[0];
+                  const pendSrc = spotPend[sp.key];
+                  const src = pendSrc || (got ? photoSrc(got) : undefined);
+                  return (
+                    <View key={sp.key} style={{ width: '48.5%' }}>
+                      <Pressy onPress={pendSrc || st !== 'washing' ? undefined : () => { void shoot('after', sp.key) }} accessibilityLabel={t(sp.label)} scaleTo={0.94}
+                        style={{ width: '100%', aspectRatio: 1, borderRadius: 20, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', gap: 4,
+                          ...(src ? { backgroundColor: th.tile2 } : { borderWidth: 2.5, borderStyle: 'dashed', borderColor: th.dash, backgroundColor: th.tile }) }}>
+                        {src ? <Image source={{ uri: src }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : <Icon name="cam" size={30} color={th.fg2} />}
+                        {pendSrc ? (
+                          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(26,10,51,0.45)', alignItems: 'center', justifyContent: 'center' }]}>
+                            <ActivityIndicator color="#fff" size="large" />
+                          </View>
+                        ) : null}
+                        {got && !pendSrc ? (
+                          <View style={{ position: 'absolute', right: 8, top: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: brand.mint, alignItems: 'center', justifyContent: 'center' }}>
+                            <Icon name="check" size={16} color="#fff" />
+                          </View>
+                        ) : null}
+                        {src ? (
+                          <View style={{ position: 'absolute', left: 8, bottom: 8, right: 8, flexDirection: 'row' }}>
+                            <View style={{ flexShrink: 1, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, backgroundColor: 'rgba(0,0,0,0.6)' }}>
+                              <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 10.5, letterSpacing: 0.8, color: '#fff', textTransform: 'uppercase' }}>{t(sp.label)}</Text>
+                            </View>
+                          </View>
+                        ) : <Text numberOfLines={2} style={{ fontFamily: F.black, fontSize: 13, color: th.fg2, textAlign: 'center', paddingHorizontal: 6 }}>{t(sp.label)}</Text>}
+                      </Pressy>
+                    </View>
+                  );
+                })}
+              </View>
+            </Section>
+          ) : null}
 
           {wd && st === 'washing' ? (
             <View style={{ marginTop: 18 }}>
               {photosOk
                 ? <Button variant="mint" icon="check" label={t('Wash khatam karo')} onPress={finish} />
-                : <View style={{ opacity: 0.55 }}><Button variant="ghost" icon="check" label={t('Wash khatam karo')} onPress={() => act.needPhoto()} /></View>}
-              <DemoNote>{photosOk ? t('Aakhri kadam. Customer ko photo ke saath chala jayega') : t(`Gaadi ki ${MIN_PHOTOS} photo lo (${Math.min(afterN, MIN_PHOTOS)}/${MIN_PHOTOS}), phir wash band hogi`)}</DemoNote>
+                : <View style={{ opacity: 0.55 }}><Button variant="ghost" icon="check" label={t('Wash khatam karo')} onPress={() => act.needPhoto(reg)} /></View>}
+              <DemoNote>{photosOk ? t('Aakhri kadam. Customer ko photo ke saath chala jayega') : need && need.sunday
+                ? t(`Gaadi ki ${Math.max(0, MIN_PHOTOS - afterN)} photo aur andar ki ${need.missing.length} photo baaki hain, phir wash band hogi`)
+                : t(`Gaadi ki ${MIN_PHOTOS} photo lo (${Math.min(afterN, MIN_PHOTOS)}/${MIN_PHOTOS}), phir wash band hogi`)}</DemoNote>
             </View>
           ) : null}
 

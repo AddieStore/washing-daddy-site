@@ -392,6 +392,7 @@ export const HI_PATTERNS: [RegExp, string][] = [
   [/^(.+) ne (\d)★ diya · (.+)$/, '$1 ने $2★ दिया · $3'],
   [/^\+91 (.+) pe SMS bheja\.(.*)$/, '+91 $1 पे SMS भेजा.$2'],
   [/^Test mein (.+)\.$/, 'टेस्ट में $1.'],
+  [/^Gaadi ki (\d+) photo aur andar ki (\d+) photo baaki hain, phir wash band hogi$/, 'गाड़ी की $1 फोटो और अंदर की $2 फोटो बाकी हैं, फिर वॉश बंद होगी'],
 ];
 
 // Extra strings the native screens use that the web app did not have
@@ -442,6 +443,11 @@ Object.assign(HI, {
   "Koi daag ya chhoota hua hissa dekh lo": "कोई दाग या छूटा हुआ हिस्सा देख लो",
   "Wash khatam: gaadi ki photo lo": "वॉश खत्म: गाड़ी की फोटो लो",
   "agla kadam:": "अगला कदम:",
+  "Andar ki photo": "अंदर की फोटो",
+  "Driver side mat": "ड्राइवर साइड मैट",
+  "Passenger side mat": "पैसेंजर साइड मैट",
+  "Back seat": "पीछे की सीट",
+  "Dashboard": "डैशबोर्ड",
 });
 
 export function hiOf(t: string): string | null {
