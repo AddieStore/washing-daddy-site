@@ -12,6 +12,7 @@ import { tasksFor, TASK } from '../lib/schedule';
 import { t } from '../lib/i18n';
 import { hm12, t12 } from '../lib/time';
 import { takePhoto } from '../lib/photo';
+import { WashGuide } from '../screens/WashGuide';
 import { ScreenBar, ReqCard, Shot, TaskRow, WashTimer, openNoteSheet, openPhotoSheet, openSkipSheet, openSuccessSheet, type ShotItem } from '../screens/JobParts';
 
 const ORDER = ['scheduled', 'on_the_way', 'arrived', 'washing', 'done'];
@@ -287,6 +288,8 @@ export default function JobScreen() {
           ) : null}
 
           <View style={{ marginTop: 18 }}>{main()}</View>
+
+          {st === 'washing' && wd?.started_at ? <WashGuide startedAt={wd.started_at} onTakePhoto={() => { void shoot('after') }} /> : null}
 
           <Section title={t('Aaj ke kaam')} meta={`${tdone}/${tasks.length}${can ? '' : t(' · wash shuru hone pe tick karo')}`}>
             <ProgressBar fraction={tasks.length ? tdone / tasks.length : 0} style={{ marginBottom: 12 }} />

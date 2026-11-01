@@ -430,6 +430,16 @@ Object.assign(HI, {
   "Ek minute ruko": "एक मिनट रुको",
   "Gaadiyon ki list aa rahi hai, ek minute ruko": "गाड़ियों की लिस्ट आ रही है, एक मिनट रुको",
   "Dekh liya": "देख लिया",
+  "Wash karo": "वॉश करो",
+  "Pressure wash aur foam. Wash karna shuru kijiye": "प्रेशर वॉश और फोम. वॉश करना शुरू कीजिए",
+  "Kapde se sukhaao": "कपड़े से सुखाओ",
+  "Saaf kapde se gaadi ko sukhaao": "साफ़ कपड़े से गाड़ी को सुखाओ",
+  "Polish karo": "पॉलिश करो",
+  "Gaadi par polish lagao": "गाड़ी पर पॉलिश लगाओ",
+  "Kami dekho": "कमी देखो",
+  "Koi daag ya chhoota hua hissa dekh lo": "कोई दाग या छूटा हुआ हिस्सा देख लो",
+  "Wash khatam: gaadi ki photo lo": "वॉश खत्म: गाड़ी की फोटो लो",
+  "agla kadam:": "अगला कदम:",
 });
 
 export function hiOf(t: string): string | null {

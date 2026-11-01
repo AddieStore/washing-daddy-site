@@ -57,6 +57,16 @@ export const ui = {
       /* no-op on failure */
     }
   },
+  // one spoken Hindi line by clip key (the wash guide); the old beep stands in until that clip exists
+  speak(clip: string) {
+    const src = VOICE_CLIPS[clip];
+    if (src) { void playQueue([src]); return; }
+    try {
+      const player = createAudioPlayer(require('../../assets/sound/job-alert.wav'));
+      player.play();
+      setTimeout(() => { try { player.remove() } catch { /* ignore */ } }, 1500);
+    } catch { /* no-op */ }
+  },
   flash() {
     flashCh.emit();
   },

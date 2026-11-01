@@ -15,6 +15,7 @@ import {
   type Car, type Wash, type Req, type Job, type WasherDoc, type KitItem, type KitKind, type WasherInfo, type Photo,
 } from '../lib/data';
 import { setHindi, t } from '../lib/i18n';
+import { guideAt } from '../lib/washGuide';
 import { ui } from '../ui/bus';
 
 const { db, auth } = backend;
@@ -378,6 +379,7 @@ export const act = {
   startWash(reg: string) {
     mutate(reg, d => { d.status = 'washing'; d.started_at = isoIST(); if (!d.arrived_at) d.arrived_at = d.started_at });
     ui.haptic([20, 40, 20]); ui.toast(t(`Timer chalu · ${carBy(reg)?.customer} ko "Wash chal raha" dikh raha hai`)); emit();
+    guideTick();
   },
   task(reg: string, key: TaskKey) {
     const wd = W(reg); if (!wd) return;
@@ -512,6 +514,19 @@ export const act = {
 
 /* ---------- real sign-in: washers/{+91number} decides who gets in ---------- */
 let meUnsub: Unsub | null = null;
+/* ---------- the guided wash: tells the washer the next stage as it starts (voice + toast + buzz) ---------- */
+const guided = new Set<string>();   // 'DATE_REG_stageIndex' already announced
+export function guideTick() {
+  if (!S.day || view.authStep !== 'in') return;
+  for (const wd of Object.values(S.day.washes)) {
+    if (wd.status !== 'washing' || !wd.started_at) continue;
+    const g = guideAt(wd.started_at); if (!g) continue;
+    const k = S.day.date + '_' + wd.reg + '_' + g.idx;
+    if (guided.has(k)) continue;
+    guided.add(k);
+    ui.speak(g.step.clip); ui.haptic([20, 40, 20]);   // the banner on the car screen shows the stage, so no toast
+  }
+}
 /* ---------- kit and ID records (profile tab) ---------- */
 // IDs and assigned clothes come from the washer's own washers/ doc (admin-written, read-only here);
 // the kit list is washerkit/{phone}.items: add-only, the rules refuse any change to an existing item.
@@ -649,6 +664,7 @@ export async function boot() {
   emit();
   // keep sending what is waiting; a new day starts a new round
   setInterval(() => { if (Object.keys(S.outbox).length) Sync.flush() }, 20000);
+  setInterval(guideTick, 3000);
   setInterval(() => {
     const d = dateIST();
     if (d !== DAY && view.authStep === 'in') { DAY = d; RT = {}; ensureDay(); Book.load(); Sync.listen(); emit() }

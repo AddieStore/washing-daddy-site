@@ -2,6 +2,9 @@
 // The voice is built from short recorded clips (see tools/make-voice.mjs), so any price can be said.
 export const HINDI_WORDS: Record<string, string> = {
   intro: 'एक्स्ट्रा काम आया है', rupaye: 'रुपये', sau: 'सौ', hazaar: 'हज़ार',
+  // the guided wash (src/lib/washGuide.ts)
+  ph_wash: 'वॉश करना शुरू कीजिए', ph_dry: 'अब कपड़े से गाड़ी को सुखाइए', ph_polish: 'अब गाड़ी पर पॉलिश कीजिए',
+  ph_check: 'कोई कमी या छूटा हुआ हिस्सा देख लीजिए', ph_photo: 'अब गाड़ी की फोटो लीजिए',
 };
 const N = ('एक दो तीन चार पाँच छह सात आठ नौ दस ग्यारह बारह तेरह चौदह पंद्रह सोलह सत्रह अठारह उन्नीस बीस '
   + 'इक्कीस बाईस तेईस चौबीस पच्चीस छब्बीस सत्ताईस अट्ठाईस उनतीस तीस इकतीस बत्तीस तैंतीस चौंतीस पैंतीस छत्तीस सैंतीस अड़तीस उनतालीस चालीस '

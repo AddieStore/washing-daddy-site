@@ -15,5 +15,5 @@ test('announcement wraps the amount', () => {
 });
 test('every clip key has a Hindi word', () => {
   for (const a of [1, 99, 100, 999, 1000, 99999]) for (const k of announceClips(a)) assert.ok(HINDI_WORDS[k], k);
-  assert.equal(Object.keys(HINDI_WORDS).length, 99 + 4);
+  assert.equal(Object.keys(HINDI_WORDS).length, 99 + 4 + 5);
 });
