@@ -31,7 +31,8 @@
     "react-native-cashfree-pg-sdk": "^2.5.1",
     "react-native-safe-area-context": "~5.10.1",
     "react-native-svg": "15.16.0",
-    "react-native-web": "~0.21.4"
+    "react-native-web": "~0.21.4",
+    "react-native-webview": "14.0.1"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

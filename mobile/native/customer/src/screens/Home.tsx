@@ -18,6 +18,7 @@ import {
   useApp, S, A, car, doc, act, go, planOf, carImg, maskPlate, chipText, banners, todaySteps, calendar, week, greeting, homeRail, realAcct, pName, startTxt,
 } from '../state';
 import { sheets } from '../sheets';
+import { CarStudio } from '../sheets/CarStudio';
 
 /* ---------- small shared helpers (Live and TabBar import these) ---------- */
 export function useReduceMotion() {
@@ -94,7 +95,7 @@ function Marquee() {
 
 /* ---------- the car hero ---------- */
 function Hero({ W }: { W: number }) {
-  const T = useTheme(), ui = useApp(), rm = useReduceMotion(), id = useUid();
+  const T = useTheme(), ui = useApp(), rm = useReduceMotion(), id = useUid(), [studio, setStudio] = useState(false);
   const c = car(), d = doc(c), p = planOf(c), a = A(), carSrc = carImg(c), key = !c.photo && c.img ? c.img : null;
   const innerW = W - PAD * 2 - (T.day ? 24 : 0), carW = Math.min(innerW * 1.04, 460);
   const x = useRef(new Animated.Value(W * 1.1)).current, bob = useRef(new Animated.Value(0)).current, dir = useRef(1), busy = useRef(false);
@@ -141,7 +142,9 @@ function Hero({ W }: { W: number }) {
             <Animated.View pointerEvents="box-none" style={{ width: carW, transform: [{ translateX: x }] }}>
               <Animated.View pointerEvents="box-none" style={{ transform: [{ translateY: bob }] }}>
                 {carSrc ? (
-                  <Image source={src(carSrc)!} accessibilityLabel={`${c.make} ${c.name}`} resizeMode="contain" style={key ? { width: carW, height: carW / RATIO[key] } : { width: carW, height: 230 }} />
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Open Car Studio for your ${c.make} ${c.name}`} onPress={() => setStudio(true)}>
+                    <Image source={src(carSrc)!} resizeMode="contain" style={key ? { width: carW, height: carW / RATIO[key] } : { width: carW, height: 230 }} />
+                  </Pressable>
                 ) : (
                   <View style={{ alignItems: 'center' }}>
                     <GhostCar width={carW} color="rgba(255,246,233,.55)" />
@@ -181,6 +184,7 @@ function Hero({ W }: { W: number }) {
           </View>
         </InkContext.Provider>
       </View>
+      {studio ? <CarStudio car={c} onClose={() => setStudio(false)} /> : null}
     </Hard>
   );
 }
