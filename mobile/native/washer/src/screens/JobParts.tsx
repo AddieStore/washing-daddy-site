@@ -87,38 +87,55 @@ export function Shot({ kind, list, enabled, onTake, onView }: { kind: 'after' | 
   const fly = useRef(new Animated.Value(1)).current;
   const n = list.length;
   useEffect(() => { if (n) { fly.setValue(0.85); Animated.spring(fly, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 10 }).start() } }, [n, fly]);
+  const R = 20;
+  // the wrapper owns the flex slot; the tile inside is a fixed-aspect square that can never exceed it
   if (!last) {
     return (
-      <View style={{ flex: 1 }}>
-      <Pressy onPress={onTake} disabled={!enabled} accessibilityLabel={lab} scaleTo={0.94}
-        style={{ width: '100%', aspectRatio: 1, borderRadius: 20, borderWidth: 2.5, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.tile, alignItems: 'center', justifyContent: 'center', gap: 4, opacity: enabled ? 1 : 0.5 }}>
-        <Icon name={kind === 'issue' ? 'warn' : 'cam'} size={30} color={c.fg2} />
-        <Text style={{ fontFamily: F.black, fontSize: 13, color: c.fg2 }}>{lab}</Text>
-      </Pressy>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Pressy onPress={onTake} disabled={!enabled} accessibilityLabel={lab} scaleTo={0.94}
+          style={{ width: '100%', aspectRatio: 1, borderRadius: R, borderWidth: 2.5, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.tile, alignItems: 'center', justifyContent: 'center', gap: 4, overflow: 'hidden', opacity: enabled ? 1 : 0.5 }}>
+          <Icon name={kind === 'issue' ? 'warn' : 'cam'} size={30} color={c.fg2} />
+          <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 13, color: c.fg2 }}>{lab}</Text>
+        </Pressy>
       </View>
     );
   }
   const src = last.pending ? last.display : photoSrc(last);
+  const thumbs = list.slice(-3, -1).reverse(); // up to 2 earlier photos, newest first
   return (
-    <View style={{ flex: 1 }}>
-    <Pressy onPress={last.pending ? undefined : onView} accessibilityLabel={lab} scaleTo={0.94} style={{ width: '100%', aspectRatio: 1 }}>
-      <Animated.View style={{ width: '100%', height: '100%', borderRadius: 20, overflow: 'hidden', backgroundColor: c.tile2, transform: [{ scale: fly }] }}>
-        {src ? <Image source={{ uri: src }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
-        {last.pending ? (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(26,10,51,0.45)', alignItems: 'center', justifyContent: 'center' }]}>
-            <ActivityIndicator color="#fff" size="large" />
+    <View style={{ flex: 1, minWidth: 0 }}>
+      <Pressy onPress={last.pending ? undefined : onView} accessibilityLabel={`${lab} (${n})`} scaleTo={0.94} style={{ width: '100%', aspectRatio: 1 }}>
+        <Animated.View style={{ flex: 1, borderRadius: R, overflow: 'hidden', backgroundColor: c.tile2, transform: [{ scale: fly }] }}>
+          {src ? <Image source={{ uri: src }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+          {last.pending ? (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(26,10,51,0.45)', alignItems: 'center', justifyContent: 'center' }]}>
+              <ActivityIndicator color="#fff" size="large" />
+            </View>
+          ) : null}
+          {n > 1 ? (
+            <View style={{ position: 'absolute', right: 8, top: 8, minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5, backgroundColor: brand.gold, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: F.black, fontSize: 12, color: brand.ink }}>{n}</Text>
+            </View>
+          ) : null}
+          {thumbs.length ? (
+            <View style={{ position: 'absolute', left: 8, top: 8, flexDirection: 'row', gap: 4 }}>
+              {thumbs.map((p, i) => {
+                const u = p.pending ? p.display : photoSrc(p);
+                return (
+                  <View key={i} style={{ width: 20, height: 20, borderRadius: 6, overflow: 'hidden', borderWidth: 1.5, borderColor: '#fff', backgroundColor: c.tile2 }}>
+                    {u ? <Image source={{ uri: u }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+          <View style={{ position: 'absolute', left: 8, bottom: 8, right: 8, flexDirection: 'row' }}>
+            <View style={{ flexShrink: 1, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, backgroundColor: 'rgba(0,0,0,0.6)' }}>
+              <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 10.5, letterSpacing: 0.8, color: '#fff', textTransform: 'uppercase' }}>{lab}</Text>
+            </View>
           </View>
-        ) : null}
-        <View style={{ position: 'absolute', left: 6, bottom: 6, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <Text style={{ fontFamily: F.black, fontSize: 10.5, letterSpacing: 0.8, color: '#fff', textTransform: 'uppercase' }}>{lab}</Text>
-        </View>
-        {n > 1 ? (
-          <View style={{ position: 'absolute', right: 6, top: 6, minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5, backgroundColor: brand.gold, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: F.black, fontSize: 12, color: brand.ink }}>{n}</Text>
-          </View>
-        ) : null}
-      </Animated.View>
-    </Pressy>
+        </Animated.View>
+      </Pressy>
     </View>
   );
 }

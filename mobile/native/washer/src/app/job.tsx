@@ -5,7 +5,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { F, Icon, OnViolet, brand, ui, useTheme } from '../ui';
 import { Button, CallButton, CarArt, Card, Chip, DemoNote, Empty, Eyebrow, LinkButton, Plate, ProgressBar, Section, SlideToConfirm, Stepper, Tier } from '../ui';
 import type { StepItem } from '../ui';
-import { Route, RT, W, act, carBy, ensureDay, openReqs, planName, route, skipAsk, S, useStore, DAY, view } from '../state/store';
+import { Route, RT, W, act, carBy, ensureDay, openReqs, planName, route, skipAsk, S, useStore, DAY, view, MIN_PHOTOS } from '../state/store';
 import { STATUS, navOf, telOf } from '../lib/data';
 import type { Photo } from '../lib/data';
 import { tasksFor, TASK } from '../lib/schedule';
@@ -168,7 +168,8 @@ export default function JobScreen() {
   const pend = view.pendingPhotos[reg] || [];
   const photosOf = (kind: 'after' | 'issue'): ShotItem[] =>
     ((wd ? wd.photos : []) as ShotItem[]).filter(p => p.kind === kind).concat(pend.filter(p => p.kind === kind).map(p => ({ kind: p.kind, at: '', display: p.display, pending: true } as ShotItem)));
-  const hasAfter = !!wd && wd.photos.some(p => p.kind === 'after');
+  const afterN = wd ? wd.photos.filter(p => p.kind === 'after').length : 0;
+  const photosOk = afterN >= MIN_PHOTOS;
 
   const shoot = async (kind: Photo['kind']) => {
     if (!W(reg)) { ui.toast(t('Pehle round shuru karo')); return }
@@ -230,20 +231,8 @@ export default function JobScreen() {
         </View>
       );
     }
-    if (st === 'washing') {
-      return hasAfter ? (
-        <View>
-          <Button variant="mint" icon="check" label={t('Wash khatam karo')} onPress={finish} />
-          <DemoNote>{t('Aakhri kadam. Customer ko photo ke saath chala jayega')}</DemoNote>
-        </View>
-      ) : (
-        <View>
-          <Button variant="violet" icon="cam" label={t('Gaadi ki photo lo')} onPress={() => { void shoot('after') }} />
-          <DemoNote>{t('Doosra kadam. Photo ke bina wash band nahi hogi')}</DemoNote>
-          <View style={{ marginTop: 10, opacity: 0.55 }}><Button variant="ghost" icon="check" label={t('Wash khatam karo')} onPress={() => act.needPhoto()} /></View>
-        </View>
-      );
-    }
+    // washing: the finish button sits below the tasks and photos (see finishBlock)
+    if (st === 'washing') return null;
     if (st === 'done') {
       const stars = RT[reg] || 0;
       const stat = (v: string, l: string) => (
@@ -308,14 +297,23 @@ export default function JobScreen() {
             </View>
           </Section>
 
-          <Section title={t('Photo')} meta={t('Ek photo zaroori hai')}>
+          <Section title={t('Photo')} meta={t(`Gaadi ki kam se kam ${MIN_PHOTOS} photo zaroori`)}>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               {(['after', 'issue'] as const).map(k => (
                 <Shot key={k} kind={k} list={photosOf(k)} enabled={!!wd} onTake={() => { void shoot(k) }} onView={() => viewShot(k)} />
               ))}
-              <View style={{ flex: 1 }} />
             </View>
           </Section>
+
+
+          {wd && st === 'washing' ? (
+            <View style={{ marginTop: 18 }}>
+              {photosOk
+                ? <Button variant="mint" icon="check" label={t('Wash khatam karo')} onPress={finish} />
+                : <View style={{ opacity: 0.55 }}><Button variant="ghost" icon="check" label={t('Wash khatam karo')} onPress={() => act.needPhoto()} /></View>}
+              <DemoNote>{photosOk ? t('Aakhri kadam. Customer ko photo ke saath chala jayega') : t(`Gaadi ki ${MIN_PHOTOS} photo lo (${Math.min(afterN, MIN_PHOTOS)}/${MIN_PHOTOS}), phir wash band hogi`)}</DemoNote>
+            </View>
+          ) : null}
 
           {wd ? (
             <Section>

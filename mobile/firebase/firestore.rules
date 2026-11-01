@@ -47,6 +47,27 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // The washer's kit (clothes, shampoo, spray guns, other materials). Append-only: the washer can add items but
+    // never change or remove one; only an admin can correct the list. His ID records (Aadhaar last 4, police
+    // clearance) and the clothes assigned to him live on washers/{phone}, which only an admin can write them to.
+    match /washerkit/{phone} {
+      allow read: if isAdmin() || (signedIn() && phone == me());
+      allow create: if isAdmin() || (isWasher() && phone == me()
+        && d().keys().hasOnly(['phone', 'items', 'updated_at'])
+        && d().phone == me() && d().items is list && d().items.size() >= 1 && d().items.size() <= 10
+        && optStr(d(), 'updated_at', 40));
+      allow update: if isAdmin() || (isWasher() && phone == me()
+        && d().keys().hasOnly(['phone', 'items', 'updated_at'])
+        && d().phone == resource.data.phone
+        && d().items is list
+        && d().items.size() > resource.data.items.size()
+        && d().items.size() <= resource.data.items.size() + 10
+        && d().items.size() <= 300
+        && d().items[0:resource.data.items.size()] == resource.data.items
+        && optStr(d(), 'updated_at', 40));
+      allow delete: if isAdmin();
+    }
+
     match /customers/{phone} {
       allow read: if isAdmin() || (signedIn() && phone == me());
       // a new customer signs up as 'new'; an admin checks the car and makes the account 'active'
