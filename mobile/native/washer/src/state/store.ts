@@ -18,6 +18,7 @@ import { setHindi, t } from '../lib/i18n';
 import { guideAt } from '../lib/washGuide';
 import { setupWashAlerts, alertsReady, scheduleWashAlerts, cancelWashAlerts, cancelAllWashAlerts } from '../lib/washAlerts';
 import { ui } from '../ui/bus';
+import { registerPushToken, clearPushToken } from '../lib/pushToken';
 
 const { db, auth } = backend;
 // a wash can only be closed once this many photos of the car are taken
@@ -491,6 +492,7 @@ export const act = {
     try { await AsyncStorage.setItem(KEY, JSON.stringify(S)) } catch (e) { }
     bookCars = null; R = {}; RT = {}; view.pendingPhotos = {}; view.jobAlert = null; view.readOnly = false;
     if (REAL) { NewCar.mine = []; Object.keys(ROSTER).forEach(k => delete ROSTER[k]) }
+    if (REAL) await Promise.race([clearPushToken(), new Promise(r => setTimeout(r, 4000))]);   // needs the sign-in, so before signOut
     await auth.signOut(); view.authStep = 'phone'; emit();
     return true;
   },
@@ -600,7 +602,7 @@ function enterApp() {
   if (MODE === 'demo') demoExtras();   // seeded before listening, so the sample jobs do not pop up as new
   Book.load();
   Sync.listen();
-  if (REAL) startGps();
+  if (REAL) { startGps(); void registerPushToken() }
 }
 
 /* ---------- live location for the customer's map (installed app only) ---------- */

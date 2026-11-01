@@ -328,3 +328,20 @@ Android 6+ shows a one-time "Allow location" prompt the first time; the WebChrom
 
 Location is cleared from Firestore when the washer logs out, so stale positions do not
 mislead the dispatch algorithm.
+
+## Push for extra kaam
+
+After "Washer assign karo" succeeds, three extra nodes run in parallel with "Jawab do (200)"
+(all `continueOnFail`, so the webhook answer is never delayed or failed by the push):
+"Washer ka token" (Firestore `runQuery` on `washers` where `route_id` == the assigned round id and
+`status` == `approved`, limit 3) → "Push taiyaar" (collects each `push_token`, builds
+"₹{50% of price} aapke · {service}") → "Push bhejo" (FCM HTTP v1 `messages:send`, one call per token).
+
+Setup:
+- The credential "Firebase service account (Google Service Account API)" must have the scope
+  `https://www.googleapis.com/auth/firebase.messaging` in its Scope(s) field (add it alongside the
+  Firestore/datastore scope, space-separated).
+- The service account's Google Cloud project needs **Firebase Cloud Messaging API (HTTP v1)** enabled,
+  and the service account needs the role **Firebase Cloud Messaging API Admin** (or Editor).
+- Washers must have opened the new app once, so the token is saved in `washers/{phone}.push_token`.
+- Jobs created from /admin/ "Give a washer extra work" do **not** push yet; only this GPS dispatch does.

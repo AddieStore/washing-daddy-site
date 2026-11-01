@@ -10,3 +10,7 @@ for pair in 3:ph_dry 6:ph_polish 9:ph_check 10:ph_photo; do
   ffmpeg -v error -y -i assets/sound/voice/$clip.mp3 -ar 44100 -ac 1 assets/notif/wd_s$m.wav
   echo "wd_s$m.wav"
 done
+# the 'extra kaam' push sound (channel wd_extra_v1) is the intro voice clip
+[ -f assets/sound/voice/intro.mp3 ] || { echo "missing assets/sound/voice/intro.mp3"; exit 1; }
+ffmpeg -v error -y -i assets/sound/voice/intro.mp3 -ar 44100 -ac 1 assets/notif/wd_extra.wav
+echo "wd_extra.wav"

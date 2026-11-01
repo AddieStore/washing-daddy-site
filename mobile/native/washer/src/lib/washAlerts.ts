@@ -11,6 +11,7 @@ const NATIVE = Platform.OS === 'android' || Platform.OS === 'ios';
 // minute -> sound file name in the app (assets/notif/wd_s<minute>.wav, made by tools/prep-notif-sounds.sh)
 const STAGES = GUIDE.map(g => ({ min: g.from / 60, title: g.title, hi: g.hi })).filter(s => s.min > 0);
 const channelId = (min: number) => `wd_stage${min}_v1`;
+export const EXTRA_CHANNEL = 'wd_extra_v1';
 const idsKey = (wash: string) => 'wd-alerts:' + wash;
 let N: typeof import('expo-notifications') | null = null;
 let ready = false;
@@ -34,6 +35,11 @@ export async function setupWashAlerts(): Promise<boolean> {
           audioAttributes: { usage: n.AndroidAudioUsage.ALARM, contentType: n.AndroidAudioContentType.SONIFICATION },
         });
       }
+      // server push for an 'extra kaam' assigned to this washer (FCM sets android.notification.channel_id = this id)
+      await n.setNotificationChannelAsync(EXTRA_CHANNEL, {
+        name: 'Extra kaam', importance: n.AndroidImportance.HIGH, sound: 'wd_extra.wav', enableVibrate: true,
+        audioAttributes: { usage: n.AndroidAudioUsage.ALARM, contentType: n.AndroidAudioContentType.SONIFICATION },
+      });
     }
     let p = await n.getPermissionsAsync();
     if (!p.granted && p.canAskAgain) p = await n.requestPermissionsAsync();

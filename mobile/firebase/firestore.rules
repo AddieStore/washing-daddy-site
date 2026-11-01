@@ -42,7 +42,8 @@ service cloud.firestore {
         && str(d().name, 60) && d().name.size() > 0 && optStr(d(), 'area', 80) && optStr(d(), 'ref', 12));
       allow update: if isAdmin()
         || (signedIn() && phone == me()
-            && d().diff(resource.data).affectedKeys().hasOnly(['name', 'area', 'updated_at', 'last_seen_at'])
+            && d().diff(resource.data).affectedKeys().hasOnly(['name', 'area', 'updated_at', 'last_seen_at', 'push_token', 'push_at'])
+            && optStr(d(), 'push_token', 400) && optStr(d(), 'push_at', 40)
             && str(d().name, 60));
       allow delete: if isAdmin();
     }

@@ -22,7 +22,7 @@ if (process.env.WD_RELEASE === '1') {
 
 const PACKAGE = 'com.washingdaddy.washer'; // must not change: store listings carry over
 
-const notifSounds = [3, 6, 9, 10].map(m => `./assets/notif/wd_s${m}.wav`).filter(f => fs.existsSync(path.join(__dirname, f)));
+const notifSounds = [...[3, 6, 9, 10].map(m => `./assets/notif/wd_s${m}.wav`), './assets/notif/wd_extra.wav'].filter(f => fs.existsSync(path.join(__dirname, f)));
 
 const config: ExpoConfig = {
   name: 'WD Partner',
@@ -108,7 +108,7 @@ const config: ExpoConfig = {
       },
     ],
     ...(hasAndroidFirebase
-      ? ['@react-native-firebase/app', '@react-native-firebase/auth']
+      ? ['@react-native-firebase/app', '@react-native-firebase/auth', '@react-native-firebase/messaging']
       : []),
   ] as ExpoConfig['plugins'],
   experiments: { typedRoutes: false },
