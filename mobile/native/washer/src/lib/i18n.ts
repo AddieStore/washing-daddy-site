@@ -462,7 +462,10 @@ export function hiOf(t: string): string | null {
 }
 
 let hindi = false;
-export const setHindi = (on: boolean) => { hindi = on };
+export const setHindi = (on: boolean) => { hindi = on,
+  "Awaaz alerts pakke chalein": "आवाज़ अलर्ट पक्के चलें",
+  "Battery saver mein App ko \"No restrictions\" do, tab band hone par bhi awaaz aayegi": "बैटरी सेवर में ऐप को \"No restrictions\" दें, तब बंद होने पर भी आवाज़ आएगी",
+};
 export const isHindi = () => hindi;
 // t('Round shuru karo') -> 'राउंड शुरू करो' in Hindi mode, unchanged otherwise
 export const t = (s: string) => (hindi ? hiOf(s) ?? s : s);

@@ -1,6 +1,6 @@
 // Profile tab: the violet me-card, settings rows, footer notes. Port of renderMe + #s-me.
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, Text, View } from 'react-native';
+import { Image, Linking, Platform, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -99,6 +99,10 @@ export default function Profile() {
               right={<Segmented options={[{ value: 'hinglish' as const, label: 'Hinglish' }, { value: 'hi' as const, label: 'हिंदी' }]} value={S.lang || 'hinglish'} onChange={v => act.setLang(v)} />} />
             <Row divider icon="sun" title={t('Screen')} subtitle={t('Dhoop mein "Din" saaf dikhta hai')}
               right={<Segmented options={[{ value: 'light' as const, label: t('Din') }, { value: 'dark' as const, label: t('Raat') }, { value: 'auto' as const, label: t('Auto') }]} value={S.theme} onChange={v => act.setTheme(v)} />} />
+            {Platform.OS === 'android' ? (
+              <Row divider icon="sun" title={t('Awaaz alerts pakke chalein')} subtitle={t('Battery saver mein App ko "No restrictions" do, tab band hone par bhi awaaz aayegi')}
+                onPress={() => { Linking.sendIntent('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS').catch(() => Linking.openSettings().catch(() => {})) }} />
+            ) : null}
             <Row divider icon={<SyncDot state={dot} />} title={t('Customer app se sync')} subtitle={t(label)} onPress={openSyncSheet} />
             <Row divider icon="reset" title={t('Aaj ka round reset')} subtitle={t('Sirf is phone se. Test ke liye.')}
               onPress={() => openResetSheet(() => { try { router.navigate('/' as any) } catch { /* stay */ } })} />

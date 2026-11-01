@@ -22,6 +22,8 @@ if (process.env.WD_RELEASE === '1') {
 
 const PACKAGE = 'com.washingdaddy.washer'; // must not change: store listings carry over
 
+const notifSounds = [3, 6, 9, 10].map(m => `./assets/notif/wd_s${m}.wav`).filter(f => fs.existsSync(path.join(__dirname, f)));
+
 const config: ExpoConfig = {
   name: 'WD Partner',
   slug: 'wd-partner',
@@ -42,7 +44,7 @@ const config: ExpoConfig = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    permissions: ['CAMERA', 'ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'VIBRATE'],
+    permissions: ['CAMERA', 'ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'VIBRATE', 'POST_NOTIFICATIONS', 'SCHEDULE_EXACT_ALARM'],
     ...(hasAndroidFirebase ? { googleServicesFile: androidGoogleServices } : {}),
   },
   ios: {
@@ -79,6 +81,8 @@ const config: ExpoConfig = {
       },
     ],
     'expo-audio',
+    // the spoken wash-stage alerts: the sound files are made by tools/prep-notif-sounds.sh; only the ones that exist are bundled
+    ['expo-notifications', { color: '#5409DA', sounds: notifSounds }],
     [
       'expo-location',
       {

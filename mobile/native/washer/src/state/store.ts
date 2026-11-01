@@ -16,6 +16,7 @@ import {
 } from '../lib/data';
 import { setHindi, t } from '../lib/i18n';
 import { guideAt } from '../lib/washGuide';
+import { setupWashAlerts, alertsReady, scheduleWashAlerts, cancelWashAlerts, cancelAllWashAlerts } from '../lib/washAlerts';
 import { ui } from '../ui/bus';
 
 const { db, auth } = backend;
@@ -380,6 +381,7 @@ export const act = {
     mutate(reg, d => { d.status = 'washing'; d.started_at = isoIST(); if (!d.arrived_at) d.arrived_at = d.started_at });
     ui.haptic([20, 40, 20]); ui.toast(t(`Timer chalu · ${carBy(reg)?.customer} ko "Wash chal raha" dikh raha hai`)); emit();
     guideTick();
+    const w0 = W(reg); if (w0?.started_at) void scheduleWashAlerts(reg, w0.started_at);
   },
   task(reg: string, key: TaskKey) {
     const wd = W(reg); if (!wd) return;
@@ -414,12 +416,14 @@ export const act = {
     const litres = wd.tasks.reduce((a, x) => a + (x.done ? TASK[x.key].litres : 0), 0) || TASK.pressure.litres;
     const end = isoIST();
     mutate(reg, d => { d.status = 'done'; d.finished_at = end; d.minutes = Math.max(1, Math.round((Date.parse(end) - Date.parse(d.started_at || end)) / 60000)); d.water_litres = litres });
+    void cancelWashAlerts(reg);
     ui.haptic([20, 40, 20, 40, 60]); ui.confetti(1); Route.retime(); emit(); return true;
   },
   needPhoto() { ui.toast(t(`Kam se kam ${MIN_PHOTOS} gaadi ki photo lo, phir wash band hogi`)); ui.haptic(14) },
   skip(reg: string, reason: string) {
     mutate(reg, d => { d.status = 'skipped'; d.skip_reason = reason });
     const sk = skipAsk(reg); if (sk) Sync.setRequest(sk.id, { status: 'done', done_at: isoIST() });
+    void cancelWashAlerts(reg);
     ui.haptic(14); Route.retime(); ui.toast(t('Skip kiya. Customer ko wajah dikh rahi hai')); emit();
   },
   unskip(reg: string) { mutate(reg, d => { d.status = d.arrived_at ? 'arrived' : 'scheduled'; d.skip_reason = null }); emit() },
@@ -469,6 +473,7 @@ export const act = {
   flushNow() { view.readOnly = false; refused = 0; Sync.flush(); ui.toast(t('Bhej raha hoon…')) },
   resetDay() {
     Object.keys(S.outbox).forEach(k => { if (k.startsWith(DAY)) delete S.outbox[k] });
+    void cancelAllWashAlerts();
     S.day = null; S.current = null; ensureDay(); save(); ui.toast(t('Reset ho gaya')); emit();
   },
   // Logging out wipes this phone's round: customer names/addresses, the outbox and every photo (they all live in S).
@@ -479,7 +484,7 @@ export const act = {
       await Promise.race([Sync.flush(), new Promise(r => setTimeout(r, 8000))]);
       if (outboxSize() && !discard) { ui.toast(t('Kuch update abhi bheje nahi gaye. Net aane pe phir try karo.')); return false }
     }
-    Sync.stop(); stopWatch(); stopKit(); stopGps();
+    Sync.stop(); stopWatch(); stopKit(); stopGps(); void cancelAllWashAlerts();
     const { theme, lang } = S;
     S = { session: null, online: true, theme, lang, day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
     if (saveT) { clearTimeout(saveT); saveT = null }
@@ -524,7 +529,9 @@ export function guideTick() {
     const k = S.day.date + '_' + wd.reg + '_' + g.idx;
     if (guided.has(k)) continue;
     guided.add(k);
-    ui.speak(g.step.clip); ui.haptic([20, 40, 20]);   // the banner on the car screen shows the stage, so no toast
+    // later stages are spoken by the phone's own scheduled alerts (they also work with the app closed); in the app only stage 0, or all if alerts are off
+    if (g.idx === 0 || !alertsReady()) ui.speak(g.step.clip);
+    ui.haptic([20, 40, 20]);   // the banner on the car screen shows the stage, so no toast
   }
 }
 /* ---------- kit and ID records (profile tab) ---------- */
@@ -587,6 +594,7 @@ async function afterRealLogin() {
   if (r === 'in') { enterApp(); watchMe() } else { view.authStep = r; emit(); if (r !== 'join') watchMe() }
 }
 function enterApp() {
+  void setupWashAlerts();   // asks for notification + exact-alarm permission up front (installed app only)
   watchKit();
   view.authStep = 'in'; ensureDay(); emit();
   if (MODE === 'demo') demoExtras();   // seeded before listening, so the sample jobs do not pop up as new
