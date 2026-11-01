@@ -238,16 +238,16 @@ async function sendRequest(body: object) {
 async function pay(kind: string, d: { amt: number; what: string; [k: string]: any }) {
   if (!payReal()) { await wait(1100); return { ref: 'CF' + Date.now().toString().slice(-8), pending: false } }
   const c = car(), a = A();
-  let j: any = null, ok = false;
+  let j: any = null, ok = false, status = 0;
   try {
     const r = await fetch(N8N + '/wd-pay-order', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount: d.amt, name: a.name || '', phone: AUTH!.phone10(), car: c.name, num: c.plate, area: c.area || a.area || '', kind, label: d.what,
         planId: d.planId, ...(kind === 'plan' && pendingRef() ? { ref: pendingRef() } : {}), toPlan: d.toPlan, fromPlan: d.fromPlan, till: d.till, items: d.items, service: d.service, page: 'app' }) });
-    ok = r.ok; j = await r.json().catch(() => null);
-  } catch (e) { throw new Error("Payment didn't go through. Nothing was charged.") }
-  if (!ok || !j || !j.paymentSessionId) throw new Error(j && j.message ? j.message + ' Nothing was charged.' : "Payment didn't go through. Nothing was charged.");
+    ok = r.ok; status = r.status; j = await r.json().catch(() => null);
+  } catch (e: any) { throw new Error(`Payment didn't go through. Nothing was charged. (no connection to the payment server: ${String(e && e.message || e).slice(0, 60)})`) }
+  if (!ok || !j || !j.paymentSessionId) throw new Error(j && j.message ? j.message + ' Nothing was charged.' : `Payment didn't go through. Nothing was charged. (payment server answered ${status}${j ? '' : ', not JSON'})`);
   try { await cashfreeCheckout(j.paymentSessionId, j.orderId || j.order_id) }
-  catch (e: any) { throw new Error(e && e.cancelled ? 'Payment cancelled. Nothing was charged.' : "Payment didn't go through. Nothing was charged.") }
+  catch (e: any) { throw new Error(e && e.cancelled ? 'Payment cancelled. Nothing was charged.' : `Payment didn't go through. Nothing was charged. (checkout: ${String(e && e.message || e).slice(0, 80)})`) }
   if (kind === 'plan') {
     if (Number(j.discount) > 0) toast('Invite applied: ₹200 off');
     if (pendingInvite) setPendingRef('');   // first plan payment is on its way: the code is spent
@@ -261,6 +261,7 @@ async function pollPaidTo(c: Car, was: string) {
     await wait(i < 3 ? 1500 : 4000);
     let j: any = null;
     try { const r = await fetch(N8N + '/wd-pay-lookup?car=' + encodeURIComponent(c.plate), { cache: 'no-store' } as any); j = await r.json() } catch (e) { continue }
+    if (j && j.found && j.credit != null && Number.isFinite(Number(j.credit)) && S.acct && S.acct.credit !== Number(j.credit)) { S.acct.credit = Number(j.credit); commit() }
     if (j && j.found && j.paidTo && j.paidTo !== was) {
       c.till = j.paidTo; const p = A().payments.slice(-1)[0]; if (p) p.pending = false;
       commit(); toast('Payment confirmed. Covered till ' + fmt(parse(j.paidTo))); return;

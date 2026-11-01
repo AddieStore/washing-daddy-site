@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
 import { C, F, SP, R, HIT } from '../theme';
 import { Btn, Card, Chips, Dots, Field, Gap, Hard, Opt, Page, Ticker, Txt, useInsets, PAD } from '../ui/kit';
-import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite } from '../state';
+import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp } from '../state';
 import { src, RATIO } from '../img';
 import { AREAS, PLANS, SLIDES, PlanId } from '../data/reference';
 import { inr } from '../data/dates';
@@ -41,6 +41,8 @@ export default function Auth() {
   const [left, setLeft] = useState(30);
   const [su, setSu] = useState({ name: '', area: '', model: '', plate: '', plan: 'std' as PlanId });
   const [inv, setInv] = useState(pendingRef());   // optional invite code, prefilled from a link the friend sent
+  const [showInv, setShowInv] = useState(!!pendingRef()), [tapped, setTapped] = useState(false);
+  const { v: appV } = useApp();
   const boxes = useRef<({ focus: () => void } | null)[]>([]);
   const shake = useRef(new Animated.Value(0)).current;
   const scroll = useRef<any>(null), cardY = useRef(0);
@@ -58,12 +60,32 @@ export default function Auth() {
   useEffect(() => { if (step === 'otp') { const t = setTimeout(() => boxes.current[0]?.focus(), 300); return () => clearTimeout(t) } }, [step]);
 
   const phoneOk = /^[6-9]\d{9}$/.test(phone);
+  const own = /^\d{10}$/.test(phone) ? 'WD' + phone.slice(-6) : '';
+  const OWN = "That's your own code. Use one from a friend.";
+  // a code that arrives by link while this screen is open fills the box
+  useEffect(() => { const r = pendingRef(); if (r && r !== inv && (!inv || validInvite(inv))) { setInv(r); setShowInv(true) } }, [appV]);
+  // typing keeps the saved code in step: valid -> saved at once (applies at the first plan payment), anything else -> cleared
+  const onInv = (t: string) => {
+    const c = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    setInv(c); setErr('');
+    if (validInvite(c) && c !== own) setPendingRef(c); else setPendingRef('');
+  };
+  const inviteBox = (
+    <View>
+      <Field label={step === 'about' ? 'Do you have an invite code? (optional)' : 'Invite code (optional)'} value={inv} onChangeText={onInv} onFocus={toCard} placeholder="WD123456" autoCapitalize="characters" autoCorrect={false}
+        autoFocus={tapped && step === 'phone'} maxLength={8} accessibilityLabel="Invite code" boxStyle={{ marginBottom: 0 }} />
+      {validInvite(inv) ? (inv === own
+        ? <Txt weight={600} size={12} color={C.red} style={{ marginTop: SP.s, lineHeight: 18 }}>{OWN}</Txt>
+        : <Txt weight={600} size={12} color="#0E9F6E" style={{ marginTop: SP.s, lineHeight: 18 }}>₹200 off your first month</Txt>) : null}
+    </View>
+  );
   const onPhone = (t: string) => {
     let d = t.replace(/\D/g, ''); if (d.length > 10) d = d.slice(-10);
     setPhone(d); setShown(d.length > 5 ? d.slice(0, 5) + ' ' + d.slice(5) : d); setErr('');
   };
   const sendCode = async () => {
     if (!phoneOk) { setErr('Enter a 10-digit mobile number.'); return }
+    if (inv && inv === own) { setErr(OWN); return }
     setBusy(true);
     try { await act.sendOtp(phone); setCode(Array(OTP_N).fill('')); setLeft(30); setStep('otp') } catch (e) { setErr(msg(e)) }
     setBusy(false);
@@ -105,7 +127,7 @@ export default function Auth() {
     if (miss) { setErr('Add ' + miss + ' to continue.'); return }
     const code = inv.trim().toUpperCase();
     if (code && !validInvite(code)) { setErr('That invite code should look like WD123456. Fix it or clear it.'); return }
-    if (code && !setPendingRef(code)) { setErr("That's your own code. Use one from a friend."); return }
+    if (code && !setPendingRef(code)) { setErr(OWN); return }
     if (!code) setPendingRef('');
     setSu({ ...su, name: n, model: m, plate: p.toUpperCase() }); setStep('plan');
   };
@@ -128,6 +150,9 @@ export default function Auth() {
           style={{ flex: 1, minWidth: 0, fontFamily: F.b600, fontSize: 18, letterSpacing: 0.7, color: C.ink, paddingVertical: 8, outlineStyle: 'none' } as any} />
         <Btn label="Get code" busy={busy ? 'Sending…' : false} disabled={!phoneOk} onPress={sendCode} small full={false} />
       </View>
+      {showInv
+        ? <View style={{ marginTop: SP.l }}>{inviteBox}</View>
+        : <Link label="I have an invite code" onPress={() => { setShowInv(true); setTapped(true) }} style={{ alignSelf: 'flex-start', marginTop: SP.l }} />}
       {err ? <View style={{ marginTop: SP.m }}><Err text={err} /></View> : null}
       {REAL ? <Hint>New to Washing Daddy? Use your number and we'll set you up after the code.</Hint>
         : <Hint><B>Test version.</B> 98765 04210 opens a sample customer with two cars. Any other number takes you through sign-up as a new customer.</Hint>}
@@ -161,8 +186,7 @@ export default function Auth() {
       <Chips items={AREAS} value={su.area} onChange={area => { setSu({ ...su, area }); setErr('') }} />
       <Field label="Car" value={su.model} onChangeText={model => { setSu({ ...su, model }); setErr('') }} placeholder="e.g. Creta, Nexon, City" autoCapitalize="words" />
       <Field label="Registration number" value={su.plate} onChangeText={plate => { setSu({ ...su, plate }); setErr('') }} placeholder="DL 8C AB 1234" autoCapitalize="characters" autoCorrect={false} />
-      <Field label="Have an invite code? (optional)" value={inv} onChangeText={t => { setInv(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)); setErr('') }} placeholder="WD123456" autoCapitalize="characters" autoCorrect={false} />
-      {validInvite(inv) ? <Txt weight={600} size={12} color="#0E9F6E" style={{ marginTop: -SP.s, marginBottom: SP.m }}>₹200 off your first month</Txt> : null}
+      <View style={{ marginBottom: SP.l }}>{inviteBox}</View>
       <Err text={err} />
       <Btn label="Choose a plan" variant="violet" onPress={toPlan} style={{ marginTop: SP.s }} />
     </>

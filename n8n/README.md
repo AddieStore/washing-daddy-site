@@ -105,9 +105,18 @@ and nothing the browser sent.
   spent twice (two unpaid orders made at once).
 - A friend whose car is not on the book yet: the payment is logged as a lead as before, the inviter
   is credited, and the Telegram line asks Ravi to set `Referred By` when he adds the car.
+- **The inviter must be paid up for this month** to earn the ₹200: their row's Service Paid Up To
+  must be today (IST) or later, checked from a fresh read **at the moment the friend's payment is
+  confirmed**, not when the order was made. If not, the friend keeps the discount, the inviter gets
+  no credit, and Ravi's payment message says "No ₹200 credit for the referrer <car> <plate> (code
+  WD…): not paid up for this month (paid to …). Credit by hand if you want to." That is a final
+  decision for that friend: a retry or a later payment by the same friend does not credit it.
+
+`wd-pay-lookup` now also answers `credit`: the car's Referral Credit as a whole number (0 when
+empty or when the column does not exist), so the app can show it.
 
 Tests: `node n8n/2026-11-01/tests/invite.test.js` runs the workflow JSON itself against a fake
-Notion and Cashfree (72 checks). Plates on the book should be typed without spaces (`DL3CXY9999`),
+Notion and Cashfree (87 checks). Plates on the book should be typed without spaces (`DL3CXY9999`),
 or the hook's search misses the car (finding F9 in the 29 Oct audit; unchanged here).
 
 ## A note on the Code nodes

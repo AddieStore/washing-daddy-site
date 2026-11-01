@@ -28,12 +28,14 @@ const credit = (world, r) => world.pages.get(r.id.replace(/-/g, '')).properties[
 const text = (world, r, k) => plain(world.pages.get(r.id.replace(/-/g, '')).properties[k]);
 const tg = log => log.telegram.map(t => t.text).join('\n----\n');
 let payN = 1000;
+const istDay = off => new Date(Date.now() + 5.5 * 3600e3 + off * 864e5).toISOString().slice(0, 10);
+const TODAY = istDay(0), FUTURE = istDay(20), PAST = istDay(-1);
 const nextPay = () => String(++payN);
 
 (async () => {
   // ================= wd-pay-order =================
   {
-    const referrer = row({ car: 'Creta', num: 'DL1CAA1111', phone: REF_PHONE, paidTo: '2026-11-20', lastIds: '900' });
+    const referrer = row({ car: 'Creta', num: 'DL1CAA1111', phone: REF_PHONE, paidTo: FUTURE, lastIds: '900' });
     const world = makeWorld({ rows: [referrer] });
     const log = await order(world, planBody({ ref: 'WD123456' }));
     const o = lastOrder(world);
@@ -50,7 +52,7 @@ const nextPay = () => String(++payN);
     check('lower case / spaces in code accepted', lower.response.body.discount === 200);
   }
   {
-    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: '2026-11-20', lastIds: '900' });
+    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: FUTURE, lastIds: '900' });
     const friendCar = row({ car: 'City', num: 'DL3CXY9999', phone: '+91 90000 11111', fee: 999 });
     const world = makeWorld({ rows: [referrer, friendCar] });
     const log = await order(world, planBody({ ref: 'WD123456', amount: 999 }));
@@ -59,7 +61,7 @@ const nextPay = () => String(++payN);
       JSON.stringify(o.order_tags));
   }
   {
-    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: '2026-11-20', lastIds: '900' });
+    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: FUTURE, lastIds: '900' });
     const world = makeWorld({ rows: [referrer] });
     let log = await order(world, planBody({ ref: 'WD123456', phone: '9811123456' }));
     check('self ref: payer phone is the referrer phone -> no discount, full price', log.response.body.discount === 0 && lastOrder(world).order_amount === 1800 && !lastOrder(world).order_tags.invite);
@@ -107,7 +109,7 @@ const nextPay = () => String(++payN);
   }
   {
     // Ravi fills Referred By by hand between the order and the payment: no reward on confirm
-    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: '2026-11-20', lastIds: '900' });
+    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: FUTURE, lastIds: '900' });
     const friend = row({ num: 'DL3CXY9999', phone: '+91 90000 11111', fee: 1800 });
     const world = makeWorld({ rows: [referrer, friend] });
     await order(world, planBody({ ref: 'WD123456' }), {});
@@ -173,7 +175,7 @@ const nextPay = () => String(++payN);
   // ================= wd-pay-hook =================
   {
     // new friend, car not on the book: lead path
-    const referrer = row({ car: 'Creta', num: 'DL1CAA1111', phone: REF_PHONE, paidTo: '2026-11-20', lastIds: '900' });
+    const referrer = row({ car: 'Creta', num: 'DL1CAA1111', phone: REF_PHONE, paidTo: FUTURE, lastIds: '900' });
     const world = makeWorld({ rows: [referrer] });
     const sd = {};
     await order(world, planBody({ ref: 'WD123456' }), sd);
@@ -191,7 +193,7 @@ const nextPay = () => String(++payN);
   }
   {
     // friend on the book (never paid): Referred By written with the payment, referrer credited
-    const referrer = row({ car: 'Creta', num: 'DL1CAA1111', phone: REF_PHONE, paidTo: '2026-11-20', lastIds: '900', credit: 100 });
+    const referrer = row({ car: 'Creta', num: 'DL1CAA1111', phone: REF_PHONE, paidTo: FUTURE, lastIds: '900', credit: 100 });
     const friend = row({ car: 'City', num: 'DL3CXY9999', phone: '+91 90000 11111', fee: 1800, owes: 1800 });
     const world = makeWorld({ rows: [referrer, friend] });
     const sd = {};
@@ -215,7 +217,7 @@ const nextPay = () => String(++payN);
   }
   {
     // Notion refuses the payer update -> 500 + alert, nothing credited; Cashfree retry then works once
-    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: '2026-11-20', lastIds: '900' });
+    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: FUTURE, lastIds: '900' });
     const friend = row({ num: 'DL3CXY9999', phone: '+91 90000 11111', fee: 1800 });
     const world = makeWorld({ rows: [referrer, friend] });
     const sd = {};
@@ -231,7 +233,7 @@ const nextPay = () => String(++payN);
   }
   {
     // Notion refuses the referrer credit -> loud alert, 200 (no retry), retry cannot double it
-    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: '2026-11-20', lastIds: '900', credit: 0 });
+    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: FUTURE, lastIds: '900', credit: 0 });
     const friend = row({ num: 'DL3CXY9999', phone: '+91 90000 11111', fee: 1800 });
     const world = makeWorld({ rows: [referrer, friend] });
     const sd = {};
@@ -267,7 +269,7 @@ const nextPay = () => String(++payN);
   }
   {
     // amount check: discount accounted for, no hole
-    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: '2026-11-20', lastIds: '900' });
+    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: FUTURE, lastIds: '900' });
     const world = makeWorld({ rows: [referrer] });
     const sd = {};
     await order(world, planBody({ ref: 'WD123456' }), sd);
@@ -308,13 +310,78 @@ const nextPay = () => String(++payN);
   }
   {
     // payer row lacks the new columns but the order somehow had an invite (e.g. columns deleted after the order)
-    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: '2026-11-20', lastIds: '900' });
+    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: FUTURE, lastIds: '900' });
     const friend = row({ num: 'DL3CXY9999', phone: '+91 90000 11111', fee: 1800 });
     const world = makeWorld({ rows: [referrer, friend] });
     await order(world, planBody({ ref: 'WD123456' }), {});
     delete friend.properties['Referred By']; delete friend.properties['Referral Credit'];
     const log = await hook(world, webhookFor(lastOrder(world), { paymentId: nextPay(), secret: SECRET }), {});
     check('payer row lost its columns -> payment still booked, no reward, Ravi alerted', log.response.code === 200 && !!world.pages.get(friend.id.replace(/-/g, '')).properties['Service Paid Up To'].date && !credit(world, referrer) && /Referred By column is missing/.test(tg(log)), tg(log));
+  }
+
+  // ================= referrer must be paid up for this month (Ravi, 1 Nov) =================
+  {
+    const referrer = row({ car: 'Creta', num: 'DL1CAA1111', phone: REF_PHONE, paidTo: PAST, lastIds: '900', credit: 0 });
+    const world = makeWorld({ rows: [referrer] });
+    const sd = {};
+    let log = await order(world, planBody({ ref: 'WD123456' }), sd);
+    check('referrer not paid up: friend still gets ₹200 off at order time', log.response.body.discount === 200 && lastOrder(world).order_amount === 1600);
+    const o = lastOrder(world), pid = nextPay();
+    log = await hook(world, webhookFor(o, { paymentId: pid, secret: SECRET }), sd);
+    check('referrer not paid up at payment: no credit, 200, no failure alert, no Notion write to referrer',
+      log.response.code === 200 && credit(world, referrer) === 0 && !/INVITE CREDIT FAILED/.test(tg(log)) && !log.order.includes('Referrer credit karo'), tg(log));
+    check('Ravi\'s message names the referrer and says credit by hand',
+      /No ₹200 credit for the referrer Creta DL1CAA1111 \(code WD123456\): not paid up for this month \(paid to [0-9-]{10}\)\. Credit by hand/.test(tg(log)), tg(log));
+    log = await hook(world, webhookFor(o, { paymentId: pid, secret: SECRET }), sd);
+    check('retry of that payment -> duplicate, still no credit', credit(world, referrer) === 0 && !log.order.includes('Referrer padho'));
+    // the referrer pays up later; a second order for the same friend car must not now earn it
+    referrer.properties['Service Paid Up To'].date = { start: FUTURE };
+    await order(world, planBody({ ref: 'WD123456' }), sd);
+    log = await hook(world, webhookFor(lastOrder(world), { paymentId: nextPay(), secret: SECRET }), sd);
+    check('same friend pays again after the referrer paid up -> still no credit (one decision per friend)', credit(world, referrer) === 0, tg(log));
+  }
+  {
+    // paid up when the order was made, lapsed by payment time: evaluated at hook time
+    const referrer = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: FUTURE, lastIds: '900' });
+    const world = makeWorld({ rows: [referrer] });
+    await order(world, planBody({ ref: 'WD123456' }), {});
+    referrer.properties['Service Paid Up To'].date = { start: PAST };
+    let log = await hook(world, webhookFor(lastOrder(world), { paymentId: nextPay(), secret: SECRET }), {});
+    check('paid up at order, lapsed at payment -> no credit', !credit(world, referrer) && /not paid up/.test(tg(log)));
+    // not paid at order, paid by payment time -> credited
+    const r2 = row({ num: 'DL1CAA1111', phone: REF_PHONE, paidTo: null, lastIds: '' });
+    const w2 = makeWorld({ rows: [r2] });
+    await order(w2, planBody({ ref: 'WD123456' }), {});
+    r2.properties['Service Paid Up To'].date = { start: TODAY };
+    log = await hook(w2, webhookFor(lastOrder(w2), { paymentId: nextPay(), secret: SECRET }), {});
+    check('paid up to exactly today (IST) at payment -> credited', credit(w2, r2) === 200, tg(log));
+    // never paid at all (no date) -> no credit
+    const r3 = row({ num: 'DL1CAA1111', phone: REF_PHONE });
+    const w3 = makeWorld({ rows: [r3] });
+    await order(w3, planBody({ ref: 'WD123456' }), {});
+    log = await hook(w3, webhookFor(lastOrder(w3), { paymentId: nextPay(), secret: SECRET }), {});
+    check('referrer never paid (no date) -> no credit, "paid to never"', !credit(w3, r3) && /paid to never/.test(tg(log)), tg(log));
+  }
+
+  // ================= wd-pay-lookup returns credit =================
+  {
+    const a = row({ num: 'DL1CAA1111', phone: REF_PHONE, fee: 999, paidTo: FUTURE, credit: 400 });
+    const b = row({ num: 'DL2CBB2222', phone: '+91 90000 22222', fee: 999 });
+    const c = row({ num: 'DL3CCC3333', phone: '+91 90000 33333', fee: 999, columns: false });
+    const d = row({ num: 'DL4CDD4444', phone: '+91 90000 44444', fee: 999, credit: 12.7 });
+    const world = makeWorld({ rows: [a, b, c, d] });
+    const look = car => run(WF, 'Bill poochho (webhook)', { headers: {}, query: { car } }, { env: ENV, staticData: {}, http: world.http });
+    let l = await look('DL 1C AA 1111');
+    check('lookup returns credit 400', l.response.body.found === true && l.response.body.credit === 400, JSON.stringify(l.response.body));
+    check('lookup still returns no plate, phone or page id', !/DL1CAA|98111|-/.test(JSON.stringify(l.response.body).replace(/"paidTo":"[0-9-]+"/, '')), JSON.stringify(l.response.body));
+    l = await look('DL2CBB2222');
+    check('lookup: empty credit -> 0', l.response.body.credit === 0);
+    l = await look('DL3CCC3333');
+    check('lookup: no Referral Credit column -> 0', l.response.body.found === true && l.response.body.credit === 0);
+    l = await look('DL4CDD4444');
+    check('lookup: credit is a whole number', l.response.body.credit === 12);
+    l = await look('XX9999');
+    check('lookup: unknown car -> found:false only', JSON.stringify(l.response.body) === '{"found":false}');
   }
 
   // ================= wiring =================
@@ -331,7 +398,8 @@ const nextPay = () => String(++payN);
     check('Referrer dhoondo only runs from Ref hai? (true)', JSON.stringify(into['Referrer dhoondo']) === '["Ref hai?#0"]');
     check('referrer credit is written only after the payer update succeeded or the lead was logged',
       JSON.stringify(into['Invite credit chahiye?'].sort()) === JSON.stringify(['Anjaan gaadi: lead banao#0', 'Yaad rakho#0']) && JSON.stringify(into['Referrer credit karo']) === '["Credit likh sakte?#0"]');
-    check('both credit failure branches lead to the hand-credit alert', JSON.stringify(into['Credit fail: Ravi ko batao'].sort()) === JSON.stringify(['Credit likh sakte?#1', 'Credit theek hua?#1']));
+    check('both credit failure branches lead to the hand-credit alert', JSON.stringify(into['Credit fail: Ravi ko batao'].sort()) === JSON.stringify(['Credit theek hua?#1', 'Paid up nahi?#1']));
+    check('not-paid-up skip goes to Ravi\'s message, never to the credit write', JSON.stringify(into['Paid up nahi?']) === '["Credit likh sakte?#1"]' && (WF.connections['Paid up nahi?'].main[0] || []).map(t => t.node).join() === 'Sandesh banao');
     const raw = JSON.stringify(WF);
     check('no secret in the file', !/x-client-secret"\s*:\s*"[A-Za-z0-9]/.test(raw) && !raw.includes(SECRET));
     check('every Notion node uses the Notion account credential', WF.nodes.filter(n => /notion\.com/.test(String(n.parameters.url))).every(n => n.credentials && n.credentials.notionApi && n.credentials.notionApi.name === 'Notion account'));

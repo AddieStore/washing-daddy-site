@@ -18,6 +18,7 @@ export type Account = {
   name: string; phone: string; since: string; area: string; status?: string;
   prefs: { photo: boolean; pay: boolean; drops: boolean };
   cars: Car[]; payments: Payment[]; orders: Order[]; requests: Rewash[]; bookings: Booking[];
+  credit?: number;   // Referral Credit in rupees from wd-pay-lookup, read-only
 };
 export type Session = { token: string; phone: string; real: boolean };
 

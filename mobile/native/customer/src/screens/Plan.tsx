@@ -9,7 +9,7 @@ import { PLANS } from '../data/reference';
 import { PAUSE_MAX, canPause, pauseLeft } from '../data/model';
 import { TODAY, fmt, iso, inr } from '../data/dates';
 import { src, RATIO, ImgKey } from '../img';
-import { A, car, carImg, daysLeft, planStatus, planOf, maskPlate, usage, act, toast, useApp } from '../state';
+import { A, car, carImg, daysLeft, planStatus, planOf, maskPlate, usage, act, toast, useApp, pendingRef } from '../state';
 import { sheets } from '../sheets';
 
 const run = (f: () => Promise<unknown>) => f().catch((e: Error) => toast(e.message));
@@ -53,6 +53,7 @@ function Ticket() {
               <Eyebrow color={C.gold}>{(c.make ? c.make + ' ' : '') + c.name} · {maskPlate(c.plate)}</Eyebrow>
               <Txt font="shout" size={40} upper style={{ marginTop: SP.hair }}>{p.name}</Txt>
               <Txt font="shout" size={22} style={{ marginTop: 6, letterSpacing: 0.4 }}>{inr(p.price)} / month</Txt>
+              {pendingRef() && !c.till ? <Txt weight={600} size={12} color={C.mint2} style={{ marginTop: SP.hair }}>Invite code applied: ₹200 off</Txt> : null}
               {im ? <Image source={src(im)!} resizeMode="contain" style={{ position: 'absolute', right: -30, bottom: -14, width: carW, height: carW / k }} /> : null}
               <Pressable onPress={() => run(act.carPhoto)} hitSlop={8} style={{ marginTop: 8, minHeight: 36, justifyContent: 'center', alignSelf: 'flex-start' }}>
                 <Txt weight={700} size={14} style={{ textDecorationLine: 'underline' }}>{im ? 'Change car photo' : 'Add a photo of your car'}</Txt>

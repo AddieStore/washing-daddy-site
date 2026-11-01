@@ -138,7 +138,9 @@ export default function Profile() {
                 <Txt font="shout" size={30} color={C.cream} style={{ marginLeft: -14, marginTop: 14 }}>₹200</Txt>
               </View>
               <Txt font="shout" size={34} upper style={{ paddingRight: 84, marginBottom: SP.s }}>Get a neighbour off pocha</Txt>
-              <Txt size={13} style={{ marginBottom: SP.l }}>Share your link: you and your friend both get ₹200 off.</Txt>
+              <Txt size={13} style={{ marginBottom: a.credit && a.credit > 0 ? SP.s : SP.l }}>Share your link: you and your friend both get ₹200 off.</Txt>
+              {a.credit && a.credit > 0 ? <Txt weight={700} size={14} style={{ marginBottom: SP.s }}>{`Invite credit: ₹${a.credit} off your next payment`}</Txt> : null}
+              <Txt size={12} color={creamInk.fg2} style={{ marginBottom: SP.l, lineHeight: 18 }}>You earn ₹200 for each friend who joins, if you've paid for this month.</Txt>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingVertical: SP.s, paddingLeft: SP.l, paddingRight: SP.s, borderRadius: RAD.ctl, backgroundColor: C.ink }}>
                 <Txt font="shout" size={22} color={C.cream} style={{ letterSpacing: 2.6 }}>{refCode()}</Txt>
                 <Pill gold label="Share invite" onPress={() => act.copyRef()} />

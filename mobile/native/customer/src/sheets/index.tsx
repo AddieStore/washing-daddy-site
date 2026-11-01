@@ -12,7 +12,7 @@ import { PAUSE_MAX, canPause, pauseFits, pauseLeft } from '../data/model';
 import { TODAY, addDays, fmt, iso, inr, ampm, parse } from '../data/dates';
 import { IMG, RATIO, src, ImgKey } from '../img';
 import {
-  A, car, carImg, doc, planOf, maskPlate, fmtPhone, pName, cartLines, planPayDates, switchQuote, dayDetail, calendar, realAcct, chipText, payReal,
+  A, car, carImg, doc, planOf, maskPlate, fmtPhone, pName, cartLines, planPayDates, switchQuote, dayDetail, calendar, realAcct, chipText, payReal, pendingRef,
   act, toast, openSheet, closeSheet, confetti, go, sheetHooks, trackWasher, distance, useApp, Track,
 } from '../state';
 import { TrackMap } from './TrackMap';
@@ -163,7 +163,7 @@ function Proof() {
 
 /* ---------- plan ---------- */
 function PayPlan() {
-  const c = car(), p = planOf(c), { from, to } = planPayDates(c), [via, setVia] = useState('GPay'), [busy, run] = useRun();
+  const c = car(), p = planOf(c), { from, to } = planPayDates(c), [via, setVia] = useState('GPay'), [busy, run] = useRun(), ink = useInk();
   const go_ = () => run(async () => {
     const r = await act.payPlan(via);
     openSheet(r.pending ? <Success title="Payment received" sub="We're checking it with the bank. Your plan updates by itself as soon as it clears." />
@@ -173,6 +173,7 @@ function PayPlan() {
     <View>
       <Eyebrow>{c.name} · {p.name}</Eyebrow>
       <SheetTitle>{`Pay ${inr(p.price)} for ${c.till ? 'one more month' : 'your first month'}`}</SheetTitle>
+      {pendingRef() && !c.till ? <Txt weight={600} size={13} color={ink.ok} style={{ marginTop: -SP.s, marginBottom: SP.m }}>Invite code applied: ₹200 off</Txt> : null}
       <Confirm fromLabel={c.till ? 'Paid up till' : 'Starts'} from={fmt(from)} toLabel="After paying" to={fmt(to)} />
       <PayWith via={via} set={setVia} />
       <Btn variant="violet" label={'Pay ' + inr(p.price)} busy={busy ? (payReal() ? 'Opening…' : `Opening ${via}…`) : false} onPress={go_} />
