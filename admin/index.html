@@ -180,7 +180,7 @@ function gateCode(d) {
 }
 
 /* ---------------- data ---------------- */
-let W = [], C = [], N = [], X = [], K = {}, tab = 'washers', unsubs = [], q = '';
+let W = [], C = [], N = [], X = [], K = {}, DOCS = {}, WAIT = {}, OPEN = new Set(), tab = 'washers', unsubs = [], q = '';
 function stop() { unsubs.forEach(u => { try { u() } catch (e) {} }); unsubs = [] }
 
 async function signedIn(u) {
@@ -236,7 +236,7 @@ function idPanel(w) {
   const k = esc(w.id), pcc = w.pcc || {}, kit = K[w.id] || [];
   const opt = (v, l) => `<option value="${v}" ${pcc.status === v ? 'selected' : ''}>${l}</option>`;
   const KL = { clothes: 'Clothes', shampoo: 'Shampoo', spray_gun: 'Spray gun', other: 'Other' };
-  return `<details class="idp" style="margin-top:12px"><summary style="font-weight:800;cursor:pointer">Kit and ID records${w.assigned_clothes != null ? ' · ' + esc(w.assigned_clothes) + ' clothes assigned' : ''}</summary>
+  return `<details class="idp" data-wid="${k}"${OPEN.has(w.id) ? ' open' : ''} style="margin-top:12px"><summary style="font-weight:800;cursor:pointer">Kit and ID records${w.assigned_clothes != null ? ' · ' + esc(w.assigned_clothes) + ' clothes assigned' : ''}</summary>
     <div class="grid2" style="margin-top:10px">
       <label class="meta">Clothes assigned<input class="field idf" id="ac-${k}" inputmode="numeric" maxlength="4" value="${esc(w.assigned_clothes ?? '')}" placeholder="0"></label>
       <label class="meta">Aadhaar last 4 digits only<input class="field idf" id="ad-${k}" inputmode="numeric" maxlength="4" value="${esc(w.aadhaar_last4 || '')}" placeholder="1234"></label>
@@ -247,9 +247,57 @@ function idPanel(w) {
     </div>
     <p class="meta" style="margin:8px 0">Never type the full Aadhaar number here. Only the last 4 digits are stored.</p>
     <div class="acts"><button class="btn go" data-a="saveIds" data-id="${k}">Save records</button></div>
+    <div class="meta" style="margin-top:12px"><b>Documents</b> (Aadhaar and PAN the washer uploaded)</div>
+    <div id="wd-${k}">${docsHtml(w.id)}</div>
     <div class="meta" style="margin-top:10px"><b>Kit the washer added</b> (they can't remove items)</div>
     ${kit.length ? kit.map(i => `<div class="meta">${esc(KL[i.kind] || i.kind)} · ${esc(i.name)} × ${esc(i.qty)} · ${esc(String(i.at || '').slice(0, 10))}</div>`).join('') : '<div class="meta">Nothing added yet.</div>'}
   </details>`;
+}
+/* ---- washer documents (collection washerdocs, id = "<+91phone>_<kind>") ---- */
+const DOC_KINDS = [['aadhaar_front', 'Aadhaar front'], ['aadhaar_back', 'Aadhaar back'], ['pan', 'PAN']];
+const DOC_MIME = { 'image/jpeg': 1, 'image/webp': 1, 'image/png': 1, 'application/pdf': 1 };
+const dataOk = d => typeof d.data === 'string' && DOC_MIME[d.mime] && d.data.startsWith('data:' + d.mime + ';base64,');
+function docsHtml(id) {
+  const m = DOCS[id];
+  if (!m) return '<div class="meta">Loading…</div>';
+  if (m === 'err') return '<div class="meta">Could not load the documents. Close and open this panel to try again.</div>';
+  return DOC_KINDS.map(([kind, label]) => {
+    const d = m[kind], k = esc(id);
+    if (!d) return `<div class="meta" style="margin-top:6px"><b>${esc(label)}</b> · Not uploaded</div>`;
+    const st = d.status === 'verified' ? '<span class="pill a">Verified</span>' : d.status === 'rejected' ? '<span class="pill b">Rejected</span>' : '<span class="pill p">To check</span>';
+    const view = !dataOk(d) ? '<span class="meta">File unreadable</span>'
+      : d.mime === 'application/pdf' ? `<button class="btn ghost" data-a="viewdoc" data-id="${k}" data-kind="${esc(kind)}">Open PDF</button>`
+      : `<button type="button" data-a="viewdoc" data-id="${k}" data-kind="${esc(kind)}" aria-label="Open ${esc(label)} full size" style="border:0;padding:0;background:none;cursor:zoom-in"><img src="${esc(d.data)}" alt="${esc(label)}" style="max-width:120px;max-height:90px;border-radius:8px;border:1px solid var(--line);display:block"></button>`;
+    return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line)">
+      <div class="meta"><b>${esc(label)}</b> ${st} · uploaded ${esc(when(d.at) || '')}${d.reviewed_at ? ' · reviewed ' + esc(when(d.reviewed_at)) : ''}</div>
+      ${d.status === 'rejected' && d.note ? `<div class="meta">Reason: ${esc(d.note)}</div>` : ''}
+      <div class="acts" style="align-items:center">${view}<button class="btn go" data-a="docok" data-id="${k}" data-kind="${esc(kind)}">Verify</button><button class="btn no" data-a="docno" data-id="${k}" data-kind="${esc(kind)}">Reject</button></div></div>`;
+  }).join('');
+}
+function showDocs(id) { const el = document.getElementById('wd-' + id); if (el) el.innerHTML = docsHtml(id) }
+async function loadDocs(id) {
+  if (!db) return;
+  try {
+    const sn = await db.collection('washerdocs').where('phone', '==', id).get(), m = {};
+    sn.docs.forEach(x => { const d = x.data(); if (d && DOC_KINDS.some(([k]) => k === d.kind)) m[d.kind] = d });
+    DOCS[id] = m;
+  } catch (e) { console.warn(e); DOCS[id] = 'err' }
+  showDocs(id);
+}
+// the toggle event does not bubble, so listen in the capture phase
+document.addEventListener('toggle', e => {
+  const el = e.target, id = el && el.dataset && el.dataset.wid; if (!id) return;
+  if (el.open) { OPEN.add(id); if (!DOCS[id] || DOCS[id] === 'err') { delete DOCS[id]; showDocs(id); loadDocs(id) } } else OPEN.delete(id);
+}, true);
+// browsers will not navigate to a data: URL, so open the file through a Blob URL
+function openDoc(id, kind) {
+  const m = DOCS[id], d = m && m !== 'err' && m[kind]; if (!d || !dataOk(d)) { toast('Cannot open this file'); return }
+  try {
+    const bin = atob(d.data.slice(d.data.indexOf(',') + 1)), u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([u], { type: d.mime }));
+    window.open(url, '_blank', 'noopener'); setTimeout(() => URL.revokeObjectURL(url), 120000);
+  } catch (e) { console.warn(e); toast('Cannot open this file') }
 }
 // a washer's friend code is WD + last 5 digits of their phone (same rule as the Partner app)
 function referrerOf(code) {
@@ -400,6 +448,17 @@ document.addEventListener('click', e => {
     if (ad !== '' && !/^\d{4}$/.test(ad)) { toast('Aadhaar: exactly the last 4 digits'); return }
     const ps = g('ps').value, pcc = ps ? { status: ps, verified_at: g('pv').value || '', ref: g('pr').value.trim().slice(0, 40) } : null;
     act(b, () => db.doc('washers/' + id).update({ assigned_clothes: ac === '' ? null : Number(ac), aadhaar_last4: ad || null, aadhaar_verified_at: g('av').value || null, pcc, updated_at: nowIST() }), 'Saved. It shows in their Profile.');
+  } else if (a === 'viewdoc') {
+    openDoc(id, b.dataset.kind);
+  } else if (a === 'docok' || a === 'docno') {
+    const kind = b.dataset.kind, d = DOCS[id] && DOCS[id] !== 'err' && DOCS[id][kind]; if (!d || !DOC_KINDS.some(([k]) => k === kind)) return;
+    let patch = { status: 'verified', reviewed_at: nowIST() };
+    if (a === 'docno') {
+      const why = prompt('Why is it rejected? (short reason the washer will see)', d.note || ''); if (why === null) return;
+      if (!why.trim()) { toast('Write a short reason'); return }
+      patch = { status: 'rejected', note: why.trim().slice(0, 120), reviewed_at: nowIST() };
+    }
+    act(b, async () => { await db.doc('washerdocs/' + id + '_' + kind).update(patch); DOCS[id][kind] = { ...d, ...patch }; showDocs(id) }, a === 'docok' ? 'Marked verified' : 'Marked rejected');
   } else if (a === 'approve') {
     const r = round(); if (!r) { toast('Choose a round first'); document.getElementById('r-' + id)?.focus(); return }
     act(b, () => db.doc('washers/' + id).update({ status: 'approved', route_id: r, decided_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }), `${w?.name || 'Washer'} approved. Their app opens now.`);

@@ -10,8 +10,9 @@ import { REAL, Route, S, act, me, myPhoto, syncState, useStore } from '../../sta
 import { takePhoto } from '../../lib/photo';
 import { fmtPhone } from '../../lib/data';
 import { t } from '../../lib/i18n';
+import { langLabel } from '../../lib/langs';
 import { KitSections } from '../../screens/KitSections';
-import { openHelpSheet, openLogoutSheet, openReferSheet, openResetSheet, openSyncSheet } from '../../screens/sheets';
+import { openHelpSheet, openLangSheet, openLogoutSheet, openReferSheet, openResetSheet, openSyncSheet } from '../../screens/sheets';
 
 const WASHER_IMG = require('../../../assets/img/washer.webp');
 const INK_SHADOW = '#2A0478';
@@ -95,8 +96,8 @@ export default function Profile() {
           <View style={box}>
             <Row icon="help" iconColor={brand.red} title={t('Madad / SOS')} subtitle={t('Paisa, customer ya accident ki problem')} onPress={openHelpSheet} />
             <Row divider icon="user" title={t('Dost ko laao')} subtitle={t('Apna code share karo, bonus pao')} onPress={openReferSheet} />
-            <Row divider icon="globe" title={t('Bhasha')} subtitle={t('Poora app Hindi mein')}
-              right={<Segmented options={[{ value: 'hinglish' as const, label: 'Hinglish' }, { value: 'hi' as const, label: 'हिंदी' }]} value={S.lang || 'hinglish'} onChange={v => act.setLang(v)} />} />
+            <Row divider icon="globe" title={t('Bhasha')} subtitle={t('App ki bhasha chuno')} onPress={openLangSheet}
+              right={<Text style={{ fontFamily: F.bold, fontSize: 14, color: c.fg2 }}>{langLabel(S.lang)}</Text>} />
             <Row divider icon="sun" title={t('Screen')} subtitle={t('Dhoop mein "Din" saaf dikhta hai')}
               right={<Segmented options={[{ value: 'light' as const, label: t('Din') }, { value: 'dark' as const, label: t('Raat') }, { value: 'auto' as const, label: t('Auto') }]} value={S.theme} onChange={v => act.setTheme(v)} />} />
             {Platform.OS === 'android' ? (

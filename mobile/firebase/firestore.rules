@@ -80,6 +80,26 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // The washer's identity documents (Aadhaar front/back, PAN): one doc each, a photo or a PDF as a data: URL.
+    // Uploaded by the washer while joining (so only signed in, not yet approved); readable by him and admins only.
+    // He can replace one until an admin marks it 'verified'; only an admin can set status or remove one.
+    match /washerdocs/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.phone == me());
+      allow create: if isAdmin() || (signedIn()
+        && d().keys().hasOnly(['phone', 'kind', 'mime', 'name', 'data', 'at', 'status'])
+        && d().phone == me() && d().kind in ['aadhaar_front', 'aadhaar_back', 'pan'] && id == me() + '_' + d().kind
+        && d().mime in ['image/jpeg', 'image/webp', 'image/png', 'application/pdf']
+        && str(d().name, 120) && str(d().data, 900000) && d().data.size() > 100 && optStr(d(), 'at', 40)
+        && d().status == 'submitted');
+      allow update: if isAdmin() || (signedIn() && resource.data.phone == me() && resource.data.status != 'verified'
+        && d().keys().hasOnly(['phone', 'kind', 'mime', 'name', 'data', 'at', 'status'])
+        && d().phone == me() && d().kind == resource.data.kind
+        && d().mime in ['image/jpeg', 'image/webp', 'image/png', 'application/pdf']
+        && str(d().name, 120) && str(d().data, 900000) && d().data.size() > 100 && optStr(d(), 'at', 40)
+        && d().status == 'submitted');
+      allow delete: if isAdmin();
+    }
+
     match /customers/{phone} {
       allow read: if isAdmin() || (signedIn() && phone == me());
       // a new customer signs up as 'new'; an admin checks the car and makes the account 'active'

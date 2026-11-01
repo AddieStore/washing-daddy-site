@@ -14,7 +14,8 @@ import {
   WASHERS, PHONE_TO_WASHER, DEMO_ROSTER, BOOK_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
   type Car, type Wash, type Req, type Job, type WasherDoc, type KitItem, type KitKind, type WasherInfo, type Photo,
 } from '../lib/data';
-import { setHindi, t } from '../lib/i18n';
+import { setLang, t } from '../lib/i18n';
+import type { Lang } from '../lib/i18n';
 import { guideAt, isSundayIST, nameClip, SPOTS } from '../lib/washGuide';
 import { setupWashAlerts, alertsReady, scheduleWashAlerts, cancelWashAlerts, cancelAllWashAlerts } from '../lib/washAlerts';
 import { ui } from '../ui/bus';
@@ -40,9 +41,9 @@ type Session = { washerId: string | null; real?: boolean; name?: string; phone?:
 type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash> };
 type Selfie = { date: string; washer: string; url?: string; asset_id?: string };
 // the app language the washer picked in onboarding; only 'hinglish' and 'hi' are translated today, the rest fall back (see act.setLangPref)
-export type LangPref = 'hinglish' | 'hi' | 'en' | 'pa' | 'mr' | 'gu' | 'bn' | 'ta' | 'te';
+export type LangPref = Lang;
 type State = {
-  session: Session | null; online: boolean; theme: 'light' | 'dark' | 'auto'; lang: 'hinglish' | 'hi';
+  session: Session | null; online: boolean; theme: 'light' | 'dark' | 'auto'; lang: Lang;
   lang_pref?: LangPref; onboarded?: Record<string, string>;   // onboarded: 10-digit phone -> when the first-run onboarding was finished
   day: Day | null; outbox: Record<string, Wash>; rejected?: Record<string, Wash>; current: string | null;
   selfie: Selfie | null; hist: Record<string, number>; rounds: Record<string, { at: string; cars: Data[] }>;
@@ -494,9 +495,9 @@ export const act = {
     ui.toast(t('Photo save ho gayi. Customers ko dikhegi.')); ui.confetti(.3); emit();
   },
   setTheme(v: State['theme']) { S.theme = v; save(); emit() },
-  setLang(v: State['lang']) { S.lang = v; setHindi(v === 'hi'); save(); emit() },
+  setLang(v: Lang) { S.lang = v; S.lang_pref = v; setLang(v); save(); emit() },
   // any language can be picked; until it is translated the app speaks Hindi (Marathi, same script) or Hinglish
-  setLangPref(v: LangPref) { S.lang_pref = v; act.setLang(v === 'hi' || v === 'mr' ? 'hi' : 'hinglish') },
+  setLangPref(v: LangPref) { act.setLang(v) },
   // last onboarding screen: remember it for this phone, then carry on with the sign-in it was holding back
   async finishOnboarding() {
     const go = afterOnboard;
@@ -591,6 +592,7 @@ export const Kit = { items: [] as KitItem[], photos: {} as Record<string, string
 let kitUnsub: Unsub | null = null, kitPhotoUnsub: Unsub | null = null;
 const myDocId = () => (REAL ? auth.phone() : '+91' + (S.session?.phone || me().phone)) || '';
 function watchKit() {
+  watchDocs();
   const id = myDocId(); if (kitUnsub || !id || id === '+91') return;
   kitUnsub = db.doc('washerkit/' + id).onSnapshot(d => {
     const v = d.exists ? d.data() : null; Kit.items = Array.isArray(v?.items) ? v!.items : []; Kit.loaded = true; emit();
@@ -601,7 +603,7 @@ function watchKit() {
     Kit.photos = m; emit();
   }, e => console.warn('kit photos', e));
 }
-function stopKit() { if (kitUnsub) { try { kitUnsub() } catch (e) { } kitUnsub = null } if (kitPhotoUnsub) { try { kitPhotoUnsub() } catch (e) { } kitPhotoUnsub = null } Kit.items = []; Kit.photos = {}; Kit.profile = null; Kit.loaded = false }
+function stopKit() { stopDocs(); if (kitUnsub) { try { kitUnsub() } catch (e) { } kitUnsub = null } if (kitPhotoUnsub) { try { kitPhotoUnsub() } catch (e) { } kitPhotoUnsub = null } Kit.items = []; Kit.photos = {}; Kit.profile = null; Kit.loaded = false }
 export async function addKitItem(kind: KitKind, name: string, qty: number, photo?: string | null): Promise<void> {
   const id = myDocId(); const nm = name.trim().slice(0, 60);
   if (!id || id === '+91' || !nm || !(qty >= 1) || qty > 999) throw Object.assign(new Error('bad'), { hi: 'Naam aur ginti sahi daalo.' });
@@ -612,6 +614,32 @@ export async function addKitItem(kind: KitKind, name: string, qty: number, photo
   const cur = await db.doc('washerkit/' + id).get();
   const items: KitItem[] = cur.exists && Array.isArray(cur.data()?.items) ? cur.data()!.items : [];
   await db.doc('washerkit/' + id).set({ phone: id, items: [...items, item], updated_at: isoIST() });
+}
+/* ---------- identity documents (Aadhaar front/back, PAN): a photo or a PDF each, washerdocs/{phone}_{kind} ---------- */
+// Washers can upload while joining (before approval) and replace until an admin marks one 'verified'.
+export type DocKind = 'aadhaar_front' | 'aadhaar_back' | 'pan';
+export const DOC_KINDS: { kind: DocKind; label: string }[] = [
+  { kind: 'aadhaar_front', label: 'Aadhaar (aage ka)' }, { kind: 'aadhaar_back', label: 'Aadhaar (peeche ka)' }, { kind: 'pan', label: 'PAN card' },
+];
+export type DocItem = { kind: DocKind; mime: string; name: string; data: string; at: string; status: 'submitted' | 'verified' | 'rejected'; note?: string };
+export const Docs = { items: {} as Partial<Record<DocKind, DocItem>>, loaded: false };
+let docsUnsub: Unsub | null = null;
+export function watchDocs() {
+  const id = myDocId(); if (docsUnsub || !id || id === '+91') return;
+  docsUnsub = db.collection('washerdocs').where('phone', '==', id).onSnapshot(sn => {
+    const m: Partial<Record<DocKind, DocItem>> = {};
+    sn.docs.forEach(x => { const v = x.data() as DocItem; if (v?.kind && v.data) m[v.kind] = v });
+    Docs.items = m; Docs.loaded = true; emit();
+  }, e => console.warn('docs', e));
+}
+function stopDocs() { if (docsUnsub) { try { docsUnsub() } catch (e) { } docsUnsub = null } Docs.items = {}; Docs.loaded = false }
+/** data is a data: URL (image/jpeg, image/webp, image/png or application/pdf), at most ~900 KB; the rules enforce it too. */
+export async function uploadDoc(kind: DocKind, mime: string, name: string, data: string): Promise<void> {
+  const id = myDocId();
+  if (!id || id === '+91') throw Object.assign(new Error('no phone'), { hi: 'Pehle phone number se login karo.' });
+  if (data.length > 900000) throw Object.assign(new Error('big'), { hi: 'File bahut badi hai. Chhoti photo ya PDF chuno.' });
+  if (Docs.items[kind]?.status === 'verified') throw Object.assign(new Error('locked'), { hi: 'Yeh document verify ho chuka hai, badal nahi sakte.' });
+  await db.doc('washerdocs/' + id + '_' + kind).set({ phone: id, kind, mime, name: name.slice(0, 120), data, at: isoIST(), status: 'submitted' });
 }
 export const clothesHave = () => Kit.items.filter(i => i.kind === 'clothes').reduce((n, i) => n + i.qty, 0);
 
@@ -706,7 +734,7 @@ export async function boot() {
   if (started) return; started = true;
   try { const x = JSON.parse((await AsyncStorage.getItem(KEY)) || 'null'); if (x && typeof x === 'object') S = Object.assign(S, x) } catch (e) { }
   S.rounds = S.rounds || {}; S.outbox = S.outbox || {};
-  setHindi(S.lang === 'hi');
+  setLang(S.lang || 'hinglish');
   view.syncMode = MODE;
   booted = true;
   if (REAL) {

@@ -2,10 +2,11 @@
 import React from 'react';
 import { Linking, Text, View } from 'react-native';
 import { setStringAsync } from 'expo-clipboard';
-import { Button, F, LinkButton, Pressy, cardShadow, sheet, ui, useTheme } from '../ui';
-import { MODE, act, me, outboxSize, syncState } from '../state/store';
+import { Button, F, Icon, LinkButton, brand, Pressy, cardShadow, sheet, ui, useTheme } from '../ui';
+import { MODE, S, act, me, outboxSize, syncState } from '../state/store';
 import { t } from '../lib/i18n';
 import { OWNER_PHONE, waTo } from '../lib/data';
+import { LANGS } from '../lib/langs';
 
 const open = (url: string) => { void Linking.openURL(url).catch(() => {}) };
 
@@ -183,4 +184,38 @@ export function openLogoutSheet() {
       close={close}
     />
   ));
+}
+
+/** Language picker: all app languages as radio rows, the current one ticked. */
+export function openLangSheet() {
+  sheet.open(close => <LangBody close={close} />);
+}
+
+function LangBody({ close }: { close: () => void }) {
+  const { c } = useTheme();
+  const cur = S.lang || 'hinglish';
+  return (
+    <View>
+      <SheetTitle title={t('Bhasha')} sub={t('App ki bhasha chuno')} />
+      <RowsBox>
+        {LANGS.map((l, i) => {
+          const on = l.code === cur;
+          return (
+            <Pressy key={l.code} scaleTo={0.985} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={l.label + ', ' + l.sub}
+              onPress={() => { ui.haptic(6); act.setLang(l.code); close() }}
+              style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16, minHeight: 56 }, i > 0 && { borderTopWidth: 1, borderTopColor: c.line }]}>
+              <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: on ? brand.violet : c.line, backgroundColor: on ? brand.violet : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                {on ? <Icon name="check" size={14} color="#fff" /> : null}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: F.bold, fontSize: 16.5, color: c.fg }}>{l.label}</Text>
+                <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3 }}>{t(l.sub)}</Text>
+              </View>
+            </Pressy>
+          );
+        })}
+      </RowsBox>
+      <View style={{ alignItems: 'center' }}><LinkButton label={t('Band karo')} onPress={close} /></View>
+    </View>
+  );
 }

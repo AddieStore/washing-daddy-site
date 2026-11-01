@@ -10,11 +10,11 @@ import {
   Bubbles, Button, F, Field, Float, Icon, LinkButton, Pressy, Pulse, Rise, brand, lightTokens, sheet, ui, useReducedMotion, useTheme,
   type IconName,
 } from '../ui';
-import { act, Kit, onboardPhone, REAL, S, useStore, type LangPref } from '../state/store';
-import { backend } from '../backend';
+import { act, onboardPhone, REAL, S, useStore, watchDocs, type LangPref } from '../state/store';
 import { setupWashAlerts } from '../lib/washAlerts';
 import { t } from '../lib/i18n';
-import type { WasherDoc } from '../lib/data';
+import { LANGS } from '../lib/langs';
+import { DocsPanel, docsSummary } from './DocsUpload';
 
 const L = lightTokens;
 const GUT = 20;
@@ -167,20 +167,8 @@ function WasherArt({ size }: { size: number }) {
 }
 
 /* ---------------- 1. language ---------------- */
-const LANGS: { code: LangPref; label: string; sub: string; ready: boolean }[] = [
-  { code: 'hinglish', label: 'Hinglish', sub: 'Hindi, English letters mein', ready: true },
-  { code: 'hi', label: 'हिन्दी', sub: 'Hindi', ready: true },
-  { code: 'en', label: 'English', sub: 'English', ready: false },
-  { code: 'pa', label: 'ਪੰਜਾਬੀ', sub: 'Punjabi', ready: false },
-  { code: 'mr', label: 'मराठी', sub: 'Marathi', ready: false },
-  { code: 'gu', label: 'ગુજરાતી', sub: 'Gujarati', ready: false },
-  { code: 'bn', label: 'বাংলা', sub: 'Bengali', ready: false },
-  { code: 'ta', label: 'தமிழ்', sub: 'Tamil', ready: false },
-  { code: 'te', label: 'తెలుగు', sub: 'Telugu', ready: false },
-];
 function LangStep({ next }: { next: () => void }) {
   const cur: LangPref = S.lang_pref || S.lang || 'hinglish';
-  const pick = LANGS.find(l => l.code === cur) || LANGS[0];
   return (
     <Frame
       art={<LangArt />}
@@ -200,18 +188,10 @@ function LangStep({ next }: { next: () => void }) {
                     {on ? <Icon name="check" size={16} color={brand.gold} /> : null}
                   </View>
                   <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 11.5, color: on ? 'rgba(255,246,233,0.8)' : L.fg3 }}>{t(l.sub)}</Text>
-                  {l.ready ? null : (
-                    <View style={{ alignSelf: 'flex-start', marginTop: 4, paddingVertical: 1, paddingHorizontal: 7, borderRadius: 999, backgroundColor: on ? brand.gold : 'rgba(255,186,8,0.28)' }}>
-                      <Text style={{ fontFamily: F.bold, fontSize: 10.5, color: on ? brand.ink : '#8a6200' }}>{t('Jaldi aa raha hai')}</Text>
-                    </View>
-                  )}
                 </Pressy></View>
               );
             })}
           </View>
-          {pick.ready ? null : (
-            <Note tone="info">{t(S.lang === 'hi' ? 'Yeh bhasha jaldi aa rahi hai. Tab tak app Hindi mein chalega.' : 'Yeh bhasha jaldi aa rahi hai. Tab tak app Hinglish mein chalega.')}</Note>
-          )}
         </>
       }
       actions={<Button label={t('Aage badhein')} iconRight="arrow" variant="violet" onPress={() => { if (!S.lang_pref) act.setLangPref(cur); next() }} />}
@@ -375,17 +355,13 @@ function StepCard({ n, title, sub, chip, done, muted, onPress }: {
   return <View accessible accessibilityLabel={title + '. ' + chip.label} style={st}>{inner}</View>;
 }
 
-function docState(v: WasherDoc | null): Tone {
-  if (!v) return 'todo';
-  if (v.aadhaar_verified_at && v.pcc?.status === 'clear') return 'ok';
-  if (v.pcc?.status === 'rejected') return 'todo';
-  if (v.aadhaar_last4 || v.pcc) return 'wait';
-  return 'todo';
-}
+function openDocsSheet() { sheet.open(close => <DocsSheet close={close} />) }
 function DocsSheet({ close }: { close: () => void }) {
   return (
     <View>
-      <SheetText title={t('Aadhaar aur PAN')} text={t('Abhi documents Washing Daddy team khud leti hai. Team aapse phone pe sampark karegi. App mein upload jaldi aayega.')} />
+      <SheetText title={t('Aadhaar aur PAN')} text={t('Dono taraf Aadhaar aur PAN ki saaf photo ya PDF bhejo. Team check karke verify karegi.')} />
+      <DocsPanel reopen={openDocsSheet} />
+      <View style={{ height: 14 }} />
       <Button label={t('Theek hai')} variant="violet" onPress={close} />
     </View>
   );
@@ -415,20 +391,17 @@ function ReferralSheet({ close, onSaved, initial }: { close: () => void; onSaved
 
 function PartnerStep() {
   const insets = useSafeAreaInsets();
-  const [doc, setDoc] = useState<WasherDoc | null>(Kit.profile);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   useEffect(() => {
     let alive = true;
     AsyncStorage.getItem(referralKey()).then(v => { if (alive && v) setCode(v) }).catch(() => {});
-    // ID records live on the washer's own (admin-written) doc; a new washer has none yet
-    const ph = backend.auth.phone();
-    if (!Kit.profile && ph) backend.db.doc('washers/' + ph).get().then(d => { if (alive && d.exists) setDoc(d.data() as WasherDoc) }).catch(() => {});
+    watchDocs();   // so the chip shows what is already uploaded
     return () => { alive = false };
   }, []);
-  const tone = docState(doc);
-  const docLabel = tone === 'ok' ? t('Verified') : tone === 'wait' ? t('Under review') : t('Pending, admin team aapse sampark karegi');
+  useStore();
+  const { label: docLabel, tone } = docsSummary();
   const finish = async () => {
     if (busy) return;
     setBusy(true); setErr('');
@@ -449,7 +422,7 @@ function PartnerStep() {
           </Rise>
           <Rise delay={220}>
             <StepCard n={2} title={t('Profile')} sub={t('Aadhaar aur PAN ki details')} chip={{ label: docLabel, tone }}
-              onPress={() => sheet.open(close => <DocsSheet close={close} />)} />
+              onPress={openDocsSheet} />
           </Rise>
           <Rise delay={300}>
             <StepCard n={3} muted title={t('Joining fee bharein')} sub={t('Partner joining fee')} chip={{ label: t('Washing duty ke liye lagu nahi'), tone: 'off' }} />

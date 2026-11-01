@@ -7,6 +7,7 @@ import { KIT_KINDS, type KitKind } from '../lib/data';
 import { t } from '../lib/i18n';
 import { takePhoto } from '../lib/photo';
 import { SheetTitle } from './sheets';
+import { DocsPanel } from './DocsUpload';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const fmtDate = (iso?: string) => {
@@ -220,7 +221,8 @@ export function DocsCard() {
           ) : wait}
         </View>
       </View>
-      <Note>{t('Documents sirf Daddy badal sakte hain.')}</Note>
+      <View style={{ height: 14 }} />
+      <DocsPanel />
     </Section>
   );
 }
