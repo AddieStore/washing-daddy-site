@@ -341,6 +341,8 @@ export const HI: Record<string, string> = {
   "Daddy abhi verify kar rahe hain": "डैडी अभी वेरिफ़ाई कर रहे हैं",
   "Daddy se baat karo": "डैडी से बात करो",
   "Documents sirf Daddy badal sakte hain.": "डॉक्यूमेंट सिर्फ़ डैडी बदल सकते हैं.",
+  "Awaaz alerts pakke chalein": "आवाज़ अलर्ट पक्के चलें",
+  "Battery saver mein App ko \"No restrictions\" do, tab band hone par bhi awaaz aayegi": "बैटरी सेवर में ऐप को \"No restrictions\" दें, तब बंद होने पर भी आवाज़ आएगी",
 };
 export const HI_PATTERNS: [RegExp, string][] = [
   [/^Aapka aadha: ₹([\d,]+) mahina, ₹([\d,]+) roz\. Ravi ki manzoori ke baad ginna shuru hoga\.$/, 'आपका आधा: ₹$1 महीना, ₹$2 रोज़. रवि की मंज़ूरी के बाद गिनना शुरू होगा.'],
@@ -462,10 +464,7 @@ export function hiOf(t: string): string | null {
 }
 
 let hindi = false;
-export const setHindi = (on: boolean) => { hindi = on,
-  "Awaaz alerts pakke chalein": "आवाज़ अलर्ट पक्के चलें",
-  "Battery saver mein App ko \"No restrictions\" do, tab band hone par bhi awaaz aayegi": "बैटरी सेवर में ऐप को \"No restrictions\" दें, तब बंद होने पर भी आवाज़ आएगी",
-};
+export const setHindi = (on: boolean) => { hindi = on };
 export const isHindi = () => hindi;
 // t('Round shuru karo') -> 'राउंड शुरू करो' in Hindi mode, unchanged otherwise
 export const t = (s: string) => (hindi ? hiOf(s) ?? s : s);
