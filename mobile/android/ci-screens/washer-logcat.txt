@@ -1,3 +1,5 @@
 --------- beginning of main
-10-31 01:30:52.167  2549  2608 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
-10-31 01:31:17.712  2549  2608 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-31 01:47:51.692  2545  2605 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+10-31 01:48:17.223  1917  1917 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 1.398 s for first_image_paint 0.447 s
+10-31 01:48:17.263  1917  1917 E chromium: [ERROR:page_load_metrics_update_dispatcher.cc(178)] Invalid first_paint 1.398 s for first_image_paint 0.447 s
+10-31 01:48:17.319  2545  2605 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!

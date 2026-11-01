@@ -9,10 +9,10 @@ import { Art } from '../ui/art';
 import { Check, Arrow } from '../ui/icons';
 import { PLANS, AREAS, SERVICES, PRODUCTS, SUPPORT_PHONE_SHOW } from '../data/reference';
 import { PAUSE_MAX, canPause, pauseFits, pauseLeft } from '../data/model';
-import { TODAY, addDays, fmt, iso, inr, ampm } from '../data/dates';
+import { TODAY, addDays, fmt, iso, inr, ampm, parse } from '../data/dates';
 import { IMG, RATIO, src, ImgKey } from '../img';
 import {
-  A, car, carImg, doc, planOf, maskPlate, fmtPhone, pName, cartLines, planPayDates, switchQuote, dayDetail, chipText, payReal,
+  A, car, carImg, doc, planOf, maskPlate, fmtPhone, pName, cartLines, planPayDates, switchQuote, dayDetail, calendar, realAcct, chipText, payReal, pendingRef,
   act, toast, openSheet, closeSheet, confetti, go, sheetHooks, trackWasher, distance, useApp, Track,
 } from '../state';
 import { TrackMap } from './TrackMap';
@@ -72,16 +72,34 @@ const Qty = ({ q, onMinus, onPlus }: { q: number; onMinus: () => void; onPlus: (
 
 /* ---------- day ---------- */
 function Day({ date }: { date: string }) {
-  const d = dayDetail(date), ink = useInk();
+  const d = dayDetail(date), c = car(), ink = useInk(), dt = parse(date), ti = iso(TODAY);
+  // washed days come from the month calendar; days outside it (the week strip) are judged by date
+  const cell = calendar(c).cells.find(x => x && x.date === date);
+  const past = date < ti, isToday = date === ti;
+  const washed = cell ? cell.washed : past && c.status !== 'new' && !d.paused && !realAcct();
+  const sub = fmt(dt, { weekday: 'long' });
+  if (washed) {
+    return (
+      <View>
+        <Eyebrow>{d.title}</Eyebrow>
+        <SheetTitle>{'Washed by ' + d.washer}</SheetTitle>
+        <Gap h={8} />
+        <Rows>{d.steps.map((s, i) => <Row key={i} icon="✓" tile="rgba(20,192,138,.15)" title={s} right={i === 0 ? <Txt weight={700} size={13}>{d.time}</Txt> : undefined} />)}</Rows>
+      </View>
+    );
+  }
+  const planned = ['Pressure wash', ...d.steps.slice(1, -1), 'Dried by hand'];
+  const head = d.paused ? 'Paused' : isToday ? "Today's wash" : past ? 'No wash' : 'Upcoming wash';
+  const note = d.paused ? 'No wash. Added to the end of your plan.'
+    : past ? 'No wash was recorded for this day.'
+    : isToday ? chipText(c, doc(c)) : `${d.washer} comes between 5:30 and 7:30 AM.`;
   return (
     <View>
       <Eyebrow>{d.title}</Eyebrow>
-      <SheetTitle>{d.paused ? 'Paused' : 'Washed by ' + d.washer}</SheetTitle>
-      <Gap h={8} />
-      <Rows>
-        {d.paused ? <Row title="No wash" sub="Added to the end of your plan" />
-          : d.steps.map((s, i) => <Row key={i} icon="✓" tile="rgba(20,192,138,.15)" title={s} right={i === 0 ? <Txt weight={700} size={13}>{d.time}</Txt> : undefined} />)}
-      </Rows>
+      <SheetTitle>{head}</SheetTitle>
+      <SheetSub>{note}</SheetSub>
+      {!d.paused && !past ? <Rows>{planned.map((s, i) => <Row key={i} icon="•" tile={ink.tile2} title={s} sub={i === 0 ? sub : undefined} />)}</Rows> : null}
+      {!d.paused && !past && canPause(c) && !isToday ? <Btn label="Pause some days" variant="ghost" onPress={() => { closeSheet(); sheets.pause() }} style={{ marginTop: SP.l }} /> : null}
     </View>
   );
 }
@@ -145,7 +163,7 @@ function Proof() {
 
 /* ---------- plan ---------- */
 function PayPlan() {
-  const c = car(), p = planOf(c), { from, to } = planPayDates(c), [via, setVia] = useState('GPay'), [busy, run] = useRun();
+  const c = car(), p = planOf(c), { from, to } = planPayDates(c), [via, setVia] = useState('GPay'), [busy, run] = useRun(), ink = useInk();
   const go_ = () => run(async () => {
     const r = await act.payPlan(via);
     openSheet(r.pending ? <Success title="Payment received" sub="We're checking it with the bank. Your plan updates by itself as soon as it clears." />
@@ -155,6 +173,7 @@ function PayPlan() {
     <View>
       <Eyebrow>{c.name} · {p.name}</Eyebrow>
       <SheetTitle>{`Pay ${inr(p.price)} for ${c.till ? 'one more month' : 'your first month'}`}</SheetTitle>
+      {pendingRef() && !c.till ? <Txt weight={600} size={13} color={ink.ok} style={{ marginTop: -SP.s, marginBottom: SP.m }}>Invite code applied: ₹200 off</Txt> : null}
       <Confirm fromLabel={c.till ? 'Paid up till' : 'Starts'} from={fmt(from)} toLabel="After paying" to={fmt(to)} />
       <PayWith via={via} set={setVia} />
       <Btn variant="violet" label={'Pay ' + inr(p.price)} busy={busy ? (payReal() ? 'Opening…' : `Opening ${via}…`) : false} onPress={go_} />

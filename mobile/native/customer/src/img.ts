@@ -27,3 +27,7 @@ export const RATIO: Record<ImgKey, number> = {
   scorpio: 1100 / 652, civic: 1000 / 469, washer: 512 / 520, proof: 900 / 675, logo: 260 / 157, trust: 400 / 470,
   authphoto: 420 / 525, slide0: .8, slide1: .8, slide2: .8, slide3: .8, slide4: .8, slide5: .8, slide6: 1,
 };
+
+// Background cut-out of a car photo (Android ML Kit). A file:// PNG with transparency, or null on any failure.
+import { cutout as nativeCutout } from '../modules/wd-cutout/src';
+export const cutout = async (uri: string): Promise<string | null> => { try { return await nativeCutout(uri) } catch { return null } };

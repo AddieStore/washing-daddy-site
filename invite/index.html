@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>You're invited – Washing Daddy</title>
+<meta name="description" content="A friend invited you to Washing Daddy: ₹200 off your first month of daily pressure car washing.">
+<meta name="theme-color" content="#5409DA">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  :root { --violet:#5409DA; --ink:#1A0A33; --gold:#FFBA08; --cream:#FFF6E9; --mint:#2EE6A6;
+    --shout:'Anton','Impact',sans-serif; --body:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--violet); color:var(--cream); font-family:var(--body); line-height:1.5;
+    min-height:100vh; padding:max(24px,env(safe-area-inset-top)) 20px max(40px,env(safe-area-inset-bottom)); -webkit-text-size-adjust:100%; }
+  .wrap { max-width:440px; margin:0 auto; }
+  .brand { font-family:var(--shout); font-size:20px; letter-spacing:.06em; text-transform:uppercase; color:var(--gold); margin-bottom:40px; }
+  .kicker { font-weight:600; font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,246,233,.7); margin-bottom:8px; }
+  h1 { font-family:var(--shout); font-weight:400; font-size:44px; line-height:1.05; text-transform:uppercase; letter-spacing:.01em; }
+  h1 em { font-style:normal; color:var(--gold); }
+  .lead { margin-top:16px; font-size:16px; color:rgba(255,246,233,.85); }
+  .card { margin-top:32px; background:var(--cream); color:var(--ink); border-radius:20px; padding:24px 20px; text-align:center; }
+  .card small { display:block; font-weight:600; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:rgba(26,10,51,.6); }
+  .code { margin:12px 0 20px; font-family:var(--shout); font-size:44px; letter-spacing:.14em; color:var(--violet); line-height:1.1; padding-left:.14em; }
+  .btn { display:flex; align-items:center; justify-content:center; width:100%; min-height:52px; border-radius:14px; border:0;
+    font:700 16px var(--body); text-decoration:none; cursor:pointer; padding:12px 20px; }
+  .btn + .btn { margin-top:12px; }
+  .gold { background:var(--gold); color:var(--ink); }
+  .ghost { background:rgba(26,10,51,.07); color:var(--ink); }
+  .btn:active { transform:scale(.98); }
+  .steps { margin-top:32px; }
+  .steps h2 { font-size:15px; font-weight:700; margin-bottom:12px; color:var(--gold); }
+  .steps ol { padding-left:22px; }
+  .steps li { margin-bottom:12px; font-size:15px; color:rgba(255,246,233,.88); }
+  .steps a { color:var(--gold); }
+  .note { margin-top:24px; font-size:13px; color:rgba(255,246,233,.62); }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="brand">Washing Daddy</div>
+  <div class="kicker">Your friend invited you</div>
+  <h1><em>₹200 off</em> your first month</h1>
+  <p class="lead">A washer comes to where your car is parked and pressure-washes it every morning. No pocha.</p>
+
+  <section class="card" id="codeCard" hidden>
+    <small>Your invite code</small>
+    <div class="code" id="code">WD000000</div>
+    <a class="btn gold" id="open" href="#">Open in the Washing Daddy app</a>
+    <button class="btn ghost" id="copy" type="button">Copy code</button>
+  </section>
+
+  <section class="steps">
+    <h2>How to claim it</h2>
+    <ol>
+      <li>Install the Washing Daddy app. The team will share the install link with you; until then you can sign up on the <a href="https://washingdaddy.com/customer/">web app</a>.</li>
+      <li>Sign up with your mobile number. <span id="enter">Enter the invite code when asked.</span></li>
+      <li>Pick a plan. The ₹200 comes off your first payment, and your friend gets ₹200 off too.</li>
+    </ol>
+    <p class="note">Valid for new customers on their first plan payment only.</p>
+  </section>
+</main>
+<script>
+(function () {
+  var m = /^WD\d{6}$/, c = '';
+  try { c = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase(); } catch (e) {}
+  if (!m.test(c)) { c = ''; }
+  if (!c) return;   // no valid code: the page still explains the offer
+  try { localStorage.setItem('wd-invite', c); } catch (e) {}
+  document.getElementById('code').textContent = c;
+  document.getElementById('codeCard').hidden = false;
+  document.getElementById('open').href = 'washingdaddy://invite?c=' + c;
+  var btn = document.getElementById('copy');
+  btn.addEventListener('click', function () {
+    var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy code'; }, 2000); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(done, fallback); else fallback();
+    function fallback() {
+      var t = document.createElement('textarea'); t.value = c; t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) {} document.body.removeChild(t);
+    }
+  });
+})();
+</script>
+</body>
+</html>
