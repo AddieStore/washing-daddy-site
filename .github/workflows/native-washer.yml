@@ -88,7 +88,23 @@ jobs:
       # Washing Daddy release key outside CI (tools/sign-apk.sh).
       - name: Build release APK
         working-directory: mobile/native/washer/android
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee ../gradle-build.log
+
+      # when the build fails, keep the end of the log in the repo so it can be read without GitHub's log viewer
+      - name: Save build error
+        if: failure()
+        working-directory: .
+        run: |
+          mkdir -p mobile/native/washer/out
+          grep -n -i -E "error|FAILED|What went wrong|Caused by|Execution failed" mobile/native/washer/gradle-build.log | head -60 > mobile/native/washer/out/gradle-error.txt || true
+          tail -n 120 mobile/native/washer/gradle-build.log >> mobile/native/washer/out/gradle-error.txt || true
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f mobile/native/washer/out/gradle-error.txt
+          git commit -m "WD Partner native build error log [skip ci]" || exit 0
+          git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" || true
 
       - name: Collect APK
         run: |
