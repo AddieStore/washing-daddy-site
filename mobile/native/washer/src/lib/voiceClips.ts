@@ -106,6 +106,7 @@ export const VOICE_CLIPS: Record<string, number> = {
   nm_shahrukh: require('../../assets/sound/voice/nm_shahrukh.mp3'),
   ph_check: require('../../assets/sound/voice/ph_check.mp3'),
   ph_dry: require('../../assets/sound/voice/ph_dry.mp3'),
+  ph_end: require('../../assets/sound/voice/ph_end.mp3'),
   ph_i_back: require('../../assets/sound/voice/ph_i_back.mp3'),
   ph_i_dash: require('../../assets/sound/voice/ph_i_dash.mp3'),
   ph_i_glass: require('../../assets/sound/voice/ph_i_glass.mp3'),
