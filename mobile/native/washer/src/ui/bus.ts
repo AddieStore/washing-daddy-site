@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { createAudioPlayer } from 'expo-audio';
+import { announceClips } from '../lib/hindiNumber';
+import { VOICE_CLIPS } from '../lib/voiceClips';
 
 type Listener<T> = (v: T) => void;
 
@@ -42,17 +44,15 @@ export const ui = {
   confetti(strength = 1) {
     confettiCh.emit(strength);
   },
-  alertSound() {
+  // The extra-work alert: Hindi voice "Extra kaam aaya hai, <amount> rupaye" built from clips (tools/make-voice.mjs).
+  // Falls back to the old beep until the clips exist, or if any clip is missing.
+  alertSound(amount?: number | null) {
+    const clips = announceClips(amount).map(k => VOICE_CLIPS[k]);
+    if (clips.length && clips.every(Boolean)) { void playQueue(clips); return; }
     try {
       const player = createAudioPlayer(require('../../assets/sound/job-alert.wav'));
       player.play();
-      setTimeout(() => {
-        try {
-          player.remove();
-        } catch {
-          /* ignore */
-        }
-      }, 1500);
+      setTimeout(() => { try { player.remove() } catch { /* ignore */ } }, 1500);
     } catch {
       /* no-op on failure */
     }
@@ -65,3 +65,22 @@ export const ui = {
 export const onToast = toastCh.sub;
 export const onConfetti = confettiCh.sub;
 export const onFlash = (l: () => void) => flashCh.sub(l);
+
+// plays clips one after another (each waits for the last to finish, with a 2.5 s safety so a stuck clip can't hang the queue)
+let queueToken = 0;
+async function playQueue(clips: number[]) {
+  const mine = ++queueToken;   // a newer alert cuts the older one off
+  for (const src of clips) {
+    if (mine !== queueToken) return;
+    await new Promise<void>(done => {
+      let finished = false, player: ReturnType<typeof createAudioPlayer> | null = null;
+      const end = () => { if (finished) return; finished = true; try { player?.remove() } catch { /* ignore */ } done() };
+      try {
+        player = createAudioPlayer(src);
+        player.addListener('playbackStatusUpdate', (st: { didJustFinish?: boolean }) => { if (st.didJustFinish) end() });
+        player.play();
+      } catch { end(); return }
+      setTimeout(end, 2500);
+    });
+  }
+}

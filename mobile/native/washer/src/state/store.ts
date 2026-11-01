@@ -359,7 +359,7 @@ function mutate(reg: string, fn: (d: Wash) => void) {
 }
 
 /* ---------------- job alert ---------------- */
-function showJobAlert(job: Job) { view.jobAlert = job; ui.haptic([20, 60, 20, 60, 20]); ui.alertSound(); emit() }
+function showJobAlert(job: Job) { view.jobAlert = job; ui.haptic([20, 60, 20, 60, 20]); ui.alertSound(Math.round(Money.share(job.price))); emit() }
 
 /* =====================================================================
    Actions the screens call
