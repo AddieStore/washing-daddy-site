@@ -18,6 +18,8 @@ import { setHindi, t } from '../lib/i18n';
 import { ui } from '../ui/bus';
 
 const { db, auth } = backend;
+// a wash can only be closed once this many photos of the car are taken
+export const MIN_PHOTOS = 2;
 export const REAL = auth.real;
 export const MODE = backend.mode;
 
@@ -406,13 +408,13 @@ export const act = {
   // returns false when the photo gate stops it
   finish(reg: string) {
     const wd = W(reg); if (!wd) return false;
-    if (!wd.photos.some(p => p.kind === 'after')) { act.needPhoto(); return false }
+    if (wd.photos.filter(p => p.kind === 'after').length < MIN_PHOTOS) { act.needPhoto(); return false }
     const litres = wd.tasks.reduce((a, x) => a + (x.done ? TASK[x.key].litres : 0), 0) || TASK.pressure.litres;
     const end = isoIST();
     mutate(reg, d => { d.status = 'done'; d.finished_at = end; d.minutes = Math.max(1, Math.round((Date.parse(end) - Date.parse(d.started_at || end)) / 60000)); d.water_litres = litres });
     ui.haptic([20, 40, 20, 40, 60]); ui.confetti(1); Route.retime(); emit(); return true;
   },
-  needPhoto() { ui.toast(t('Pehle gaadi ki photo lo, phir wash band hogi')); ui.haptic(14) },
+  needPhoto() { ui.toast(t(`Kam se kam ${MIN_PHOTOS} gaadi ki photo lo, phir wash band hogi`)); ui.haptic(14) },
   skip(reg: string, reason: string) {
     mutate(reg, d => { d.status = 'skipped'; d.skip_reason = reason });
     const sk = skipAsk(reg); if (sk) Sync.setRequest(sk.id, { status: 'done', done_at: isoIST() });

@@ -235,8 +235,10 @@ function Showcase() {
             </View>
           ))}
         </ScrollView>
-        <View style={[s.trust, { aspectRatio: tr }]}>
-          <Image source={TRUST} style={{ width: '100%', height: '100%' }} resizeMode="cover" accessibilityLabel="Don't trust the guy with pocha on your car!" />
+        <View style={{ width: '100%', alignItems: 'center', paddingHorizontal: 16 }}>
+          <View style={s.trust}>
+            <Image source={TRUST} style={{ width: '100%', aspectRatio: tr }} resizeMode="contain" accessibilityLabel="Don't trust the guy with pocha on your car!" />
+          </View>
         </View>
       </View>
     </OnViolet>
@@ -320,5 +322,5 @@ const s = StyleSheet.create({
   polaImg: { width: '100%', aspectRatio: 4 / 5, borderRadius: 9 },
   polaCap: { fontFamily: F.shout, fontSize: 18, lineHeight: 19, textTransform: 'uppercase', color: brand.ink },
   polaSub: { fontFamily: F.semi, fontSize: 12, color: '#3B2C55', marginTop: 3 },
-  trust: { marginHorizontal: 16, marginTop: 30, borderWidth: 4, borderColor: brand.gold, borderRadius: 28, overflow: 'hidden', backgroundColor: '#5309DE', shadowColor: VIOLET_INK, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 8, height: 8 } },
+  trust: { alignSelf: 'center', width: '100%', maxWidth: 560, marginTop: 30, borderWidth: 4, borderColor: brand.gold, borderRadius: 28, overflow: 'hidden', backgroundColor: '#5309DE', shadowColor: VIOLET_INK, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 8, height: 8 } },
 });
