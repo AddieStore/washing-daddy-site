@@ -18,11 +18,12 @@ test('seconds left in a stage', () => {
   assert.equal(GUIDE.length, 5);
 });
 
-test('Sunday has its own plan with interior cleaning and the inside photos', () => {
-  const sun = '2026-11-01T06:00:00+05:30', at = (s: number) => guideAt(sun, Date.parse(sun) + s * 1000)!.step.key;
+test('Sunday: 12 min outside, 12 min inside, check, photos (25 min)', () => {
+  const sun = '2026-11-01T06:00:00+05:30', at = (s: number) => guideAt(sun, Date.parse(sun) + s * 1000)!.step.clip;
   assert.equal(isSundayIST(sun), true); assert.equal(isSundayIST(t0), false);
-  assert.equal(at(100), 'wash'); assert.equal(at(200), 'dry'); assert.equal(at(400), 'interior');
-  assert.equal(at(700), 'polish'); assert.equal(at(800), 'check'); assert.equal(at(900), 'photo');
+  assert.equal(at(100), 'ph_wash'); assert.equal(at(300), 'ph_dry'); assert.equal(at(600), 'ph_polish');
+  assert.equal(at(730), 'ph_i_dash'); assert.equal(at(1000), 'ph_i_seat'); assert.equal(at(1100), 'ph_i_back');
+  assert.equal(at(1250), 'ph_i_mat'); assert.equal(at(1400), 'ph_i_glass'); assert.equal(at(1450), 'ph_check'); assert.equal(at(1600), 'ph_photo_sun');
   assert.equal(SPOTS.length, 4);
 });
 test('late Saturday UTC is already Sunday in India', () => { assert.equal(isSundayIST('2026-10-31T19:00:00Z'), true) });

@@ -297,8 +297,6 @@ export default function JobScreen() {
 
           <View style={{ marginTop: 18 }}>{main()}</View>
 
-          {st === 'washing' && wd?.started_at ? <WashGuide startedAt={wd.started_at} onTakePhoto={() => { void shoot('after') }} /> : null}
-
           <Section title={t('Aaj ke kaam')} meta={`${tdone}/${tasks.length}${can ? '' : t(' · wash shuru hone pe tick karo')}`}>
             <ProgressBar fraction={tasks.length ? tdone / tasks.length : 0} style={{ marginBottom: 12 }} />
             <View style={{ gap: 10 }}>
@@ -307,6 +305,8 @@ export default function JobScreen() {
               ))}
             </View>
           </Section>
+
+          {st === 'washing' && wd?.started_at ? <WashGuide startedAt={wd.started_at} onTakePhoto={() => { void shoot('after') }} /> : null}
 
           <Section title={t('Photo')} meta={t(`Gaadi ki kam se kam ${MIN_PHOTOS} photo zaroori`)}>
             <View style={{ flexDirection: 'row', gap: 10 }}>

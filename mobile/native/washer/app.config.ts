@@ -22,7 +22,7 @@ if (process.env.WD_RELEASE === '1') {
 
 const PACKAGE = 'com.washingdaddy.washer'; // must not change: store listings carry over
 
-const notifSounds = [...[3, 6, 9, 10].map(m => `./assets/notif/wd_s${m}.wav`), ...[3, 6, 10, 13, 14].map(m => `./assets/notif/wd_u${m}.wav`), './assets/notif/wd_extra.wav'].filter(f => fs.existsSync(path.join(__dirname, f)));
+const notifSounds = [...[3, 6, 9, 10].map(m => `./assets/notif/wd_s${m}.wav`), ...[4, 8, 12, 15, 18, 20, 22, 24, 25].map(m => `./assets/notif/wd_u${m}.wav`), './assets/notif/wd_extra.wav'].filter(f => fs.existsSync(path.join(__dirname, f)));
 
 const config: ExpoConfig = {
   name: 'WD Partner',

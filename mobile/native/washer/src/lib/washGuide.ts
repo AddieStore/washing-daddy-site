@@ -1,6 +1,6 @@
 // The guided wash: from the moment the timer starts, the washer is told what to do, stage by stage.
 // Mon-Sat:  0-3 min wash, 3-6 dry, 6-9 polish (tyre and trim), 9-10 check, 10+ photo (start of the 11th minute)
-// Sunday is the interior-cleaning day, so it has its own plan: wash, dry, interior, polish, check, then the photos
+// Sunday is the interior-cleaning day: 12 min outside (wash, dry, polish), 12 min inside (dashboard, seats, back seats, mats, mirrors and glass), check, then the photos
 // (2 of the car plus 4 of the inside: driver mat, passenger mat, back seat, dashboard).
 export type GuideKey = 'wash' | 'dry' | 'interior' | 'polish' | 'check' | 'photo';
 export type GuideStep = { key: GuideKey; from: number; clip: string; hi: string; title: string; sub: string };
@@ -12,11 +12,15 @@ export const GUIDE: GuideStep[] = [
   { key: 'photo', from: 600, clip: 'ph_photo', hi: 'अब कार की फोटो लीजिए, कम से कम दो', title: 'Photo lo', sub: 'Ab car ki photo lijiye, kam se kam 2' },
 ];
 export const GUIDE_SUNDAY: GuideStep[] = [
-  GUIDE[0], GUIDE[1],
-  { key: 'interior', from: 360, clip: 'ph_int', hi: 'अब गाड़ी के अंदर की सफाई कीजिए: मैट, सीटें और डैशबोर्ड, कोई कोना न छूटे', title: 'Andar ki safai', sub: 'Mats, seats aur dashboard saaf karo. Koi kona na chhute' },
-  { ...GUIDE[2], from: 600 },
-  { ...GUIDE[3], from: 780 },
-  { key: 'photo', from: 840, clip: 'ph_photo_sun', hi: 'अब बाहर से गाड़ी की कम से कम दो फोटो लीजिए, फिर अंदर की चार फोटो', title: 'Photo lo', sub: 'Car ki 2 photo, phir andar ki 4: driver mat, passenger mat, back seat, dashboard' },
+  // 12 min outside (4 + 4 + 4), then 12 min inside, then the check and the photos: about 25 min in all
+  { ...GUIDE[0], from: 0 }, { ...GUIDE[1], from: 240 }, { ...GUIDE[2], from: 480 },
+  { key: 'interior', from: 720, clip: 'ph_i_dash', hi: 'अब डैशबोर्ड साफ़ कीजिए', title: 'Dashboard saaf karo', sub: 'Ab dashboard saaf kijiye' },
+  { key: 'interior', from: 900, clip: 'ph_i_seat', hi: 'अब गाड़ी की सीटें साफ़ कीजिए', title: 'Seats saaf karo', sub: 'Ab gaadi ki seats saaf kijiye' },
+  { key: 'interior', from: 1080, clip: 'ph_i_back', hi: 'अब पिछली सीटें साफ़ कीजिए', title: 'Back seats saaf karo', sub: 'Ab peeche ki seats saaf kijiye' },
+  { key: 'interior', from: 1200, clip: 'ph_i_mat', hi: 'अब सारी मैट साफ़ कीजिए', title: 'Mats saaf karo', sub: 'Ab saari mats saaf kijiye' },
+  { key: 'interior', from: 1320, clip: 'ph_i_glass', hi: 'आख़िर में गाड़ी के शीशे और मिरर साफ़ कीजिए', title: 'Sheeshe aur mirror', sub: 'Aakhir mein gaadi ke sheeshe aur mirrors saaf kijiye' },
+  { ...GUIDE[3], from: 1440 },
+  { key: 'photo', from: 1500, clip: 'ph_photo_sun', hi: 'अब बाहर से गाड़ी की कम से कम दो फोटो लीजिए, फिर अंदर की चार फोटो', title: 'Photo lo', sub: 'Car ki 2 photo, phir andar ki 4: driver mat, passenger mat, back seat, dashboard' },
 ];
 // the four inside photos asked for on Sundays, in the order the voice asks for them
 export const SPOTS: { key: string; label: string; clip: string }[] = [
