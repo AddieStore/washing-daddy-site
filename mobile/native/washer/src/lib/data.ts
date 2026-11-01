@@ -24,7 +24,15 @@ export type Job = {
   area?: string; customer_name?: string; phone?: string; note?: string; lat?: number; lng?: number; date?: string;
   created_at?: string; started_at?: string; finished_at?: string; photo?: string; photo_at?: string;
 };
-export type WasherDoc = { phone: string; name: string; area?: string; status: 'pending' | 'approved' | 'blocked'; route_id?: string; created_at?: string; decided_at?: string };
+export type WasherDoc = { phone: string; name: string; area?: string; status: 'pending' | 'approved' | 'blocked'; route_id?: string; created_at?: string; decided_at?: string;
+  // set by an admin only (the rules stop the washer writing them); the washer app only shows them
+  assigned_clothes?: number; aadhaar_last4?: string; aadhaar_verified_at?: string; pcc?: { status: 'pending' | 'clear' | 'rejected'; verified_at?: string; ref?: string } };
+export type KitKind = 'clothes' | 'shampoo' | 'spray_gun' | 'other';
+export type KitItem = { id: string; kind: KitKind; name: string; qty: number; at: string };
+export const KIT_KINDS: { kind: KitKind; label: string }[] = [
+  { kind: 'clothes', label: 'Kapde / microfiber' }, { kind: 'shampoo', label: 'Shampoo' },
+  { kind: 'spray_gun', label: 'Spray gun' }, { kind: 'other', label: 'Aur saaman' },
+];
 
 export type WasherInfo = { id: string; name: string; phone: string; areas: string; img: 'washer' | null; since: string; lifetime: number; rating: number | string };
 export const WASHERS: Record<string, WasherInfo> = {

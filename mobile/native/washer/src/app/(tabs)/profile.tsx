@@ -10,6 +10,7 @@ import { REAL, Route, S, act, me, myPhoto, syncState, useStore } from '../../sta
 import { takePhoto } from '../../lib/photo';
 import { fmtPhone } from '../../lib/data';
 import { t } from '../../lib/i18n';
+import { KitSections } from '../../screens/KitSections';
 import { openHelpSheet, openLogoutSheet, openReferSheet, openResetSheet, openSyncSheet } from '../../screens/sheets';
 
 const WASHER_IMG = require('../../../assets/img/washer.webp');
@@ -89,6 +90,7 @@ export default function Profile() {
       </View>
       <OnViolet><MeCard /></OnViolet>
       <View style={{ paddingHorizontal: 16 }}>
+        <KitSections />
         <Section title={t('Settings')}>
           <View style={box}>
             <Row icon="help" iconColor={brand.red} title={t('Madad / SOS')} subtitle={t('Paisa, customer ya accident ki problem')} onPress={openHelpSheet} />

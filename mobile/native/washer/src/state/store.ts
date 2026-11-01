@@ -12,7 +12,7 @@ import { isoIST, dateIST, addDaysStr, daysInMonth } from '../lib/time';
 import { PLAN, TASK, tasksFor, normReg, isPlan, type TaskKey } from '../lib/schedule';
 import {
   WASHERS, PHONE_TO_WASHER, DEMO_ROSTER, BOOK_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
-  type Car, type Wash, type Req, type Job, type WasherDoc, type WasherInfo, type Photo,
+  type Car, type Wash, type Req, type Job, type WasherDoc, type KitItem, type KitKind, type WasherInfo, type Photo,
 } from '../lib/data';
 import { setHindi, t } from '../lib/i18n';
 import { ui } from '../ui/bus';
@@ -475,7 +475,7 @@ export const act = {
       await Promise.race([Sync.flush(), new Promise(r => setTimeout(r, 8000))]);
       if (outboxSize() && !discard) { ui.toast(t('Kuch update abhi bheje nahi gaye. Net aane pe phir try karo.')); return false }
     }
-    Sync.stop(); stopWatch(); stopGps();
+    Sync.stop(); stopWatch(); stopKit(); stopGps();
     const { theme, lang } = S;
     S = { session: null, online: true, theme, lang, day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
     if (saveT) { clearTimeout(saveT); saveT = null }
@@ -510,8 +510,33 @@ export const act = {
 
 /* ---------- real sign-in: washers/{+91number} decides who gets in ---------- */
 let meUnsub: Unsub | null = null;
+/* ---------- kit and ID records (profile tab) ---------- */
+// IDs and assigned clothes come from the washer's own washers/ doc (admin-written, read-only here);
+// the kit list is washerkit/{phone}.items: add-only, the rules refuse any change to an existing item.
+export const Kit = { items: [] as KitItem[], profile: null as WasherDoc | null, loaded: false };
+let kitUnsub: Unsub | null = null;
+const myDocId = () => (REAL ? auth.phone() : '+91' + (S.session?.phone || me().phone)) || '';
+function watchKit() {
+  const id = myDocId(); if (kitUnsub || !id || id === '+91') return;
+  kitUnsub = db.doc('washerkit/' + id).onSnapshot(d => {
+    const v = d.exists ? d.data() : null; Kit.items = Array.isArray(v?.items) ? v!.items : []; Kit.loaded = true; emit();
+  }, e => console.warn('kit', e));
+}
+function stopKit() { if (kitUnsub) { try { kitUnsub() } catch (e) { } kitUnsub = null } Kit.items = []; Kit.profile = null; Kit.loaded = false }
+export async function addKitItem(kind: KitKind, name: string, qty: number): Promise<void> {
+  const id = myDocId(); const nm = name.trim().slice(0, 60);
+  if (!id || id === '+91' || !nm || !(qty >= 1) || qty > 999) throw Object.assign(new Error('bad'), { hi: 'Naam aur ginti sahi daalo.' });
+  const item: KitItem = { id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), kind, name: nm, qty: Math.floor(qty), at: isoIST() };
+  // read the latest list first, then write it back with the new item at the end (the rules require the old items untouched)
+  const cur = await db.doc('washerkit/' + id).get();
+  const items: KitItem[] = cur.exists && Array.isArray(cur.data()?.items) ? cur.data()!.items : [];
+  await db.doc('washerkit/' + id).set({ phone: id, items: [...items, item], updated_at: isoIST() });
+}
+export const clothesHave = () => Kit.items.filter(i => i.kind === 'clothes').reduce((n, i) => n + i.qty, 0);
+
 function stopWatch() { if (meUnsub) { try { meUnsub() } catch (e) { } meUnsub = null } }
 function applyWasher(v: WasherDoc | null): AuthStep {
+  Kit.profile = v; if (v) watchKit();
   if (!v) return 'join';
   if (v.status === 'blocked') return 'blocked';
   if (v.status !== 'approved') return 'wait';
@@ -538,6 +563,7 @@ async function afterRealLogin() {
   if (r === 'in') { enterApp(); watchMe() } else { view.authStep = r; emit(); if (r !== 'join') watchMe() }
 }
 function enterApp() {
+  watchKit();
   view.authStep = 'in'; ensureDay(); emit();
   if (MODE === 'demo') demoExtras();   // seeded before listening, so the sample jobs do not pop up as new
   Book.load();
@@ -575,6 +601,12 @@ function demoExtras() {
   ];
   reqs.forEach((r, i) => db.doc('requests/demo' + (i + 1)).set(r));
   const id = me().id;
+  // demo kit and ID records (in the live app the profile comes from the admin-written washers/ doc)
+  Kit.profile = { phone: myDocId(), name: me().name, status: 'approved', assigned_clothes: 12, aadhaar_last4: '4821', aadhaar_verified_at: y, pcc: { status: 'clear', verified_at: addDaysStr(DAY, -20), ref: 'PCC/DL/2026/0457' } };
+  db.doc('washerkit/' + myDocId()).set({ phone: myDocId(), updated_at: y + 'T09:00:00+05:30', items: [
+    { id: 'kd1', kind: 'clothes', name: 'Microfiber kapde', qty: 8, at: y + 'T09:00:00+05:30' },
+    { id: 'kd2', kind: 'shampoo', name: 'Car shampoo 1L', qty: 2, at: y + 'T09:00:00+05:30' },
+    { id: 'kd3', kind: 'spray_gun', name: 'Foam spray gun', qty: 1, at: y + 'T09:00:00+05:30' }] });
   db.doc('ondemand/demoA').set({ washer_id: id, status: 'new', service: 'Interior deep clean', price: 799, car: 'Hyundai i20', area: 'GH-9 Paschim Vihar', customer_name: 'Pooja S.', phone: '9811009090', note: 'Seat pe coffee gir gayi thi', date: DAY, created_at: DAY + 'T07:10:00+05:30' });
   db.doc('ondemand/demoB').set({ washer_id: id, status: 'done', service: 'Foam wash', price: 399, car: 'Maruti Baleno', area: 'Meera Bagh', customer_name: 'Rakesh', date: addDaysStr(DAY, -2), finished_at: addDaysStr(DAY, -2) + 'T09:20:00+05:30', photo: '' });
   // a customer books a one-off wash a little later: the alert pops up
