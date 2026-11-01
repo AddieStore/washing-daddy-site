@@ -15,7 +15,7 @@ export function WashGuide({ startedAt, onTakePhoto }: { startedAt: string; onTak
   const g = guideAt(startedAt);
   if (!g) return null;
   const { idx, step, secsLeft, plan } = g;
-  const photo = step.key === 'photo';
+  const photo = step.key === 'photo' || step.key === 'end';
   const fg = photo ? brand.ink : c.fg, fg2 = photo ? 'rgba(26,10,51,0.72)' : c.fg3;
   const mm = secsLeft == null ? '' : `${String(Math.floor(secsLeft / 60)).padStart(2, '0')}:${String(secsLeft % 60).padStart(2, '0')}`;
   return (

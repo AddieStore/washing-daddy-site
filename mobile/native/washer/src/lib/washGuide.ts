@@ -2,14 +2,17 @@
 // Mon-Sat:  0-3 min wash, 3-6 dry, 6-9 polish (tyre and trim), 9-10 check, 10+ photo (start of the 11th minute)
 // Sunday is the interior-cleaning day: 12 min outside (wash, dry, polish), 12 min inside (dashboard, seats, back seats, mats, mirrors and glass), check, then the photos
 // (2 of the car plus 4 of the inside: driver mat, passenger mat, back seat, dashboard).
-export type GuideKey = 'wash' | 'dry' | 'interior' | 'polish' | 'check' | 'photo';
-export type GuideStep = { key: GuideKey; from: number; clip: string; hi: string; title: string; sub: string };
+export type GuideKey = 'wash' | 'dry' | 'interior' | 'polish' | 'check' | 'photo' | 'end';
+// pre: a clip played first (the buzzer at the very end)
+export type GuideStep = { key: GuideKey; from: number; clip: string; hi: string; title: string; sub: string; pre?: string };
+const END: GuideStep = { key: 'end', from: 660, clip: 'ph_end', pre: 'buzz', hi: 'आपका इस कार पर समय पूरा हो चुका है। कृपया अगली गाड़ी पर जाइए।', title: 'Samay poora', sub: 'Aapka is car par samay poora ho chuka hai. Kripya agli gaadi par jaayen' };
 export const GUIDE: GuideStep[] = [
   { key: 'wash', from: 0, clip: 'ph_wash', hi: 'कार वॉश शुरू कीजिए, आपका टाइमर शुरू हो गया है', title: 'Wash karo', sub: 'Car wash shuru kijiye, aapka timer shuru ho gaya hai' },
   { key: 'dry', from: 180, clip: 'ph_dry', hi: 'कपड़े से सुखाइए और हर कोने का ध्यान रखिए, कहीं भी मिट्टी न रहे', title: 'Kapde se sukhaao', sub: 'Kapde se sukhaye aur har kone ka dhyan rakhe, kahi bhi mitti na rahe' },
   { key: 'polish', from: 360, clip: 'ph_polish', hi: 'अब टायर और ट्रिम पर पॉलिश लगाइए, और कोई गंदगी हो तो पहले उसे हटाइए', title: 'Polish karo', sub: 'Ab tyre aur trim par polish lagaiye. Koi gandagi ho toh pehle usse hataye' },
   { key: 'check', from: 540, clip: 'ph_check', hi: 'आख़िर में अगर कोई कमी है तो उसे सही कीजिए', title: 'Kami dekho', sub: 'Aakhir mein agar koi kami hai toh usse sahi kijiye' },
   { key: 'photo', from: 600, clip: 'ph_photo', hi: 'अब कार की फोटो लीजिए, कम से कम दो', title: 'Photo lo', sub: 'Ab car ki photo lijiye, kam se kam 2' },
+  END,   // 11:00 sharp: buzzer, then the time-up line
 ];
 export const GUIDE_SUNDAY: GuideStep[] = [
   // 12 min outside (4 + 4 + 4), then 12 min inside, then the check and the photos: about 25 min in all
@@ -21,6 +24,7 @@ export const GUIDE_SUNDAY: GuideStep[] = [
   { key: 'interior', from: 1320, clip: 'ph_i_glass', hi: 'आख़िर में गाड़ी के शीशे और मिरर साफ़ कीजिए', title: 'Sheeshe aur mirror', sub: 'Aakhir mein gaadi ke sheeshe aur mirrors saaf kijiye' },
   { ...GUIDE[3], from: 1440 },
   { key: 'photo', from: 1500, clip: 'ph_photo_sun', hi: 'अब बाहर से गाड़ी की कम से कम दो फोटो लीजिए, फिर अंदर की चार फोटो', title: 'Photo lo', sub: 'Car ki 2 photo, phir andar ki 4: driver mat, passenger mat, back seat, dashboard' },
+  { ...END, from: 1560 },   // 26:00 sharp
 ];
 // the four inside photos asked for on Sundays, in the order the voice asks for them
 export const SPOTS: { key: string; label: string; clip: string }[] = [

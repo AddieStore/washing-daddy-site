@@ -8,6 +8,8 @@ export const HINDI_WORDS: Record<string, string> = {
   ph_polish: 'अब टायर और ट्रिम पर पॉलिश लगाइए, और कोई गंदगी हो तो पहले उसे हटाइए',
   ph_check: 'आख़िर में अगर कोई कमी है तो उसे सही कीजिए',
   ph_photo: 'अब कार की फोटो लीजिए, कम से कम दो',
+  // 11:00 sharp (26:00 on Sundays): the buzzer plays first, then this line
+  ph_end: 'आपका इस कार पर समय पूरा हो चुका है। कृपया अगली गाड़ी पर जाइए।',
   // Sunday: interior cleaning day
   ph_i_dash: 'अब डैशबोर्ड साफ़ कीजिए', ph_i_seat: 'अब गाड़ी की सीटें साफ़ कीजिए', ph_i_back: 'अब पिछली सीटें साफ़ कीजिए',
   ph_i_mat: 'अब सारी मैट साफ़ कीजिए', ph_i_glass: 'आख़िर में गाड़ी के शीशे और मिरर साफ़ कीजिए',

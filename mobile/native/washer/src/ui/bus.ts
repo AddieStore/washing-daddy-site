@@ -90,7 +90,7 @@ async function playQueue(clips: number[]) {
         player.addListener('playbackStatusUpdate', (st: { didJustFinish?: boolean }) => { if (st.didJustFinish) end() });
         player.play();
       } catch { end(); return }
-      setTimeout(end, 2500);
+      setTimeout(end, 15000);   // safety only: the clip's own 'finished' event ends it normally
     });
   }
 }

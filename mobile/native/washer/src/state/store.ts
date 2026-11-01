@@ -552,7 +552,7 @@ export function guideTick() {
     if (guided.has(k)) continue;
     guided.add(k);
     // later stages are spoken by the phone's own scheduled alerts (they also work with the app closed); in the app only stage 0, or all if alerts are off
-    if (g.idx === 0 || !alertsReady()) ui.speak([nameClip(me().name), g.step.clip]);
+    if (g.idx === 0 || !alertsReady()) ui.speak([g.step.pre || null, nameClip(me().name), g.step.clip]);
     ui.haptic([20, 40, 20]);   // the banner on the car screen shows the stage, so no toast
   }
 }
