@@ -9,10 +9,10 @@ import { Art } from '../ui/art';
 import { Check, Arrow } from '../ui/icons';
 import { PLANS, AREAS, SERVICES, PRODUCTS, SUPPORT_PHONE_SHOW } from '../data/reference';
 import { PAUSE_MAX, canPause, pauseFits, pauseLeft } from '../data/model';
-import { TODAY, addDays, fmt, iso, inr, ampm } from '../data/dates';
+import { TODAY, addDays, fmt, iso, inr, ampm, parse } from '../data/dates';
 import { IMG, RATIO, src, ImgKey } from '../img';
 import {
-  A, car, carImg, doc, planOf, maskPlate, fmtPhone, pName, cartLines, planPayDates, switchQuote, dayDetail, chipText, payReal,
+  A, car, carImg, doc, planOf, maskPlate, fmtPhone, pName, cartLines, planPayDates, switchQuote, dayDetail, calendar, realAcct, chipText, payReal,
   act, toast, openSheet, closeSheet, confetti, go, sheetHooks, trackWasher, distance, useApp, Track,
 } from '../state';
 import { TrackMap } from './TrackMap';
@@ -72,16 +72,34 @@ const Qty = ({ q, onMinus, onPlus }: { q: number; onMinus: () => void; onPlus: (
 
 /* ---------- day ---------- */
 function Day({ date }: { date: string }) {
-  const d = dayDetail(date), ink = useInk();
+  const d = dayDetail(date), c = car(), ink = useInk(), dt = parse(date), ti = iso(TODAY);
+  // washed days come from the month calendar; days outside it (the week strip) are judged by date
+  const cell = calendar(c).cells.find(x => x && x.date === date);
+  const past = date < ti, isToday = date === ti;
+  const washed = cell ? cell.washed : past && c.status !== 'new' && !d.paused && !realAcct();
+  const sub = fmt(dt, { weekday: 'long' });
+  if (washed) {
+    return (
+      <View>
+        <Eyebrow>{d.title}</Eyebrow>
+        <SheetTitle>{'Washed by ' + d.washer}</SheetTitle>
+        <Gap h={8} />
+        <Rows>{d.steps.map((s, i) => <Row key={i} icon="✓" tile="rgba(20,192,138,.15)" title={s} right={i === 0 ? <Txt weight={700} size={13}>{d.time}</Txt> : undefined} />)}</Rows>
+      </View>
+    );
+  }
+  const planned = ['Pressure wash', ...d.steps.slice(1, -1), 'Dried by hand'];
+  const head = d.paused ? 'Paused' : isToday ? "Today's wash" : past ? 'No wash' : 'Upcoming wash';
+  const note = d.paused ? 'No wash. Added to the end of your plan.'
+    : past ? 'No wash was recorded for this day.'
+    : isToday ? chipText(c, doc(c)) : `${d.washer} comes between 5:30 and 7:30 AM.`;
   return (
     <View>
       <Eyebrow>{d.title}</Eyebrow>
-      <SheetTitle>{d.paused ? 'Paused' : 'Washed by ' + d.washer}</SheetTitle>
-      <Gap h={8} />
-      <Rows>
-        {d.paused ? <Row title="No wash" sub="Added to the end of your plan" />
-          : d.steps.map((s, i) => <Row key={i} icon="✓" tile="rgba(20,192,138,.15)" title={s} right={i === 0 ? <Txt weight={700} size={13}>{d.time}</Txt> : undefined} />)}
-      </Rows>
+      <SheetTitle>{head}</SheetTitle>
+      <SheetSub>{note}</SheetSub>
+      {!d.paused && !past ? <Rows>{planned.map((s, i) => <Row key={i} icon="•" tile={ink.tile2} title={s} sub={i === 0 ? sub : undefined} />)}</Rows> : null}
+      {!d.paused && !past && canPause(c) && !isToday ? <Btn label="Pause some days" variant="ghost" onPress={() => { closeSheet(); sheets.pause() }} style={{ marginTop: SP.l }} /> : null}
     </View>
   );
 }

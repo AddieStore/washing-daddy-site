@@ -11,8 +11,8 @@ import { GhostCar, useUid } from '../ui/icons';
 import { Art } from '../ui/art';
 import { IMG, RATIO, src } from '../img';
 import { PRODUCTS, SLIDES } from '../data/reference';
-import { TODAY, fmt, ampm, addDays, parse, inr } from '../data/dates';
-import { isPaused } from '../data/model';
+import { TODAY, fmt, ampm, addDays, parse, inr, iso } from '../data/dates';
+import { isPaused, extras } from '../data/model';
 import {
   useApp, S, A, car, doc, act, go, planOf, carImg, maskPlate, chipText, banners, todaySteps, calendar, week, greeting, homeRail, realAcct, pName, startTxt,
 } from '../state';
@@ -346,7 +346,7 @@ function Streak() {
         <View style={{ flex: 1 }}>
           <Eyebrow>{cal.month}</Eyebrow>
           <Txt weight={700} size={15} style={{ marginTop: 4 }}>Mornings in a row</Txt>
-          <Txt size={12} color={ink.fg3}>Pauses don't break your streak. Tap a day.</Txt>
+          <Txt size={12} color={ink.fg3}>Pauses don't break your streak. Tap any day.</Txt>
         </View>
         <CountUp to={c.streak} dur={1200} font="shout" size={54} color={ink.accent} style={{ lineHeight: 50 }} />
       </View>
@@ -361,7 +361,13 @@ function Streak() {
               {x.today ? <View pointerEvents="none" style={{ position: 'absolute', left: -2, top: -2, right: -2, bottom: -2, borderRadius: 11, borderWidth: 2, borderColor: C.orange }} /> : null}
             </View>
           );
-          return <View key={i} style={{ width: '14.2857%', padding: 3 }}>{x.washed ? <Pressable accessibilityLabel={fmt(x.date, { day: 'numeric', month: 'long' })} onPress={() => sheets.day(x.date)}>{cell}</Pressable> : cell}</View>;
+          const lbl = fmt(x.date, { day: 'numeric', month: 'long' }) + (x.washed ? ', washed' : x.paused ? ', paused' : x.today ? ', today' : '');
+          return (
+            <View key={i} style={{ width: '14.2857%', padding: 3 }}>
+              <Pressable accessibilityRole="button" accessibilityLabel={lbl} hitSlop={3} onPress={() => sheets.day(x.date)}
+                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.88 : 1 }] })}>{cell}</Pressable>
+            </View>
+          );
         })}
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 12 }}>{legend(C.violet, 'Washed')}{legend(C.gold, 'Washed + extra')}{legend(undefined, 'Paused', true)}</View>
@@ -371,26 +377,41 @@ function Streak() {
 
 /* ---------- this week ---------- */
 const KCOL: Record<string, string> = { foam: C.sky, int: C.orange, det: C.gold, tyre: C.mint };
+const WK_W = 64, WK_GAP = 8, WK_BACK = 7, WK_FWD = 7;   // tile width, gap, days shown before / after today
+// the strip runs from a week back to a week ahead (state's week() only gives Monday to Sunday)
+function weekStrip() {
+  const c = car();
+  return Array.from({ length: WK_BACK + 1 + WK_FWD }, (_, i) => {
+    const dt = addDays(TODAY, i - WK_BACK), p = isPaused(c, dt);
+    return { date: iso(dt), label: fmt(dt, { weekday: 'short' }).slice(0, 2), d: dt.getDate(), today: i === WK_BACK, paused: p, dots: p ? [] : extras(c, dt) };
+  });
+}
 function Week() {
-  const T = useTheme(), wk = week();
+  const T = useTheme(), wk = weekStrip(), { width } = useWindowDimensions(), sv = useRef<any>(null);
   const dot = (col: string, l: string) => <Text><Text style={{ color: col }}>{'● '}</Text>{l}{'  '}</Text>;
+  // open with today in view: two days of the past peek in on the left
+  useEffect(() => { const t = setTimeout(() => sv.current?.scrollTo({ x: (WK_BACK - 2) * (WK_W + WK_GAP), animated: false }), 0); return () => clearTimeout(t) }, []);
   return (
     <View style={{ marginTop: SP.section }}>
       <Head title="This week" right={<Txt size={11} color={T.page.fg3} style={{ flexShrink: 1, textAlign: 'right' }}>{dot(C.sky, 'Foam')}{dot(C.orange, 'Interior')}{dot(C.mint, 'Tyre')}{dot(C.gold, 'Detail')}</Txt>} />
-      <View style={{ flexDirection: 'row', gap: 6 }}>
-        {wk.map((w, i) => {
+      <ScrollView ref={sv} horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast" snapToInterval={WK_W + WK_GAP} snapToAlignment="start"
+        style={{ marginHorizontal: -PAD }} contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 6, paddingRight: PAD + 3, gap: WK_GAP }}>
+        {wk.map(w => {
           const fg = w.today ? T.todayFg : T.card.fg, mute = w.today ? T.todayFg : T.card.fg3;
           return (
-            <Hard key={i} dx={3} dy={3} radius={16} reserve={false} color={T.day ? (w.today ? C.ink : C.violetInk) : null} style={{ flex: 1, opacity: w.paused ? 0.45 : 1 }}>
-              <View style={{ borderRadius: 16, paddingVertical: 10, alignItems: 'center', gap: 4, backgroundColor: w.today ? T.todayBg : T.cardBg, borderWidth: T.day ? 2.5 : 1, borderColor: w.today && !T.day ? 'transparent' : T.cardBorder }}>
-                <Txt weight={600} size={10} upper color={mute} style={w.today ? { opacity: 0.65 } : undefined}>{w.label}</Txt>
-                <Txt weight={700} size={16} color={fg}>{String(w.d)}</Txt>
-                <View style={{ flexDirection: 'row', gap: 3, height: 6 }}>{w.dots.map((k, j) => <View key={j} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: KCOL[k] }} />)}</View>
-              </View>
-            </Hard>
+            <Pressable key={w.date} accessibilityRole="button" accessibilityLabel={fmt(w.date, { weekday: 'long', day: 'numeric', month: 'long' }) + (w.today ? ', today' : w.paused ? ', paused' : '')}
+              onPress={() => sheets.day(w.date)} style={({ pressed }) => ({ width: WK_W, minHeight: HIT, opacity: pressed ? 0.75 : 1, transform: [{ scale: pressed ? 0.94 : 1 }] })}>
+              <Hard dx={3} dy={3} radius={16} reserve={false} color={T.day ? (w.today ? C.ink : C.violetInk) : null} style={{ opacity: w.paused ? 0.45 : 1 }}>
+                <View style={{ borderRadius: 16, paddingVertical: 10, alignItems: 'center', gap: 4, backgroundColor: w.today ? T.todayBg : T.cardBg, borderWidth: T.day ? 2.5 : 1, borderColor: w.today && !T.day ? 'transparent' : T.cardBorder }}>
+                  <Txt weight={600} size={10} upper color={mute} style={w.today ? { opacity: 0.65 } : undefined}>{w.label}</Txt>
+                  <Txt weight={700} size={16} color={fg}>{String(w.d)}</Txt>
+                  <View style={{ flexDirection: 'row', gap: 3, height: 6 }}>{w.dots.map((k, j) => <View key={j} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: KCOL[k] }} />)}</View>
+                </View>
+              </Hard>
+            </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }

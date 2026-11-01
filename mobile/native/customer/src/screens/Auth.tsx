@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
 import { C, F, SP, R, HIT } from '../theme';
 import { Btn, Card, Chips, Dots, Field, Gap, Hard, Opt, Page, Ticker, Txt, useInsets, PAD } from '../ui/kit';
-import { OTP_N, REAL, act, fmtPhone } from '../state';
+import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite } from '../state';
 import { src, RATIO } from '../img';
 import { AREAS, PLANS, SLIDES, PlanId } from '../data/reference';
 import { inr } from '../data/dates';
@@ -40,6 +40,7 @@ export default function Auth() {
   const [foc, setFoc] = useState(-1);
   const [left, setLeft] = useState(30);
   const [su, setSu] = useState({ name: '', area: '', model: '', plate: '', plan: 'std' as PlanId });
+  const [inv, setInv] = useState(pendingRef());   // optional invite code, prefilled from a link the friend sent
   const boxes = useRef<({ focus: () => void } | null)[]>([]);
   const shake = useRef(new Animated.Value(0)).current;
   const scroll = useRef<any>(null), cardY = useRef(0);
@@ -102,6 +103,10 @@ export default function Auth() {
     const n = su.name.trim(), m = su.model.trim(), p = su.plate.trim();
     const miss = !n ? 'your name' : !su.area ? 'your area' : !m ? 'your car' : !p ? 'the registration number' : '';
     if (miss) { setErr('Add ' + miss + ' to continue.'); return }
+    const code = inv.trim().toUpperCase();
+    if (code && !validInvite(code)) { setErr('That invite code should look like WD123456. Fix it or clear it.'); return }
+    if (code && !setPendingRef(code)) { setErr("That's your own code. Use one from a friend."); return }
+    if (!code) setPendingRef('');
     setSu({ ...su, name: n, model: m, plate: p.toUpperCase() }); setStep('plan');
   };
   const finish = async () => {
@@ -156,6 +161,8 @@ export default function Auth() {
       <Chips items={AREAS} value={su.area} onChange={area => { setSu({ ...su, area }); setErr('') }} />
       <Field label="Car" value={su.model} onChangeText={model => { setSu({ ...su, model }); setErr('') }} placeholder="e.g. Creta, Nexon, City" autoCapitalize="words" />
       <Field label="Registration number" value={su.plate} onChangeText={plate => { setSu({ ...su, plate }); setErr('') }} placeholder="DL 8C AB 1234" autoCapitalize="characters" autoCorrect={false} />
+      <Field label="Have an invite code? (optional)" value={inv} onChangeText={t => { setInv(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)); setErr('') }} placeholder="WD123456" autoCapitalize="characters" autoCorrect={false} />
+      {validInvite(inv) ? <Txt weight={600} size={12} color="#0E9F6E" style={{ marginTop: -SP.s, marginBottom: SP.m }}>₹200 off your first month</Txt> : null}
       <Err text={err} />
       <Btn label="Choose a plan" variant="violet" onPress={toPlan} style={{ marginTop: SP.s }} />
     </>

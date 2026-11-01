@@ -8,11 +8,13 @@
    - UI hosts toast/openSheet/closeSheet/confetti/haptic come from ./ui/hosts and are re-exported here.
    Only this file and ./backend talk to Firebase, Cashfree, the n8n webhooks or storage. */
 import { useSyncExternalStore } from 'react';
-import { AppState, Linking, Platform } from 'react-native';
+import { AppState, Linking, Platform, Share } from 'react-native';
+import * as ExpoLinking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { cutout } from './img';
 import { backend } from './backend/firebase';
 import { cashfreeCheckout, CASHFREE_AVAILABLE } from './backend/cashfree';
 import type { Db, Unsub } from './backend/types';
@@ -65,7 +67,30 @@ export const payReal = () => PAY_LIVE && realAcct() && CASHFREE_AVAILABLE;
 export const carImg = (c: Car): string | null => c.photo || c.img || null;   // an IMG key or a data/https URI; pass through img.src()
 export const daysLeft = (c: Car) => daysLeftOf(c, realAcct());
 export const pName = (p: { name: string; fit?: boolean }) => p.fit ? `${car().name} ${p.name}` : p.name;
-export const refCode = () => (A().name.split(' ')[0] || 'WD').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 8) + '200';
+// Invite code = 'WD' + last 6 digits of the account's 10-digit phone (same rule on the server, see invite contract)
+const ownPhone10 = () => (AUTH && AUTH.phone10()) || (S.session && S.session.phone) || (pendingSignup && pendingSignup.phone) || '';
+export const refCode = () => { const p = ownPhone10(); return /^\d{10}$/.test(p) ? 'WD' + p.slice(-6) : '' };
+export const inviteLink = () => { const c = refCode(); return c ? 'https://washingdaddy.com/invite/?c=' + c : 'https://washingdaddy.com/' };
+const CODE_RE = /^WD\d{6}$/;
+/* ---- invite code received from a friend: kept until the first plan payment ---- */
+const INVITE_KEY = 'wd-invite';
+let pendingInvite = '';
+export const pendingRef = () => (pendingInvite && pendingInvite !== refCode() ? pendingInvite : '');
+export const validInvite = (c: string) => CODE_RE.test(c.trim().toUpperCase());
+export function setPendingRef(code: string): boolean {
+  const c = (code || '').trim().toUpperCase();
+  if (!c) { pendingInvite = ''; AsyncStorage.removeItem(INVITE_KEY).catch(() => {}); return true }
+  if (!CODE_RE.test(c) || c === refCode()) return false;
+  pendingInvite = c; AsyncStorage.setItem(INVITE_KEY, c).catch(() => {}); return true;
+}
+function inviteFromUrl(url: string | null) {
+  if (!url) return;
+  try {
+    const u = ExpoLinking.parse(url), isInvite = /(^|\/)invite\/?$/.test(u.path || '') || u.hostname === 'invite';
+    const q = u.queryParams && u.queryParams.c; const c = String(Array.isArray(q) ? q[0] : q || '').toUpperCase();
+    if (isInvite && setPendingRef(c) && pendingInvite) emit();
+  } catch (e) {}
+}
 export const cartCount = () => Object.values(S.cart).reduce((a, b) => a + b, 0);
 export const greeting = () => { const hr = new Date(Date.now() + 5.5 * 3600e3).getUTCHours(); return hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening' };
 export const fmtPhone = (p: string) => p.replace(/(\d{5})(\d+)/, '$1 $2');
@@ -217,12 +242,16 @@ async function pay(kind: string, d: { amt: number; what: string; [k: string]: an
   try {
     const r = await fetch(N8N + '/wd-pay-order', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount: d.amt, name: a.name || '', phone: AUTH!.phone10(), car: c.name, num: c.plate, area: c.area || a.area || '', kind, label: d.what,
-        planId: d.planId, toPlan: d.toPlan, fromPlan: d.fromPlan, till: d.till, items: d.items, service: d.service, page: 'app' }) });
+        planId: d.planId, ...(kind === 'plan' && pendingRef() ? { ref: pendingRef() } : {}), toPlan: d.toPlan, fromPlan: d.fromPlan, till: d.till, items: d.items, service: d.service, page: 'app' }) });
     ok = r.ok; j = await r.json().catch(() => null);
   } catch (e) { throw new Error("Payment didn't go through. Nothing was charged.") }
   if (!ok || !j || !j.paymentSessionId) throw new Error(j && j.message ? j.message + ' Nothing was charged.' : "Payment didn't go through. Nothing was charged.");
   try { await cashfreeCheckout(j.paymentSessionId, j.orderId || j.order_id) }
   catch (e: any) { throw new Error(e && e.cancelled ? 'Payment cancelled. Nothing was charged.' : "Payment didn't go through. Nothing was charged.") }
+  if (kind === 'plan') {
+    if (Number(j.discount) > 0) toast('Invite applied: ₹200 off');
+    if (pendingInvite) setPendingRef('');   // first plan payment is on its way: the code is spent
+  }
   return { ref: j.orderId || j.order_id || '', pending: true };
 }
 // After a payment the book is the truth, not the app: the webhook moves the paid-up date a second or two later
@@ -277,6 +306,7 @@ function watchCarPhotos() {
   stop(photoUnsubs); if (!DB || !AUTH || !realAcct() || !AUTH.phone() || !S.acct) return;
   A().cars.forEach(x => { const cid = x.id; photoUnsubs.push(DB.doc('carphotos/' + AUTH.phone() + '_' + cid).onSnapshot(g => {
     const t = A().cars.find(q => q.id === cid), v = g.exists ? g.data().photo : null;
+    if (t && v) t.photoCut = v.startsWith('data:image/webp');   // only cut-outs are saved as WebP (firestore.rules allows no extra field)
     if (t && v && t.photo !== v) { t.photo = v; commit() } }, () => {})) });
 }
 function stopSync() { stop(unsubs); stop(photoUnsubs); subFor = null; if (acctUnsub) { try { acctUnsub() } catch (e) {} acctUnsub = null } REMOTE = {}; REQS = {}; DOCS = {}; lastStatus = {} }
@@ -285,6 +315,8 @@ function renderAll() { if (!SIM) DOCS = {}; subscribeCar(); emit() }
 /* ---------- boot ---------- */
 export async function boot() {
   await load();
+  try { const v = await AsyncStorage.getItem(INVITE_KEY); if (v && CODE_RE.test(v)) pendingInvite = v } catch (e) {}
+  try { inviteFromUrl(await ExpoLinking.getInitialURL()); ExpoLinking.addEventListener('url', e => inviteFromUrl(e.url)) } catch (e) {}
   // older saves showed masked plates; keep the full number and mask it only on screen
   if (S.acct) S.acct.cars.forEach(c => { if (c.plate === 'DL 4C •• 2731') c.plate = 'DL 4C AB 2731'; if (c.plate === 'DL 3C •• 0419' || c.plate === 'DL 3C AF 0419') c.plate = 'DL 3C BK 0419' });
   // a saved test login has no place in the real app, and the other way round
@@ -363,13 +395,23 @@ export const act = {
     if (r.canceled || !r.assets || !r.assets[0]) return;
     const c = car();
     try {
-      let out = '';
-      for (const w of [900, 640, 480]) {
+      let out = '', cut = false;
+      // Android: cut the car out of its background (transparent WebP); anything else falls through to the JPEG below
+      const png = await cutout(r.assets[0].uri);
+      if (png) {
+        for (const w of [640, 480, 360]) {
+          const ref = await ImageManipulator.manipulate(png).resize({ width: w }).renderAsync();
+          const s = await ref.saveAsync({ base64: true, compress: .8, format: SaveFormat.WEBP });
+          out = 'data:image/webp;base64,' + s.base64; if (out.length <= 390000) { cut = true; break }
+        }
+        if (!cut) out = '';
+      }
+      if (!cut) for (const w of [900, 640, 480]) {
         const ref = await ImageManipulator.manipulate(r.assets[0].uri).resize({ width: Math.min(w, r.assets[0].width || w) }).renderAsync();
         const s = await ref.saveAsync({ base64: true, compress: .7, format: SaveFormat.JPEG });
         out = 'data:image/jpeg;base64,' + s.base64; if (out.length <= 390000) break;
       }
-      c.photo = out; c.photoCut = false; ui = { ...ui, carNonce: ui.carNonce + 1 }; commit(); toast('Your car is in.');
+      c.photo = out; c.photoCut = cut; ui = { ...ui, carNonce: ui.carNonce + 1 }; commit(); toast('Your car is in.');
       if (DB && AUTH && realAcct()) await DB.doc('carphotos/' + AUTH.phone() + '_' + c.id).set({ photo: c.photo, updated_at: nowIST() });
     } catch (e) { console.warn(e); toast("Couldn't save the photo. Check your signal and try again.") }
   },
@@ -451,7 +493,11 @@ export const act = {
   setTheme(t: ThemePick) { S.theme = t; commit(); toast(t === 'light' ? 'Day look' : t === 'dark' ? 'Night look' : 'Follows your phone') },
   cycleTheme() { act.setTheme(S.theme === 'light' ? 'dark' : S.theme === 'dark' ? 'system' : 'light') },
   async copy(txt: string, msg: string) { try { await Clipboard.setStringAsync(txt); toast(msg) } catch (e) { toast(txt) } },
-  copyRef() { return act.copy(`Washing Daddy pressure-washes my car every morning, no pocha. Use code ${refCode()} for ₹200 off your first month: washingdaddy.com`, 'Invite copied. Paste it on WhatsApp.') },
+  async copyRef() {
+    const link = inviteLink(), text = `Washing Daddy pressure-washes my car every morning, no pocha. Join with my link and get ₹200 off your first month: ${link}`;
+    try { await Share.share(Platform.OS === 'ios' ? { message: text } : { message: text, title: 'Washing Daddy invite' }); return } catch (e) {}
+    return act.copy(text, 'Invite copied. Paste it on WhatsApp.');
+  },
   whatsapp(text = '') { Linking.openURL(`https://wa.me/91${SUPPORT_PHONE}${text ? '?text=' + encodeURIComponent(text) : ''}`).catch(() => toast(`WhatsApp us on 77018 08924`)) },
   call() { Linking.openURL(`tel:+91${SUPPORT_PHONE}`).catch(() => {}) },
   openUrl(u: string) { Linking.openURL(u).catch(() => {}) },

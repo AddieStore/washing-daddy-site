@@ -138,10 +138,10 @@ export default function Profile() {
                 <Txt font="shout" size={30} color={C.cream} style={{ marginLeft: -14, marginTop: 14 }}>₹200</Txt>
               </View>
               <Txt font="shout" size={34} upper style={{ paddingRight: 84, marginBottom: SP.s }}>Get a neighbour off pocha</Txt>
-              <Txt size={13} style={{ marginBottom: SP.l }}>They get ₹200 off their first month. You get ₹200 off your next.</Txt>
+              <Txt size={13} style={{ marginBottom: SP.l }}>Share your link: you and your friend both get ₹200 off.</Txt>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingVertical: SP.s, paddingLeft: SP.l, paddingRight: SP.s, borderRadius: RAD.ctl, backgroundColor: C.ink }}>
                 <Txt font="shout" size={22} color={C.cream} style={{ letterSpacing: 2.6 }}>{refCode()}</Txt>
-                <Pill gold label="Copy invite" onPress={() => act.copyRef()} />
+                <Pill gold label="Share invite" onPress={() => act.copyRef()} />
               </View>
             </View>
           </InkContext.Provider>
