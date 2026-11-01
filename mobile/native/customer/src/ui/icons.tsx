@@ -34,6 +34,7 @@ export const Note = mk(2, () => <Path d="M4 5h16v11H8l-4 4z" />);
 export const Warn = mk(2, () => <Path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />);
 export const Heart = mk(2.4, () => <Path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z" />);
 export const Chev = mk(2, () => <Path d="M9 6l6 6-6 6" />);
+export const Close = mk(2.4, () => <Path d="M6 6l12 12M18 6L6 18" />);
 export const Camera = mk(2, () => <><Path d="M4 8h3l2-3h6l2 3h3v11H4z" /><Circle cx="12" cy="13" r="3.5" /></>);
 export const Card = mk(2.2, () => <><Rect x="3" y="6" width="18" height="13" rx="3" /><Path d="M3 10h18" /></>);
 export const Arrow = mk(2.4, () => <Path d="M5 12h14M13 6l6 6-6 6" />);

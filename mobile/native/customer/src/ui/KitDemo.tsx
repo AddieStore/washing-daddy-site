@@ -18,7 +18,7 @@ export default function KitDemo() {
   return (
     <ThemeContext.Provider value={night ? NIGHT : DAY}>
       <View style={{ flex: 1 }}>
-        <Page header={<><Ticker items={['Pressure wash', 'Monthly from ₹999', 'Car wash in 10 min']} /><Topbar left={<Txt font="shout" size={22}>Kit</Txt>} title="Demo" right={<IconBtn dot onPress={() => toast('Updates')}><I.Bell size={20} /></IconBtn>} /></>}>
+        <Page header={<><Ticker items={['Pressure wash', 'Monthly from ₹1,800', 'Car wash in 10 min']} /><Topbar left={<Txt font="shout" size={22}>Kit</Txt>} title="Demo" right={<IconBtn dot onPress={() => toast('Updates')}><I.Bell size={20} /></IconBtn>} /></>}>
           <BigTitle em="Pocha?">No more</BigTitle>
           <Gap />
           <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
