@@ -9,8 +9,9 @@ import { Txt, Em, Card, Block, Hard, Btn, Pill, IconBtn, Page, Topbar, Ticker, R
 import { Bell, Sun, Moon, Auto, Book, Pause, Note, Warn, Heart, Camera, Swipe, Plus, Check } from '../ui/icons';
 import { GhostCar, useUid } from '../ui/icons';
 import { Art } from '../ui/art';
+import { Plate } from '../ui/Plate';
 import { IMG, RATIO, src } from '../img';
-import { PRODUCTS, SLIDES } from '../data/reference';
+import { PRODUCTS, SLIDES, fromPrice } from '../data/reference';
 import { TODAY, fmt, ampm, addDays, parse, inr, iso } from '../data/dates';
 import { isPaused, extras } from '../data/model';
 import {
@@ -172,7 +173,7 @@ function Hero({ W }: { W: number }) {
             <View style={{ flexShrink: 1 }}>
               <Txt font="hero" size={34} color={C.cream} style={{ textShadowColor: C.ink, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0 }}>{c.name}</Txt>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                <View style={{ backgroundColor: C.white, borderWidth: 2, borderColor: C.ink, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8 }}><Txt weight={700} size={12} color={C.ink} style={{ letterSpacing: 1 }}>{maskPlate(c.plate)}</Txt></View>
+                <Plate reg={maskPlate(c.plate)} width={164} />
                 <View style={{ backgroundColor: C.gold, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 }}><Txt weight={700} size={12} color={C.ink}>{p.name}</Txt></View>
               </View>
             </View>
@@ -492,7 +493,7 @@ function Closer() {
         <View style={{ backgroundColor: C.gold, borderWidth: 3, borderColor: C.ink, borderRadius: 22, paddingTop: 20, paddingHorizontal: 22, paddingBottom: 18 }}>
           <Notch left /><Notch left={false} />
           <Txt font="shout" size={17} upper color={C.violet} style={{ letterSpacing: 1 }}>Monthly plans from</Txt>
-          <Txt font="shout" size={64} color={C.ink} style={{ lineHeight: 64, marginTop: 2 }}>{'₹999'}<Txt weight={800} size={17} color={C.ink}>/month</Txt></Txt>
+          <Txt font="shout" size={64} color={C.ink} style={{ lineHeight: 64, marginTop: 2 }}>{inr(fromPrice())}<Txt weight={800} size={17} color={C.ink}>/month</Txt></Txt>
           <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 3, borderStyle: 'dashed', borderTopColor: C.ink, gap: 6 }}>
             {['Pressure wash every day', 'Same washer every morning', 'Car never leaves its spot'].map(t => (
               <View key={t} style={{ flexDirection: 'row' }}><Txt weight={700} size={14.5} color={C.violet} style={{ marginRight: 8 }}>{'✔'}</Txt><Txt weight={700} size={14.5} color={C.ink} style={{ flex: 1 }}>{t}</Txt></View>
@@ -538,7 +539,7 @@ function Rail() {
 }
 
 /* ---------- the screen ---------- */
-const TICK = ['No more pocha', 'Only pressure wash', 'Monthly from ₹999', 'Car wash in 10 min', 'Paschim Vihar', 'Meera Bagh', 'Sundar Vihar'];
+const TICK = ['No more pocha', 'Only pressure wash', `Monthly from ${inr(fromPrice())}`, 'Car wash in 10 min', 'Paschim Vihar', 'Meera Bagh', 'Sundar Vihar'];
 export default function Home() {
   const ui = useApp(), T = useTheme(), { width } = useWindowDimensions(), W = Math.min(width, 520);
   const ref = useRef<any>(null), [stuck, setStuck] = useState(false), name = A().name.split(' ')[0], hi = greeting();

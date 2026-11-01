@@ -4,13 +4,14 @@ import { AccessibilityInfo, Animated, Image, KeyboardAvoidingView, Platform, Pre
 import { C, F, SP, R, HIT } from '../theme';
 import { Btn, Card, Chips, Dots, Field, Gap, Hard, Opt, Page, Ticker, Txt, useInsets, PAD } from '../ui/kit';
 import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp } from '../state';
+import { Plate } from '../ui/Plate';
 import { src, RATIO } from '../img';
-import { AREAS, PLANS, SLIDES, PlanId } from '../data/reference';
+import { AREAS, sellablePlans, fromPrice, DEFAULT_PLAN, SLIDES, PlanId } from '../data/reference';
 import { inr } from '../data/dates';
 
 type Step = 'phone' | 'otp' | 'about' | 'plan';
 const msg = (e: any) => (e && e.message) || "That didn't go through. Try again.";
-const TICKER = ['No more pocha', 'Only pressure wash', 'Monthly from ₹999', 'Car wash in 10 min'];
+const TICKER = ['No more pocha', 'Only pressure wash', `Monthly from ${inr(fromPrice())}`, 'Car wash in 10 min'];
 const GAP = SP.m;
 
 function Err({ text }: { text: string }) {
@@ -39,7 +40,7 @@ export default function Auth() {
   const [code, setCode] = useState<string[]>(Array(OTP_N).fill(''));
   const [foc, setFoc] = useState(-1);
   const [left, setLeft] = useState(30);
-  const [su, setSu] = useState({ name: '', area: '', model: '', plate: '', plan: 'std' as PlanId });
+  const [su, setSu] = useState({ name: '', area: '', model: '', plate: '', plan: DEFAULT_PLAN as PlanId });
   const [inv, setInv] = useState(pendingRef());   // optional invite code, prefilled from a link the friend sent
   const [showInv, setShowInv] = useState(!!pendingRef()), [tapped, setTapped] = useState(false);
   const { v: appV } = useApp();
@@ -137,17 +138,17 @@ export default function Auth() {
   };
 
   /* ---------- the card ---------- */
-  const six = OTP_N > 4;
+  const six = OTP_N > 4, narrow = useWindowDimensions().width < 380;
   let card;
   if (step === 'phone') card = (
     <>
       <H2>Sign in with your phone</H2>
       <P>Use the number your washer has. We'll send a {OTP_N}-digit code by SMS.</P>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, borderRadius: R.card, borderWidth: 2.5, borderColor: C.ink, backgroundColor: '#fff', paddingVertical: 6, paddingLeft: SP.l, paddingRight: 7 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: narrow ? 6 : 10, minHeight: 60, borderRadius: R.card, borderWidth: 2.5, borderColor: C.ink, backgroundColor: '#fff', paddingVertical: 6, paddingLeft: narrow ? SP.m : SP.l, paddingRight: 7 }}>
         <Txt weight={700} size={16} color="#3B2C55">+91</Txt>
         <TextInput value={shown} onChangeText={onPhone} onFocus={toCard} onSubmitEditing={sendCode} inputMode="numeric" keyboardType="number-pad" maxLength={16} autoComplete="tel-national" textContentType="telephoneNumber"
           placeholder="98765 04210" placeholderTextColor="rgba(26,10,51,.3)" accessibilityLabel="Mobile number"
-          style={{ flex: 1, minWidth: 0, fontFamily: F.b600, fontSize: 18, letterSpacing: 0.7, color: C.ink, paddingVertical: 8, outlineStyle: 'none' } as any} />
+          style={{ flex: 1, minWidth: 0, fontFamily: F.b600, fontSize: narrow ? 16 : 18, letterSpacing: narrow ? 0.2 : 0.7, color: C.ink, paddingVertical: 8, outlineStyle: 'none' } as any} />
         <Btn label="Get code" busy={busy ? 'Sending…' : false} disabled={!phoneOk} onPress={sendCode} small full={false} />
       </View>
       {showInv
@@ -185,6 +186,7 @@ export default function Auth() {
       <Txt weight={700} size={11} upper color={C.violet} style={{ letterSpacing: 1.5, marginTop: SP.hair }}>Area</Txt>
       <Chips items={AREAS} value={su.area} onChange={area => { setSu({ ...su, area }); setErr('') }} />
       <Field label="Car" value={su.model} onChangeText={model => { setSu({ ...su, model }); setErr('') }} placeholder="e.g. Creta, Nexon, City" autoCapitalize="words" />
+      <Plate reg={su.plate} width="82%" style={{ alignSelf: 'center', marginBottom: SP.l }} />
       <Field label="Registration number" value={su.plate} onChangeText={plate => { setSu({ ...su, plate }); setErr('') }} placeholder="DL 8C AB 1234" autoCapitalize="characters" autoCorrect={false} />
       <View style={{ marginBottom: SP.l }}>{inviteBox}</View>
       <Err text={err} />
@@ -196,7 +198,7 @@ export default function Auth() {
       <StepDots n={2} />
       <H2>{`Pick a plan for your ${su.model}`}</H2>
       <P>Pay after the first wash. Change any time. WD Pro and above can pause up to a week a month.</P>
-      {PLANS.filter(p => !p.old).map(p => (
+      {sellablePlans().map(p => (
         <Opt key={p.id} on={su.plan === p.id} onPress={() => setSu({ ...su, plan: p.id })} title={p.name} price={inr(p.price)}
           text={p.rows.slice(1, 4).map(r => r[0] + ' ' + r[1].toLowerCase()).join(' · ')} />
       ))}

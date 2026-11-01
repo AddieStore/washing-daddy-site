@@ -12,6 +12,12 @@ export const PLANS: Plan[] = [
   { id: 'res', name: 'WD Reserve', price: 5555, f: { int: 7, tyre: 7, foam: 7, det: 4 }, rows: [['Pressure wash', 'Daily'], ['Interior', 'Daily'], ['Tyre & trim', 'Daily'], ['Foam wash', 'Daily'], ['Detailing', '4× / month'], ['Car perfume', 'Free, worth ₹499'], ['On-demand wash', '5 a month']] },
 ];
 
+// Plans that new customers and new cars can no longer pick. Existing cars on them keep their plan. Flip here to sell them again.
+export const HIDDEN_FROM_NEW: PlanId[] = ['legacy', 'std'];
+export const sellablePlans = (): Plan[] => PLANS.filter(p => !HIDDEN_FROM_NEW.includes(p.id));
+export const DEFAULT_PLAN: PlanId = 'pro';
+export const fromPrice = (): number => Math.min(...sellablePlans().map(p => p.price));
+
 export const AREAS = ['GH-9 Paschim Vihar', 'GH-6 Paschim Vihar', 'GH-14 Paschim Vihar', 'Meera Bagh', 'Sundar Vihar', 'Guru Hari Apartments'];
 export const WASHER_FOR = (a: string) => a.startsWith('GH-9') || a.startsWith('GH-6') ? 'Chotte' : 'Shahrukh';
 

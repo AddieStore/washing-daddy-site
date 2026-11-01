@@ -19,7 +19,7 @@ import { backend } from './backend/firebase';
 import { cashfreeCheckout, CASHFREE_AVAILABLE } from './backend/cashfree';
 import type { Db, Unsub } from './backend/types';
 import { TODAY, refreshToday, iso, parse, addDays, fmt, inr, nowIST, hm, ampm, t2m, m2t, wait } from './data/dates';
-import { PLANS, PRODUCTS, SERVICES, WASHER_FOR, AREA_COORDS, SUPPORT_PHONE, PlanId } from './data/reference';
+import { PLANS, PRODUCTS, SERVICES, WASHER_FOR, AREA_COORDS, SUPPORT_PHONE, PlanId, HIDDEN_FROM_NEW, DEFAULT_PLAN } from './data/reference';
 import {
   Account, Car, Session, WashDoc, DEMO_PHONE, sampleAccount, fromCustomerDoc, regOf, planOf, maskPlate, extras, weekPlan,
   LABEL, TASK_LABEL, TASK_SUB, isPaused, canPause, pauseLog, pauseFits, startOf, startTxt, makeDoc, fromContract, planTasks,
@@ -362,6 +362,7 @@ export const act = {
   // new customer: customers/{+91number}, status 'new' until the owner checks the car and activates it
   async signup(s: { name: string; area: string; model: string; plate: string; plan: PlanId }) {
     const p = pendingSignup; if (!p) throw new Error('Sign in again to continue.');
+    if (HIDDEN_FROM_NEW.includes(s.plan)) s = { ...s, plan: DEFAULT_PLAN };
     const w = WASHER_FOR(s.area), plate = s.plate.trim().toUpperCase();
     const car0 = { id: 'c0', name: s.model, make: '', plate, plan: s.plan, washer: w, parking: s.area + ', parking spot to be confirmed', window: 'Before 7:30 AM', keys: "I'll unlock it" };
     if (DB && AUTH) {
@@ -386,6 +387,7 @@ export const act = {
   switchCar(dir: number) { if (A().cars.length < 2) return; haptic(); S.carIdx = (S.carIdx + dir + A().cars.length) % A().cars.length; ui = { ...ui, carNonce: ui.carNonce + 1 }; save(); renderAll() },
   pickCar(i: number) { if (i !== S.carIdx) { S.carIdx = i; ui = { ...ui, carNonce: ui.carNonce + 1 }; save(); renderAll(); toast(`Showing your ${car().name}`) } },
   async addCar(x: { name: string; plate: string; area: string; plan: PlanId }) {
+    if (HIDDEN_FROM_NEW.includes(x.plan)) x = { ...x, plan: DEFAULT_PLAN };
     const name = x.name.trim(), plate = x.plate.trim().toUpperCase();
     if (!name || !plate) throw new Error('Add the car and its registration number.');
     // another car on a real account waits in requested_cars until the owner adds it from the approval page
@@ -464,6 +466,7 @@ export const act = {
     c.till = iso(to); commit(); return { pending: false, till: to };
   },
   async switchPlan(id: PlanId, via = 'UPI') {
+    if (HIDDEN_FROM_NEW.includes(id)) throw new Error('That plan is no longer available.');
     const c = car(), q = switchQuote(id, c);
     if (q.up && q.diff) await checkout('upgrade', q.diff, `Upgrade to ${q.np.name} · ${c.name}`, via, { toPlan: q.np.id, fromPlan: q.cp.id, till: c.till || '' });
     c.plan = id; commit();

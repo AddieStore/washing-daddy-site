@@ -1,6 +1,6 @@
 // Account, car and wash shapes, the weekly schedule and the pause rules. Ported one to one from the web app;
 // the schedule must match the washer app (.notes/sync-contract.md, "The morning's task list").
-import { PLANS, PlanId, WASHER_FOR } from './reference';
+import { PLANS, PlanId, WASHER_FOR, DEFAULT_PLAN } from './reference';
 import { TODAY, iso, parse, addDays, fmt, hm, t2m, ampm } from './dates';
 
 export type Pause = { from: string; to: string };
@@ -42,14 +42,14 @@ export function sampleAccount(): Account {
 
 export const maskPlate = (p: string) => String(p).replace(/^([A-Z]{2}\s?\d{1,2}\s?[A-Z]{0,1})\s?([A-Z]{1,3})\s?(\d{1,4})$/i, (_m, a, _b, c) => `${a.trim()} •• ${c}`);
 export const regOf = (c: { plate: string }) => String(c.plate).toUpperCase().replace(/[^A-Z0-9]/g, '');
-export const planOf = (c: Car) => PLANS.find(p => p.id === c.plan) || PLANS[1];
+export const planOf = (c: Car) => PLANS.find(p => p.id === c.plan) || PLANS.find(p => p.id === DEFAULT_PLAN)!;
 
 // customers/{+91number} -> the account this app draws. Local-only bits (pauses, notes, orders) stay on the phone.
 export function fromCustomerDoc(r: any, old: Account | null): Account {
   const active = r.status === 'active', prev = old && old.phone === String(r.phone).slice(-10) ? old : null;
   const cars: Car[] = (r.cars || []).map((c: any, i: number) => {
     const o = prev && prev.cars.find(x => regOf(x) === regOf(c));
-    return Object.assign({ id: 'c' + i, name: '', make: '', plate: '', img: null, plan: 'std', till: null, washer: WASHER_FOR(r.area || ''),
+    return Object.assign({ id: 'c' + i, name: '', make: '', plate: '', img: null, plan: DEFAULT_PLAN, till: null, washer: WASHER_FOR(r.area || ''),
       parking: (r.area || '') + ', parking spot to be confirmed', window: 'Before 7:30 AM', keys: "I'll unlock it", doneAt: null, mins: 0, streak: 0,
       washes: 0, paused: null, note: null, rating: 0 }, o || {}, c, { id: o ? o.id : (c.id || 'c' + i), status: active ? (c.status || 'active') : 'new' });
   });

@@ -5,7 +5,7 @@ import { useWindowDimensions } from 'react-native';
 import { C, InkContext, SP, R as RAD } from '../theme';
 import { Page, Topbar, IconBtn, Eyebrow, BigTitle, Em, Txt, Card, Rows, Row, Btn, Hard, Ring, CountUp, Gap, PAD, useTheme, useInk } from '../ui/kit';
 import { Help, Card as CardIc } from '../ui/icons';
-import { PLANS } from '../data/reference';
+import { PLANS, sellablePlans } from '../data/reference';
 import { PAUSE_MAX, canPause, pauseLeft } from '../data/model';
 import { TODAY, fmt, iso, inr } from '../data/dates';
 import { src, RATIO, ImgKey } from '../img';
@@ -157,7 +157,7 @@ export default function Plan() {
             <Txt size={13} color={bandInk.fg3}>Swipe to compare</Txt>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 12 }}>
-            {PLANS.filter(pl => !pl.old || pl.id === p.id).map(pl => <PlanCard key={pl.id} id={pl.id} />)}
+            {sellablePlans().map(pl => <PlanCard key={pl.id} id={pl.id} />)}
           </ScrollView>
         </InkContext.Provider>
       </View>

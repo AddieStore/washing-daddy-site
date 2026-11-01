@@ -32,8 +32,8 @@ export function Hard({ children, dx = 6, dy = 6, color, radius = 24, style, rese
 }) {
   const T = useTheme(), col = color === undefined ? T.shadow : color;
   return (
-    <View style={[reserve && { marginRight: dx, marginBottom: dy }, style]}>
-      {col ? <View pointerEvents="none" style={{ position: 'absolute', left: dx, top: dy, right: -dx, bottom: -dy, borderRadius: radius, backgroundColor: col }} /> : null}
+    <View style={[{ zIndex: 0 }, reserve && { marginRight: dx, marginBottom: dy }, style]}>
+      {col ? <View pointerEvents="none" style={{ position: 'absolute', zIndex: -1, left: dx, top: dy, right: -dx, bottom: -dy, borderRadius: radius, backgroundColor: col }} /> : null}
       {children}
     </View>
   );

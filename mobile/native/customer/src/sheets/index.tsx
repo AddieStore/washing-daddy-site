@@ -6,8 +6,9 @@ import { C, InkContext, violetInk, useTheme, useInk, SP, R as RAD, HIT } from '.
 import { Txt, Btn, Pill, Rows, Row, Card, Chips, Seg, Opt, Field, Eyebrow, Confirm, useInsets } from '../ui/kit';
 import { SheetTitle, SheetSub, Success } from '../ui/hosts';
 import { Art } from '../ui/art';
+import { Plate } from '../ui/Plate';
 import { Check, Arrow } from '../ui/icons';
-import { PLANS, AREAS, SERVICES, PRODUCTS, SUPPORT_PHONE_SHOW } from '../data/reference';
+import { sellablePlans, DEFAULT_PLAN, AREAS, SERVICES, PRODUCTS, SUPPORT_PHONE_SHOW } from '../data/reference';
 import { PAUSE_MAX, canPause, pauseFits, pauseLeft } from '../data/model';
 import { TODAY, addDays, fmt, iso, inr, ampm, parse } from '../data/dates';
 import { IMG, RATIO, src, ImgKey } from '../img';
@@ -443,17 +444,18 @@ function Product({ id }: { id: string }) {
 
 /* ---------- profile ---------- */
 function AddCar() {
-  const [model, setModel] = useState(''), [plate, setPlate] = useState(''), [area, setArea] = useState(A().area), [plan, setPlan] = useState('std'), [busy, run] = useRun();
+  const [model, setModel] = useState(''), [plate, setPlate] = useState(''), [area, setArea] = useState(A().area), [plan, setPlan] = useState<string>(DEFAULT_PLAN), [busy, run] = useRun();
   return (
     <View>
       <SheetTitle>Add a car</SheetTitle>
       <SheetSub>Your washer takes its first photo tomorrow morning.</SheetSub>
       <Field label="Car" value={model} onChangeText={setModel} placeholder="e.g. Creta, Nexon, City" />
+      <Plate reg={plate} width="78%" style={{ alignSelf: 'center', marginBottom: SP.l }} />
       <Field label="Registration number" value={plate} onChangeText={setPlate} placeholder="DL 8C AB 1234" autoCapitalize="characters" autoCorrect={false} />
       <Eyebrow>Area</Eyebrow>
       <Chips items={AREAS} value={area} onChange={setArea} />
       <Eyebrow>Plan</Eyebrow>
-      <Seg items={PLANS.map(p => ({ key: p.id, label: `${p.name.replace('WD ', '')} ${inr(p.price)}` }))} value={plan} onChange={setPlan} />
+      <Seg items={sellablePlans().map(p => ({ key: p.id, label: `${p.name.replace('WD ', '')} ${inr(p.price)}` }))} value={plan} onChange={setPlan} />
       <Btn variant="violet" label="Start tomorrow" busy={busy ? 'Adding…' : false} onPress={() => run(async () => { await act.addCar({ name: model, plate, area, plan: plan as any }); closeSheet(); })} />
     </View>
   );
