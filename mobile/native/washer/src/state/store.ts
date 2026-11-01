@@ -515,20 +515,27 @@ let meUnsub: Unsub | null = null;
 /* ---------- kit and ID records (profile tab) ---------- */
 // IDs and assigned clothes come from the washer's own washers/ doc (admin-written, read-only here);
 // the kit list is washerkit/{phone}.items: add-only, the rules refuse any change to an existing item.
-export const Kit = { items: [] as KitItem[], profile: null as WasherDoc | null, loaded: false };
-let kitUnsub: Unsub | null = null;
+export const Kit = { items: [] as KitItem[], photos: {} as Record<string, string>, profile: null as WasherDoc | null, loaded: false };
+let kitUnsub: Unsub | null = null, kitPhotoUnsub: Unsub | null = null;
 const myDocId = () => (REAL ? auth.phone() : '+91' + (S.session?.phone || me().phone)) || '';
 function watchKit() {
   const id = myDocId(); if (kitUnsub || !id || id === '+91') return;
   kitUnsub = db.doc('washerkit/' + id).onSnapshot(d => {
     const v = d.exists ? d.data() : null; Kit.items = Array.isArray(v?.items) ? v!.items : []; Kit.loaded = true; emit();
   }, e => console.warn('kit', e));
+  // the photos of those items, one doc each: kitphotos/{phone}_{itemId}
+  kitPhotoUnsub = db.collection('kitphotos').where('phone', '==', id).onSnapshot(sn => {
+    const m: Record<string, string> = {}; sn.docs.forEach(d => { const v = d.data(); if (v?.item && v.photo) m[v.item] = v.photo });
+    Kit.photos = m; emit();
+  }, e => console.warn('kit photos', e));
 }
-function stopKit() { if (kitUnsub) { try { kitUnsub() } catch (e) { } kitUnsub = null } Kit.items = []; Kit.profile = null; Kit.loaded = false }
-export async function addKitItem(kind: KitKind, name: string, qty: number): Promise<void> {
+function stopKit() { if (kitUnsub) { try { kitUnsub() } catch (e) { } kitUnsub = null } if (kitPhotoUnsub) { try { kitPhotoUnsub() } catch (e) { } kitPhotoUnsub = null } Kit.items = []; Kit.photos = {}; Kit.profile = null; Kit.loaded = false }
+export async function addKitItem(kind: KitKind, name: string, qty: number, photo?: string | null): Promise<void> {
   const id = myDocId(); const nm = name.trim().slice(0, 60);
   if (!id || id === '+91' || !nm || !(qty >= 1) || qty > 999) throw Object.assign(new Error('bad'), { hi: 'Naam aur ginti sahi daalo.' });
-  const item: KitItem = { id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), kind, name: nm, qty: Math.floor(qty), at: isoIST() };
+  const item: KitItem = { id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), kind, name: nm, qty: Math.floor(qty), at: isoIST(), ...(photo ? { has_photo: true } : {}) };
+  // photo first (its own doc), then the item that points at it; a failed photo stops the whole add
+  if (photo) await db.doc('kitphotos/' + id + '_' + item.id).set({ phone: id, item: item.id, photo, at: item.at });
   // read the latest list first, then write it back with the new item at the end (the rules require the old items untouched)
   const cur = await db.doc('washerkit/' + id).get();
   const items: KitItem[] = cur.exists && Array.isArray(cur.data()?.items) ? cur.data()!.items : [];

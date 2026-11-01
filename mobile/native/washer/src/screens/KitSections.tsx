@@ -1,10 +1,11 @@
 // Profile tab sections: assigned clothes, my kit (add-only), my documents (read-only, set by Daddy).
 import React, { useState } from 'react';
-import { Text, View } from 'react-native';
-import { Button, ChipPicker, F, Field, LinkButton, Pressy, Section, StatusPill, brand, sheet, ui, useTheme } from '../ui';
+import { Image, Text, View } from 'react-native';
+import { Button, ChipPicker, F, Field, Icon, LinkButton, Pressy, Section, StatusPill, brand, sheet, ui, useTheme } from '../ui';
 import { Kit, addKitItem, clothesHave, useStore } from '../state/store';
 import { KIT_KINDS, type KitKind } from '../lib/data';
 import { t } from '../lib/i18n';
+import { takePhoto } from '../lib/photo';
 import { SheetTitle } from './sheets';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -64,6 +65,7 @@ export function KitCard() {
             <Text style={{ fontFamily: F.black, fontSize: 12.5, color: c.fg3, letterSpacing: 0.4, textTransform: 'uppercase', paddingHorizontal: 16, paddingTop: 12 }}>{kindLabel(k.kind)}</Text>
             {items.filter(i => i.kind === k.kind).map(i => (
               <View key={i.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}>
+                <Thumb uri={Kit.photos?.[i.id]} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{ fontFamily: F.bold, fontSize: 15, color: c.fg }}>{i.name}</Text>
                   <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 2 }}>{t('Add kiya')} {fmtDate(i.at)}</Text>
@@ -82,6 +84,15 @@ export function KitCard() {
   );
 }
 
+function Thumb({ uri }: { uri?: string }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ width: 48, height: 48, borderRadius: 12, overflow: 'hidden', backgroundColor: c.tile2, borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
+      {uri ? <Image source={{ uri }} style={{ width: 48, height: 48 }} resizeMode="cover" /> : <Icon name="cam" size={20} color={c.fg3} />}
+    </View>
+  );
+}
+
 function openAddKit() { sheet.open(close => <AddKitBody close={close} />) }
 
 function AddKitBody({ close }: { close: () => void }) {
@@ -91,12 +102,19 @@ function AddKitBody({ close }: { close: () => void }) {
   const [qty, setQty] = useState(1);
   const [step, setStep] = useState<'form' | 'confirm'>('form');
   const [busy, setBusy] = useState(false);
+  const [shot, setShot] = useState<{ preview: string; url: string } | null>(null);
+  const snap = async () => {
+    try {
+      const r = await takePhoto();
+      if (r) setShot(r);
+    } catch (e: any) { ui.toast(t(e?.hi || 'Photo nahi gayi. Dobara try karo')) }
+  };
   const nm = name.trim();
   const save = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      await addKitItem(kind, nm, qty);
+      await addKitItem(kind, nm, qty, shot?.url ?? null);
       ui.toast(t('Saaman add ho gaya'));
       close();
     } catch (e: any) {
@@ -117,6 +135,7 @@ function AddKitBody({ close }: { close: () => void }) {
         <View style={{ padding: 14, borderRadius: 16, backgroundColor: 'rgba(84,9,218,0.08)', marginBottom: 12 }}>
           <Text style={{ fontFamily: F.black, fontSize: 18, color: c.fg }}>{nm} × {qty}</Text>
           <Text style={{ fontFamily: F.body, fontSize: 13.5, color: c.fg2, marginTop: 2 }}>{kindLabel(kind)}</Text>
+          {shot ? <Image source={{ uri: shot.preview }} style={{ width: 72, height: 72, borderRadius: 14, marginTop: 10 }} resizeMode="cover" /> : null}
         </View>
         <Button label={busy ? t('Add ho raha hai…') : t('Haan, pakka add karo')} variant="ink" disabled={busy} onPress={save} />
         <View style={{ alignItems: 'center' }}><LinkButton label={t('Wapas badlo')} onPress={() => setStep('form')} /></View>
@@ -137,6 +156,19 @@ function AddKitBody({ close }: { close: () => void }) {
         <Text accessibilityLabel={t('Ginti') + ' ' + qty} style={{ fontFamily: F.shout, fontSize: 36, color: c.fg, minWidth: 64, textAlign: 'center' }}>{qty}</Text>
         {stepBtn(t('Zyada'), 1, qty >= 999)}
       </View>
+      <Text style={lab}>{t('Saaman ki photo (optional)')}</Text>
+      {shot ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <Image source={{ uri: shot.preview }} style={{ width: 96, height: 96, borderRadius: 18 }} resizeMode="cover" />
+          <LinkButton label={t('Dobara lo')} onPress={snap} />
+        </View>
+      ) : (
+        <Pressy onPress={snap} accessibilityLabel={t('Photo lo')} scaleTo={0.96}
+          style={{ height: 96, borderRadius: 20, borderWidth: 2.5, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.tile, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <Icon name="cam" size={28} color={c.fg2} />
+          <Text style={{ fontFamily: F.black, fontSize: 13, color: c.fg2 }}>{t('Photo lo')}</Text>
+        </Pressy>
+      )}
       <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: brand.red, marginTop: 14 }}>{t('Ek baar add kiya to hata nahi sakte')}</Text>
       <View style={{ marginTop: 12 }}>
         <Button label={t('Aage badho')} variant="gold" disabled={!nm} onPress={() => setStep('confirm')} />

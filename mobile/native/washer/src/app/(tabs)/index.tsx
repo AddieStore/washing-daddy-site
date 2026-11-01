@@ -224,11 +224,11 @@ function Showcase() {
       <View style={s.work}>
         <Text accessibilityRole="header" style={s.workH}>{t('No pocha.')}<Text style={{ color: brand.gold }}> {t('Sirf pressure wash.')}</Text></Text>
         <Text style={s.workSub}>{t('Foam pehle, phir pressure rinse, phir saaf kapde se sukhao. Gaadi apni jagah se nahi hilti.')}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 14, gap: 16 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 32, gap: 22 }}>
           {POLAS.map((p, i) => (
             <View key={i} style={[s.pola, { transform: [{ rotate: i % 2 ? '1.6deg' : '-2deg' }] }]}>
               <Image source={p.src} style={s.polaImg} resizeMode="cover" accessibilityLabel={p.cap} />
-              <View style={{ paddingHorizontal: 3, paddingTop: 8, paddingBottom: 10 }}>
+              <View style={s.polaTxt}>
                 <Text style={s.polaCap}>{t(p.cap)}</Text>
                 <Text style={s.polaSub}>{t(p.sub)}</Text>
               </View>
@@ -318,8 +318,9 @@ const s = StyleSheet.create({
   work: { marginTop: 34, paddingTop: 34, paddingBottom: 40, backgroundColor: brand.violet, borderTopWidth: 4, borderTopColor: brand.gold },
   workH: { fontFamily: F.shout, fontSize: 40, lineHeight: 40, textTransform: 'uppercase', textAlign: 'center', color: brand.cream, paddingHorizontal: 16 },
   workSub: { fontFamily: F.body, fontSize: 15, color: brand.cream, opacity: 0.92, textAlign: 'center', alignSelf: 'center', maxWidth: 300, marginTop: 10 },
-  pola: { width: 190, backgroundColor: brand.cream, paddingTop: 8, paddingHorizontal: 8, borderRadius: 16, borderWidth: 3, borderColor: brand.ink, shadowColor: VIOLET_INK, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 6, height: 6 } },
-  polaImg: { width: '100%', aspectRatio: 4 / 5, borderRadius: 9 },
+  pola: { width: 200, backgroundColor: '#fff', padding: 10, paddingBottom: 14, borderRadius: 14, borderWidth: 3, borderColor: brand.ink, shadowColor: VIOLET_INK, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 6, height: 6 } },
+  polaImg: { width: 174, height: 218, borderRadius: 6, backgroundColor: '#E9E3F5' },
+  polaTxt: { paddingTop: 12, paddingHorizontal: 2, minHeight: 78 },
   polaCap: { fontFamily: F.shout, fontSize: 18, lineHeight: 19, textTransform: 'uppercase', color: brand.ink },
   polaSub: { fontFamily: F.semi, fontSize: 12, color: '#3B2C55', marginTop: 3 },
   trust: { alignSelf: 'center', width: '100%', maxWidth: 560, marginTop: 30, borderWidth: 4, borderColor: brand.gold, borderRadius: 28, overflow: 'hidden', backgroundColor: '#5309DE', shadowColor: VIOLET_INK, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 8, height: 8 } },

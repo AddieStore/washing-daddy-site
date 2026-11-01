@@ -68,6 +68,17 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // One photo per kit item (a small data: thumbnail), kept out of the kit list so that doc stays small.
+    // Create only, by the washer it belongs to (or an admin); nobody can change or remove one except an admin.
+    match /kitphotos/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.phone == me());
+      allow create: if isAdmin() || (isWasher()
+        && d().keys().hasOnly(['phone', 'item', 'photo', 'at'])
+        && d().phone == me() && str(d().item, 40) && id == me() + '_' + d().item
+        && str(d().photo, 150000) && d().photo.size() > 0 && optStr(d(), 'at', 40));
+      allow update, delete: if isAdmin();
+    }
+
     match /customers/{phone} {
       allow read: if isAdmin() || (signedIn() && phone == me());
       // a new customer signs up as 'new'; an admin checks the car and makes the account 'active'

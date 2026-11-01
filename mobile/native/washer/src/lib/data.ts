@@ -28,7 +28,7 @@ export type WasherDoc = { phone: string; name: string; area?: string; status: 'p
   // set by an admin only (the rules stop the washer writing them); the washer app only shows them
   assigned_clothes?: number; aadhaar_last4?: string; aadhaar_verified_at?: string; pcc?: { status: 'pending' | 'clear' | 'rejected'; verified_at?: string; ref?: string } };
 export type KitKind = 'clothes' | 'shampoo' | 'spray_gun' | 'other';
-export type KitItem = { id: string; kind: KitKind; name: string; qty: number; at: string };
+export type KitItem = { id: string; kind: KitKind; name: string; qty: number; at: string; has_photo?: boolean };
 export const KIT_KINDS: { kind: KitKind; label: string }[] = [
   { kind: 'clothes', label: 'Kapde / microfiber' }, { kind: 'shampoo', label: 'Shampoo' },
   { kind: 'spray_gun', label: 'Spray gun' }, { kind: 'other', label: 'Aur saaman' },

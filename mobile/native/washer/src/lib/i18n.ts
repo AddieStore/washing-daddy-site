@@ -323,6 +323,8 @@ export const HI: Record<string, string> = {
   "Jo saaman aapke paas hai wo likho.": "जो सामान आपके पास है वो लिखो.",
   "Kya hai?": "क्या है?",
   "Kitne?": "कितने?",
+  "Saaman ki photo (optional)": "सामान की फोटो (ज़रूरी नहीं)",
+  "Dobara lo": "दोबारा लो",
   "Ginti": "गिनती",
   "Jaise: Car shampoo 1L": "जैसे: Car shampoo 1L",
   "Aage badho": "आगे बढ़ो",
