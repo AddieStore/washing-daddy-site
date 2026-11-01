@@ -180,7 +180,7 @@ function gateCode(d) {
 }
 
 /* ---------------- data ---------------- */
-let W = [], C = [], N = [], X = [], tab = 'washers', unsubs = [], q = '';
+let W = [], C = [], N = [], X = [], K = {}, tab = 'washers', unsubs = [], q = '';
 function stop() { unsubs.forEach(u => { try { u() } catch (e) {} }); unsubs = [] }
 
 async function signedIn(u) {
@@ -198,6 +198,7 @@ async function signedIn(u) {
     $('#app').hidden = true; $('#gate').hidden = false;
     gatePhone(e.code === 'invalid_argument' ? `${nice(u.phoneNumber)} is not an approver. Use the owner's number.` : "Couldn't load. Check the internet and sign in again.");
   }));
+  unsubs.push(db.collection('washerkit').onSnapshot(sn => { K = {}; sn.docs.forEach(d => { K[d.id] = d.data().items || [] }); render() }, e => console.warn(e)));
   unsubs.push(db.collection('customers').onSnapshot(sn => { C = sn.docs.map(d => cleanCust({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
   unsubs.push(db.collection('newcars').onSnapshot(sn => { N = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
   unsubs.push(db.collection('ondemand').onSnapshot(sn => { X = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
@@ -227,7 +228,28 @@ function washerCard(w) {
     <div class="meta">${contact(w.phone || w.id)}</div>
     ${w.ref ? `<div class="meta">Friend code <b>${esc(w.ref)}</b>${referrerOf(w.ref) ? ' · from <b>' + esc(referrerOf(w.ref)) + '</b>' : ''}</div>` : ''}
     <div class="meta">${esc(w.area || '')}${w.area ? ' · ' : ''}${st === 'approved' && ROUNDS[w.route_id] ? esc(ROUNDS[w.route_id]) : st === 'approved' ? '<b style="color:var(--red)">No round yet</b>' : 'Signed up ' + esc(when(w.created_at))}</div>
-    </div></div><div class="acts">${acts}</div></div>`;
+    </div></div><div class="acts">${acts}</div>${st === 'approved' ? idPanel(w) : ''}</div>`;
+}
+
+// kit, clothes and ID records for an approved washer. The washer sees these in WD Partner > Profile (read-only for them).
+function idPanel(w) {
+  const k = esc(w.id), pcc = w.pcc || {}, kit = K[w.id] || [];
+  const opt = (v, l) => `<option value="${v}" ${pcc.status === v ? 'selected' : ''}>${l}</option>`;
+  const KL = { clothes: 'Clothes', shampoo: 'Shampoo', spray_gun: 'Spray gun', other: 'Other' };
+  return `<details class="idp" style="margin-top:12px"><summary style="font-weight:800;cursor:pointer">Kit and ID records${w.assigned_clothes != null ? ' · ' + esc(w.assigned_clothes) + ' clothes assigned' : ''}</summary>
+    <div class="grid2" style="margin-top:10px">
+      <label class="meta">Clothes assigned<input class="field idf" id="ac-${k}" inputmode="numeric" maxlength="4" value="${esc(w.assigned_clothes ?? '')}" placeholder="0"></label>
+      <label class="meta">Aadhaar last 4 digits only<input class="field idf" id="ad-${k}" inputmode="numeric" maxlength="4" value="${esc(w.aadhaar_last4 || '')}" placeholder="1234"></label>
+      <label class="meta">Aadhaar checked on<input class="field idf" id="av-${k}" type="date" value="${esc(w.aadhaar_verified_at || '')}"></label>
+      <label class="meta">Police clearance (PCC)<select class="idf" id="ps-${k}">${opt('', 'Not started')}${opt('pending', 'Pending')}${opt('clear', 'Clear (verified)')}${opt('rejected', 'Rejected')}</select></label>
+      <label class="meta">PCC date<input class="field idf" id="pv-${k}" type="date" value="${esc(pcc.verified_at || '')}"></label>
+      <label class="meta">PCC reference<input class="field idf" id="pr-${k}" maxlength="40" value="${esc(pcc.ref || '')}"></label>
+    </div>
+    <p class="meta" style="margin:8px 0">Never type the full Aadhaar number here. Only the last 4 digits are stored.</p>
+    <div class="acts"><button class="btn go" data-a="saveIds" data-id="${k}">Save records</button></div>
+    <div class="meta" style="margin-top:10px"><b>Kit the washer added</b> (they can't remove items)</div>
+    ${kit.length ? kit.map(i => `<div class="meta">${esc(KL[i.kind] || i.kind)} · ${esc(i.name)} × ${esc(i.qty)} · ${esc(String(i.at || '').slice(0, 10))}</div>`).join('') : '<div class="meta">Nothing added yet.</div>'}
+  </details>`;
 }
 // a washer's friend code is WD + last 5 digits of their phone (same rule as the Partner app)
 function referrerOf(code) {
@@ -359,6 +381,7 @@ function renderExtra() {
 }
 
 function render() {
+  if (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('idf')) return;   // don't wipe what is being typed
   if (tab === 'washers') renderWashers(); else if (tab === 'customers') renderCustomers();
   else if (tab === 'newcars') renderNewCars(); else renderExtra();
   const p = W.filter(w => (w.status || 'pending') === 'pending').length; $('#bW').textContent = p || '';
@@ -371,7 +394,13 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-a]'); if (!b) return;
   const id = b.dataset.id, a = b.dataset.a, w = W.find(x => x.id === id), c = C.find(x => x.id === id);
   const round = () => { const s = document.getElementById('r-' + id); return s ? s.value : '' };
-  if (a === 'approve') {
+  if (a === 'saveIds') {
+    const g = x => document.getElementById(x + '-' + id), ac = g('ac').value.trim(), ad = g('ad').value.trim();
+    if (ac !== '' && !/^\d{1,4}$/.test(ac)) { toast('Clothes assigned must be a number'); return }
+    if (ad !== '' && !/^\d{4}$/.test(ad)) { toast('Aadhaar: exactly the last 4 digits'); return }
+    const ps = g('ps').value, pcc = ps ? { status: ps, verified_at: g('pv').value || '', ref: g('pr').value.trim().slice(0, 40) } : null;
+    act(b, () => db.doc('washers/' + id).update({ assigned_clothes: ac === '' ? null : Number(ac), aadhaar_last4: ad || null, aadhaar_verified_at: g('av').value || null, pcc, updated_at: nowIST() }), 'Saved. It shows in their Profile.');
+  } else if (a === 'approve') {
     const r = round(); if (!r) { toast('Choose a round first'); document.getElementById('r-' + id)?.focus(); return }
     act(b, () => db.doc('washers/' + id).update({ status: 'approved', route_id: r, decided_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }), `${w?.name || 'Washer'} approved. Their app opens now.`);
   } else if (a === 'round') {
