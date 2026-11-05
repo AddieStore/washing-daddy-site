@@ -16,7 +16,7 @@ import { sheets } from '../sheets';
 function Banner() {
   return (
     <Pressable onPress={() => sheets.product('perfume')}>
-      <LinearGradient colors={[C.violet, '#7B3FF0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 20, minHeight: 150, overflow: 'hidden', padding: SP.card, justifyContent: 'center' }}>
+      <LinearGradient colors={[C.violet, '#7B3FF0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 16, minHeight: 150, overflow: 'hidden', padding: SP.card, justifyContent: 'center' }}>
         <View pointerEvents="none" style={{ position: 'absolute', right: -6, bottom: -8 }}><Art kind="perfume" c={['#FFBA08', '#FF6A1A']} size={150} /></View>
         <View style={{ maxWidth: '62%' }}>
           <View style={{ alignSelf: 'flex-start', backgroundColor: C.gold, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}><Txt weight={700} size={11} color={C.ink}>DROP 01</Txt></View>
@@ -43,17 +43,17 @@ function Prod({ p, wide, cw }: { p: Product; wide: boolean; cw: number }) {
   );
   const info = (
     <View style={{ minWidth: 0, flex: wide ? 1 : undefined, marginTop: wide ? 0 : SP.m }}>
-      <Txt weight={600} size={wide ? 16 : 13.5} color={P.ink} style={{ lineHeight: wide ? 21 : 18, minHeight: wide ? 0 : 36 }} numberOfLines={2}>{pName(p)}</Txt>
+      <Txt weight={500} size={wide ? 15 : 13} color={P.ink} style={{ lineHeight: wide ? 21 : 18, minHeight: wide ? 0 : 36 }} numberOfLines={2}>{pName(p)}</Txt>
       {p.fit ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}><Check size={11} color={P.ok} /><Txt weight={600} size={11} color={P.ok}>Fits your {cc.name}</Txt></View> : null}
       {wide ? <Txt size={12.5} color={P.grey} style={{ marginTop: 4 }} numberOfLines={3}>{p.desc}</Txt> : null}
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 6 }}>
-        <Txt weight={700} size={15} color={P.ink}>{inr(p.price)}</Txt>
-        <Txt size={12} color={P.grey} style={{ textDecorationLine: 'line-through' }}>{inr(p.mrp)}</Txt>
+        <Txt weight={600} size={14} color={P.ink}>{inr(p.price)}</Txt>
+        <Txt size={11} color={P.grey} style={{ textDecorationLine: 'line-through' }}>{inr(p.mrp)}</Txt>
       </View>
     </View>
   );
   return (
-    <PCard pad={SP.m} style={{ flex: 1 }} onPress={() => sheets.product(p.id)}>
+    <PCard pad={SP.s + 2} style={{ flex: 1, backgroundColor: '#FFFFFF', borderColor: '#ECEAF2', borderRadius: 14, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }} onPress={() => sheets.product(p.id)}>
       <View style={wide ? { flexDirection: 'row', alignItems: 'center', gap: SP.l } : undefined}>{art}{info}</View>
     </PCard>
   );
@@ -70,7 +70,7 @@ export default function Store() {
       <Page {...({ ref: sc } as any)} style={{ backgroundColor: '#FFFFFF' }}
         header={<PTop title="Store" sub="Gear for a car that's washed daily" right={<PIconBtn label="Cart" badge={n} onPress={() => sheets.cart()}><Cart size={22} color={P.ink} /></PIconBtn>} />}>
         <Banner />
-        <PCard tint style={{ marginTop: SP.l }} pad={SP.m}>
+        <PCard style={{ marginTop: SP.l, backgroundColor: '#FFFFFF', borderColor: '#ECEAF2', borderRadius: 14 }} pad={SP.m}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.m }}>
             <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', backgroundColor: C.violet }}><Image source={src('washer')!} style={{ width: 44, height: 44 }} resizeMode="cover" /></View>
             <View style={{ flex: 1 }}>

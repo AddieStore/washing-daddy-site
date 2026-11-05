@@ -27,7 +27,7 @@ function PageView({ p }: { p: NonNullable<Page> }) {
 
 function Pushed({ p, depth }: { p: NonNullable<Page>; depth: number }) {
   const { width } = useWindowDimensions(), rm = useReduceMotion(), x = useRef(new Animated.Value(rm ? 0 : width)).current;
-  useEffect(() => { if (!rm) Animated.timing(x, { toValue: 0, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start() }, []);
+  useEffect(() => { if (!rm) Animated.timing(x, { toValue: 0, duration: 220, easing: Easing.bezier(0, 0, 0.2, 1), useNativeDriver: true }).start() }, []);
   return (
     <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 10 + depth, backgroundColor: '#fff', transform: [{ translateX: x }] }}>
       <PageView p={p} />
