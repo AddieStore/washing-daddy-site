@@ -69,3 +69,71 @@ export const SLIDES = [
   { img: 'slide5', t: 'Wheels too', s: 'Pressure inside the rims' },
   { img: 'slide6', t: 'Same car, one wash', s: 'It never left its spot' },
 ] as const;
+
+// A la carte car services for the Home grid ("All car wash services") and the service page.
+// PLACEHOLDER prices/ratings until Ravi confirms them. Only the three SERVICES above (wash/deep/exclusive) are priced
+// by n8n, so only those are paid online; these book with pay-on-arrival (see act.bookServices).
+export type CarService = {
+  id: string; name: string; short: string; price: number; mrp: number; mins: number; rating: number; count: string;
+  img: string; tint: string; cat: 'Exterior' | 'Interior' | 'Care'; blurb: string;
+  steps: [string, string][]; included: string[]; excluded: string[];
+};
+export const CAR_SERVICES: CarService[] = [
+  { id: 'ext', name: 'Exterior Pressure Wash', short: 'Exterior Wash', price: 149, mrp: 249, mins: 25, rating: 4.9, count: '12.4k', img: 'spray', tint: '#EEF0FF', cat: 'Exterior',
+    blurb: 'Roof to rims with a pressure gun. No cloth on dry dust, no pocha.',
+    steps: [['Rinse', 'High pressure loosens the dust first'], ['Wash', 'Body, glass and wheel arches'], ['Dry', 'Microfibre dry, no water spots']],
+    included: ['Body and roof', 'Glass and mirrors', 'Wheel arches and rims'], excluded: ['Interior cleaning', 'Engine bay', 'Tar or paint stain removal'] },
+  { id: 'foam', name: 'Foam Wash', short: 'Foam Wash', price: 249, mrp: 399, mins: 35, rating: 4.9, count: '8.1k', img: 'foam', tint: '#F3ECFF', cat: 'Exterior',
+    blurb: 'Snow foam lifts grit off the paint before anything touches it.',
+    steps: [['Pre-rinse', 'Pressure rinse to drop loose dirt'], ['Snow foam', 'Thick foam sits for 3 minutes'], ['Rinse and dry', 'Rinsed off, dried by hand']],
+    included: ['Full body foam', 'Pressure rinse', 'Hand dry'], excluded: ['Interior', 'Polish or wax'] },
+  { id: 'int', name: 'Interior Cleaning', short: 'Interior Cleaning', price: 199, mrp: 299, mins: 30, rating: 4.8, count: '6.7k', img: 'wipe', tint: '#FFF4DC', cat: 'Interior',
+    blurb: 'Dashboard, doors, console and mats wiped and dusted.',
+    steps: [['Declutter', 'Mats out, loose things kept aside'], ['Wipe down', 'Dash, doors, console, steering'], ['Finish', 'Mats back in, glass from inside']],
+    included: ['Dashboard and console', 'Door pads', 'Inside glass', 'Floor mats'], excluded: ['Seat shampoo', 'Roof liner'] },
+  { id: 'vac', name: 'Vacuum Service', short: 'Vacuum', price: 149, mrp: 249, mins: 20, rating: 4.8, count: '5.2k', img: 'kit', tint: '#E8F6FF', cat: 'Interior',
+    blurb: 'Seats, floor, boot and every corner vacuumed.',
+    steps: [['Mats out', 'Mats shaken and vacuumed'], ['Vacuum', 'Seats, floor, under seats, boot'], ['Crevices', 'Narrow nozzle for the gaps']],
+    included: ['Seats and floor', 'Under the seats', 'Boot'], excluded: ['Shampoo', 'Stain removal'] },
+  { id: 'engine', name: 'Engine Bay Cleaning', short: 'Engine Bay', price: 299, mrp: 499, mins: 30, rating: 4.8, count: '2.3k', img: 'bmw-front', tint: '#EDEDF2', cat: 'Care',
+    blurb: 'Degreased and dressed safely, electricals covered first.',
+    steps: [['Cover', 'Battery and electricals covered'], ['Degrease', 'Safe degreaser and soft brush'], ['Dress', 'Low-pressure rinse and plastic dressing']],
+    included: ['Degreasing', 'Plastic dressing'], excluded: ['Engine repairs', 'Under-chassis wash'] },
+  { id: 'tyre', name: 'Tyre & Rim Polish', short: 'Tyre & Rim', price: 99, mrp: 149, mins: 15, rating: 4.9, count: '9.8k', img: 'wheel', tint: '#F1F1F5', cat: 'Exterior',
+    blurb: 'Brake dust off the rims, satin black shine on the tyres.',
+    steps: [['Rim clean', 'Brake dust cleaner and brush'], ['Tyre gel', 'Satin, not greasy']],
+    included: ['4 rims', '4 tyres'], excluded: ['Puncture repair', 'Alignment'] },
+  { id: 'glass', name: 'Glass & Windshield', short: 'Glass Care', price: 99, mrp: 149, mins: 15, rating: 4.8, count: '3.9k', img: 'i8', tint: '#EAF3FF', cat: 'Exterior',
+    blurb: 'Streak-free glass inside and out, wipers cleaned.',
+    steps: [['Clean', 'Glass cleaner on every window'], ['Buff', 'Streak-free microfibre buff']],
+    included: ['All windows', 'Mirrors', 'Wiper blades'], excluded: ['Chip repair'] },
+  { id: 'dash', name: 'Dashboard Polish', short: 'Dash Polish', price: 129, mrp: 199, mins: 15, rating: 4.7, count: '2.8k', img: 'gh9', tint: '#FFF0E8', cat: 'Interior',
+    blurb: 'Matte, UV-safe dressing that does not shine in your eyes.',
+    steps: [['Dust', 'Vents and screen dusted'], ['Polish', 'Matte UV dressing']],
+    included: ['Dashboard', 'Console', 'Door trims'], excluded: ['Leather conditioning'] },
+  { id: 'seat', name: 'Seat Shampoo', short: 'Seat Shampoo', price: 699, mrp: 999, mins: 60, rating: 4.8, count: '1.6k', img: 'red-foam', tint: '#FFECEE', cat: 'Interior',
+    blurb: 'Fabric seats shampooed and extracted. Dry in about 3 hours.',
+    steps: [['Vacuum', 'Loose dirt out first'], ['Shampoo', 'Foam scrub, seat by seat'], ['Extract', 'Wet vacuum pulls the dirt out']],
+    included: ['All fabric seats', 'Stain spot treatment'], excluded: ['Leather seats', 'Roof liner'] },
+  { id: 'odour', name: 'Odour Removal', short: 'Odour Removal', price: 249, mrp: 349, mins: 20, rating: 4.7, count: '1.2k', img: 'pochaa', tint: '#EFFAF4', cat: 'Interior',
+    blurb: 'AC vents and cabin treated so the smell stays gone.',
+    steps: [['Find it', 'Mats and boot checked first'], ['Treat', 'Cabin and AC vent treatment']],
+    included: ['Cabin treatment', 'AC vents'], excluded: ['AC servicing'] },
+  { id: 'ceramic', name: 'Ceramic Spray Coat', short: 'Ceramic Coat', price: 499, mrp: 799, mins: 40, rating: 4.9, count: '2.1k', img: 'thar', tint: '#F3ECFF', cat: 'Care',
+    blurb: 'Spray ceramic layer. Dust slides off for about 3 months.',
+    steps: [['Wash', 'Clean, dry paint first'], ['Coat', 'Panel by panel spray and buff']],
+    included: ['Full body', 'Glass coat'], excluded: ['Paint correction'] },
+  { id: 'under', name: 'Underbody Wash', short: 'Underbody', price: 199, mrp: 299, mins: 20, rating: 4.7, count: '1.4k', img: 'after', tint: '#EEF0FF', cat: 'Care',
+    blurb: 'Mud and road salt blasted out from under the car.',
+    steps: [['Blast', 'Pressure lance under the car'], ['Arches', 'Wheel arches flushed']],
+    included: ['Underbody', 'Wheel arches'], excluded: ['Anti-rust coating'] },
+];
+// "Wash Packs" carousel: the combos n8n already prices, so these can be paid online.
+export const PACKS = [
+  { id: 'wash', tag: 'POPULAR', img: 'hero-shirt', mins: 30, sub: 'Pressure wash + tyre polish + interior' },
+  { id: 'deep', tag: 'NEW', img: 'foam', mins: 60, sub: 'Foam, vacuum, glass and wheels' },
+  { id: 'exclusive', tag: 'BEST', img: 'bmw-front', mins: 120, sub: 'Everything, plus engine bay and ceramic' },
+] as const;
+export const SLOTS = { Morning: ['7:00 am', '8:00 am', '9:00 am', '10:00 am', '11:00 am'], Afternoon: ['12:00 pm', '1:00 pm', '2:00 pm', '3:00 pm', '4:00 pm'], Evening: ['5:00 pm', '6:00 pm', '7:00 pm', '8:00 pm'] } as const;
+// Home trust footer. PLACEHOLDER numbers until Ravi confirms.
+export const TRUST = { cars: '25,000+', carsLabel: 'Cars washed', rating: '4.8', ratingLabel: '2k+ ratings' };

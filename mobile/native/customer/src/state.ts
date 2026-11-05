@@ -19,7 +19,7 @@ import { backend } from './backend/firebase';
 import { cashfreeCheckout, CASHFREE_AVAILABLE } from './backend/cashfree';
 import type { Db, Unsub } from './backend/types';
 import { TODAY, refreshToday, iso, parse, addDays, fmt, inr, nowIST, hm, ampm, t2m, m2t, wait } from './data/dates';
-import { PLANS, PRODUCTS, SERVICES, WASHER_FOR, AREA_COORDS, SUPPORT_PHONE, PlanId, HIDDEN_FROM_NEW, DEFAULT_PLAN } from './data/reference';
+import { PLANS, PRODUCTS, SERVICES, CAR_SERVICES, WASHER_FOR, AREA_COORDS, SUPPORT_PHONE, PlanId, HIDDEN_FROM_NEW, DEFAULT_PLAN } from './data/reference';
 import {
   Account, Car, Session, WashDoc, DEMO_PHONE, sampleAccount, fromCustomerDoc, regOf, planOf, maskPlate, extras, weekPlan,
   LABEL, TASK_LABEL, TASK_SUB, isPaused, canPause, pauseLog, pauseFits, startOf, startTxt, makeDoc, fromContract, planTasks,
@@ -39,8 +39,8 @@ const AUTH = backend ? backend.auth : null;
 
 /* ---------- persisted state ---------- */
 export type ThemePick = 'light' | 'dark' | 'system';
-type Persist = { session: Session | null; acct: Account | null; carIdx: number; cart: Record<string, number>; theme: ThemePick };
-export let S: Persist = { session: null, acct: null, carIdx: 0, cart: {}, theme: 'light' };
+type Persist = { session: Session | null; acct: Account | null; carIdx: number; cart: Record<string, number>; svc: Record<string, number>; theme: ThemePick };
+export let S: Persist = { session: null, acct: null, carIdx: 0, cart: {}, svc: {}, theme: 'light' };
 const KEY = 'wd-app-v2';
 let saveT: any = null;
 function save() { clearTimeout(saveT); saveT = setTimeout(() => { AsyncStorage.setItem(KEY, JSON.stringify(S)).catch(() => {}) }, 120) }
@@ -51,13 +51,17 @@ async function load() {
 /* ---------- UI state + change notification ---------- */
 export type Tab = 'home' | 'live' | 'plan' | 'store' | 'profile';
 export const TABS: Tab[] = ['home', 'live', 'plan', 'store', 'profile'];
-type UI = { tab: Tab; tabNonce: number; ready: boolean; signedIn: boolean; carNonce: number; sim: boolean; v: number };
-let ui: UI = { tab: 'home', tabNonce: 0, ready: false, signedIn: false, carNonce: 0, sim: false, v: 0 };
+// page: a full-screen page pushed over the tabs (Pronto-style), e.g. a service page. null = just the tabs.
+export type Page = { k: 'svc'; id: string } | { k: 'refer' } | { k: 'profile' } | { k: 'cart' } | { k: 'schedule' } | null;
+type UI = { tab: Tab; tabNonce: number; ready: boolean; signedIn: boolean; carNonce: number; sim: boolean; v: number; page: Page; pages: Page[] };
+let ui: UI = { tab: 'home', tabNonce: 0, ready: false, signedIn: false, carNonce: 0, sim: false, v: 0, page: null, pages: [] };
 const subs = new Set<() => void>();
 function emit() { ui = { ...ui, v: ui.v + 1, signedIn: !!(S.session && S.acct) }; subs.forEach(f => f()) }
 export function commit() { save(); emit() }
 export function useApp() { return useSyncExternalStore(f => { subs.add(f); return () => { subs.delete(f) } }, () => ui, () => ui) }
-export function go(t: Tab) { if (t === ui.tab) { ui = { ...ui, tabNonce: ui.tabNonce + 1 }; emit(); return } haptic(); ui = { ...ui, tab: t }; emit() }
+export function openPage(p: NonNullable<Page>) { haptic(); ui = { ...ui, pages: [...ui.pages, p], page: p }; emit() }
+export function closePage() { const pages = ui.pages.slice(0, -1); ui = { ...ui, pages, page: pages[pages.length - 1] || null }; emit() }
+export function go(t: Tab) { if (ui.pages.length) ui = { ...ui, pages: [], page: null }; if (t === ui.tab) { ui = { ...ui, tabNonce: ui.tabNonce + 1 }; emit(); return } haptic(); ui = { ...ui, tab: t }; emit() }
 
 /* ---------- getters ---------- */
 export const A = () => S.acct as Account;
@@ -223,6 +227,24 @@ export function cartLines() {
 }
 
 /* ---------- sheets the state layer opens itself (banners); the sheets module registers these ---------- */
+/* ---------- service cart (Home grid / service page / cart page) ---------- */
+// One extra wash run: a la carte services from CAR_SERVICES and/or one pack id from SERVICES.
+export const svcOf = (id: string) => CAR_SERVICES.find(s => s.id === id) || null;
+export const svcQty = (id: string) => (S.svc || {})[id] || 0;
+export function svcLines() {
+  const m = S.svc || {}, ids = Object.keys(m).filter(k => m[k]);
+  const lines = ids.map(id => {
+    const c = svcOf(id), p = SERVICES.find(x => x.id === id);
+    const name = c ? c.name : p ? p.name : id, price = c ? c.price : p ? p.price : 0, mrp = c ? c.mrp : price, mins = c ? c.mins : id === 'wash' ? 30 : id === 'deep' ? 60 : 120;
+    return { id, name, q: m[id], price, mrp, mins, total: price * m[id], pack: !c };
+  });
+  const sub = lines.reduce((a, l) => a + l.total, 0), mrp = lines.reduce((a, l) => a + l.mrp * l.q, 0), mins = lines.reduce((a, l) => a + l.mins * l.q, 0);
+  return { lines, sub, mrp, saved: Math.max(0, mrp - sub), mins, count: lines.reduce((a, l) => a + l.q, 0) };
+}
+// Packs are paid online (n8n prices them); a la carte services are paid to the washer on arrival until n8n knows their prices.
+export const svcPayOnline = () => { const { lines } = svcLines(); return lines.length === 1 && lines[0].pack && lines[0].q === 1 };
+export type When = { date: string; slot: string } | null;   // null = instant (next free washer, 45-60 min)
+
 export const sheetHooks = { payPlan: () => {}, note: () => {}, bookings: () => {}, orders: () => {} };
 
 /* ---------- requests to the washer: requests/{id}, read live by the washer app ---------- */
@@ -378,7 +400,7 @@ export const act = {
   async resendOtp(phone10: string) { await act.sendOtp(phone10); toast('New code sent') },
   async logout() {
     // wipe the saved account (name, address, cars, orders) from the phone, not just from memory; only the theme stays
-    S.session = null; S.acct = null; S.cart = {}; S.carIdx = 0; stopSync(); if (SIM) { clearTimeout(SIM.t); SIM = null }
+    S.session = null; S.acct = null; S.cart = {}; S.svc = {}; S.carIdx = 0; stopSync(); if (SIM) { clearTimeout(SIM.t); SIM = null }
     clearTimeout(saveT); try { await AsyncStorage.setItem(KEY, JSON.stringify(S)) } catch (e) {}
     if (AUTH) await AUTH.signOut(); ui = { ...ui, tab: 'home' }; commit();
   },
@@ -492,6 +514,33 @@ export const act = {
     } catch (e) { console.warn('booking', e); throw new Error(paid ? "We have your payment. We'll call you to send a washer." : 'Booking failed. Try again.') }
   },
   cancelBooking(id: string) { const a = A(), b = a.bookings.find(x => x.id === id); a.bookings = a.bookings.filter(x => x.id !== id); commit(); toast(`Cancelled. Refund on its way to your ${a.payments.find(p => b && p.what.includes(b.type))?.via || 'UPI'}.`) },
+
+  /* --- service cart --- */
+  addSvc(id: string) { if (!S.svc) S.svc = {}; S.svc[id] = (S.svc[id] || 0) + 1; commit(); haptic() },
+  subSvc(id: string) { if (!S.svc) return; S.svc[id] = Math.max(0, (S.svc[id] || 0) - 1); if (!S.svc[id]) delete S.svc[id]; commit(); haptic() },
+  clearSvc() { S.svc = {}; commit() },
+  // Books the whole service cart as one ondemand doc. Pack-only carts pay first like act.book; everything else is
+  // pay on arrival (paid:false) because n8n workflow 8 cannot price a la carte ids yet. when=null means instant.
+  async bookServices(when: When, via = 'UPI'): Promise<{ id: string; paid: boolean }> {
+    const { lines, sub } = svcLines(); if (!lines.length) throw new Error('Add a service first.');
+    if (svcPayOnline() && !when) { const r = await act.book(lines[0].id, via); S.svc = {}; commit(); return r }
+    const c = car(), names = lines.map(l => (l.q > 1 ? l.q + ' × ' : '') + l.name).join(', ');
+    let paid = '';
+    if (svcPayOnline() && payReal()) { const r = await checkout('onetime', lines[0].price, `${lines[0].name} · ${c.name}`, via, { service: lines[0].id }); paid = r.ref || 'paid' }
+    const done = (id: string) => {
+      // Kept on the account so the Washes tab can list it under Upcoming
+      A().bookings.unshift({ id, carId: c.id, type: names, what: paid ? 'Paid · ₹' + sub : 'Pay on arrival · ₹' + sub, date: when ? when.date : iso(TODAY), slot: when ? when.slot : 'Instant · 45-60 min' });
+      S.svc = {}; commit(); return { id, paid: !!paid };
+    };
+    if (!DB || !AUTH || !realAcct()) { await wait(800); return done('demo') }
+    try {
+      const ref = await DB.collection('ondemand').add({ service: names, service_id: lines.map(l => l.id).join('+'), services: lines.map(l => ({ id: l.id, q: l.q, price: l.price })),
+        price: sub, paid: !!paid, pay_ref: paid, pay_on_arrival: !paid, car: c.name, reg: c.plate, area: c.area || A().area || '',
+        phone: AUTH.phone(), customer_id: AUTH.phone(), status: when ? 'scheduled' : 'new', washer_id: '', created_at: nowIST(), date: when ? when.date : iso(TODAY), slot: when ? when.slot : '' });
+      if (!when) fetch(N8N + '/wd-ondemand-dispatch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ doc_id: ref.id, area: c.area || A().area || '' }) }).catch(() => {});
+      return done(ref.id);
+    } catch (e) { console.warn('booking', e); throw new Error(paid ? "We have your payment. We'll call you to send a washer." : 'Booking failed. Try again.') }
+  },
 
   /* --- store --- */
   addToCart(id: string, q = 1) { S.cart[id] = (S.cart[id] || 0) + q; commit(); haptic(); const p = PRODUCTS.find(x => x.id === id)!; toast(`${q > 1 ? q + ' × ' : ''}${pName(p)} added`) },
