@@ -20,7 +20,7 @@ export function imgOf(id: string): string {
 export function tintOf(id: string) { const s = svcOf(id); return s ? s.tint : '#F3ECFF' }
 
 export function Photo({ id, style, radius = 12 }: { id: string; style?: StyleProp<ViewStyle>; radius?: number }) {
-  return <View pointerEvents="none" style={[{ backgroundColor: tintOf(id), borderRadius: radius, overflow: 'hidden' }, style]}><Image source={src(imgOf(id)) as any} resizeMode="cover" style={{ width: '100%', height: '100%' }} /></View>;
+  return <View pointerEvents="none" style={[{ backgroundColor: tintOf(id), borderRadius: radius, overflow: 'hidden' }, style]}><Image source={src(imgOf(id)) as any} resizeMode={String(imgOf(id)).startsWith("r3d") ? "contain" : "cover"} style={{ width: '100%', height: '100%' }} /></View>;
 }
 
 export function Circle({ children, onPress, style, label }: { children: ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; label?: string }) {

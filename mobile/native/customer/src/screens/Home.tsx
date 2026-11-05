@@ -140,7 +140,7 @@ function PackCard({ p }: { p: (typeof PACKS)[number] }) {
     <View style={{ width: 139 }}>
       <Pressable3 label={s.name} onPress={() => openPage({ k: 'svc', id: p.id })}>
         <View style={{ width: 139, height: 104, borderRadius: 10, overflow: 'hidden', backgroundColor: L.tint }}>
-          <Image source={(IMG as any)[p.img]} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+          <Image source={(IMG as any)[p.img]} resizeMode={String(p.img).startsWith("r3d") ? "contain" : "cover"} style={{ width: '100%', height: '100%' }} />
           <View style={{ position: 'absolute', left: 0, top: 6, backgroundColor: tag, borderTopRightRadius: 6, borderBottomRightRadius: 6, paddingHorizontal: 7, height: 17, justifyContent: 'center' }}><Txt weight={700} size={10} color="#fff" style={{ lineHeight: 14 }}>{p.tag}</Txt></View>
         </View>
         <Txt weight={700} size={16} color={L.ink} style={{ marginTop: 12, lineHeight: 22 }}>{'₹' + s.price}</Txt>
@@ -196,7 +196,7 @@ function SvcTile({ s, w }: { s: (typeof CAR_SERVICES)[number]; w: number }) {
     <View style={{ width: w }}>
       <Pressable3 label={s.name} onPress={() => openPage({ k: 'svc', id: s.id })} style={{ height: 178, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: L.line, overflow: 'hidden' }}>
         <View style={{ width: w - 2, height: w - 2, backgroundColor: s.tint }}>
-          <Image source={(IMG as any)[s.img]} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+          <Image source={(IMG as any)[s.img]} resizeMode={String(s.img).startsWith("r3d") ? "contain" : "cover"} style={{ width: '100%', height: '100%' }} />
           <View style={{ position: 'absolute', top: 5, right: 5, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,.92)', borderRadius: 9, paddingHorizontal: 6, height: 18 }}>
             <Star size={9} color={L.gold} /><Txt weight={500} size={10} color={L.grey} style={{ lineHeight: 14 }}>{s.rating.toFixed(1) + ' (' + s.count + ')'}</Txt>
           </View>
