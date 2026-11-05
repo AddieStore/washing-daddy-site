@@ -1,8 +1,9 @@
 /* Sign-in poster and flow: phone -> code -> (new numbers) about -> plan. Ported from renderAuth() in customer/index.html. */
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
-import { C, F, SP, R, HIT } from '../theme';
-import { Btn, Card, Chips, Dots, Field, Gap, Hard, Opt, Page, Ticker, Txt, useInsets, PAD } from '../ui/kit';
+import { Animated, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
+import { C, F, SP, InkContext, creamInk } from '../theme';
+import { Chips, Field, Opt, Txt, useInsets, PAD } from '../ui/kit';
+import { Back, Check } from '../ui/icons';
 import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp } from '../state';
 import { Plate } from '../ui/Plate';
 import { src, RATIO } from '../img';
@@ -11,27 +12,55 @@ import { inr } from '../data/dates';
 
 type Step = 'phone' | 'otp' | 'about' | 'plan';
 const msg = (e: any) => (e && e.message) || "That didn't go through. Try again.";
-const TICKER = ['No more pocha', 'Only pressure wash', `Monthly from ${inr(fromPrice())}`, 'Car wash in 10 min'];
-const GAP = SP.m;
+const L = { ink: '#171717', grey: '#525252', muted: '#737373', line: 'rgba(23,23,23,0.16)', hair: 'rgba(23,23,23,0.08)', raised: '#F4F4F5', violet: C.violet, off: '#E4E4E7', red: '#dc2626', ok: '#16a34a' };
+const NUM = { fontVariant: ['tabular-nums'] } as const;
 
 function Err({ text }: { text: string }) {
-  return text ? <Txt weight={600} size={13} color={C.red} style={{ marginBottom: SP.m, lineHeight: 18 }}>{text}</Txt> : null;
+  return text ? <Txt weight={500} size={13} color={L.red} style={{ marginBottom: SP.m, lineHeight: 18 }}>{text}</Txt> : null;
 }
-const H2 = ({ children }: { children: string }) => <Txt font="shout" size={28} upper style={{ lineHeight: 30, letterSpacing: 0.3 }}>{children}</Txt>;
-const P = ({ children }: { children: React.ReactNode }) => <Txt weight={400} size={14} color="#3B2C55" style={{ marginTop: SP.s, marginBottom: SP.xl, lineHeight: 20 }}>{children}</Txt>;
-const Hint = ({ children }: { children: React.ReactNode }) => <Txt size={12} color="rgba(26,10,51,.6)" style={{ marginTop: SP.l, lineHeight: 18 }}>{children}</Txt>;
-const B = ({ children }: { children: React.ReactNode }) => <Txt weight={700} size={12} color="#3B2C55">{children}</Txt>;
+const H2 = ({ children }: { children: string }) => <Txt weight={500} size={24} color={L.ink} style={{ lineHeight: 32, textAlign: 'center' }}>{children}</Txt>;
+const P = ({ children, left }: { children: React.ReactNode; left?: boolean }) => <Txt size={14} color={L.grey} style={{ marginTop: SP.s, marginBottom: SP.xl, lineHeight: 20, textAlign: left ? 'left' : 'center' }}>{children}</Txt>;
+const Hint = ({ children }: { children: React.ReactNode }) => <Txt size={12} color={L.muted} style={{ marginTop: SP.l, lineHeight: 16, textAlign: 'center' }}>{children}</Txt>;
+const B = ({ children }: { children: React.ReactNode }) => <Txt weight={500} size={12} color={L.ink}>{children}</Txt>;
 function Link({ label, onPress, disabled, style }: { label: string; onPress: () => void; disabled?: boolean; style?: any }) {
-  return <Pressable onPress={onPress} disabled={disabled} hitSlop={{ top: 14, bottom: 14, left: 10, right: 10 }} style={style}><Txt weight={700} size={12} color={disabled ? 'rgba(26,10,51,.5)' : C.violet} style={disabled ? undefined : { textDecorationLine: 'underline' }}>{label}</Txt></Pressable>;
+  return <Pressable onPress={onPress} disabled={disabled} hitSlop={{ top: 14, bottom: 14, left: 10, right: 10 }} style={style}><Txt weight={500} size={14} color={disabled ? L.muted : L.violet}>{label}</Txt></Pressable>;
 };
+// full-width accent button, grey while it cannot be used
+function Cta({ label, onPress, disabled, busy, style }: { label: string; onPress?: () => void; disabled?: boolean; busy?: string | boolean; style?: any }) {
+  const off = !!disabled || !!busy;
+  return (
+    <Pressable onPress={onPress} disabled={off} accessibilityRole="button" style={({ pressed }) => [{ minHeight: 48, borderRadius: 10, backgroundColor: disabled ? L.off : L.violet, alignItems: 'center', justifyContent: 'center', opacity: busy ? 0.8 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }, style]}>
+      <Txt weight={500} size={15} color={disabled ? L.muted : '#fff'}>{typeof busy === 'string' ? busy : label}</Txt>
+    </Pressable>
+  );
+}
 const StepDots = ({ n }: { n: 1 | 2 }) => (
   <View style={{ flexDirection: 'row', gap: 6, marginBottom: SP.l }}>
-    {[1, 2].map(i => <View key={i} style={{ height: 4, flex: 1, borderRadius: 2, backgroundColor: i <= n ? C.violet : 'rgba(26,10,51,.14)' }} />)}
+    {[1, 2].map(i => <View key={i} style={{ height: 4, flex: 1, borderRadius: 2, backgroundColor: i <= n ? L.violet : L.raised }} />)}
   </View>
 );
+const BackBtn = ({ onPress }: { onPress: () => void }) => (
+  <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={onPress} hitSlop={10} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}>
+    <Back size={24} color={L.ink} strokeWidth={1.5} />
+  </Pressable>
+);
+const PHOTOS = ['slide0', 'slide1', 'slide2', 'slide3', 'slide4', 'slide5', 'slide6'] as const;
+// two rows of photo tiles bleeding off the sides
+function Bubbles({ W }: { W: number }) {
+  const h = 104, rows = [[0, 1, 2, 3], [4, 5, 6, 0]], ws = [[96, 148, 128, 120], [140, 108, 148, 100]], off = [-32, -72];
+  return (
+    <View style={{ width: W, marginTop: SP.xl, height: h * 2 + 12, overflow: 'hidden' }}>
+      {rows.map((r, ri) => (
+        <View key={ri} style={{ flexDirection: 'row', gap: 12, marginLeft: off[ri], marginTop: ri ? 12 : 0, width: W * 2 }}>
+          {r.map((k, i) => <Image key={i} source={src(PHOTOS[k])!} resizeMode="cover" style={{ width: ws[ri][i], height: h, borderRadius: 14 }} />)}
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export default function Auth() {
-  const ins = useInsets(), win = useWindowDimensions(), W = Math.min(win.width, 440), phW = Math.round((W - PAD * 2) * .36) - 20;
+  const ins = useInsets(), win = useWindowDimensions(), W = Math.min(win.width, 440);
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');          // 10 digits
   const [shown, setShown] = useState('');          // as typed ("98765 04210")
@@ -40,6 +69,7 @@ export default function Auth() {
   const [code, setCode] = useState<string[]>(Array(OTP_N).fill(''));
   const [foc, setFoc] = useState(-1);
   const [left, setLeft] = useState(30);
+  const [wa, setWa] = useState(true);          // "get updates on WhatsApp" (display only)
   const [su, setSu] = useState({ name: '', area: '', model: '', plate: '', plan: DEFAULT_PLAN as PlanId });
   const [inv, setInv] = useState(pendingRef());   // optional invite code, prefilled from a link the friend sent
   const [showInv, setShowInv] = useState(!!pendingRef()), [tapped, setTapped] = useState(false);
@@ -76,8 +106,8 @@ export default function Auth() {
       <Field label={step === 'about' ? 'Do you have an invite code? (optional)' : 'Invite code (optional)'} value={inv} onChangeText={onInv} onFocus={toCard} placeholder="WD123456" autoCapitalize="characters" autoCorrect={false}
         autoFocus={tapped && step === 'phone'} maxLength={8} accessibilityLabel="Invite code" boxStyle={{ marginBottom: 0 }} />
       {validInvite(inv) ? (inv === own
-        ? <Txt weight={600} size={12} color={C.red} style={{ marginTop: SP.s, lineHeight: 18 }}>{OWN}</Txt>
-        : <Txt weight={600} size={12} color="#0E9F6E" style={{ marginTop: SP.s, lineHeight: 18 }}>₹200 off your first month</Txt>) : null}
+        ? <Txt weight={500} size={12} color={L.red} style={{ marginTop: SP.s, lineHeight: 16 }}>{OWN}</Txt>
+        : <Txt weight={500} size={12} color={L.ok} style={[{ marginTop: SP.s, lineHeight: 16 }, NUM]}>₹200 off your first month</Txt>) : null}
     </View>
   );
   const onPhone = (t: string) => {
@@ -138,154 +168,114 @@ export default function Auth() {
   };
 
   /* ---------- the card ---------- */
-  const six = OTP_N > 4, narrow = useWindowDimensions().width < 380;
+  const six = OTP_N > 4;
+  const phoneField = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, borderRadius: 10, borderWidth: 1, borderColor: phone ? L.violet : L.line, backgroundColor: '#fff', paddingHorizontal: SP.l }}>
+      <Txt weight={500} size={15} color={L.ink} style={NUM}>+91</Txt>
+      <TextInput value={shown} onChangeText={onPhone} onFocus={toCard} onSubmitEditing={sendCode} inputMode="numeric" keyboardType="number-pad" maxLength={16} autoComplete="tel-national" textContentType="telephoneNumber"
+        placeholder="Enter mobile number" placeholderTextColor={L.muted} accessibilityLabel="Mobile number"
+        style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontSize: 15, color: L.ink, paddingVertical: 12, fontVariant: ['tabular-nums'], outlineStyle: 'none' } as any} />
+    </View>
+  );
   let card;
   if (step === 'phone') card = (
     <>
-      <H2>Sign in with your phone</H2>
-      <P>Use the number your washer has. We'll send a {OTP_N}-digit code by SMS.</P>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: narrow ? 6 : 10, minHeight: 60, borderRadius: R.card, borderWidth: 2.5, borderColor: C.ink, backgroundColor: '#fff', paddingVertical: 6, paddingLeft: narrow ? SP.m : SP.l, paddingRight: 7 }}>
-        <Txt weight={700} size={16} color="#3B2C55">+91</Txt>
-        <TextInput value={shown} onChangeText={onPhone} onFocus={toCard} onSubmitEditing={sendCode} inputMode="numeric" keyboardType="number-pad" maxLength={16} autoComplete="tel-national" textContentType="telephoneNumber"
-          placeholder="98765 04210" placeholderTextColor="rgba(26,10,51,.3)" accessibilityLabel="Mobile number"
-          style={{ flex: 1, minWidth: 0, fontFamily: F.b600, fontSize: narrow ? 16 : 18, letterSpacing: narrow ? 0.2 : 0.7, color: C.ink, paddingVertical: 8, outlineStyle: 'none' } as any} />
-        <Btn label="Get code" busy={busy ? 'Sending…' : false} disabled={!phoneOk} onPress={sendCode} small full={false} />
-      </View>
+      <Txt weight={500} size={22} color={L.ink} style={{ marginBottom: SP.l }}>Log in or sign up</Txt>
+      {phoneField}
+      <Pressable onPress={() => setWa(!wa)} accessibilityRole="checkbox" accessibilityState={{ checked: wa }} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: SP.m, minHeight: 36 }}>
+        <View style={{ width: 20, height: 20, borderRadius: 4, backgroundColor: wa ? L.violet : '#fff', borderWidth: wa ? 0 : 1, borderColor: L.line, alignItems: 'center', justifyContent: 'center' }}>{wa ? <Check size={14} color="#fff" strokeWidth={2} /> : null}</View>
+        <Txt size={14} color={L.ink}>Get updates on WhatsApp</Txt>
+      </Pressable>
       {showInv
-        ? <View style={{ marginTop: SP.l }}>{inviteBox}</View>
-        : <Link label="I have an invite code" onPress={() => { setShowInv(true); setTapped(true) }} style={{ alignSelf: 'flex-start', marginTop: SP.l }} />}
+        ? <View style={{ marginTop: SP.m }}>{inviteBox}</View>
+        : <Link label="I have an invite code" onPress={() => { setShowInv(true); setTapped(true) }} style={{ alignSelf: 'flex-start', marginTop: SP.s }} />}
       {err ? <View style={{ marginTop: SP.m }}><Err text={err} /></View> : null}
-      {REAL ? <Hint>New to Washing Daddy? Use your number and we'll set you up after the code.</Hint>
-        : <Hint><B>Test version.</B> 98765 04210 opens a sample customer with two cars. Any other number takes you through sign-up as a new customer.</Hint>}
+      <Cta label="Continue" busy={busy ? 'Sending…' : false} disabled={!phoneOk} onPress={sendCode} style={{ marginTop: SP.l }} />
+      <Txt size={12} color={L.muted} style={{ textAlign: 'center', marginTop: SP.m, lineHeight: 16 }}>By continuing, you agree to our Terms of Service and Privacy Policy</Txt>
+      {REAL ? <Hint>New here? Use your number and we'll set you up after the code</Hint>
+        : <Hint><B>Test version.</B> 98765 04210 opens a sample customer with two cars. Any other number takes you through sign-up as a new customer</Hint>}
     </>
   );
   else if (step === 'otp') card = (
     <>
-      <H2>Enter the code</H2>
-      <P>Sent to +91 {fmtPhone(phone)}. <Link label="Change" onPress={() => { setStep('phone'); setErr('') }} /></P>
-      <Animated.View style={{ flexDirection: 'row', gap: six ? 7 : 10, justifyContent: 'space-between', marginBottom: SP.l, transform: [{ translateX: shake }] }}>
+      <Txt weight={500} size={24} color={L.ink} style={[{ lineHeight: 32, marginTop: SP.l }, NUM]}>Enter the OTP sent to{'\n'}+91 {fmtPhone(phone)}</Txt>
+      <Link label="Change number" onPress={() => { setStep('phone'); setErr('') }} style={{ alignSelf: 'flex-start', marginTop: SP.s, marginBottom: SP.xl }} />
+      <Animated.View style={{ flexDirection: 'row', gap: six ? 8 : 12, justifyContent: 'space-between', marginBottom: SP.l, transform: [{ translateX: shake }] }}>
         {code.map((d, i) => (
           <TextInput key={i} ref={(r: any) => { boxes.current[i] = r }} value={d} onChangeText={t => onBox(i, t)} onFocus={() => { setFoc(i); toCard() }} onBlur={() => setFoc(-1)}
             onKeyPress={e => { if (e.nativeEvent.key === 'Backspace' && !d && i > 0) { const c = code.slice(); c[i - 1] = ''; setCode(c); boxes.current[i - 1]?.focus() } }}
             inputMode="numeric" keyboardType="number-pad" textContentType={i ? undefined : 'oneTimeCode'} autoComplete={i ? 'off' : 'sms-otp'} maxLength={OTP_N} selectTextOnFocus editable={!busy}
             accessibilityLabel={`Digit ${i + 1}`}
-            style={{ flex: 1, maxWidth: 64, aspectRatio: 1, textAlign: 'center', padding: 0, fontFamily: F.b700, fontSize: six ? 22 : 26, color: C.ink, backgroundColor: '#fff', borderWidth: 2.5, borderColor: foc === i ? C.violet : C.ink, borderRadius: R.ctl, transform: [{ translateY: foc === i ? -2 : 0 }], outlineStyle: 'none' } as any} />
+            style={{ flex: 1, maxWidth: 56, aspectRatio: 1, textAlign: 'center', padding: 0, fontFamily: F.b500, fontSize: six ? 20 : 24, color: L.ink, fontVariant: ['tabular-nums'], backgroundColor: '#fff', borderWidth: 1, borderColor: foc === i || d ? L.violet : L.line, borderRadius: 10, outlineStyle: 'none' } as any} />
         ))}
       </Animated.View>
       <Err text={err} />
-      <Btn label="Verify" variant="violet" style={{ marginTop: SP.s }} busy={busy ? 'Checking…' : false} disabled={code.join('').length < OTP_N} onPress={() => verify(code)} />
-      <Hint>Didn't get it? <Link label={left > 0 ? `Resend in ${left}s` : 'Resend code'} disabled={left > 0} onPress={resend} />{REAL ? null : <>{'\n'}<B>Test code: 1234</B></>}</Hint>
+      {busy ? <Txt weight={500} size={13} color={L.violet} style={{ textAlign: 'center' }}>Checking…</Txt> : null}
+      <View style={{ alignItems: 'center', marginTop: SP.l }}>
+        {left > 0 ? <Txt size={14} color={L.muted} style={NUM}>{`Resend SMS in ${left}s`}</Txt> : <Link label="Resend SMS" onPress={resend} />}
+      </View>
+      {REAL ? null : <Hint><B>Test code: 1234</B></Hint>}
+      <Cta label="Verify" busy={busy ? 'Checking…' : false} disabled={code.join('').length < OTP_N} onPress={() => verify(code)} style={{ marginTop: SP.xl }} />
     </>
   );
   else if (step === 'about') card = (
     <>
       <StepDots n={1} />
-      <H2>Welcome to Washing Daddy</H2>
-      <P>New number. Tell us where your car sleeps and we'll start tomorrow morning.</P>
+      <H2>Tell us about your car</H2>
+      <P>New number. Tell us where your car sleeps and we'll start tomorrow morning</P>
       <Field label="Your name" value={su.name} onChangeText={name => { setSu({ ...su, name }); setErr('') }} placeholder="Full name" autoComplete="name" textContentType="name" autoCapitalize="words" />
-      <Txt weight={700} size={11} upper color={C.violet} style={{ letterSpacing: 1.5, marginTop: SP.hair }}>Area</Txt>
+      <Txt weight={500} size={13} color={L.grey} style={{ marginTop: SP.hair }}>Area</Txt>
       <Chips items={AREAS} value={su.area} onChange={area => { setSu({ ...su, area }); setErr('') }} />
       <Field label="Car" value={su.model} onChangeText={model => { setSu({ ...su, model }); setErr('') }} placeholder="e.g. Creta, Nexon, City" autoCapitalize="words" />
       <Plate reg={su.plate} width="82%" style={{ alignSelf: 'center', marginBottom: SP.l }} />
       <Field label="Registration number" value={su.plate} onChangeText={plate => { setSu({ ...su, plate }); setErr('') }} placeholder="DL 8C AB 1234" autoCapitalize="characters" autoCorrect={false} />
       <View style={{ marginBottom: SP.l }}>{inviteBox}</View>
       <Err text={err} />
-      <Btn label="Choose a plan" variant="violet" onPress={toPlan} style={{ marginTop: SP.s }} />
+      <Cta label="Choose a plan" onPress={toPlan} style={{ marginTop: SP.s }} />
     </>
   );
   else card = (
     <>
       <StepDots n={2} />
       <H2>{`Pick a plan for your ${su.model}`}</H2>
-      <P>Pay after the first wash. Change any time. WD Pro and above can pause up to a week a month.</P>
+      <P>Pay after the first wash. Change any time. WD Pro and above can pause up to a week a month</P>
       {sellablePlans().map(p => (
         <Opt key={p.id} on={su.plan === p.id} onPress={() => setSu({ ...su, plan: p.id })} title={p.name} price={inr(p.price)}
           text={p.rows.slice(1, 4).map(r => r[0] + ' ' + r[1].toLowerCase()).join(' · ')} />
       ))}
       <Err text={err} />
-      <Btn label="Start tomorrow morning" busy={busy ? 'Setting up…' : false} onPress={finish} style={{ marginTop: SP.s }} />
+      <Cta label="Start tomorrow morning" busy={busy ? 'Setting up…' : false} onPress={finish} style={{ marginTop: SP.s }} />
       <Link label="Back" onPress={() => setStep('about')} style={{ alignSelf: 'center', marginTop: SP.l }} />
     </>
   );
 
-  /* ---------- the poster ---------- */
-  const poster = (
-    <View style={{ paddingTop: SP.xl, paddingBottom: SP.xl }}>
-      <Image source={src('logo')!} style={{ width: 112, height: 112 / RATIO.logo, transform: [{ rotate: '-4deg' }] }} />
-      <View style={{ marginTop: SP.l }}>
-        <View style={{ alignSelf: 'flex-start', marginBottom: SP.hair }}>
-          <Txt font="shout" size={46} upper color="rgba(255,246,233,.55)" style={{ lineHeight: 41 }}>Pocha?</Txt>
-          <View style={{ position: 'absolute', left: '-2%', right: '-2%', top: '52%', height: 5, backgroundColor: C.gold, transform: [{ rotate: '-3deg' }] }} />
-        </View>
-        <Txt font="shout" size={46} upper color={C.gold} style={{ lineHeight: 41, textShadowColor: C.ink, textShadowOffset: { width: 4, height: 4 }, textShadowRadius: 0 }}>Pressure wash everyday!</Txt>
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.l, marginTop: SP.xl }}>
-        <Txt weight={500} size={15} color={C.cream} style={{ flex: 1, lineHeight: 22 }}>A washer comes to where your car is parked, foams it, pressure-rinses it and dries it by hand. Daily.</Txt>
-        <View style={{ width: '36%', marginRight: 8, transform: [{ rotate: '3deg' }] }}>
-          <Hard dx={6} dy={6} radius={18} color={C.ink} reserve={false}>
-            <View style={{ borderWidth: 6, borderColor: C.cream, borderRadius: 18, backgroundColor: C.cream }}>
-              <Image source={src('authphoto')!} style={{ width: phW, height: phW / RATIO.authphoto, borderRadius: 12 }} />
-            </View>
-          </Hard>
-          <View style={{ position: 'absolute', right: -10, bottom: -12, transform: [{ rotate: '-6deg' }], backgroundColor: C.gold, borderWidth: 2.5, borderColor: C.ink, borderRadius: 16, paddingVertical: 5, paddingHorizontal: 9, alignItems: 'center' }}>
-            <Txt weight={700} size={10.5} color={C.ink} style={{ lineHeight: 11 }}>Car wash in</Txt>
-            <Txt font="shout" size={20} color={C.ink}>10 min.</Txt>
-          </View>
-        </View>
-      </View>
+  /* ---------- the header block (phone step) / plain bar (other steps) ---------- */
+  const hero = (
+    <View style={{ paddingTop: ins.top + SP.l, paddingHorizontal: PAD }}>
+      <Image source={src('logo')!} resizeMode="contain" accessibilityLabel="Washing Daddy" style={{ width: 96, height: 96 / RATIO.logo }} />
+      <Txt weight={500} size={28} color={L.ink} style={{ lineHeight: 36, marginTop: SP.xl, maxWidth: 320 }}>A washer at your car, every morning</Txt>
+      <Txt size={14} color={L.grey} style={{ lineHeight: 20, marginTop: SP.s, maxWidth: 320 }}>A washer comes to where your car is parked. No pocha, only pressure wash.</Txt>
+    </View>
+  );
+  const bar = (
+    <View style={{ paddingTop: ins.top + SP.s, paddingHorizontal: PAD - 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <BackBtn onPress={() => { if (step === 'otp') { setStep('phone'); setErr('') } else if (step === 'plan') setStep('about'); else { setStep('phone'); setErr('') } }} />
+      {step === 'otp' ? <Txt weight={500} size={17} color={L.ink}>OTP verification</Txt> : <Image source={src('logo')!} resizeMode="contain" style={{ width: 72, height: 72 / RATIO.logo }} />}
     </View>
   );
 
   return (
-    <Page pad={0} top={0} scroll={false} header={<View style={{ backgroundColor: C.gold, paddingTop: ins.top }}><Ticker items={TICKER} /></View>}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center', paddingBottom: SP.xl + Math.max(ins.bottom, SP.s) }}>
-          <View style={{ width: W, paddingHorizontal: PAD }}>
-            {poster}
-            <View onLayout={e => { cardY.current = e.nativeEvent.layout.y }}>
-              <Card pad={SP.card}>{card}</Card>
+    <InkContext.Provider value={creamInk}>
+      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center', paddingBottom: SP.xl + Math.max(ins.bottom, SP.s) }}>
+            <View style={{ width: W }}>
+              {step === 'phone' ? <>{hero}<Bubbles W={W} /></> : bar}
+              <View onLayout={e => { cardY.current = e.nativeEvent.layout.y }} style={{ paddingHorizontal: PAD, marginTop: step === 'phone' ? SP.xl : SP.l }}>{card}</View>
             </View>
-          </View>
-          <Show W={W} />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </Page>
-  );
-}
-
-/* "Cars we washed": slideshow that advances every 2.8 s until the user touches it */
-function Show({ W }: { W: number }) {
-  const sw = Math.min(W * 0.56, 220), step = sw + GAP, [on, setOn] = useState(0);
-  const rail = useRef<any>(null), cur = useRef(0), held = useRef(false), rm = useRef(false);
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(v => { rm.current = v }).catch(() => {});
-    const t = setInterval(() => {
-      if (held.current) return;
-      const n = (cur.current + 1) % SLIDES.length;
-      rail.current?.scrollTo({ x: n * step, animated: !rm.current });
-    }, 2800);
-    return () => clearInterval(t);
-  }, [step]);
-  return (
-    <View style={{ width: W, marginTop: SP.section + SP.s }}>
-      <Txt font="shout" size={26} upper color={C.cream} style={{ paddingHorizontal: PAD, marginBottom: SP.l }}>Cars we <Txt font="shout" size={26} color={C.gold}>washed</Txt></Txt>
-      <ScrollView ref={rail} horizontal showsHorizontalScrollIndicator={false} snapToInterval={step} decelerationRate="fast" scrollEventThrottle={16}
-        onScrollBeginDrag={() => { held.current = true }} onTouchStart={() => { held.current = true }}
-        onScroll={e => { const i = Math.max(0, Math.min(SLIDES.length - 1, Math.round(e.nativeEvent.contentOffset.x / step))); cur.current = i; setOn(i) }}
-        contentContainerStyle={{ paddingHorizontal: PAD, paddingTop: SP.hair, paddingBottom: SP.s, gap: GAP }}>
-        {SLIDES.map(s => (
-          <View key={s.img} style={{ width: sw, borderRadius: R.card, overflow: 'hidden', backgroundColor: C.cream }}>
-            <Image source={src(s.img)!} style={{ width: '100%', aspectRatio: 4 / 5 }} resizeMode="cover" />
-            <View style={{ paddingTop: SP.m, paddingHorizontal: SP.m, paddingBottom: SP.m }}>
-              <Txt weight={700} size={13} color={C.ink} style={{ lineHeight: 16 }}>{s.t}</Txt>
-              <Txt weight={500} size={11.5} color="rgba(26,10,51,.6)">{s.s}</Txt>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
-      <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'center', marginTop: SP.m }}>
-        {SLIDES.map((_, i) => <View key={i} style={{ width: i === on ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === on ? C.gold : 'rgba(255,246,233,.4)' }} />)}
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
-    </View>
+    </InkContext.Provider>
   );
 }

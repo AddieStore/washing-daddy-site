@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+<style>html,body{margin:0;background:transparent}canvas{display:block}</style></head><body>
+<script type="module">
+// Shared Pronto-style product render: isometric-ish 3/4 camera, soft studio light, terrazzo slab, transparent bg with contact shadow.
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+const q = new URLSearchParams(location.search), name = q.get('scene'), S = +(q.get('size') || 720);
+const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+r.setPixelRatio(1); r.setSize(S, S); r.setClearColor(0x000000, 0);
+r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05; r.outputColorSpace = THREE.SRGBColorSpace;
+r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(r.domElement);
+const scene = new THREE.Scene();
+const pm = new THREE.PMREMGenerator(r); scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+const cam = new THREE.PerspectiveCamera(28, 1, 0.1, 100); cam.position.set(6.2, 5.2, 6.2); cam.lookAt(0, 0.55, 0);
+const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(4, 8, 3); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 6; key.shadow.bias = -0.0004; Object.assign(key.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4 });
+scene.add(key, new THREE.HemisphereLight(0xffffff, 0xd9d4e6, 0.6));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.ShadowMaterial({ opacity: 0.16 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+// Library every scene can use
+function terrazzoTex() {
+  const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d');
+  g.fillStyle = '#EFEBE6'; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 900; i++) { g.fillStyle = ['#cfc8bf', '#b9b1a7', '#ddd7cf', '#a89f95', '#e8e2da'][i % 5]; const x = Math.random() * 512, y = Math.random() * 512, s = 1 + Math.random() * 4; g.beginPath(); g.ellipse(x, y, s, s * (0.5 + Math.random() * 0.6), Math.random() * 3, 0, 7); g.fill() }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+const mat = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.45, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.4, ...o });
+const L = {
+  THREE, scene, cam, r, mat, RoundedBoxGeometry,
+  // brand palette for accents (keep objects realistic; use these for labels, bottles, cloths)
+  P: { violet: 0x5409DA, violetDeep: 0x3A06A0, gold: 0xFFBA08, blue: 0x1F4FD8, ink: 0x1A0A33, white: 0xF7F7F9, chrome: 0xC9CDD3 },
+  mesh(geo, m, pos = [0, 0, 0], rot = [0, 0, 0], parent = scene) { const x = new THREE.Mesh(geo, m); x.position.set(...pos); x.rotation.set(...rot); x.castShadow = true; x.receiveShadow = true; parent.add(x); return x },
+  slab(w = 3.2, d = 2.4, h = 0.18) { const s = L.mesh(new RoundedBoxGeometry(w, h, d, 4, 0.05), mat(0xffffff, { map: terrazzoTex(), roughness: 0.7, clearcoat: 0 }), [0, h / 2, 0]); return h },
+  chrome: () => mat(0xd5d8dd, { metalness: 1, roughness: 0.22, clearcoat: 0 }),
+  rubber: () => mat(0x1b1b1f, { roughness: 0.85, clearcoat: 0 }),
+  plastic: (c) => mat(c, { roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.2 }),
+  glass: () => new THREE.MeshPhysicalMaterial({ color: 0xdfefff, transmission: 0.9, roughness: 0.05, thickness: 0.2, ior: 1.45 }),
+  cloth: (c) => mat(c, { roughness: 0.95, clearcoat: 0, sheen: 1, sheenColor: new THREE.Color(0xffffff), sheenRoughness: 0.8 }),
+  foam(n = 30, spread = 1, y = 0.3, at = [0, 0, 0]) { const m = mat(0xffffff, { roughness: 0.6, clearcoat: 0, transmission: 0.05 }); for (let i = 0; i < n; i++) L.mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.12, 16, 12), m, [at[0] + (Math.random() - .5) * spread, at[1] + y + Math.random() * 0.15, at[2] + (Math.random() - .5) * spread]) },
+  // simple product car: body + cabin + wheels, colour param; scale ~ 3 units long
+  car(color = 0x2b2f36, at = [0, 0.18, 0], s = 1) { return L._makeCar(L, color, at, s) },
+};
+import { makeCar } from './scenes/_car2.js'; L._makeCar = makeCar;
+window.L = L;
+const mod = await import('./scenes/' + name + '.js');
+await mod.default(L);
+r.render(scene, cam);
+window.__done = true;
+</script></body></html>

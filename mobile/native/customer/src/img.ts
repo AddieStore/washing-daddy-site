@@ -16,6 +16,39 @@ export const IMG = {
   slide4: require('../assets/img/slide4.webp'),
   slide5: require('../assets/img/slide5.webp'),
   slide6: require('../assets/img/slide6.webp'),
+  'after': require('../assets/img/after.webp'),
+  'before': require('../assets/img/before.webp'),
+  'bmw-front': require('../assets/img/bmw-front.webp'),
+  'foam': require('../assets/img/foam.webp'),
+  'gh9': require('../assets/img/gh9.webp'),
+  'guy': require('../assets/img/guy.webp'),
+  'hero-shirt': require('../assets/img/hero-shirt.webp'),
+  'i8': require('../assets/img/i8.webp'),
+  'kit': require('../assets/img/kit.webp'),
+  'pochaa': require('../assets/img/pochaa.webp'),
+  'poster-trust': require('../assets/img/poster-trust.webp'),
+  'red-foam': require('../assets/img/red-foam.webp'),
+  'shirt-999': require('../assets/img/shirt-999.webp'),
+  'spray': require('../assets/img/spray.webp'),
+  'thar': require('../assets/img/thar.webp'),
+  'wheel': require('../assets/img/wheel.webp'),
+  'wipe': require('../assets/img/wipe.webp'),
+  'r3d-ext': require('../assets/img/r3d-ext.webp'),
+  'r3d-foam': require('../assets/img/r3d-foam.webp'),
+  'r3d-int': require('../assets/img/r3d-int.webp'),
+  'r3d-vac': require('../assets/img/r3d-vac.webp'),
+  'r3d-engine': require('../assets/img/r3d-engine.webp'),
+  'r3d-tyre': require('../assets/img/r3d-tyre.webp'),
+  'r3d-glass': require('../assets/img/r3d-glass.webp'),
+  'r3d-dash': require('../assets/img/r3d-dash.webp'),
+  'r3d-seat': require('../assets/img/r3d-seat.webp'),
+  'r3d-odour': require('../assets/img/r3d-odour.webp'),
+  'r3d-ceramic': require('../assets/img/r3d-ceramic.webp'),
+  'r3d-under': require('../assets/img/r3d-under.webp'),
+  'r3d-pack-wash': require('../assets/img/r3d-pack-wash.webp'),
+  'r3d-pack-deep': require('../assets/img/r3d-pack-deep.webp'),
+  'r3d-pack-exclusive': require('../assets/img/r3d-pack-exclusive.webp'),
+  washerCut: require('../assets/img/washer-cut.webp'),
 } satisfies Record<string, ImageSourcePropType>;
 
 export type ImgKey = keyof typeof IMG;
@@ -26,6 +59,7 @@ export const src = (v: ImgKey | string | null | undefined): ImageSourcePropType 
 export const RATIO: Record<ImgKey, number> = {
   scorpio: 1100 / 652, civic: 1000 / 469, washer: 512 / 520, proof: 900 / 675, logo: 260 / 157, trust: 400 / 470,
   authphoto: 420 / 525, slide0: .8, slide1: .8, slide2: .8, slide3: .8, slide4: .8, slide5: .8, slide6: 1,
+  'after': 520/520, 'before': 520/520, 'bmw-front': 470/588, 'foam': 470/588, 'gh9': 470/588, 'guy': 380/309, 'hero-shirt': 470/588, 'i8': 470/588, 'kit': 470/588, 'pochaa': 470/588, 'poster-trust': 520/611, 'red-foam': 470/588, 'shirt-999': 470/588, 'spray': 470/588, 'thar': 470/588, 'wheel': 470/588, 'wipe': 470/588, 'r3d-ext': 1, 'r3d-foam': 1, 'r3d-int': 1, 'r3d-vac': 1, 'r3d-engine': 1, 'r3d-tyre': 1, 'r3d-glass': 1, 'r3d-dash': 1, 'r3d-seat': 1, 'r3d-odour': 1, 'r3d-ceramic': 1, 'r3d-under': 1, 'r3d-pack-wash': 1, 'r3d-pack-deep': 1, 'r3d-pack-exclusive': 1, washerCut: 380 / 309,
 };
 
 // Background cut-out of a car photo (Android ML Kit). A file:// PNG with transparency, or null on any failure.
