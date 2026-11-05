@@ -27,8 +27,8 @@ export function ToastHost() {
   if (!msg) return null;
   return (
     <View pointerEvents="none" style={{ position: 'absolute', top: ins.top + 10, left: 16, right: 16, alignItems: 'center', zIndex: 2000, elevation: 2000 }}>
-      <Animated.View style={{ transform: [{ translateY: y }], backgroundColor: C.ink, borderRadius: 999, borderWidth: 2, borderColor: C.gold, paddingVertical: 12, paddingHorizontal: 20, maxWidth: 420 }}>
-        <Txt weight={600} size={14} color={C.cream} style={{ textAlign: 'center' }}>{msg}</Txt>
+      <Animated.View style={{ transform: [{ translateY: y }], backgroundColor: C.ink, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20, maxWidth: 420 }}>
+        <Txt weight={500} size={14} color={C.white} style={{ textAlign: 'center' }}>{msg}</Txt>
       </Animated.View>
     </View>
   );
@@ -79,16 +79,16 @@ export function SheetHost() {
     onPanResponderTerminate: () => { Animated.spring(ty, { toValue: 0, useNativeDriver: true }).start(); },
   })).current;
   if (!it) return null;
-  const edge = T.day ? C.ink : 'rgba(255,246,233,.22)', bw = T.day ? 3 : 1;
+  const edge = T.day ? C.hair : 'rgba(244,240,251,.16)', bw = 1;
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 1000 }]} pointerEvents="box-none">
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(18,7,36,.6)', opacity: sc }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(18,7,36,.5)', opacity: sc }]}>
         <Pressable style={{ flex: 1 }} onPress={dismiss} accessibilityLabel="Close" />
       </Animated.View>
       <KeyboardAvoidingView behavior="padding" pointerEvents="box-none" style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Animated.View style={{ transform: [{ translateY: ty }], maxHeight: '92%', backgroundColor: T.sheetBg, borderTopLeftRadius: 30, borderTopRightRadius: 30, borderWidth: bw, borderBottomWidth: 0, borderColor: edge, overflow: 'hidden' }}>
+        <Animated.View style={{ transform: [{ translateY: ty }], maxHeight: '92%', backgroundColor: T.sheetBg, borderTopLeftRadius: 26, borderTopRightRadius: 26, borderWidth: bw, borderBottomWidth: 0, borderColor: edge, overflow: 'hidden' }}>
           <View {...pan.panHandlers} style={{ paddingTop: 10, paddingBottom: 12, alignItems: 'center' }}>
-            <View style={{ width: 46, height: 5, borderRadius: 3, backgroundColor: T.card.fg3, opacity: 0.6 }} />
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: T.card.fg3, opacity: 0.4 }} />
           </View>
           <InkContext.Provider value={T.card}>
             <ScrollView keyboardShouldPersistTaps="handled" bounces={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 + ins.bottom }}>
@@ -100,7 +100,7 @@ export function SheetHost() {
     </View>
   );
 }
-export const SheetTitle = ({ children }: { children: ReactNode }) => <Txt font="shout" size={34} upper style={{ marginBottom: 4 }}>{children}</Txt>;
+export const SheetTitle = ({ children }: { children: ReactNode }) => <Txt weight={700} size={22} style={{ marginBottom: 4, lineHeight: 28 }}>{children}</Txt>;
 export const SheetSub = ({ children }: { children: ReactNode }) => <Txt size={14} color={useTheme().card.fg2} style={{ marginBottom: 14 }}>{children}</Txt>;
 
 export function Success({ title, sub }: { title: string; sub?: string }) {
@@ -108,10 +108,10 @@ export function Success({ title, sub }: { title: string; sub?: string }) {
   useEffect(() => { Animated.spring(s, { toValue: 1, friction: 4, tension: 90, useNativeDriver: true }).start(); confetti(); haptic(); }, []);
   return (
     <View style={{ alignItems: 'center', paddingTop: 6 }}>
-      <Animated.View style={{ transform: [{ scale: s }], width: 84, height: 84, borderRadius: 42, backgroundColor: C.mint, borderWidth: 3, borderColor: C.ink, alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+      <Animated.View style={{ transform: [{ scale: s }], width: 76, height: 76, borderRadius: 38, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
         <Check size={40} color={C.white} />
       </Animated.View>
-      <Txt font="shout" size={34} upper style={{ textAlign: 'center' }}>{title}</Txt>
+      <Txt weight={700} size={22} style={{ textAlign: 'center' }}>{title}</Txt>
       {sub ? <Txt size={14} color={fg2} style={{ textAlign: 'center', maxWidth: 300, marginTop: 6, marginBottom: 18 }}>{sub}</Txt> : <View style={{ height: 18 }} />}
       <Btn label="Done" onPress={closeSheet} />
     </View>
@@ -121,7 +121,7 @@ export function Success({ title, sub }: { title: string; sub?: string }) {
 /* ---------- confetti ---------- */
 const confs = chan<number>();
 export const confetti = () => { AccessibilityInfo.isReduceMotionEnabled().then(rm => { if (!rm) confs.emit(Date.now()); }, () => confs.emit(Date.now())); };
-const COLORS = ['#FFBA08', '#5409DA', '#FF6A1A', '#2E8BFF', '#2EE6A6', '#FFF6E9'];
+const COLORS = ['#FFBA08', '#5409DA', '#8F5CF0', '#2E8BFF', '#2EE6A6', '#EFE8FD'];
 type Bit = { x: number; w: number; h: number; color: string; delay: number; dur: number; rot: number; sway: number; round: boolean };
 const mkBits = (): Bit[] => Array.from({ length: 80 }, () => ({
   x: Math.random(), w: 6 + Math.random() * 6, h: 8 + Math.random() * 8, color: COLORS[Math.floor(Math.random() * COLORS.length)], delay: Math.random() * 700,

@@ -47,6 +47,27 @@ export const Logout = mk(2, () => <Path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" 
 export const Swipe = mk(2, () => <Path d="M8 7l-5 5 5 5M16 7l5 5-5 5" />);
 export const Plus = mk(3, () => <Path d="M12 5v14M5 12h14" />);
 
+// --- Pronto additions: filled tab icons and extra line icons ---
+export const HomeFill = mk(2, c => <Path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill={c} />);
+export const WashFill = mk(2, c => <><Path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z" fill={c} /></>);
+export const PlanFill = mk(2, c => <><Rect x="3" y="5" width="18" height="16" rx="3" fill={c} /><Path d="M3 10h18M8 3v4M16 3v4" stroke="#fff" /></>);
+export const StoreFill = mk(2, c => <><Path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7A2 2 0 0 1 6.5 18z" fill={c} /><Path d="M9 7a3 3 0 0 1 6 0" /></>);
+export const Plan = mk(2, () => <><Rect x="3" y="5" width="18" height="16" rx="3" /><Path d="M3 10h18M8 3v4M16 3v4" /></>);
+export const Back = mk(2.4, () => <Path d="M15 5l-7 7 7 7" />);
+export const Search = mk(2, () => <><Circle cx="11" cy="11" r="7" /><Path d="M20 20l-4-4" /></>);
+export const Star = mk(2, c => <Path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill={c} />);
+export const Phone = mk(2, () => <Path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />);
+export const Wallet = mk(2, () => <><Path d="M3 7a2 2 0 0 1 2-2h13v4" /><Rect x="3" y="7" width="18" height="13" rx="3" /><Circle cx="16.5" cy="13.5" r="1.2" /></>);
+export const Gift = mk(2, () => <><Rect x="3" y="9" width="18" height="4" rx="1" /><Path d="M5 13v7h14v-7M12 9v11M12 9c-2 0-4-1-4-3s3-2 4 3c1-5 4-5 4-3s-2 3-4 3" /></>);
+export const Receipt = mk(2, () => <><Path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><Path d="M9 8h6M9 12h6" /></>);
+export const More = mk(2.6, c => <><Circle cx="12" cy="5" r="1" fill={c} /><Circle cx="12" cy="12" r="1" fill={c} /><Circle cx="12" cy="19" r="1" fill={c} /></>);
+export const Share = mk(2, () => <><Path d="M12 15V3M8 7l4-4 4 4" /><Path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></>);
+export const Locate = mk(2, () => <><Circle cx="12" cy="12" r="4" /><Path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></>);
+export const Trash = mk(2, () => <Path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />);
+export const Info = mk(2, () => <><Circle cx="12" cy="12" r="9" /><Path d="M12 11v5M12 8h.01" /></>);
+export const Shield = mk(2, () => <Path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />);
+export const Car = mk(2, () => <><Path d="M4 16v-4l2-5h12l2 5v4M4 16h16M4 16v2h3v-2M17 16v2h3v-2" /><Circle cx="8" cy="13" r=".8" /><Circle cx="16" cy="13" r=".8" /></>);
+
 // the dashed outline car shown when a car has no photo
 export function GhostCar({ width = 200, color }: { width?: number; color?: string }) {
   const c = useInk().fg3, col = color ?? c;
