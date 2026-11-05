@@ -15,14 +15,14 @@ export function TrackMap({ track }: { track: Track }) {
   const px = (lng: number, lat: number) => [hx + clamp((lng - track.home[0]) / SPAN_LNG, -.48, .48) * W, hy - clamp((lat - track.home[1]) / SPAN_LAT, -.45, .55) * H];
   const s = track.lng && track.lat ? px(track.lng, track.lat) : null;
   return (
-    <View style={{ flex: 1, backgroundColor: '#1d0b45', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+    <View style={{ flex: 1, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       <View style={{ width: W, height: H }}>
         <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-          <Rect width={W} height={H} fill="#24065F" />
-          {BLOCKS.map(([x, y, w, h], i) => <Rect key={i} x={x} y={y} width={w} height={h} rx={6} fill={['#3e1a80', '#4a22a0', '#5409DA'][i % 3]} opacity={0.85} />)}
-          <Line x1={0} y1={hy} x2={W} y2={hy} stroke="#FFF6E9" strokeOpacity={0.12} strokeWidth={3} />
-          <Line x1={hx} y1={0} x2={hx} y2={H} stroke="#FFF6E9" strokeOpacity={0.12} strokeWidth={3} />
-          {s ? <Path d={`M${s[0]} ${s[1]} L${hx} ${hy}`} stroke="#FFBA08" strokeWidth={3} strokeDasharray="7 9" strokeLinecap="round" opacity={0.85} /> : null}
+          <Rect width={W} height={H} fill="#F4F4F5" />
+          {BLOCKS.map(([x, y, w, h], i) => <Rect key={i} x={x} y={y} width={w} height={h} rx={6} fill={['#E4E4E7', '#D4D4D8', '#E4E4E7'][i % 3]} opacity={1} />)}
+          <Line x1={0} y1={hy} x2={W} y2={hy} stroke="#FFFFFF" strokeOpacity={1} strokeWidth={3} />
+          <Line x1={hx} y1={0} x2={hx} y2={H} stroke="#FFFFFF" strokeOpacity={1} strokeWidth={3} />
+          {s ? <Path d={`M${s[0]} ${s[1]} L${hx} ${hy}`} stroke="#5409DA" strokeWidth={3} strokeDasharray="7 9" strokeLinecap="round" opacity={0.85} /> : null}
         </Svg>
         <View style={{ position: 'absolute', left: hx - 22, top: hy - 52 }}><HomePin /></View>
         {s ? <View style={{ position: 'absolute', left: s[0] - 36, top: s[1] - 52 }}><Scooter flip={s[0] > hx} /></View> : null}

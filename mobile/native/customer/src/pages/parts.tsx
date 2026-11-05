@@ -1,106 +1,128 @@
-// Shared bits for the Service, Cart and Schedule pages (Pronto structure, Washing Daddy violet).
+// Shared bits for the Service, Cart and Schedule pages. Quiet chrome: white surfaces, hairlines, one violet accent.
 import React, { ReactNode, useEffect, useRef } from 'react';
-import { View, Pressable, Image, Animated, Easing, Platform, Share, StyleProp, ViewStyle } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { View, Pressable, Image, Animated, Easing, Platform, Share, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Back, Check, Plus, Share as ShareIc, Chev } from '../ui/icons';
 import { src } from '../img';
-import { svcLines, svcOf, openPage, haptic, confetti } from '../state';
+import { svcLines, svcOf, openPage, haptic } from '../state';
 import { PACKS } from '../data/reference';
 
-export const G = { line: '#ECEAF2', sub: '#6B6580', tint: '#F1EBFF', tint2: '#F7F3FF', violet: C.violet };
-export const card = (extra?: object): ViewStyle => ({ backgroundColor: '#fff', borderWidth: 1, borderColor: G.line, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1, ...extra });
+const ND = Platform.OS !== 'web';
+export const EASE = Easing.bezier(0.22, 1, 0.36, 1);
+export const G = { line: 'rgba(23,23,23,0.08)', ink: '#171717', sub: '#525252', mute: '#737373', raised: '#F4F4F5', violet: C.violet, pos: '#16a34a', neg: '#dc2626' };
+const SHADOW_S = { shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, shadowOffset: { width: 0, height: 1 } };
+const SHADOW_F = { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 8 } };
+export const card = (extra?: object): ViewStyle => ({ backgroundColor: '#fff', borderWidth: 1, borderColor: G.line, borderRadius: 14, ...SHADOW_S, elevation: 1, ...extra });
+export const TNUM: TextStyle = { fontVariant: ['tabular-nums'] };
+
+/** '₹1,800' with Indian digit grouping */
+export function inr(n: number): string {
+  const s = String(Math.round(Math.abs(n)));
+  const g = s.length > 3 ? s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + s.slice(-3) : s;
+  return (n < 0 ? '−' : '') + '₹' + g;
+}
+export function Price({ v, size = 14, weight = 500, color, strike, style }: { v: number; size?: number; weight?: 400 | 500 | 600; color?: string; strike?: boolean; style?: StyleProp<TextStyle> }) {
+  return <Txt weight={weight} size={size} color={color ?? (strike ? G.mute : G.ink)} style={[TNUM, strike ? { textDecorationLine: 'line-through' } : null, style]}>{inr(v)}</Txt>;
+}
+
+/** Pressable with the one press feel: scale 0.98 over 120 ms */
+export function Tap({ children, style, onPress, disabled, hitSlop, label }: { children: ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void; disabled?: boolean; hitSlop?: number; label?: string }) {
+  const s = useRef(new Animated.Value(1)).current;
+  const to = (v: number) => Animated.timing(s, { toValue: v, duration: 120, easing: EASE, useNativeDriver: ND }).start();
+  const f = StyleSheet.flatten(style) || {}, outer: ViewStyle = { flex: f.flex, flexGrow: f.flexGrow, alignSelf: f.alignSelf, width: f.width };
+  const { flex: _a, flexGrow: _b, flexShrink: _c, flexBasis: _d, width: _e, alignSelf: _f, ...inner } = f as any; if (f.width) inner.width = '100%';
+  return (
+    <Pressable style={outer} accessibilityLabel={label} disabled={disabled} hitSlop={hitSlop} onPress={onPress} onPressIn={() => to(0.98)} onPressOut={() => to(1)}>
+      <Animated.View style={[inner, { transform: [{ scale: s }] }]}>{children}</Animated.View>
+    </Pressable>
+  );
+}
 
 /** photo of a service or pack id */
 export function imgOf(id: string): string {
   const s = svcOf(id); if (s) return s.img;
   const p = PACKS.find(x => x.id === id); return p ? p.img : 'foam';
 }
-export function tintOf(id: string) { const s = svcOf(id); return s ? s.tint : '#F3ECFF' }
 
-export function Photo({ id, style, radius = 12 }: { id: string; style?: StyleProp<ViewStyle>; radius?: number }) {
-  return <View pointerEvents="none" style={[{ backgroundColor: tintOf(id), borderRadius: radius, overflow: 'hidden' }, style]}><Image source={src(imgOf(id)) as any} resizeMode={String(imgOf(id)).startsWith("r3d") ? "contain" : "cover"} style={{ width: '100%', height: '100%' }} /></View>;
+export function Photo({ id, style, radius = 8, pad = 0 }: { id: string; style?: StyleProp<ViewStyle>; radius?: number; pad?: number }) {
+  const im = String(imgOf(id)), r3d = im.startsWith('r3d');
+  return <View pointerEvents="none" style={[{ backgroundColor: G.raised, borderRadius: radius, overflow: 'hidden', padding: pad }, style]}><Image source={src(im) as any} resizeMode={r3d ? 'contain' : 'cover'} style={{ width: '100%', height: '100%' }} /></View>;
 }
 
 export function Circle({ children, onPress, style, label }: { children: ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; label?: string }) {
-  return <Pressable accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,.92)', alignItems: 'center', justifyContent: 'center', transform: [{ scale: pressed ? 0.94 : 1 }], shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }, style]}>{children}</Pressable>;
+  return <Tap label={label} onPress={onPress} style={[{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: G.line, alignItems: 'center', justifyContent: 'center', ...SHADOW_S }, style]}>{children}</Tap>;
 }
-export const BackCircle = ({ onPress }: { onPress: () => void }) => <Circle label="Back" onPress={onPress}><Back size={20} color={C.ink} /></Circle>;
-export const ShareCircle = ({ onPress }: { onPress: () => void }) => <Circle label="Share" onPress={onPress}><ShareIc size={19} color={C.ink} /></Circle>;
+export const BackCircle = ({ onPress }: { onPress: () => void }) => <Circle label="Back" onPress={onPress}><Back size={18} color={G.ink} strokeWidth={1.5} /></Circle>;
+export const ShareCircle = ({ onPress }: { onPress: () => void }) => <Circle label="Share" onPress={onPress}><ShareIc size={18} color={G.ink} strokeWidth={1.5} /></Circle>;
 
-export function Bolt({ size = 22 }: { size?: number }) {
-  return <Svg width={size} height={size} viewBox="0 0 24 24"><Path d="M13.5 2L4.5 13.5h6L9.5 22l9-12h-6z" fill={C.gold} stroke="#E09B00" strokeWidth={1} strokeLinejoin="round" /></Svg>;
-}
-
-/** Pronto "+" square that becomes a "− n +" stepper */
+/** "+" square that becomes a "− n +" stepper */
 export function AddBtn({ qty, onAdd, onSub, size = 'sm', unit }: { qty: number; onAdd: () => void; onSub: () => void; size?: 'sm' | 'lg'; unit?: string }) {
-  const sc = useRef(new Animated.Value(1)).current;
-  useEffect(() => { Animated.sequence([Animated.timing(sc, { toValue: 1.08, duration: 90, useNativeDriver: Platform.OS !== 'web' }), Animated.spring(sc, { toValue: 1, friction: 5, useNativeDriver: Platform.OS !== 'web' })]).start() }, [qty]);
-  const lg = size === 'lg';
+  const lg = size === 'lg', h = lg ? 40 : 36;
   if (!qty) return (
-    <Pressable accessibilityLabel="Add" onPress={onAdd} hitSlop={6} style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#D9CCF7', alignItems: 'center', justifyContent: 'center', shadowColor: C.violet, shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }}>
-      <Plus size={18} color={C.violet} />
-    </Pressable>
+    <Tap label="Add" onPress={onAdd} hitSlop={4} style={{ width: h, height: h, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: G.line, alignItems: 'center', justifyContent: 'center', ...SHADOW_S }}>
+      <Plus size={18} color={G.violet} strokeWidth={1.5} />
+    </Tap>
   );
   return (
-    <Animated.View style={{ transform: [{ scale: sc }], alignItems: 'center' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', height: lg ? 40 : 34, minWidth: lg ? 96 : 84, borderRadius: 10, backgroundColor: G.tint, borderWidth: 1, borderColor: '#CDB9F7', justifyContent: 'space-between', paddingHorizontal: 6 }}>
-        <Pressable onPress={onSub} hitSlop={8} style={{ width: 24, alignItems: 'center' }}><Txt weight={700} size={18} color={C.violet} style={{ lineHeight: 22 }}>{'−'}</Txt></Pressable>
-        <Txt weight={600} size={lg ? 15 : 14} color={C.violet}>{qty}</Txt>
-        <Pressable onPress={onAdd} hitSlop={8} style={{ width: 24, alignItems: 'center' }}><Txt weight={700} size={18} color={C.violet} style={{ lineHeight: 22 }}>+</Txt></Pressable>
+    <View style={{ alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', height: h, minWidth: lg ? 96 : 88, borderRadius: 10, backgroundColor: G.raised, justifyContent: 'space-between', paddingHorizontal: 4 }}>
+        <Pressable accessibilityLabel="Remove one" onPress={onSub} hitSlop={8} style={{ width: 28, height: h, alignItems: 'center', justifyContent: 'center' }}><Txt size={18} color={G.violet} style={{ lineHeight: 22 }}>{'−'}</Txt></Pressable>
+        <Txt weight={500} size={lg ? 15 : 14} style={TNUM}>{qty}</Txt>
+        <Pressable accessibilityLabel="Add one" onPress={onAdd} hitSlop={8} style={{ width: 28, height: h, alignItems: 'center', justifyContent: 'center' }}><Txt size={18} color={G.violet} style={{ lineHeight: 22 }}>+</Txt></Pressable>
       </View>
-      {unit ? <Txt size={10} color={G.sub} style={{ marginTop: 2 }}>{unit}</Txt> : null}
-    </Animated.View>
+      {unit ? <Txt size={12} color={G.mute} style={{ marginTop: 4 }}>{unit}</Txt> : null}
+    </View>
   );
 }
 
 export function PrimaryBtn({ label, onPress, disabled, busy, style, outline, small }: { small?: boolean; label: string; onPress?: () => void; disabled?: boolean; busy?: boolean; style?: StyleProp<ViewStyle>; outline?: boolean }) {
-  const off = disabled || busy;
+  const off = disabled || busy, quiet = outline || disabled;
   return (
-    <Pressable disabled={off} onPress={onPress} style={({ pressed }) => [{ height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, backgroundColor: outline ? '#fff' : disabled ? '#DCD9E3' : C.violet, borderWidth: outline ? 1.5 : 0, borderColor: C.violet, opacity: pressed || busy ? 0.85 : 1 }, style]}>
-      <Txt weight={600} size={small ? 14 : 15} numberOfLines={1} color={outline ? C.violet : disabled ? '#fff' : '#fff'}>{busy ? 'Please wait…' : label}</Txt>
-    </Pressable>
+    <Tap disabled={off} onPress={onPress} style={[{ height: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, backgroundColor: quiet ? G.raised : G.violet, opacity: busy ? 0.7 : 1 }, style]}>
+      <Txt weight={500} size={small ? 14 : 15} numberOfLines={1} color={disabled ? G.mute : outline ? G.ink : '#fff'}>{busy ? 'Please wait…' : label}</Txt>
+    </Tap>
   );
 }
 
-/** sticky "N services ⌃ · Go to cart" bar (own copy: shown on the service page, which has no tab bar) */
+/** sticky "N services · Go to cart" bar (shown on the service page, which has no tab bar) */
 export function CartBar({ bottom }: { bottom?: number }) {
-  const ins = useInsets(), { lines, count } = svcLines(), y = useRef(new Animated.Value(count ? 0 : 90)).current;
-  useEffect(() => { Animated.timing(y, { toValue: count ? 0 : 90, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start() }, [count > 0]);
+  const ins = useInsets(), { lines, count } = svcLines(), y = useRef(new Animated.Value(count ? 0 : 120)).current;
+  useEffect(() => { Animated.timing(y, { toValue: count ? 0 : 120, duration: 300, easing: EASE, useNativeDriver: ND }).start() }, [count > 0]);
   const first = lines[0];
   return (
-    <Animated.View pointerEvents={count ? 'auto' : 'none'} style={{ position: 'absolute', zIndex: 20, left: 0, right: 0, bottom: bottom ?? 0, opacity: count ? 1 : 0, transform: [{ translateY: y }], backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: G.line, paddingTop: 12, paddingBottom: (bottom ? 12 : Math.max(ins.bottom, 10) + 4), paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: -3 } }}>
-      <Pressable onPress={() => openPage({ k: 'cart' })} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-        {first ? <Photo id={first.id} radius={6} style={{ width: 24, height: 24 }} /> : null}
+    <Animated.View pointerEvents={count ? 'auto' : 'none'} style={{ position: 'absolute', zIndex: 20, left: 0, right: 0, bottom: bottom ?? 0, opacity: count ? 1 : 0, transform: [{ translateY: y }], backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: G.line, paddingTop: 12, paddingBottom: (bottom ? 12 : Math.max(ins.bottom, 12) + 4), paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', ...SHADOW_F }}>
+      <Pressable onPress={() => openPage({ k: 'cart' })} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minHeight: 48 }}>
+        {first ? <Photo id={first.id} radius={8} style={{ width: 32, height: 32 }} /> : null}
         <Txt weight={500} size={15}>{count} {count === 1 ? 'service' : 'services'}</Txt>
-        <View style={{ transform: [{ rotate: '-90deg' }] }}><Chev size={16} color={C.ink} /></View>
+        <View style={{ transform: [{ rotate: '-90deg' }] }}><Chev size={18} color={G.mute} strokeWidth={1.5} /></View>
       </Pressable>
-      <Pressable onPress={() => openPage({ k: 'cart' })} style={({ pressed }) => [{ height: 48, width: 160, borderRadius: 12, backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.88 : 1 }]}>
-        <Txt weight={600} size={15.5} color="#fff">Go to cart</Txt>
-      </Pressable>
+      <Tap onPress={() => openPage({ k: 'cart' })} style={{ height: 48, width: 160, borderRadius: 10, backgroundColor: G.violet, alignItems: 'center', justifyContent: 'center' }}>
+        <Txt weight={500} size={15} color="#fff">Go to cart</Txt>
+      </Tap>
     </Animated.View>
   );
 }
 
-/** full-screen confirmation: spring tick, then onDone */
+/** full-screen confirmation: fade and rise, then onDone */
 export function SuccessTick({ title, sub, onDone }: { title: string; sub?: string; onDone: () => void }) {
-  const s = useRef(new Animated.Value(0)).current, o = useRef(new Animated.Value(0)).current;
+  const o = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    const nd = Platform.OS !== 'web';
-    Animated.timing(o, { toValue: 1, duration: 200, useNativeDriver: nd }).start();
-    Animated.spring(s, { toValue: 1, friction: 5, tension: 80, useNativeDriver: nd }).start();
-    haptic(); confetti();
+    Animated.timing(o, { toValue: 1, duration: 300, easing: EASE, useNativeDriver: ND }).start();
+    haptic();
     const t = setTimeout(onDone, 1900); return () => clearTimeout(t);
   }, []);
+  const rise = o.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
   return (
-    <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 50, opacity: o, backgroundColor: C.violet2, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-      <Animated.View style={{ transform: [{ scale: s }], width: 96, height: 96, borderRadius: 48, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
-        <Check size={50} color={C.violet} />
+    <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 50, opacity: o, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+      <Animated.View style={{ transform: [{ translateY: rise }], alignItems: 'center' }}>
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: G.violet, alignItems: 'center', justifyContent: 'center' }}>
+          <Check size={32} color="#fff" strokeWidth={1.5} />
+        </View>
+        <Txt weight={500} size={22} style={{ marginTop: 24, textAlign: 'center' }}>{title}</Txt>
+        {sub ? <Txt size={14} color={G.sub} style={{ marginTop: 8, textAlign: 'center', lineHeight: 20 }}>{sub}</Txt> : null}
       </Animated.View>
-      <Txt weight={700} size={22} color="#fff" style={{ marginTop: 22, textAlign: 'center' }}>{title}</Txt>
-      {sub ? <Txt size={14} color="rgba(255,255,255,.75)" style={{ marginTop: 6, textAlign: 'center' }}>{sub}</Txt> : null}
     </Animated.View>
   );
 }
-export { Share };
+export { Share, SHADOW_F, SHADOW_S };

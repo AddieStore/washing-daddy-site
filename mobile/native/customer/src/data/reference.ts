@@ -136,4 +136,7 @@ export const PACKS = [
 ] as const;
 export const SLOTS = { Morning: ['7:00 am', '8:00 am', '9:00 am', '10:00 am', '11:00 am'], Afternoon: ['12:00 pm', '1:00 pm', '2:00 pm', '3:00 pm', '4:00 pm'], Evening: ['5:00 pm', '6:00 pm', '7:00 pm', '8:00 pm'] } as const;
 // Home trust footer. PLACEHOLDER numbers until Ravi confirms.
-export const TRUST = { cars: '25,000+', carsLabel: 'Cars washed', rating: '4.8', ratingLabel: '2k+ ratings' };
+// Empty until Ravi confirms real numbers (unslop: no unverified claims). Screens hide the stats when a value is ''.
+export const TRUST = { cars: '', carsLabel: 'Cars washed', rating: '', ratingLabel: 'Average rating' };
+// Ratings and counts on CAR_SERVICES are placeholders; SHOW_RATINGS=false hides them everywhere until they are real.
+export const SHOW_RATINGS = false;

@@ -1,10 +1,10 @@
 // The signed-in shell: the current tab's screen above the tab bar, plus full-screen pages pushed over it
-// (service page, cart, schedule, refer, profile) that slide in from the right like Pronto.
-import React, { useEffect, useRef } from 'react';
-import { View, Animated, Easing, BackHandler, useWindowDimensions } from 'react-native';
+// (service page, cart, schedule, refer, profile) that slide in from the right (220ms, the one curve).
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Animated, Easing, BackHandler, AccessibilityInfo, useWindowDimensions } from 'react-native';
 import { useTheme } from '../theme';
 import { useApp, closePage, Page } from '../state';
-import Home, { useReduceMotion } from './Home';
+import Home from './Home';
 import Live from './Live';
 import Plan from './Plan';
 import Store from './Store';
@@ -14,6 +14,13 @@ import Service from '../pages/Service';
 import Cart from '../pages/Cart';
 import Schedule from '../pages/Schedule';
 import Refer from '../pages/Refer';
+
+const CURVE = Easing.bezier(0.22, 1, 0.36, 1);
+function useReduceMotion() {
+  const [rm, setRm] = useState(false);
+  useEffect(() => { AccessibilityInfo.isReduceMotionEnabled().then(setRm, () => {}); }, []);
+  return rm;
+}
 
 const SCREEN = { home: Home, live: Live, plan: Plan, store: Store, profile: Profile };
 
@@ -27,9 +34,9 @@ function PageView({ p }: { p: NonNullable<Page> }) {
 
 function Pushed({ p, depth }: { p: NonNullable<Page>; depth: number }) {
   const { width } = useWindowDimensions(), rm = useReduceMotion(), x = useRef(new Animated.Value(rm ? 0 : width)).current;
-  useEffect(() => { if (!rm) Animated.timing(x, { toValue: 0, duration: 220, easing: Easing.bezier(0, 0, 0.2, 1), useNativeDriver: true }).start() }, []);
+  useEffect(() => { if (!rm) Animated.timing(x, { toValue: 0, duration: 220, easing: CURVE, useNativeDriver: true }).start() }, []);
   return (
-    <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 10 + depth, backgroundColor: '#fff', transform: [{ translateX: x }] }}>
+    <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 10 + depth, backgroundColor: '#FFFFFF', transform: [{ translateX: x }] }}>
       <PageView p={p} />
     </Animated.View>
   );
@@ -40,7 +47,7 @@ export default function Main() {
   useEffect(() => {
     if (rm) return;
     fade.setValue(0);
-    Animated.timing(fade, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(fade, { toValue: 1, duration: 200, easing: CURVE, useNativeDriver: true }).start();
   }, [ui.tab, rm]);
   useEffect(() => {
     const s = BackHandler.addEventListener('hardwareBackPress', () => { if (ui.pages.length) { closePage(); return true } return false });

@@ -1,78 +1,69 @@
-// Refer & earn page (pushed, Pronto look): code card, reward tiers, how it works, sticky share bar.
+// Refer and earn page (pushed): code card, reward tiers, how it works, sticky share bar.
 import React from 'react';
 import { View, Pressable, ScrollView } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
+import { Back, Copy } from '../ui/icons';
 import { refCode, inviteLink, act, closePage } from '../state';
 
-const INK = '#1A0A33', GREY = '#6B6580', LINE = '#ECEAF2';
-const TIERS = [['CHAMP', '₹100', '1 - 5 completed', '#FFFFFF'], ['STAR', '₹150', '6 - 9 completed', '#FFFFFF'], ['LEGEND', '₹200', '10+ completed', '#FFFFFF']] as const;
+const INK = '#171717', GREY = '#525252', MUTED = '#737373', LINE = 'rgba(23,23,23,0.08)', RAISED = '#F4F4F5';
+const NUM = { fontVariant: ['tabular-nums'] } as const;
+const TIERS = [['Champ', '₹100', '1 to 5 completed'], ['Star', '₹150', '6 to 9 completed'], ['Legend', '₹200', '10 or more completed']] as const;
 const STEPS = ['Share the link with your friend', 'Your friend downloads the app with your link', 'They get ₹200 and you get ₹200 when they pay for their first month'];
 
-const Copy = () => <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={1.8} strokeLinejoin="round"><Rect x="9" y="9" width="11" height="11" rx="2.5" /><Path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" strokeLinecap="round" /></Svg>;
-
-function Tier({ n, amt, who, i }: { n: string; amt: string; who: string; i: number }) {
+function Tier({ n, amt, who }: { n: string; amt: string; who: string }) {
   return (
-    <LinearGradient colors={['#5409DA', '#7B3FF0']} style={{ flex: 1, borderRadius: 14, paddingTop: 4, overflow: 'hidden', marginTop: 0 }}>
-      <Txt weight={600} size={9} color="#fff" style={{ textAlign: 'center', letterSpacing: 1.6, paddingVertical: 3 }}>{n}</Txt>
-      <View style={{ backgroundColor: '#fff', borderRadius: 12, margin: 1.5, marginTop: 0, padding: 8, height: 108 }}>
-        <View style={{ position: 'absolute', right: -6, top: 4, width: 70, height: 38, borderRadius: 7, backgroundColor: C.gold, transform: [{ rotate: '-14deg' }], alignItems: 'center', justifyContent: 'center', shadowColor: '#C98A00', shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}>
-          <Txt weight={700} size={17} color="#7A4B00">{amt}</Txt>
-        </View>
-        <View style={{ flex: 1 }} />
-        <Txt weight={700} size={14} color={INK}>{amt}</Txt>
-        <Txt weight={600} size={7} color={GREY} style={{ letterSpacing: 0.4 }}>PER REFERRAL</Txt>
-        <Txt size={10} color={INK} style={{ marginTop: 3, lineHeight: 13 }}>{who} bookings</Txt>
-      </View>
-    </LinearGradient>
+    <View style={{ flex: 1, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: LINE, padding: 12, minHeight: 96 }}>
+      <Txt weight={500} size={13} color={MUTED}>{n}</Txt>
+      <Txt weight={500} size={18} color={INK} style={[{ marginTop: 4 }, NUM]}>{amt}</Txt>
+      <Txt size={12} color={MUTED} style={{ marginTop: 4, lineHeight: 16 }}>{who}</Txt>
+    </View>
   );
 }
 
 export default function Refer() {
   const ins = useInsets(), code = refCode();
   return (
-    <View style={{ flex: 1, backgroundColor: '#F6F5FA' }}>
-      <View style={{ backgroundColor: '#fff', paddingTop: ins.top + 14, paddingBottom: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-        <Pressable accessibilityLabel="Back" onPress={closePage} hitSlop={12}><Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><Path d="M20 12H4M10 6l-6 6 6 6" /></Svg></Pressable>
-        <Txt weight={600} size={18} color={INK}>Refer & earn</Txt>
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={{ backgroundColor: '#fff', paddingTop: ins.top + 8, height: ins.top + 56, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+        <Pressable accessibilityLabel="Back" onPress={closePage} hitSlop={12}><Back size={24} color={INK} strokeWidth={1.5} /></Pressable>
+        <Txt weight={500} size={18} color={INK}>Refer and earn</Txt>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 12, paddingBottom: 150 }}>
-        <View style={{ backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', paddingTop: 20, alignItems: 'center' }}>
-          <Txt size={13.5} color={INK}>Refer a friend to Washing Daddy</Txt>
-          <Txt weight={700} size={34} color={C.violet} style={{ lineHeight: 44, marginTop: 2 }}>Get ₹200</Txt>
-          <Txt size={13} color={GREY} style={{ textAlign: 'center', paddingHorizontal: 28, lineHeight: 18 }}>Your friend gets ₹200 off their first month with Washing Daddy.</Txt>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 160 }}>
+        <View style={{ borderRadius: 14, borderWidth: 1, borderColor: LINE, padding: 16, alignItems: 'center' }}>
+          <Txt size={14} color={GREY}>Refer a friend to Washing Daddy</Txt>
+          <Txt weight={500} size={28} color={C.violet} style={[{ lineHeight: 36, marginTop: 4 }, NUM]}>Get ₹200</Txt>
+          <Txt size={14} color={GREY} style={{ textAlign: 'center', lineHeight: 20, marginTop: 4 }}>Your friend gets ₹200 off their first month</Txt>
           {code ? (
-            <Pressable onPress={() => act.copy(code, 'Code copied')} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F3F2F6', borderRadius: 999, paddingHorizontal: 22, height: 40, marginTop: 14 }}>
-              <Txt weight={600} size={15} color={INK} style={{ letterSpacing: 0.5 }}>{code}</Txt><Copy />
+            <Pressable onPress={() => act.copy(code, 'Code copied')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: RAISED, borderRadius: 10, paddingHorizontal: 16, height: 48, marginTop: 16, transform: [{ scale: pressed ? 0.98 : 1 }] })}>
+              <Txt weight={500} size={15} color={INK} style={NUM}>{code}</Txt><Copy size={18} color={MUTED} strokeWidth={1.5} />
             </Pressable>
           ) : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20, paddingHorizontal: 16 }}>
-            <View style={{ flex: 1, height: 1, backgroundColor: '#F0E3B0' }} /><Txt weight={600} size={9} color="#9A7A00" style={{ letterSpacing: 1.4 }}>REFERRAL REWARDS</Txt><View style={{ flex: 1, height: 1, backgroundColor: '#F0E3B0' }} />
-          </View>
-          <Txt weight={600} size={13.5} color={INK} style={{ textAlign: 'center', marginTop: 6, paddingHorizontal: 40, lineHeight: 18 }}>Complete more bookings to unlock higher referral rewards</Txt>
-          <LinearGradient colors={['#FFFFFF', '#FFF6D0']} style={{ alignSelf: 'stretch', marginTop: 10, paddingHorizontal: 10, paddingBottom: 14, paddingTop: 4 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>{TIERS.map((t, i) => <Tier key={t[0]} n={t[0]} amt={t[1]} who={t[2]} i={i} />)}</View>
-          </LinearGradient>
         </View>
-        <View style={{ backgroundColor: '#fff', borderRadius: 20, marginTop: 12, padding: 16 }}>
-          <Txt weight={500} size={15} color={INK}>How it works</Txt>
+
+        <View style={{ marginTop: 32 }}>
+          <Txt weight={500} size={17} color={INK}>Referral rewards</Txt>
+          <Txt size={14} color={GREY} style={{ marginTop: 4, lineHeight: 20 }}>Complete more bookings to unlock higher rewards</Txt>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>{TIERS.map(t => <Tier key={t[0]} n={t[0]} amt={t[1]} who={t[2]} />)}</View>
+        </View>
+
+        <View style={{ marginTop: 32 }}>
+          <Txt weight={500} size={17} color={INK}>How it works</Txt>
           {STEPS.map((s, i) => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 14 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F2F6', alignItems: 'center', justifyContent: 'center' }}><Txt size={13} color={GREY}>{i + 1}</Txt></View>
-              <Txt size={12.5} color={GREY} style={{ flex: 1, lineHeight: 17 }}>{s}</Txt>
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, marginTop: i ? 0 : 8 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: RAISED, alignItems: 'center', justifyContent: 'center' }}><Txt size={13} color={GREY} style={NUM}>{i + 1}</Txt></View>
+              <Txt size={14} color={GREY} style={{ flex: 1, lineHeight: 20, paddingVertical: 8 }}>{s}</Txt>
             </View>
           ))}
         </View>
-        <Txt size={10.5} color="#9A94AB" style={{ textAlign: 'center', marginTop: 16 }}>Read our T&Cs to know more.</Txt>
+        <Txt size={12} color={MUTED} style={{ textAlign: 'center', marginTop: 24 }}>Read our terms to know more</Txt>
       </ScrollView>
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingTop: 12, paddingBottom: ins.bottom + 10, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: -2 }, elevation: 8 }}>
-        <Pressable onPress={() => act.copyRef()} style={({ pressed }) => ({ height: 46, borderRadius: 10, backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.9 : 1 })}>
-          <Txt weight={600} size={16} color="#fff">Share invite link</Txt>
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: LINE, paddingHorizontal: 16, paddingTop: 12, paddingBottom: ins.bottom + 12, gap: 4 }}>
+        <Pressable onPress={() => act.copyRef()} style={({ pressed }) => ({ height: 48, borderRadius: 10, backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center', transform: [{ scale: pressed ? 0.98 : 1 }] })}>
+          <Txt weight={500} size={15} color="#fff">Share invite link</Txt>
         </Pressable>
-        <Pressable onPress={() => act.copy(inviteLink(), 'Invite link copied')} style={{ height: 46, alignItems: 'center', justifyContent: 'center' }}>
-          <Txt weight={600} size={16} color={C.violet}>Find friends to refer</Txt>
+        <Pressable onPress={() => act.copy(inviteLink(), 'Invite link copied')} style={{ height: 48, alignItems: 'center', justifyContent: 'center' }}>
+          <Txt weight={500} size={15} color={C.violet}>Find friends to refer</Txt>
         </Pressable>
       </View>
     </View>
