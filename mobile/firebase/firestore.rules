@@ -145,6 +145,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // The morning check-in ("Hub pahunch gaya"): one doc per washer per day, created once by the washer, seen live by admins.
+    match /checkins/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.phone == me());
+      allow create: if isAdmin() || (isWasher()
+        && d().keys().hasOnly(['phone', 'name', 'date', 'at'])
+        && d().phone == me() && str(d().date, 10) && id == d().date + '_' + me()
+        && str(d().name, 80) && str(d().at, 40));
+      allow update, delete: if isAdmin();
+    }
+
     match /requests/{id} {
       allow read: if isAdmin() || isWasher() || ownsReg(resource.data.reg);
       allow create: if (isAdmin() || ownsReg(d().reg))

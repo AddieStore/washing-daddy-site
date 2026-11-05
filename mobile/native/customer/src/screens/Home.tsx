@@ -13,7 +13,7 @@ import { Plate } from '../ui/Plate';
 import { IMG, RATIO, src } from '../img';
 import { PRODUCTS, SLIDES, fromPrice } from '../data/reference';
 import { TODAY, fmt, ampm, addDays, parse, inr, iso } from '../data/dates';
-import { isPaused, extras } from '../data/model';
+import { isPaused, extras, slotTxt, INTERIOR_TXT, LATE_TXT, isLate, extrasOf } from '../data/model';
 import {
   useApp, S, A, car, doc, act, go, planOf, carImg, maskPlate, chipText, banners, todaySteps, calendar, week, greeting, homeRail, realAcct, pName, startTxt,
 } from '../state';
@@ -280,7 +280,7 @@ function Ritual() {
     const st = todaySteps(c), done = st.filter(s => s[2] === 'done').length, frac = done / st.length, w = d.washer?.name || c.washer;
     const head = d.status === 'done' ? ['Done before your chai.', `${w} finished at ${ampm(d.finished_at)} in ${d.minutes} minutes.`]
       : d.status === 'washing' ? ['Washing right now.', `${w} started at ${ampm(d.started_at)}. Watch it live.`]
-      : d.status === 'skipped' ? ['No wash today.', d.skip_reason || ''] : [chipText(c, d) + '.', 'Each step ticks off here as it happens.'];
+      : d.status === 'skipped' ? ['No wash today.', d.skip_reason || ''] : [chipText(c, d) + '.', slotTxt(d) && !chipText(c, d).startsWith(slotTxt(d)) ? slotTxt(d) : 'Each step ticks off here as it happens.'];
     body = <>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
         <Ring frac={frac} size={86} color={C.gold}>{label(<CountUp to={Math.round(frac * 100)} dur={1400} format={n => Math.round(n) + '%'} font="shout" size={26} />, 'of today')}</Ring>
@@ -289,7 +289,10 @@ function Ritual() {
           <Title>{head[0]}</Title><Sub>{head[1]}</Sub>
         </View>
       </View>
+      {d.interior && d.status !== 'done' ? <Txt weight={600} size={12.5} color={C.gold} style={{ marginTop: 10 }}>{INTERIOR_TXT(d)}</Txt> : null}
+      {isLate(d) ? <Txt size={12.5} color={ink.fg2} style={{ marginTop: 6 }}>{LATE_TXT}</Txt> : null}
       {steps(st)}
+      {d.status === 'done' && extrasOf(d).length ? <View style={{ marginTop: 12 }}><Eyebrow>Extras</Eyebrow>{extrasOf(d).map(x => <Txt key={x} size={13} color={ink.fg2} style={{ marginTop: 2 }}>{x}</Txt>)}</View> : null}
       {d.status !== 'done' ? <Btn label="Watch live" onPress={() => go('live')} style={{ marginTop: 12 }} /> : (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12, paddingTop: 14, borderTopWidth: 1, borderTopColor: ink.line }}>
           <Txt weight={600} size={13}>{c.rating ? 'Thanks for rating' : "How was today's wash?"}</Txt>

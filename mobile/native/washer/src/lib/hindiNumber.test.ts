@@ -15,5 +15,15 @@ test('announcement wraps the amount', () => {
 });
 test('every clip key has a Hindi word', () => {
   for (const a of [1, 99, 100, 999, 1000, 99999]) for (const k of announceClips(a)) assert.ok(HINDI_WORDS[k], k);
-  assert.equal(Object.keys(HINDI_WORDS).length, 99 + 4 + 5 + 10 + 2 + 1);
+  assert.equal(Object.keys(HINDI_WORDS).length, 154);
+});
+import { plateClips, lateClips } from './hindiNumber.ts';
+test('car number is read character by character', () => {
+  assert.deepEqual(plateClips('DL4CAB2731'), ['pl_d', 'pl_l', 'n4', 'pl_c', 'pl_a', 'pl_b', 'n2', 'n7', 'n3', 'n1']);
+  assert.deepEqual(plateClips('HR 26 0'), ['pl_h', 'pl_r', 'n2', 'n6', 'pl_0']);
+});
+test('late alert says the car, the slot and the line', () => {
+  const c = lateClips('DL4C1', '07:20'); assert.deepEqual(c.slice(-6), ['ph_slot', 'n7', 'ph_bajkar', 'n20', 'ph_min', 'ph_late']);
+  assert.deepEqual(lateClips('A1', '05:00'), ['pl_a', 'n1', 'ph_slot', 'n5', 'ph_late']);
+  for (const k of lateClips('DL4CAB2731', '10:05')) assert.ok(HINDI_WORDS[k], k);
 });

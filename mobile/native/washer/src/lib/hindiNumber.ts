@@ -8,6 +8,15 @@ export const HINDI_WORDS: Record<string, string> = {
   ph_polish: 'अब टायर और ट्रिम पर पॉलिश लगाइए, और कोई गंदगी हो तो पहले उसे हटाइए',
   ph_check: 'आख़िर में अगर कोई कमी है तो उसे सही कीजिए',
   ph_photo: 'अब कार की फोटो लीजिए, कम से कम दो',
+  // 5:00 every morning, and the late-car alert (said after the car number and slot)
+  ph_morning: 'काम का समय हो गया है, कृपया तैयार हो जाएँ और हब पहुँचें।',
+  ph_late: 'इस गाड़ी पर काम नहीं हुआ है। कृपया इस गाड़ी पर पहुँचें और काम शुरू करें।',
+  ph_slot: 'स्लॉट', ph_bajkar: 'बजकर', ph_min: 'मिनट',
+  ph_interior: 'इंटीरियर का काम जोड़ दिया गया है, दस मिनट बढ़ा दिए गए हैं।',
+  // letters and zero for reading a car number aloud (digits 1-9 reuse n1..n9)
+  pl_0: 'शून्य', pl_a: 'ए', pl_b: 'बी', pl_c: 'सी', pl_d: 'डी', pl_e: 'ई', pl_f: 'एफ', pl_g: 'जी', pl_h: 'एच', pl_i: 'आई',
+  pl_j: 'जे', pl_k: 'के', pl_l: 'एल', pl_m: 'एम', pl_n: 'एन', pl_o: 'ओ', pl_p: 'पी', pl_q: 'क्यू', pl_r: 'आर', pl_s: 'एस',
+  pl_t: 'टी', pl_u: 'यू', pl_v: 'वी', pl_w: 'डबल्यू', pl_x: 'एक्स', pl_y: 'वाई', pl_z: 'ज़ेड',
   // 11:00 sharp (26:00 on Sundays): the buzzer plays first, then this line
   ph_end: 'आपका इस कार पर समय पूरा हो चुका है। कृपया अगली गाड़ी पर जाइए।',
   // Sunday: interior cleaning day
@@ -40,3 +49,23 @@ export function amountClips(amount: number): string[] {
 // the whole announcement: intro, amount, rupaye (no amount: just the intro)
 export const announceClips = (amount?: number | null): string[] =>
   amount && amount > 0 ? ['intro', ...amountClips(amount), 'rupaye'] : ['intro'];
+
+// a car number read out one character at a time: DL4CAB2731 -> d l 4 c a b 2 7 3 1
+export function plateClips(reg: string): string[] {
+  const out: string[] = [];
+  for (const ch of String(reg || '').toLowerCase().replace(/[^a-z0-9]/g, '')) {
+    if (ch >= '1' && ch <= '9') out.push('n' + ch); else if (ch === '0') out.push('pl_0'); else out.push('pl_' + ch);
+  }
+  return out;
+}
+// "<car number>, slot 7 bajkar 20 minute, <this car has not been done ...>"; from is the slot start "HH:MM"
+export function lateClips(reg: string, from?: string | null): string[] {
+  const out = plateClips(reg);
+  const m = /^(\d{1,2}):(\d{2})$/.exec(from || '');
+  if (m) {
+    const h = Number(m[1]) % 12 || 12, mi = Number(m[2]);
+    out.push('ph_slot', 'n' + h); if (mi) out.push('ph_bajkar', 'n' + mi, 'ph_min');
+  }
+  out.push('ph_late');
+  return out;
+}

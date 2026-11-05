@@ -54,6 +54,12 @@ main{max-width:820px;margin:0 auto;padding:16px 16px calc(40px + env(safe-area-i
 .ph figure{margin:0;flex:0 0 auto}
 .ph img{display:block;height:96px;width:auto;border-radius:10px;border:1px solid var(--line);cursor:zoom-in}
 .ph figcaption{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--fg3);margin-top:3px}
+.strip{background:var(--tile);border-radius:10px;padding:7px 10px;margin-top:8px;font-size:12px;font-weight:600;color:var(--fg2)}.strip.in2{color:var(--ok)}.strip.no{color:var(--fg3)}
+.tl{margin-top:10px;display:grid;gap:6px}.sl{display:flex;gap:8px;align-items:flex-start;background:var(--tile);border-radius:10px;padding:7px 10px}
+.sl>small{flex:0 0 92px;font-size:11px;font-weight:700;color:var(--fg2)}.sl>div{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.sl .nil{font-size:11px;color:var(--fg3)}.sc{font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;border:1px solid currentColor;background:var(--card)}
+.lock{font-size:10px;font-weight:700;background:var(--violet);color:#fff;border-radius:99px;padding:2px 8px;margin-left:6px}
+.bdg{font-size:10px;font-weight:700;border-radius:99px;padding:2px 8px;color:#fff;margin-left:4px;white-space:nowrap}.bdg.late{background:var(--red)}.bdg.int{background:var(--sky)}
 .empty{background:var(--card);border:1px dashed var(--line);border-radius:18px;padding:28px 18px;text-align:center;color:var(--fg2)}
 .gate{min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--violet)}
 .gate .box{background:var(--bg);width:100%;max-width:400px;border-radius:26px;padding:26px 22px}
@@ -84,7 +90,10 @@ const istDay = off => new Date(Date.now() + 5.5 * 3600e3 + off * 864e5).toISOStr
 const hm = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? d.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' }) : '' };
 const nice = p => { const d = String(p || '').replace(/\D/g, '').slice(-10); return d ? '+91 ' + d.slice(0, 5) + ' ' + d.slice(5) : '' };
 const STATUS = { scheduled: 'Waiting', on_the_way: 'On the way', arrived: 'Arrived', washing: 'Washing', done: 'Done', skipped: 'Skipped' };
-let db = null, day = istDay(0), rows = [], locs = {}, unsubs = [];
+let db = null, day = istDay(0), rows = [], locs = {}, checks = [], unsubs = [];
+const SLOTS = [['5:30', '6:25'], ['6:25', '7:20'], ['7:20', '8:15'], ['8:15', '9:10'], ['9:10', '10:05'], ['10:05', '11:00']];
+const d10 = p => String(p || '').replace(/\D/g, '').slice(-10);
+const isLate = w => !!w.overdue_at && w.status !== 'done' && w.status !== 'skipped';
 
 /* sign in (same flow as /admin/) */
 function gatePhone(msg) {
@@ -123,15 +132,33 @@ function listen() {
     render();
   }, e => { stop(); WDAuth.signOut(); $('#app').hidden = true; $('#gate').hidden = false;
     gatePhone(e.code === 'invalid_argument' ? 'This number is not the owner number.' : "Couldn't load. Check the internet and sign in again.") }));
+  unsubs.push(db.collection('checkins').where('date', '==', day).onSnapshot(sn => { checks = sn.docs.map(d => d.data()).filter(Boolean); render() }, () => {}));
   unsubs.push(db.collection('locations').onSnapshot(sn => { locs = {}; sn.docs.forEach(d => locs[d.id] = d.data()); render() }, () => {}));
 }
 
 /* view */
 const photo = p => p && (p.url || (p.asset_id ? '/_blob/' + p.asset_id : ''));
+function badges(w) {
+  const ex = w.interior ? Number(w.extra_minutes) || 10 : 0;
+  return (isLate(w) ? `<span class="bdg late">Late${hm(w.overdue_at) ? ' · ' + esc(hm(w.overdue_at)) : ''}</span>` : '') + (w.interior ? `<span class="bdg int">Interior +${esc(ex)}</span>` : '');
+}
+function timeline(list) {
+  const hasSlot = w => w.slot != null && w.slot !== '' && Number.isInteger(Number(w.slot)) && Number(w.slot) >= 0 && Number(w.slot) <= 5;
+  const chip = w => `<span class="sc st-${esc(w.status)}" title="${esc(STATUS[w.status] || w.status)}">${esc(w.reg)}${isLate(w) ? ' · Late' : ''}${w.interior ? ' · Int' : ''}</span>`;
+  const locked = list.some(hasSlot);
+  let h = `<div class="tl">`;
+  SLOTS.forEach((sl, i) => {
+    const cars = list.filter(w => hasSlot(w) && Number(w.slot) === i);
+    h += `<div class="sl"><small>${sl[0]}–${sl[1]}${cars.length ? '<span class="lock">Locked</span>' : ''}</small><div>${cars.length ? cars.map(chip).join('') : '<span class="nil">–</span>'}</div></div>`;
+  });
+  const free = list.filter(w => !hasSlot(w));
+  if (free.length) h += `<div class="sl"><small>No slot</small><div>${free.map(chip).join('')}</div></div>`;
+  return { html: h + `</div>`, locked };
+}
 function carHtml(w) {
   const tasks = Array.isArray(w.tasks) ? w.tasks : [], photos = (Array.isArray(w.photos) ? w.photos : []).filter(photo);
-  return `<div class="car"><div class="ch"><div><b>${esc(w.car_label || w.reg)}</b> <span class="plate">${esc(w.reg)}</span></div><span class="pill st-${esc(w.status)}">${STATUS[w.status] || esc(w.status)}</span></div>
-  <div class="times">${w.status === 'skipped' ? '' : `<span>Started ${hm(w.started_at) || '–'}</span><span>Finished ${hm(w.finished_at) || '–'}</span>`}${w.minutes != null ? `<span>${esc(w.minutes)} min</span>` : ''}${w.water_litres ? `<span>${esc(w.water_litres)} L water</span>` : ''}</div>
+  return `<div class="car"><div class="ch"><div><b>${esc(w.car_label || w.reg)}</b> <span class="plate">${esc(w.reg)}</span>${badges(w)}</div><span class="pill st-${esc(w.status)}">${STATUS[w.status] || esc(w.status)}</span></div>
+  <div class="times">${w.status === 'skipped' ? '' : `<span>Started ${hm(w.started_at) || '–'}</span><span>Finished ${hm(w.finished_at) || '–'}</span>`}${w.minutes != null ? `<span>${esc(w.minutes)} min${w.interior && Number(w.extra_minutes) ? ` (incl. +${esc(w.extra_minutes)} interior allowance)` : ''}</span>` : ''}${w.eta ? `<span>ETA ${esc(w.eta)}</span>` : ''}${w.water_litres ? `<span>${esc(w.water_litres)} L water</span>` : ''}</div>
   ${w.status === 'skipped' ? `<div class="note">Skipped: ${esc(w.skip_reason || 'no reason given')}</div>` : ''}
   ${tasks.length ? `<div class="tasks">${tasks.map(t => `<span class="t ${t.done ? 'y' : ''}">${t.done ? '✓ ' : ''}${esc(t.label || t.key)}</span>`).join('')}</div>` : ''}
   ${w.washer_note ? `<div class="note">Washer's note: ${esc(w.washer_note)}</div>` : ''}
@@ -152,7 +179,12 @@ function render() {
     // loc is washer-writable: coerce lat/lng to finite numbers and escape the rest
     const loc = locs[id], la = loc ? Number(loc.lat) : NaN, ln = loc ? Number(loc.lng) : NaN;
     const live = loc && isFinite(la) && isFinite(ln) && day === istDay(0) ? `<a style="color:var(--violet)" href="https://maps.google.com/?q=${la},${ln}" target="_blank" rel="noopener">Live location · ${esc(hm(loc.updated_at))}</a>` : '';
-    h += `<section class="w"><div class="wh"><h2>${esc(g.name)}</h2><small>${d} of ${n} cars</small></div>
+    const wph = d10(id) || d10(g.list[0].washer && g.list[0].washer.phone);
+    const ck = checks.filter(c => (wph && d10(c.phone) === wph) || (!wph && c.name === g.name))[0];
+    const tl = timeline(g.list);
+    h += `<section class="w"><div class="wh"><h2>${esc(g.name)}${tl.locked ? '<span class="lock">Round locked</span>' : ''}</h2><small>${d} of ${n} cars</small></div>
+     ${ck ? `<div class="strip in2">Hub pahunche: ${esc(hm(ck.at) || '–')}</div>` : `<div class="strip no">Hub pahunche: Abhi nahi</div>`}
+     ${tl.html}
      <div class="bar"><i class="d" style="width:${d / n * 100}%"></i><i class="s" style="width:${s / n * 100}%"></i><i class="p" style="width:${p / n * 100}%"></i></div>
      <div class="meta"><span>Round: ${esc(id)}</span>${times.length ? `<span>First car ${hm(times[0])}</span>` : ''}${ends.length ? `<span>Last finished ${hm(ends[ends.length - 1])}</span>` : ''}${live}</div>
      ${g.list.map(carHtml).join('')}</section>`;

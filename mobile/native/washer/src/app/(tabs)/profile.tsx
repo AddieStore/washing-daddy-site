@@ -7,7 +7,7 @@ import {
   DemoNote, F, Icon, OnViolet, Pressy, Row, Section, Segmented, SyncDot, brand, ui, useTheme,
 } from '../../ui';
 import { REAL, Route, S, act, me, myPhoto, syncState, useStore } from '../../state/store';
-import { takePhoto } from '../../lib/photo';
+import { openPhotoChooser } from '../../screens/PortraitPhoto';
 import { fmtPhone } from '../../lib/data';
 import { t } from '../../lib/i18n';
 import { langLabel } from '../../lib/langs';
@@ -36,14 +36,7 @@ function MeCard() {
   const w = me();
   const sf = myPhoto();
   const src = sf?.url ? { uri: sf.url } : w.img === 'washer' ? WASHER_IMG : null;
-  const cam = async () => {
-    try {
-      const r = await takePhoto({ selfie: true });
-      if (r) act.setSelfie(r.url);
-    } catch (e: any) {
-      ui.toast(e?.hi ? t(e.hi) : t('Selfie nahi lagi. Dobara try karo'));
-    }
-  };
+  const cam = openPhotoChooser;
   const stat = (big: React.ReactNode, small: string) => (
     <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 6, borderRadius: 18, backgroundColor: 'rgba(18,7,36,0.3)', borderWidth: 2, borderColor: brand.cream, alignItems: 'center' }}>
       {big}

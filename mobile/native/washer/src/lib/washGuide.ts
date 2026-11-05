@@ -37,16 +37,24 @@ export const SPOTS: { key: string; label: string; clip: string }[] = [
 export const isSundayIST = (iso: string | null | undefined): boolean => {
   const t = iso ? Date.parse(iso) : NaN; return isFinite(t) && new Date(t + 19800000).getUTCDay() === 0;
 };
-export const planFor = (startedAt: string | null | undefined): GuideStep[] => isSundayIST(startedAt) ? GUIDE_SUNDAY : GUIDE;
+// The interior add-on (Mon-Sat): from second `at` a 10-minute interior block is inserted (2 min each: dashboard, seats,
+// back seats, mats, glass) and every later stage moves 10 minutes later. Sundays already have the interior in the plan.
+export const INTERIOR_SECS = 600;
+export function withInterior(plan: GuideStep[], at: number): GuideStep[] {
+  const block = GUIDE_SUNDAY.filter(g => g.clip.startsWith('ph_i_')).map((g, i) => ({ ...g, from: at + i * 120 }));
+  return [...plan.filter(g => g.from < at), ...block, ...plan.filter(g => g.from >= at).map(g => ({ ...g, from: g.from + INTERIOR_SECS }))];
+}
+export const planFor = (startedAt: string | null | undefined, interiorFrom?: number | null): GuideStep[] =>
+  isSundayIST(startedAt) ? GUIDE_SUNDAY : interiorFrom != null ? withInterior(GUIDE, interiorFrom) : GUIDE;
 // the washer's first name as a clip key suffix: "Sharukh Khan" -> nm_sharukh (spoken before each announcement when that clip exists)
 export const nameClip = (name: string | null | undefined): string | null => {
   const w = String(name || '').trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z]/g, ''); return w ? 'nm_' + w : null;
 };
 // which stage is it, and how many seconds are left in it (null for the last one)
-export function guideAt(startedAt: string | null | undefined, nowMs = Date.now()): { idx: number; step: GuideStep; plan: GuideStep[]; secsLeft: number | null; elapsed: number } | null {
+export function guideAt(startedAt: string | null | undefined, nowMs = Date.now(), interiorFrom?: number | null): { idx: number; step: GuideStep; plan: GuideStep[]; secsLeft: number | null; elapsed: number } | null {
   const t0 = startedAt ? Date.parse(startedAt) : NaN;
   if (!isFinite(t0)) return null;
-  const plan = planFor(startedAt);
+  const plan = planFor(startedAt, interiorFrom);
   const elapsed = Math.max(0, Math.floor((nowMs - t0) / 1000));
   let idx = 0;
   plan.forEach((g, i) => { if (elapsed >= g.from) idx = i });

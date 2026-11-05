@@ -7,7 +7,7 @@ import { Txt, Card, Hard, Btn, Pill, Page, Topbar, Eyebrow, Rows, Row, BigTitle,
 import { Heart } from '../ui/icons';
 import { IMG, src } from '../img';
 import { TODAY, fmt, iso, ampm } from '../data/dates';
-import { STAGE_LABEL } from '../data/model';
+import { STAGE_LABEL, INTERIOR_TXT, LATE_TXT, isLate } from '../data/model';
 import { useApp, car, doc, act, maskPlate, liveHead, timeline, history7, syncLive } from '../state';
 import { sheets } from '../sheets';
 import { Head, LinkTxt, Pulse, useReduceMotion, edgeOf } from './Home';
@@ -47,6 +47,8 @@ function LiveHero() {
           <Eyebrow>{`${c.make ? c.make + ' ' : ''}${c.name} · ${maskPlate(c.plate)}`}</Eyebrow>
           <Txt font="shout" size={40} upper style={{ marginTop: SP.m, lineHeight: 38 }}>{h.big}</Txt>
           <Txt size={13.5} color={ink.fg2} style={{ marginTop: SP.s }}>{h.sub}</Txt>
+          {d.interior && d.status !== 'done' ? <Txt weight={600} size={13} color={C.gold} style={{ marginTop: SP.s }}>{INTERIOR_TXT(d)}</Txt> : null}
+          {isLate(d) ? <Txt size={13} color={ink.fg2} style={{ marginTop: SP.s }}>{LATE_TXT}</Txt> : null}
           {h.stage >= 0 ? <Track si={h.stage} photo={avatar(d)} /> : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.m, marginTop: SP.xl, paddingTop: SP.l, borderTopWidth: 1, borderTopColor: ink.line }}>
             <Image source={avatar(d)} resizeMode="cover" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.violet2 }} />

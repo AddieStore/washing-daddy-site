@@ -17,6 +17,9 @@ export type Wash = {
   minutes: number | null; tasks: { key: TaskKey; label: string; done: boolean; done_at: string | null }[];
   photos: Photo[]; water_litres: number | null; washer_note: string | null; skip_reason: string | null;
   customer_note_seen: boolean; seq: number; updated_at: string;
+  // the round as a timeline (lib/slots.ts), the interior add-on, and a late flag: all synced to the customer app and the dashboard
+  slot?: number; slot_from?: string; slot_to?: string; interior?: boolean; interior_from?: number | null; extra_minutes?: number;
+  addons?: { key: string; at: string; minutes: number }[]; overdue_at?: string | null;
 };
 export type Req = { id: string; reg: string; kind: string; text: string; spots: string[]; created_at: string; status: string; seen_at?: string; done_at?: string };
 export type Job = {

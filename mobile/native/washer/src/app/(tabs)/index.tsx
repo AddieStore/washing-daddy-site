@@ -17,6 +17,7 @@ import { isHindi, t } from '../../lib/i18n';
 import { TopBar, TopIconBtn } from '../../screens/TopBar';
 import { openAddCar } from '../../screens/AddCar';
 import { openHelpSheet } from '../../screens/sheets';
+import { CheckInCard, LockBar, RoundTimeline, type ScrollCtl } from '../../screens/RoundTimeline';
 
 const VIOLET_INK = '#2A0478';
 const WASHER_IMG = require('../../../assets/img/washer.webp');
@@ -169,48 +170,16 @@ function NextUp({ started }: { started: boolean }) {
   return null;
 }
 
-function Stop({ reg, i }: { reg: string; i: number }) {
-  const { c } = useTheme();
-  const car = carBy(reg)!, wd = W(reg), st = wd ? wd.status : 'scheduled';
-  const live = ['on_the_way', 'arrived', 'washing'].includes(st), q = openReqs(reg).length;
-  const etas = Route.etaList();
-  const eta = st === 'done' && wd?.finished_at ? short12(t12(wd.finished_at)) : short12(hm12(wd ? wd.eta : etas[i]));
-  const sq = st === 'done' ? brand.mint : st === 'skipped' ? c.fg3 : live ? brand.violet : c.tile2;
-  return (
-    <Pressy onPress={() => { act.setCurrent(reg); router.push('/job'); }} scaleTo={0.97} accessibilityLabel={car.model}
-      style={[s.stop, { backgroundColor: c.tile, borderColor: c.line, opacity: st === 'done' || st === 'skipped' ? 0.78 : 1 }]}>
-      <View style={[s.sq, { backgroundColor: sq }]}>
-        <Text style={{ fontFamily: F.black, fontSize: 14, color: st === 'done' || live ? '#fff' : st === 'skipped' ? c.bg : c.fg }}>{st === 'done' ? '✓' : st === 'skipped' ? '–' : i + 1}</Text>
-      </View>
-      <View style={{ width: 76, height: 48, alignItems: 'center', justifyContent: 'center' }}><CarArt car={car} width={76} height={48} /></View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 16, color: c.fg, flexShrink: 1 }}>{car.model}</Text>
-          {q ? <View style={s.reqdot}><Text style={s.reqTxt}>{q}</Text></View> : null}
-        </View>
-        <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3 }}>{car.house} · {car.plate}</Text>
-        <View style={[s.wrap6, { marginTop: 4, gap: 4 }]}><XChips reg={car.reg} plan={car.plan} small /></View>
-      </View>
-      <View style={{ alignItems: 'flex-end', gap: 4 }}>
-        <Text style={{ fontFamily: F.black, fontSize: 16, color: c.fg }}>{eta}</Text>
-        <StatusPill status={st} label={t(wd ? STATUS[wd.status] : 'Baaki')} />
-      </View>
-    </Pressy>
-  );
-}
-
-function RouteList() {
-  const rt = route(), cn = Route.counts(), w = me();
+function RouteList({ scroll, onBusy }: { scroll: ScrollCtl; onBusy: (b: boolean) => void }) {
+  const cn = Route.counts(), w = me();
   return (
     <View style={{ marginTop: 26 }}>
       <SecHead title={t('Aaj ka round')} meta={cn.total ? `${cn.total} ${t('gaadi')} · ${w.areas.split(' · ')[0]}` : undefined} />
-      <View style={{ gap: 10 }}>
-        {!cn.total
-          ? (view.bookState === 'loading'
-            ? <Empty title={t('List aa rahi hai…')} text={t('Book se aaj ka round padha ja raha hai.')} />
-            : <Empty title={t('Koi gaadi nahi')} text={t('Book mein aaj aapke naam koi active gaadi nahi hai.')} />)
-          : rt.map((car, i) => <Stop key={car.reg} reg={car.reg} i={i} />)}
-      </View>
+      {!cn.total
+        ? (view.bookState === 'loading'
+          ? <Empty title={t('List aa rahi hai…')} text={t('Book se aaj ka round padha ja raha hai.')} />
+          : <Empty title={t('Koi gaadi nahi')} text={t('Book mein aaj aapke naam koi active gaadi nahi hai.')} />)
+        : <RoundTimeline scroll={scroll} onBusy={onBusy} />}
       <Button variant="ghost" label={t('+ Nayi gaadi add karo')} onPress={openAddCar} style={{ marginTop: 12 }} />
       <DemoNote>{t('Naya customer mila? Gaadi yahan add karo, aaj se dhona shuru. Ravi manzoori denge.')}</DemoNote>
     </View>
@@ -251,10 +220,14 @@ export default function RoundScreen() {
   const insets = useSafeAreaInsets();
   const w = me(), started = !!S.day?.started, on = isOnline();
   const h = hourIST();
+  const sref = useRef<any>(null), sy = useRef(0);
+  const [busy, setBusy] = useState(false);
+  const scroll = useRef<ScrollCtl>({ ref: sref, y: sy }).current;
   const hi = t(h < 12 ? 'Subah bakhair' : h < 17 ? 'Namaste' : 'Shaam ho gayi');
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 128 + insets.bottom }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={sref} scrollEnabled={!busy} onScroll={(e) => { sy.current = e.nativeEvent.contentOffset.y }} scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: 128 + insets.bottom + (route().length ? 96 : 0) }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={s.violetTop}>
           <TopBar
             border={false}
@@ -272,17 +245,19 @@ export default function RoundScreen() {
           <Hero started={started} />
         </View>
         <View style={s.pad}>
-          <Card style={{ marginTop: 16 }}>
+          {S.day?.checkin_at || !started ? <View style={{ marginTop: 16 }}><CheckInCard /></View> : null}
+          <Card style={{ marginTop: 12 }}>
             <OnlineSwitch value={on} onChange={() => act.toggleOnline()}
               title={t(on ? 'Aap online ho' : 'Aap offline ho')}
               subtitle={t(on ? 'Naye extra kaam aapko dikhenge' : 'Naye extra kaam nahi aayenge. Round chalta rahega')} />
           </Card>
           <View style={{ marginTop: 12 }}><PrimaryAction started={started} /></View>
           <View style={{ marginTop: 26 }}><NextUp started={started} /></View>
-          <RouteList />
+          <RouteList scroll={scroll} onBusy={setBusy} />
         </View>
         <Showcase />
       </ScrollView>
+      <LockBar bottom={insets.bottom + 100} />
     </View>
   );
 }

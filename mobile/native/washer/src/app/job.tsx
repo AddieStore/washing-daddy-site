@@ -14,7 +14,7 @@ import { t } from '../lib/i18n';
 import { hm12, t12 } from '../lib/time';
 import { takePhoto } from '../lib/photo';
 import { WashGuide } from '../screens/WashGuide';
-import { ScreenBar, ReqCard, Shot, TaskRow, WashTimer, openNoteSheet, openPhotoSheet, openSkipSheet, openSuccessSheet, type ShotItem } from '../screens/JobParts';
+import { ScreenBar, ReqCard, Shot, TaskRow, WashTimer, InteriorButton, ExtrasRow, openNoteSheet, openPhotoSheet, openSkipSheet, openSuccessSheet, type ShotItem } from '../screens/JobParts';
 
 const ORDER = ['scheduled', 'on_the_way', 'arrived', 'washing', 'done'];
 const STEPS: [string, string, StepItem['icon'], string][] = [
@@ -80,6 +80,8 @@ function Stage({ reg, st }: { reg: string; st: string }) {
   const tel = telOf(c.phone);
   const chipA = `${t(STATUS[st as keyof typeof STATUS])}${wd && st === 'scheduled' ? ' · ' + hm12(wd.eta) : ''}`;
   const idx = route().findIndex(x => x.reg === reg) + 1;
+  const fmt = (h: string) => h.replace(/^0/, '');
+  const slotTxt = wd && wd.slot_from && wd.slot_to ? `${t('Slot')} ${fmt(wd.slot_from)} – ${fmt(wd.slot_to)}` : null;
   return (
     <OnViolet>
       <View style={{ marginHorizontal: 10, marginTop: 4, height: 380, borderRadius: 34, backgroundColor: brand.violet, overflow: 'hidden', shadowColor: brand.violet, shadowOpacity: 0.28, shadowRadius: 24, shadowOffset: { width: 0, height: 20 }, elevation: 8 }}>
@@ -91,7 +93,7 @@ function Stage({ reg, st }: { reg: string; st: string }) {
           <Chip>{chipA}</Chip>
           <Chip>{`${idx} / ${route().length}`}</Chip>
         </View>
-        {washing && wd?.started_at ? <WashTimer startedAt={wd.started_at} /> : null}
+        {washing && wd?.started_at ? <WashTimer startedAt={wd.started_at} extraMinutes={wd.extra_minutes || 0} /> : null}
         <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 128, alignItems: 'center' }}>
           <Animated.View style={{ transform: [
             { translateX: enter.interpolate({ inputRange: [0, 1], outputRange: [0, 360] }) },
@@ -105,6 +107,7 @@ function Stage({ reg, st }: { reg: string; st: string }) {
           <Text numberOfLines={1} style={{ fontFamily: F.hero, fontSize: 34, lineHeight: 40, color: brand.cream }}>{c.model}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
             <Plate reg={c.plate} />
+            {slotTxt ? <Chip icon="flag">{slotTxt}</Chip> : null}
             <Tier label={planName(c)} />
             <Text style={{ fontFamily: F.bold, fontSize: 14, color: 'rgba(255,246,233,0.84)' }}>{c.customer}</Text>
             {tel && c.phone ? <CallButton phone={c.phone} small label={t('Call')} /> : null}
@@ -174,6 +177,7 @@ export default function JobScreen() {
   const need = wd ? photoNeeds(wd) : null;
   const afterN = need ? need.car : 0;
   const photosOk = !!need && need.ok;
+  const late = !!wd && Route.isLate(reg);
   const sunday = !!wd && isSundayIST(wd.started_at) && (st === 'washing' || st === 'done');
 
   const shoot = async (kind: Photo['kind'], spot?: string) => {
@@ -295,7 +299,16 @@ export default function JobScreen() {
             </View>
           ) : null}
 
+          {late ? (
+            <View accessibilityRole="alert" style={{ marginTop: 18, flexDirection: 'row', gap: 10, alignItems: 'center', padding: 14, borderRadius: 16, backgroundColor: 'rgba(232,56,79,0.12)', borderWidth: 1.5, borderColor: brand.red }}>
+              <Icon name="warn" size={22} color={brand.red} />
+              <Text style={{ flex: 1, fontFamily: F.black, fontSize: 15, color: brand.red }}>{t('Late · slot khatam ho gaya')}</Text>
+            </View>
+          ) : null}
+
           <View style={{ marginTop: 18 }}>{main()}</View>
+
+          {wd && st === 'done' && wd.addons && wd.addons.length ? <ExtrasRow addons={wd.addons} /> : null}
 
           <Section title={t('Aaj ke kaam')} meta={`${tdone}/${tasks.length}${can ? '' : t(' · wash shuru hone pe tick karo')}`}>
             <ProgressBar fraction={tasks.length ? tdone / tasks.length : 0} style={{ marginBottom: 12 }} />
@@ -306,7 +319,11 @@ export default function JobScreen() {
             </View>
           </Section>
 
-          {st === 'washing' && wd?.started_at ? <WashGuide startedAt={wd.started_at} onTakePhoto={() => { void shoot('after') }} /> : null}
+          {st === 'washing' && wd?.started_at ? <WashGuide startedAt={wd.started_at} interiorFrom={wd.interior_from} onTakePhoto={() => { void shoot('after') }} /> : null}
+
+          {st === 'washing' && wd?.started_at && !isSundayIST(wd.started_at)
+            ? (wd.interior ? <ExtrasRow addons={wd.addons || []} compact /> : <InteriorButton reg={reg} />)
+            : null}
 
           <Section title={t('Photo')} meta={t(`Gaadi ki kam se kam ${MIN_PHOTOS} photo zaroori`)}>
             <View style={{ flexDirection: 'row', gap: 10 }}>

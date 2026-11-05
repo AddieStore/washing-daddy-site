@@ -37,7 +37,7 @@ export function ScreenBar({ title, back }: { title: string; back?: boolean }) {
 }
 
 /* ---------- wash timer, ticks every second ---------- */
-export function WashTimer({ startedAt }: { startedAt: string }) {
+export function WashTimer({ startedAt, extraMinutes = 0 }: { startedAt: string; extraMinutes?: number }) {
   const [, setN] = useState(0);
   useEffect(() => { const i = setInterval(() => setN(n => n + 1), 1000); return () => clearInterval(i) }, []);
   const s = Math.max(0, Math.floor((Date.now() - Date.parse(startedAt)) / 1000));
@@ -45,7 +45,56 @@ export function WashTimer({ startedAt }: { startedAt: string }) {
   return (
     <View style={{ position: 'absolute', top: 58, left: 0, right: 0, alignItems: 'center', zIndex: 3 }} pointerEvents="none">
       <Text style={{ fontFamily: F.shout, fontSize: 58, lineHeight: 64, color: brand.cream, letterSpacing: 1, textShadowColor: brand.ink, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0 }}>{mm}:{ss}</Text>
-      <Text style={{ fontFamily: F.black, fontSize: 11, letterSpacing: 1.8, color: brand.gold, marginTop: 2 }}>{t('WASH TIME')}</Text>
+      <Text style={{ fontFamily: F.black, fontSize: 11, letterSpacing: 1.8, color: brand.gold, marginTop: 2 }}>{t('WASH TIME')}{extraMinutes > 0 ? ` · +${extraMinutes} MIN` : ''}</Text>
+    </View>
+  );
+}
+
+/* ---------- interior add-on: confirmation sheet, the button and the chip ---------- */
+function InteriorSheet({ reg, close }: { reg: string; close: () => void }) {
+  const { c } = useTheme();
+  return (
+    <View>
+      <SheetTitle title={t('Is gaadi ka interior bhi karna hai?')} sub={t('10 minute extra milenge')} />
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ flex: 1 }}><Button variant="ghost" label={t('Nahi')} onPress={close} /></View>
+        <View style={{ flex: 1 }}><Button variant="violet" label={t('Haan, karna hai')} onPress={() => { close(); act.addInterior(reg) }} /></View>
+      </View>
+    </View>
+  );
+}
+export function openInteriorSheet(reg: string) { sheet.open(close => <InteriorSheet reg={reg} close={close} />) }
+
+export function InteriorButton({ reg }: { reg: string }) {
+  const { c } = useTheme();
+  return (
+    <Pressy onPress={() => openInteriorSheet(reg)} accessibilityLabel={t('Interior kar raha hoon · +10 min')} scaleTo={0.97}
+      style={{ marginTop: 12, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, backgroundColor: c.tile, borderWidth: 2, borderColor: brand.violet }}>
+      <View style={{ width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: brand.violet }}>
+        <TaskIcon k="interior" size={24} color="#fff" />
+      </View>
+      <Text style={{ flex: 1, fontFamily: F.black, fontSize: 16, color: c.fg }}>{t('Interior kar raha hoon · +10 min')}</Text>
+      <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: brand.gold }}><Text style={{ fontFamily: F.black, fontSize: 12, color: brand.ink }}>+10</Text></View>
+    </Pressy>
+  );
+}
+
+// "Interior jud gaya · +10 min" (washing) or the whole list of extras with their time (done)
+export function ExtrasRow({ addons, compact }: { addons: { key: string; at: string; minutes: number }[]; compact?: boolean }) {
+  const { c } = useTheme();
+  if (!addons.length) return null;
+  const name = (k: string) => (k === 'interior' ? t('Interior') : k);
+  return (
+    <View style={{ marginTop: 12, gap: 6 }}>
+      {compact ? null : <Text style={{ fontFamily: F.black, fontSize: 11, letterSpacing: 1.6, textTransform: 'uppercase', color: c.fg3 }}>{t('Extras')}</Text>}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {addons.map((a, i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(20,192,138,0.14)', borderWidth: 1.5, borderColor: 'rgba(20,192,138,0.45)' }}>
+            <Icon name="check" size={16} color={brand.mint} />
+            <Text style={{ fontFamily: F.black, fontSize: 14, color: c.fg }}>{compact && a.key === 'interior' ? t('Interior jud gaya · +10 min') : `${name(a.key)} · +${a.minutes} min`}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }

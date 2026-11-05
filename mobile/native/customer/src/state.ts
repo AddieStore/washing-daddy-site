@@ -22,7 +22,7 @@ import { TODAY, refreshToday, iso, parse, addDays, fmt, inr, nowIST, hm, ampm, t
 import { PLANS, PRODUCTS, SERVICES, WASHER_FOR, AREA_COORDS, SUPPORT_PHONE, PlanId, HIDDEN_FROM_NEW, DEFAULT_PLAN } from './data/reference';
 import {
   Account, Car, Session, WashDoc, DEMO_PHONE, sampleAccount, fromCustomerDoc, regOf, planOf, maskPlate, extras, weekPlan,
-  LABEL, TASK_LABEL, TASK_SUB, isPaused, canPause, pauseLog, pauseFits, startOf, startTxt, makeDoc, fromContract, planTasks,
+  LABEL, TASK_LABEL, slotTxt, TASK_SUB, isPaused, canPause, pauseLog, pauseFits, startOf, startTxt, makeDoc, fromContract, planTasks,
   activeStage, chipText, hash, daysLeftOf, STAGES,
 } from './data/model';
 import { toast, openSheet, closeSheet, sheetOpen, confetti, haptic } from './ui/hosts';
@@ -133,10 +133,10 @@ export function todaySteps(c: Car = car()): [string, string, 'done' | 'later', s
 // Live headline and line under it
 export function liveHead(c: Car = car()) {
   const d = doc(c), w = d.washer?.name || c.washer, done = d.tasks.filter(t => t.done).length, nowTask = d.tasks.find(t => !t.done);
-  const big = d.notStarted ? startTxt(c) : ({ scheduled: d.first ? 'First wash tomorrow' : `${w} comes at ${ampm(d.eta) || '6:30 AM'}`, on_the_way: `${w} is on the way`, arrived: `${w} is at your car`, washing: `Washing · ${done} of ${d.tasks.length}`, done: `Done in ${d.minutes} min`, skipped: 'No wash today' } as Record<string, string>)[d.status];
+  const big = d.notStarted ? startTxt(c) : ({ scheduled: d.first ? 'First wash tomorrow' : slotTxt(d) ? `${w} aa raha hai` : `${w} comes at ${ampm(d.eta) || '6:30 AM'}`, on_the_way: `${w} is on the way`, arrived: `${w} is at your car`, washing: `Washing · ${done} of ${d.tasks.length}`, done: `Done in ${d.minutes} min`, skipped: 'No wash today' } as Record<string, string>)[d.status];
   const s0 = startOf(c);
   const sub = d.notStarted ? (s0 && TODAY < s0 ? 'Your washer comes between 6 and 7:30 AM. Live updates start the moment they leave.' : 'Live updates start the moment your washer leaves for your car.')
-    : ({ scheduled: 'Each step shows up here the moment it happens.', on_the_way: `Arriving around ${ampm(d.eta)}.`, arrived: `Reached at ${ampm(d.arrived_at)}. Wash starts in a minute.`, washing: `Started at ${ampm(d.started_at)}. Now: ${nowTask ? nowTask.label.toLowerCase() : 'finishing up'}.`, done: `Finished at ${ampm(d.finished_at)}${d.water_litres ? ` · ${d.water_litres} L of water, no pocha` : ''}.`, skipped: d.skip_reason || 'Your washer marked today as skipped.' } as Record<string, string>)[d.status];
+    : ({ scheduled: slotTxt(d) || 'Each step shows up here the moment it happens.', on_the_way: slotTxt(d) || `Arriving around ${ampm(d.eta)}.`, arrived: `Reached at ${ampm(d.arrived_at)}. Wash starts in a minute.`, washing: `Started at ${ampm(d.started_at)}. Now: ${nowTask ? nowTask.label.toLowerCase() : 'finishing up'}.`, done: `Finished at ${ampm(d.finished_at)}${d.water_litres ? ` · ${d.water_litres} L of water, no pocha` : ''}.`, skipped: d.skip_reason || 'Your washer marked today as skipped.' } as Record<string, string>)[d.status];
   const si = d.status === 'skipped' ? -1 : STAGES.indexOf(d.status);
   return { big, sub, stage: si, washer: w, doc: d };
 }

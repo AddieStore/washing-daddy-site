@@ -8,11 +8,11 @@ import { t } from '../lib/i18n';
 
 const STAGE_ICON = { wash: 'pressure', dry: 'dry', interior: 'interior', polish: 'detailing' } as const;
 
-export function WashGuide({ startedAt, onTakePhoto }: { startedAt: string; onTakePhoto: () => void }) {
+export function WashGuide({ startedAt, onTakePhoto, interiorFrom }: { startedAt: string; onTakePhoto: () => void; interiorFrom?: number | null }) {
   const { c } = useTheme();
   const [, setN] = useState(0);
   useEffect(() => { const i = setInterval(() => setN(n => n + 1), 1000); return () => clearInterval(i) }, []);
-  const g = guideAt(startedAt);
+  const g = guideAt(startedAt, Date.now(), interiorFrom);
   if (!g) return null;
   const { idx, step, secsLeft, plan } = g;
   const photo = step.key === 'photo' || step.key === 'end';
@@ -20,10 +20,11 @@ export function WashGuide({ startedAt, onTakePhoto }: { startedAt: string; onTak
   const mm = secsLeft == null ? '' : `${String(Math.floor(secsLeft / 60)).padStart(2, '0')}:${String(secsLeft % 60).padStart(2, '0')}`;
   return (
     <Card style={[{ marginTop: 18, padding: 16 }, photo ? { backgroundColor: brand.gold, borderColor: brand.gold } : null]}>
-      <View style={{ flexDirection: 'row', gap: 6 }} accessibilityLabel={`${idx + 1} / ${plan.length}`}>
+      {/* more than 8 stages (Sunday, or the interior add-on): one compact segmented bar, so it never overflows the card */}
+      <View style={{ flexDirection: 'row', gap: plan.length > 8 ? 2 : 6, overflow: 'hidden', borderRadius: 4 }} accessibilityLabel={`${idx + 1} / ${plan.length}`}>
         {plan.map((s, i) => (
-          <View key={s.key} style={{
-            flex: 1, height: 8, borderRadius: 4,
+          <View key={i} style={{
+            flex: 1, minWidth: 0, height: 8, borderRadius: plan.length > 8 ? 1 : 4,
             backgroundColor: photo ? (i < idx ? brand.ink : 'rgba(26,10,51,0.25)') : i < idx ? brand.mint : i === idx ? brand.violet : c.line,
             ...(i === idx && photo ? { backgroundColor: brand.ink } : null),
           }} />
