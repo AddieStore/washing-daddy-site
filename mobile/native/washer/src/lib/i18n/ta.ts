@@ -454,6 +454,7 @@ Object.assign(T, {
   "Driver side mat": "டிரைவர் பக்க மேட்",
   "Passenger side mat": "பயணி பக்க மேட்",
   "Back seat": "பின் சீட்",
+  "Boot": "பூட் (டிக்கி)",
   "Dashboard": "டேஷ்போர்டு",
   // sign-in screen and first-run onboarding (screens/Auth.tsx, screens/Onboarding.tsx)
   "Partner app": "பார்ட்னர் ஆப்",

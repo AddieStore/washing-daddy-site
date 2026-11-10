@@ -22,9 +22,9 @@ export const HINDI_WORDS: Record<string, string> = {
   // Sunday: interior cleaning day
   ph_i_dash: 'अब डैशबोर्ड साफ़ कीजिए', ph_i_seat: 'अब गाड़ी की सीटें साफ़ कीजिए', ph_i_back: 'अब पिछली सीटें साफ़ कीजिए',
   ph_i_mat: 'अब सारी मैट साफ़ कीजिए', ph_i_glass: 'आख़िर में गाड़ी के शीशे और मिरर साफ़ कीजिए',
-  ph_photo_sun: 'अब बाहर से गाड़ी की कम से कम दो फोटो लीजिए, फिर अंदर की चार फोटो',
+  ph_photo_sun: 'अब बाहर से गाड़ी की कम से कम दो फोटो लीजिए, फिर अंदर की पाँच फोटो',
   ph_s_driver: 'ड्राइवर साइड की मैट की फोटो लीजिए', ph_s_pass: 'पैसेंजर साइड की मैट की फोटो लीजिए',
-  ph_s_back: 'पिछली सीट की फोटो लीजिए', ph_s_dash: 'डैशबोर्ड की फोटो लीजिए',
+  ph_s_back: 'पिछली सीट की फोटो लीजिए', ph_s_boot: 'डिक्की की फोटो लीजिए', ph_s_dash: 'डैशबोर्ड की फोटो लीजिए',
   // the washer's name, said before every announcement (nm_<first name>); add a line per washer, then re-run the voice script
   nm_chotte: 'छोटे जी', nm_shahrukh: 'शाहरुख जी',
 };

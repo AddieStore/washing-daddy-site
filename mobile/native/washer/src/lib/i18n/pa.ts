@@ -387,6 +387,7 @@ export const T: Record<string, string> = {
   "Driver side mat": "ਡਰਾਈਵਰ ਸਾਈਡ ਮੈਟ",
   "Passenger side mat": "ਪੈਸੈਂਜਰ ਸਾਈਡ ਮੈਟ",
   "Back seat": "ਪਿਛਲੀ ਸੀਟ",
+  "Boot": "ਡਿੱਕੀ",
   "Dashboard": "ਡੈਸ਼ਬੋਰਡ",
   "Partner app": "ਪਾਰਟਨਰ ਐਪ",
   "OTP sahi hai!": "OTP ਸਹੀ ਹੈ!",

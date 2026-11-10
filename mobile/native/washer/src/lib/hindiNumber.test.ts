@@ -15,7 +15,7 @@ test('announcement wraps the amount', () => {
 });
 test('every clip key has a Hindi word', () => {
   for (const a of [1, 99, 100, 999, 1000, 99999]) for (const k of announceClips(a)) assert.ok(HINDI_WORDS[k], k);
-  assert.equal(Object.keys(HINDI_WORDS).length, 154);
+  assert.equal(Object.keys(HINDI_WORDS).length, 155);
 });
 import { plateClips, lateClips } from './hindiNumber.ts';
 test('car number is read character by character', () => {

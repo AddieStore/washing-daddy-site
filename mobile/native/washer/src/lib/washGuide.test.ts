@@ -25,7 +25,7 @@ test('Sunday: 12 min outside, 12 min inside, check, photos (25 min)', () => {
   assert.equal(at(100), 'ph_wash'); assert.equal(at(300), 'ph_dry'); assert.equal(at(600), 'ph_polish');
   assert.equal(at(730), 'ph_i_dash'); assert.equal(at(1000), 'ph_i_seat'); assert.equal(at(1100), 'ph_i_back');
   assert.equal(at(1250), 'ph_i_mat'); assert.equal(at(1400), 'ph_i_glass'); assert.equal(at(1450), 'ph_check'); assert.equal(at(1550), 'ph_photo_sun'); assert.equal(at(1560), 'ph_end'); assert.equal(at(1600), 'ph_end');
-  assert.equal(SPOTS.length, 4);
+  assert.equal(SPOTS.length, 5);
 });
 test('late Saturday UTC is already Sunday in India', () => { assert.equal(isSundayIST('2026-10-31T19:00:00Z'), true) });
 test('name clip', () => { assert.equal(nameClip('Sharukh Khan'), 'nm_sharukh'); assert.equal(nameClip(''), null) });

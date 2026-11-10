@@ -1,7 +1,7 @@
 // The guided wash: from the moment the timer starts, the washer is told what to do, stage by stage.
 // Mon-Sat:  0-3 min wash, 3-6 dry, 6-9 polish (tyre and trim), 9-10 check, 10+ photo (start of the 11th minute)
 // Sunday is the interior-cleaning day: 12 min outside (wash, dry, polish), 12 min inside (dashboard, seats, back seats, mats, mirrors and glass), check, then the photos
-// (2 of the car plus 4 of the inside: driver mat, passenger mat, back seat, dashboard).
+// (2 of the car plus 5 of the inside: driver mat, passenger mat, back seat, boot, dashboard).
 export type GuideKey = 'wash' | 'dry' | 'interior' | 'polish' | 'check' | 'photo' | 'end';
 // pre: a clip played first (the buzzer at the very end)
 export type GuideStep = { key: GuideKey; from: number; clip: string; hi: string; title: string; sub: string; pre?: string };
@@ -23,14 +23,15 @@ export const GUIDE_SUNDAY: GuideStep[] = [
   { key: 'interior', from: 1200, clip: 'ph_i_mat', hi: 'अब सारी मैट साफ़ कीजिए', title: 'Mats saaf karo', sub: 'Ab saari mats saaf kijiye' },
   { key: 'interior', from: 1320, clip: 'ph_i_glass', hi: 'आख़िर में गाड़ी के शीशे और मिरर साफ़ कीजिए', title: 'Sheeshe aur mirror', sub: 'Aakhir mein gaadi ke sheeshe aur mirrors saaf kijiye' },
   { ...GUIDE[3], from: 1440 },
-  { key: 'photo', from: 1500, clip: 'ph_photo_sun', hi: 'अब बाहर से गाड़ी की कम से कम दो फोटो लीजिए, फिर अंदर की चार फोटो', title: 'Photo lo', sub: 'Car ki 2 photo, phir andar ki 4: driver mat, passenger mat, back seat, dashboard' },
+  { key: 'photo', from: 1500, clip: 'ph_photo_sun', hi: 'अब बाहर से गाड़ी की कम से कम दो फोटो लीजिए, फिर अंदर की पाँच फोटो', title: 'Photo lo', sub: 'Car ki 2 photo, phir andar ki 5: driver mat, passenger mat, back seat, boot, dashboard' },
   { ...END, from: 1560 },   // 26:00 sharp
 ];
-// the four inside photos asked for on Sundays, in the order the voice asks for them
+// the five inside photos asked for on Sundays, in the order the voice asks for them
 export const SPOTS: { key: string; label: string; clip: string }[] = [
   { key: 'driver_mat', label: 'Driver side mat', clip: 'ph_s_driver' },
   { key: 'passenger_mat', label: 'Passenger side mat', clip: 'ph_s_pass' },
   { key: 'back_seat', label: 'Back seat', clip: 'ph_s_back' },
+  { key: 'boot', label: 'Boot', clip: 'ph_s_boot' },
   { key: 'dashboard', label: 'Dashboard', clip: 'ph_s_dash' },
 ];
 // Sunday in India (IST = UTC+5:30) for the instant the timer started
