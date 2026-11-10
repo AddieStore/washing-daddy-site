@@ -1,5 +1,5 @@
 // Round setup (opened from Profile): drag the cars into the 6 slots, then lock the round. Home shows the saved result read-only.
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui';
@@ -13,7 +13,13 @@ export default function RoundSetup() {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const sref = useRef<any>(null), sy = useRef(0);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusyState] = useState(false);
+  // freeze the scroll view synchronously (setNativeProps), not through a React render that arrives after the scroll view took the touch
+  const setBusy = useCallback((b: boolean) => {
+    const r = sref.current;
+    if (r && typeof r.setNativeProps === 'function') { try { r.setNativeProps({ scrollEnabled: !b }); return } catch { /* fall through */ } }
+    setBusyState(b);
+  }, []);
   const scroll = useRef<ScrollCtl>({ ref: sref, y: sy }).current;
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>

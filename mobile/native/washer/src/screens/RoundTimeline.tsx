@@ -127,35 +127,40 @@ function CarCard({ reg, target, zone, idx, count, locked, dragging, ctl }: {
   }, [dragging, target, rm, y, sc, ctl]);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, []);
 
-  const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null } armed.current = false };
+  const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null } if (armed.current) { armed.current = false; if (!ctl.current.active) ctl.current.setBusy(false) } };
   const grant = (e: any) => { ctl.current.start(reg, e.nativeEvent.pageY) };
   const move = (_: any, g: any) => { if (g.moveY) ctl.current.move(g.moveY) };
   const done = () => { clear(); ctl.current.end() };
-  // the grip: drags at once
+  const arm = (x: number, yy: number) => {
+    if (timer.current || armed.current || !live.current.can) return;
+    x0.current = x; y0.current = yy;
+    timer.current = setTimeout(() => { timer.current = null; armed.current = true; ctl.current.setBusy(true); ui.haptic(10) }, 380);   // stop the scroll view before it takes the touch
+  };
+  const slack = (x: number, yy: number) => { if (timer.current && Math.abs(yy - y0.current) + Math.abs(x - x0.current) > 10) clear() };
+  // the grip: takes the touch at once, also in the capture phase so the ScrollView cannot steal it
   const handle = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => live.current.can,
+    onStartShouldSetPanResponderCapture: () => live.current.can,
     onMoveShouldSetPanResponder: () => live.current.can,
+    onMoveShouldSetPanResponderCapture: () => live.current.can,
     onPanResponderTerminationRequest: () => false,
     onPanResponderGrant: grant, onPanResponderMove: move, onPanResponderRelease: done, onPanResponderTerminate: done,
   })).current;
-  // the card: press and hold ~0.4 s, then move
+  // the card: press and hold ~0.4 s (finger still), then move
   const body = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: (e) => {
-      clear();
-      if (live.current.can) {
-        x0.current = e.nativeEvent.pageX; y0.current = e.nativeEvent.pageY;
-        timer.current = setTimeout(() => { armed.current = true; ctl.current.setBusy(true); ui.haptic(10) }, 380);
-      }
-      return false;
-    },
-    onMoveShouldSetPanResponder: (e) => {
-      if (armed.current) return true;
-      if (timer.current && Math.abs(e.nativeEvent.pageY - y0.current) + Math.abs(e.nativeEvent.pageX - x0.current) > 10) clear();
-      return false;
-    },
+    onStartShouldSetPanResponder: (e) => { clear(); arm(e.nativeEvent.pageX, e.nativeEvent.pageY); return false },
+    onMoveShouldSetPanResponder: (e) => { if (armed.current) return true; slack(e.nativeEvent.pageX, e.nativeEvent.pageY); return false },
+    onMoveShouldSetPanResponderCapture: () => armed.current,
     onPanResponderTerminationRequest: () => false,
     onPanResponderGrant: grant, onPanResponderMove: move, onPanResponderRelease: done, onPanResponderTerminate: done,
   })).current;
+  // touch events reach the card even when a child or the ScrollView owns the gesture: they arm / cancel the hold
+  const touch = can ? {
+    onTouchStart: (e: any) => arm(e.nativeEvent.pageX, e.nativeEvent.pageY),
+    onTouchMove: (e: any) => slack(e.nativeEvent.pageX, e.nativeEvent.pageY),
+    onTouchEnd: () => { if (!ctl.current.active) clear() },
+    onTouchCancel: () => { if (!ctl.current.active) clear() },
+  } : {};
 
   if (!car) return null;
   const late = Route.isLate(reg), due = zone >= 0 ? short12(hm12(SLOTS[zone].to)) : '';
@@ -167,6 +172,7 @@ function CarCard({ reg, target, zone, idx, count, locked, dragging, ctl }: {
   return (
     <Animated.View
       {...(can ? body.panHandlers : {})}
+      {...touch}
       accessibilityLabel={`${car.plate} ${car.model}`}
       style={[st.card, { top, backgroundColor: c.tile, borderColor: dragging ? brand.violet : late ? brand.red : c.line, zIndex: dragging ? 50 : 1, opacity: dim ? 0.7 : 1, transform: [{ scale: sc }] }, shadow, web && dragging ? ({ cursor: 'grabbing' } as any) : null]}>
       <View {...(can ? handle.panHandlers : {})} accessibilityLabel={t('Pakad ke khischo')} style={[st.grip, NOT_DRAG]}>
@@ -218,7 +224,7 @@ export function RoundTimeline({ scroll, onBusy }: { scroll: ScrollCtl; onBusy: (
   const box = useRef<any>(null);
   const modelRef = useRef(model); modelRef.current = model;
   const dragTop = useRef(new Animated.Value(0)).current;
-  const g = useRef({ reg: null as string | null, winY: 0, scroll0: 0, grab: 0, vpTop: 0, vpBot: 0, pageY: 0, hover: null as null | { zone: number; index: number }, timer: null as any, ready: false });
+  const g = useRef({ reg: null as string | null, pageY0: 0, top0: 0, scroll0: 0, vpTop: 0, vpBot: 0, pageY: 0, hover: null as null | { zone: number; index: number }, timer: null as any, ready: false });
 
   const ctl = useRef<Ctl>(null as any);
   const hit = (rel: number) => {
@@ -226,15 +232,17 @@ export function RoundTimeline({ scroll, onBusy }: { scroll: ScrollCtl; onBusy: (
     let z = m.zones[m.zones.length - 1];
     for (const zz of m.zones) { if (rel <= zz.top + zz.height + ZGAP / 2) { z = zz; break } }
     const others = z.regs.filter(r => r !== reg);
+    if (z.key < 0) return { zone: -1, index: others.length };   // the pool has no order: a car dropped there goes to its end
     let index = 0;
     others.forEach(r => { if (m.pos[r] + CARD_H / 2 < rel) index++ });
     return { zone: z.key, index };
   };
   const track = () => {
     const s = g.current; if (!s.reg || !s.ready) return;
-    const rel = s.pageY - s.winY + (scroll.y.current - s.scroll0);
-    dragTop.setValue(rel - s.grab); ctl.current.lastTop = rel - s.grab;
-    const h = hit(rel);
+    // follow the finger by deltas (no window measuring: pageY and measureInWindow disagree on some Android builds)
+    const top = s.top0 + (s.pageY - s.pageY0) + (scroll.y.current - s.scroll0);
+    dragTop.setValue(top); ctl.current.lastTop = top;
+    const h = hit(top + CARD_H / 2);
     if (!s.hover || s.hover.zone !== h.zone || s.hover.index !== h.index) { s.hover = h; setDrag({ reg: s.reg, ...h }) }
   };
   const stop = () => { if (g.current.timer) { clearInterval(g.current.timer); g.current.timer = null } };
@@ -243,20 +251,15 @@ export function RoundTimeline({ scroll, onBusy }: { scroll: ScrollCtl; onBusy: (
     setBusy: (b: boolean) => onBusy(b),
     start(reg: string, pageY: number) {
       const s = g.current; if (s.reg) return;
-      s.reg = reg; s.pageY = pageY; s.ready = false; s.hover = null; ctl.current.active = reg; onBusy(true);
-      const vp = Dimensions.get('window');
+      onBusy(true);   // freeze the ScrollView natively, synchronously
+      const m = modelRef.current, vp = Dimensions.get('window');
+      s.reg = reg; s.pageY = pageY; s.pageY0 = pageY; s.scroll0 = scroll.y.current; s.top0 = m.pos[reg] ?? 0; s.ready = true;
       s.vpTop = 0; s.vpBot = vp.height - 170;
-      const go = (wy: number) => {
-        s.winY = wy; s.scroll0 = scroll.y.current; s.ready = true;
-        const m = modelRef.current, rel = s.pageY - wy;
-        s.grab = rel - (m.pos[reg] ?? rel); dragTop.setValue(m.pos[reg] ?? rel); ctl.current.lastTop = m.pos[reg] ?? rel;
-        s.hover = { zone: m.zoneOf[reg], index: m.zones.find(z => z.key === m.zoneOf[reg])!.regs.indexOf(reg) };
-        setDrag({ reg, ...s.hover }); ui.haptic(8);
-      };
-      try { (box.current as any).measureInWindow((_x: number, wy: number) => go(wy)) } catch { go(0) }
+      dragTop.setValue(s.top0); ctl.current.lastTop = s.top0; ctl.current.active = reg;
+      s.hover = { zone: m.zoneOf[reg], index: m.zones.find(z => z.key === m.zoneOf[reg])!.regs.indexOf(reg) };
+      setDrag({ reg, ...s.hover }); ui.haptic(8);
       try { (scroll.ref.current as any)?.measureInWindow((_x: number, wy: number, _w: number, h: number) => { if (h) { s.vpTop = wy; s.vpBot = Math.min(wy + h, vp.height) - 170 } }) } catch { /* fall back to the window */ }
       s.timer = setInterval(() => {
-        if (!s.ready) return;
         let d = 0;
         if (s.pageY < s.vpTop + EDGE) d = -Math.ceil((s.vpTop + EDGE - s.pageY) / 10);
         else if (s.pageY > s.vpBot - EDGE + 40) d = Math.ceil((s.pageY - (s.vpBot - EDGE + 40)) / 10);
@@ -268,7 +271,7 @@ export function RoundTimeline({ scroll, onBusy }: { scroll: ScrollCtl; onBusy: (
       const s = g.current; if (!s.reg) return;
       stop();
       const reg = s.reg, h = s.hover; s.reg = null; s.ready = false; ctl.current.active = null;
-      if (h) act.moveCar(reg, h.zone < 0 ? null : h.zone, h.index);
+      if (h && !(h.zone < 0 && Route.slotOf(reg) == null)) act.moveCar(reg, h.zone < 0 ? null : h.zone, h.index);
       setDrag(null); onBusy(false);
     },
   } as any);
