@@ -80,7 +80,9 @@ const AUTH_ERR: Record<string, [string, string]> = {
 };
 const authErr = (e: any): AuthError => {
   const m = AUTH_ERR[bare(e)] || ['failed', 'Login nahi hua. Dobara try karo.'];
-  return Object.assign(new Error(m[1]), { code: m[0], hi: m[1] });
+  // the real Firebase code goes after the message, so a washer can read it out to us
+  const msg = m[0] === 'setup' || m[0] === 'failed' ? `${m[1]} (${bare(e) || 'unknown'})` : m[1];
+  return Object.assign(new Error(msg), { code: m[0], hi: msg });
 };
 
 function makeAuth(): Auth {
