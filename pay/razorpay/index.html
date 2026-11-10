@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#5409DA">
+<meta name="robots" content="noindex">
+<title>Pay with Razorpay — Washing Daddy</title>
+<meta name="description" content="Pay for your Washing Daddy car wash with Razorpay. UPI, cards and netbanking.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Alfa+Slab+One&family=Poppins:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --violet:#5409DA; --violet-deep:#4207B5; --violet-ink:#2A0478;
+  --gold:#FFBA08; --cream:#FFF6E9; --ink:#1A0A33;
+  --green:#19A34A; --red:#D03B3B;
+  --shout:'Anton','Impact',sans-serif;
+  --slab:'Alfa Slab One','Rockwell',Georgia,serif;
+  --body:'Poppins',system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--violet);color:var(--cream);font-family:var(--body);
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+[hidden]{display:none!important}
+button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px}
+h1,h2,h3,p{margin:0}
+
+header{border-bottom:10px solid var(--gold);background:var(--violet);
+  background-image:radial-gradient(circle, rgba(255,246,233,.12) 1.3px, transparent 1.5px);
+  background-size:14px 14px}
+header .wrap{display:flex;align-items:center;gap:12px;padding-block:14px}
+.logo{font-family:var(--shout);font-size:21px;letter-spacing:.03em;color:var(--gold);line-height:1;
+  text-shadow:2px 2px 0 var(--violet-ink)}
+.logo small{display:block;font-family:var(--body);font-weight:700;font-size:10.5px;letter-spacing:.15em;color:var(--cream);opacity:.75}
+header a{margin-left:auto;font-weight:700;font-size:13.5px;color:var(--cream);text-decoration:underline}
+
+.hero{padding:26px 0 6px}
+.hero h1{font-family:var(--shout);font-weight:400;font-size:clamp(32px,8.5vw,46px);line-height:1;
+  text-transform:uppercase;text-shadow:3px 3px 0 var(--violet-ink)}
+.hero p{margin-top:8px;font-weight:500;opacity:.92;font-size:15px}
+.badge{display:inline-block;vertical-align:middle;margin-left:8px;font-family:var(--body);font-weight:800;
+  font-size:11px;letter-spacing:.12em;text-shadow:none;background:var(--gold);color:var(--ink);
+  border:2px solid var(--ink);border-radius:999px;padding:2px 9px;transform:translateY(-3px)}
+
+.plans{display:grid;gap:10px;margin-top:18px}
+.plan{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--cream);color:var(--ink);
+  border:3px solid var(--ink);border-radius:16px;padding:13px 15px;box-shadow:4px 4px 0 var(--violet-ink)}
+.plan:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--violet-ink)}
+.plan[aria-pressed="true"]{background:var(--gold)}
+.plan .nm{font-weight:800;font-size:17px;line-height:1.15}
+.plan .ds{font-size:12.5px;color:#5B4A7A;font-weight:600;margin-top:2px}
+.plan[aria-pressed="true"] .ds{color:#4A3A00}
+.plan .pr{margin-left:auto;font-family:var(--shout);font-weight:400;font-size:26px;white-space:nowrap}
+
+.card{background:var(--cream);color:var(--ink);border:3px solid var(--ink);border-radius:18px;
+  padding:16px;margin-top:16px;box-shadow:5px 5px 0 var(--violet-ink)}
+label{display:block;font-weight:800;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+  color:#5B4A7A;margin:12px 0 5px}
+.card label:first-of-type{margin-top:0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:430px){ .row{grid-template-columns:1fr} .row > div + div label{margin-top:12px} }
+input{width:100%;font-family:var(--body);font-size:16px;font-weight:600;color:var(--ink);background:#fff;
+  border:2.5px solid var(--ink);border-radius:12px;padding:12px 13px}
+input::placeholder{color:#9A8DB5;font-weight:500}
+
+.big{display:block;width:100%;background:var(--gold);color:var(--ink);border:3px solid var(--ink);
+  border-radius:999px;padding:17px;font-family:var(--shout);font-size:22px;letter-spacing:.02em;
+  text-align:center;margin-top:18px;box-shadow:5px 5px 0 var(--violet-ink)}
+.big:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--violet-ink)}
+.big[disabled]{opacity:.5}
+
+.msg{font-weight:700;font-size:14px;margin-top:12px;padding:10px 13px;border-radius:12px;border:2px solid currentColor;overflow-wrap:anywhere}
+.msg.bad{color:#8A2B2F;background:#FBE4E5}
+.msg.ok{color:#0A6B0A;background:#DFF3DF}
+.msg.info{color:#4207B5;background:#EDE5FB}
+.done h2{font-family:var(--shout);font-weight:400;font-size:32px;text-transform:uppercase;color:var(--ink)}
+.done .pid{font-weight:700;font-size:14px;margin-top:6px;overflow-wrap:anywhere}
+
+.trust{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:center;margin:22px 0 8px;
+  font-size:12.5px;font-weight:600;opacity:.85}
+.foot{padding:26px 0 44px;text-align:center;font-size:13px;opacity:.8}
+.foot a{color:var(--gold)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a href="/" style="margin-left:0;text-decoration:none"><p class="logo">WASHING DADDY<small>PAYMENTS</small></p></a>
+    <a href="/pay/">Pay with Cashfree</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <h1>Pay with Razorpay <span class="badge" id="badge" hidden>TEST MODE</span></h1>
+    <p>UPI, cards and netbanking. Pick what you need and tap Pay.</p>
+  </div>
+
+  <div class="plans" id="plans"></div>
+
+  <div class="card" id="form">
+    <div class="row">
+      <div><label for="f-name">Your name (optional)</label><input id="f-name" type="text" autocomplete="name"></div>
+      <div><label for="f-phone">Phone (optional)</label><input id="f-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10 digits" autocomplete="tel"></div>
+    </div>
+    <p class="msg" id="msg" hidden role="status" aria-live="polite"></p>
+    <button class="big" id="pay" type="button">Pay ₹199</button>
+  </div>
+
+  <div class="card done" id="done" hidden>
+    <h2>Payment received</h2>
+    <p class="pid" id="done-id"></p>
+    <p style="font-weight:600;margin-top:6px">We&rsquo;ll WhatsApp you to fix a time.</p>
+  </div>
+
+  <p class="trust">
+    <span>🔒 Payments handled by Razorpay</span>
+    <span>📱 UPI · Card · Netbanking</span>
+  </p>
+
+  <p class="foot">
+    Trouble paying? WhatsApp us on <a href="https://wa.me/917701808924">7701808924</a>.<br>
+    Washing Daddy, New Delhi.
+  </p>
+</main>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============ config ============ */
+var RZP_TEST   = true;   /* shows the TEST MODE badge */
+var ORDER_URL  = 'https://n8n.washingdaddy.com/webhook/wd-rzp-order';
+var VERIFY_URL = 'https://n8n.washingdaddy.com/webhook/wd-rzp-verify';
+
+/* local testing only: ?api=<base> */
+(function(){
+  if(location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+  var m = location.search.match(/[?&]api=([^&]+)/);
+  if(!m) return;
+  var base = decodeURIComponent(m[1]).replace(/\/+$/, "");
+  ORDER_URL  = base + '/wd-rzp-order';
+  VERIFY_URL = base + '/wd-rzp-verify';
+})();
+
+/* display only: the server prices the order */
+var ITEMS = [
+  { id:"wash",      nm:"WD Wash",          pr:199,  ds:"Pressure wash · tyre & trim polish · interior cleaning" },
+  { id:"deep",      nm:"WD Deep Cleaning", pr:800,  ds:"Interior vacuum · foam · glass · wheels" },
+  { id:"exclusive", nm:"WD Exclusive",     pr:2100, ds:"Engine bay · fender lining · ceramic spray · glass coating" },
+  { id:"test",      nm:"Test payment",     pr:1,    ds:"₹1 to check that payments work" }
+];
+
+var $ = function(id){ return document.getElementById(id); };
+function el(t,c,x){ var n=document.createElement(t); if(c)n.className=c; if(x!=null)n.textContent=x; return n; }
+function rs(n){ return "₹" + Number(n).toLocaleString("en-IN"); }
+
+$("badge").hidden = !RZP_TEST;
+
+var picked = ITEMS[0];
+var busy = false;
+
+/* ============ options ============ */
+var btns = [];
+ITEMS.forEach(function(p){
+  var b = el("button","plan"); b.type = "button";
+  b.setAttribute("aria-pressed", p === picked ? "true" : "false");
+  b.dataset.item = p.id;
+  var d = el("div");
+  d.appendChild(el("p","nm", p.nm));
+  d.appendChild(el("p","ds", p.ds));
+  b.appendChild(d);
+  b.appendChild(el("span","pr", rs(p.pr)));
+  b.addEventListener("click", function(){
+    if(busy) return;
+    picked = p;
+    btns.forEach(function(x){ x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+    setIdle();
+  });
+  btns.push(b);
+  $("plans").appendChild(b);
+});
+
+/* ============ ui helpers ============ */
+function setIdle(){
+  busy = false;
+  $("pay").disabled = false;
+  $("pay").textContent = "Pay " + rs(picked.pr);
+}
+function setBusy(label){
+  busy = true;
+  $("pay").disabled = true;
+  $("pay").textContent = label;
+}
+function show(kind, text){
+  var m = $("msg");
+  m.className = "msg " + kind;
+  m.textContent = text;
+  m.hidden = false;
+  try{ m.scrollIntoView({ block:"nearest" }); }catch(e){}
+}
+function clearMsg(){ $("msg").hidden = true; $("msg").textContent = ""; }
+
+/* ============ pay ============ */
+$("pay").addEventListener("click", function(){
+  if(busy) return;
+  var name  = ($("f-name").value || "").trim();
+  var phone = ($("f-phone").value || "").trim();
+  if(phone && !/^\d{10}$/.test(phone)){
+    return show("bad", "Phone number should be 10 digits.");
+  }
+  if(typeof window.Razorpay !== "function"){
+    return show("bad", "Payment page could not load. Check your internet and try again.");
+  }
+  clearMsg();
+  setBusy("Starting…");
+
+  var body = { item: picked.id };
+  if(name)  body.name = name;
+  if(phone) body.phone = phone;
+
+  fetch(ORDER_URL, {
+    method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body)
+  })
+  .then(function(r){
+    return r.json().catch(function(){ return null; }).then(function(j){
+      if(!r.ok || !j || !j.order_id || !j.key_id){
+        var e = new Error((j && j.message) || "Could not start the payment. Please try again.");
+        e.server = true; throw e;
+      }
+      return j;
+    });
+  })
+  .then(function(res){
+    openCheckout(res, name, phone);
+  })
+  .catch(function(e){
+    setIdle();
+    show("bad", (e && e.server && e.message) ? e.message
+      : "Could not reach the payment server. Check your internet and try again.");
+  });
+});
+
+function openCheckout(res, name, phone){
+  var rzp;
+  try{
+    rzp = new window.Razorpay({
+      key: res.key_id,
+      order_id: res.order_id,
+      amount: res.amount,
+      currency: res.currency,
+      name: 'Washing Daddy',
+      description: res.name,
+      prefill: { name: name || "", contact: phone || "" },
+      theme: { color: '#5409DA' },
+      handler: function(resp){ verify(resp); },
+      modal: { ondismiss: function(){
+        if(verifying) return;
+        setIdle();
+        show("info", "Payment cancelled. You were not charged.");
+      } }
+    });
+    rzp.on('payment.failed', function(e){
+      setIdle();
+      var d = e && e.error && e.error.description;
+      show("bad", d || "Payment failed. You can try again.");
+    });
+    rzp.open();
+    setBusy("Waiting for payment…");
+  }catch(err){
+    setIdle();
+    show("bad", "Payment page could not load. Check your internet and try again.");
+  }
+}
+
+/* ============ verify ============ */
+var verifying = false;
+function verify(resp){
+  verifying = true;
+  setBusy("Checking…");
+  var pid = resp && resp.razorpay_payment_id;
+  function unconfirmed(){
+    verifying = false;
+    setIdle();
+    show("bad", "We couldn't confirm this payment. If money left your account, WhatsApp us with this id: " + (pid || "(not available)"));
+  }
+  fetch(VERIFY_URL, {
+    method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      razorpay_order_id: resp && resp.razorpay_order_id,
+      razorpay_payment_id: pid,
+      razorpay_signature: resp && resp.razorpay_signature
+    })
+  })
+  .then(function(r){
+    if(r.status !== 200) throw 0;
+    return r.json();
+  })
+  .then(function(j){
+    if(!j || j.ok !== true) throw 0;
+    verifying = false;
+    clearMsg();
+    $("form").hidden = true;
+    $("plans").hidden = true;
+    $("done-id").textContent = "Payment id: " + (j.payment_id || pid || "");
+    $("done").hidden = false;
+    try{ $("done").scrollIntoView({ block:"nearest" }); }catch(e){}
+  })
+  .catch(unconfirmed);
+}
+})();
+</script>
+</body>
+</html>
