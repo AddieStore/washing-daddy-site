@@ -2,12 +2,13 @@
 // Language -> location (+ "Allow all the time" on Android) -> notifications -> battery (Android) -> partner steps.
 // Permission screens have no Skip, but a "no" never blocks: the washer is told what will not work and goes on.
 // In demo mode and on the web preview every permission call is skipped and the flow just moves on.
+// 2026 look: violet brand header (progress + illustration), then white DashCards on the light lavender page.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, BackHandler, Easing, Image, Linking, Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  Bubbles, Button, F, Field, Float, Icon, LinkButton, Pressy, Pulse, Rise, brand, lightTokens, sheet, ui, useReducedMotion, useTheme,
+  Bubbles, Button, DashCard, F, Field, Float, Icon, IconBubble, LinkButton, PillButton, Pressy, Pulse, Rise, brand, sheet, ui, useReducedMotion, useTheme,
   type IconName,
 } from '../ui';
 import { act, onboardPhone, REAL, S, useStore, watchDocs, type LangPref } from '../state/store';
@@ -16,7 +17,6 @@ import { t } from '../lib/i18n';
 import { LANGS } from '../lib/langs';
 import { DocsPanel, docsSummary } from './DocsUpload';
 
-const L = lightTokens;
 const GUT = 20;
 const ND = Platform.OS !== 'web';
 // real permission prompts only in the installed live app; demo and the web preview just move on
@@ -29,38 +29,44 @@ export const referralKey = () => 'wd-referral:' + onboardPhone();
 type StepKey = 'lang' | 'loc' | 'notif' | 'battery' | 'partner';
 
 /* ---------------- shared pieces ---------------- */
-const Title = ({ children }: { children: string }) => (
-  <Text accessibilityRole="header" style={{ fontFamily: F.shout, fontSize: 30, lineHeight: 32, textTransform: 'uppercase', letterSpacing: 0.3, color: L.fg }}>{children}</Text>
-);
-const Body = ({ children, style }: { children: React.ReactNode; style?: object }) => (
-  <Text style={[{ fontFamily: F.body, fontSize: 14.5, lineHeight: 21, color: '#3B2C55', marginTop: 8 }, style]}>{children}</Text>
-);
+const Title = ({ children }: { children: string }) => {
+  const { c } = useTheme();
+  return <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 24, lineHeight: 30, letterSpacing: -0.3, color: c.fg }}>{children}</Text>;
+};
+const Body = ({ children, style }: { children: React.ReactNode; style?: object }) => {
+  const { c } = useTheme();
+  return <Text style={[{ fontFamily: F.body, fontSize: 14.5, lineHeight: 21, color: c.fg2, marginTop: 8 }, style]}>{children}</Text>;
+};
 function Note({ children, tone = 'warn' }: { children: React.ReactNode; tone?: 'warn' | 'info' }) {
+  const { c } = useTheme();
   const warn = tone === 'warn';
   return (
-    <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 14, padding: 12, borderRadius: 16, backgroundColor: warn ? 'rgba(232,56,79,0.09)' : 'rgba(84,9,218,0.08)', borderWidth: 1.5, borderColor: warn ? 'rgba(232,56,79,0.35)' : 'rgba(84,9,218,0.25)' }}>
-      <Icon name={warn ? 'warn' : 'help'} size={20} color={warn ? brand.red : brand.violet} />
-      <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 13, lineHeight: 19, color: L.fg }}>{children}</Text>
+    <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 14, padding: 12, borderRadius: 16, backgroundColor: warn ? 'rgba(232,56,79,0.10)' : 'rgba(84,9,218,0.08)' }}>
+      <Icon name={warn ? 'warn' : 'help'} size={20} color={warn ? brand.red : c.softInk} />
+      <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 13, lineHeight: 19, color: c.fg }}>{children}</Text>
     </View>
   );
 }
 
-/** One onboarding screen: an illustration on violet, then the cream panel with the words and the buttons at the bottom. */
+/** One onboarding screen: an illustration on violet, then the lavender panel with a white card for the words and the buttons at the bottom. */
 function Frame({ art, title, text, body, actions, sheetLook }: {
   art: React.ReactNode; title: string; text: string; body?: React.ReactNode; actions: React.ReactNode; sheetLook?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  const { c } = useTheme();
   const { height } = useWindowDimensions();
   const artH = Math.round(Math.max(170, Math.min(270, height * 0.3)));
   return (
     <View style={{ flex: 1 }}>
       <View style={{ height: artH, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>{art}</View>
-      <View style={{ flex: 1, backgroundColor: L.bg, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingTop: sheetLook ? 10 : 26, paddingHorizontal: GUT, paddingBottom: 18 + insets.bottom }}>
-        {sheetLook ? <View style={{ width: 48, height: 5, borderRadius: 3, backgroundColor: L.line, alignSelf: 'center', marginBottom: 16 }} /> : null}
+      <View style={{ flex: 1, backgroundColor: c.bg, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingTop: sheetLook ? 10 : 20, paddingHorizontal: 16, paddingBottom: 18 + insets.bottom }}>
+        {sheetLook ? <View style={{ width: 48, height: 5, borderRadius: 3, backgroundColor: c.line, alignSelf: 'center', marginBottom: 12 }} /> : null}
         <Rise delay={80}>
-          <Title>{title}</Title>
-          <Body>{text}</Body>
-          {body}
+          <DashCard style={{ padding: 20 }}>
+            <Title>{title}</Title>
+            <Body>{text}</Body>
+            {body}
+          </DashCard>
         </Rise>
         <View style={{ flex: 1, minHeight: 20 }} />
         <Rise delay={180}>{actions}</Rise>
@@ -168,6 +174,7 @@ function WasherArt({ size }: { size: number }) {
 
 /* ---------------- 1. language ---------------- */
 function LangStep({ next }: { next: () => void }) {
+  const { c } = useTheme();
   const cur: LangPref = S.lang_pref || S.lang || 'hinglish';
   return (
     <Frame
@@ -182,12 +189,12 @@ function LangStep({ next }: { next: () => void }) {
               return (
                 <View key={l.code} style={{ width: '48.5%' }}><Pressy scaleTo={0.95} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={l.label + ', ' + l.sub}
                   onPress={() => { ui.haptic(6); act.setLangPref(l.code) }}
-                  style={{ minHeight: 66, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 18, borderWidth: 2.5, borderColor: on ? brand.violet : brand.ink, backgroundColor: on ? brand.violet : '#fff', justifyContent: 'center' }}>
+                  style={{ minHeight: 66, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 18, backgroundColor: on ? c.primary : c.soft, justifyContent: 'center' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: F.bold, fontSize: 17, color: on ? brand.cream : L.fg }}>{l.label}</Text>
+                    <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: F.bold, fontSize: 17, color: on ? '#fff' : c.fg }}>{l.label}</Text>
                     {on ? <Icon name="check" size={16} color={brand.gold} /> : null}
                   </View>
-                  <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 11.5, color: on ? 'rgba(255,246,233,0.8)' : L.fg3 }}>{t(l.sub)}</Text>
+                  <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 11.5, color: on ? 'rgba(255,255,255,0.8)' : c.fg3 }}>{t(l.sub)}</Text>
                 </Pressy></View>
               );
             })}
@@ -228,6 +235,7 @@ function BgSheet({ onGo }: { onGo: () => void }) {
   );
 }
 function LocStep({ next }: { next: () => void }) {
+  const { c: c2 } = useTheme();
   const [phase, setPhase] = useState<'ask' | 'bg' | 'denied'>('ask');
   const [busy, setBusy] = useState(false);
   const askBg = () => sheet.open(close => <BgSheet onGo={() => { close(); void requestBackground().then(next) }} />);
@@ -255,7 +263,7 @@ function LocStep({ next }: { next: () => void }) {
       actions={phase === 'denied' ? (
         <>
           <Button label={t('Phir bhi aage badhein')} iconRight="arrow" variant="violet" onPress={next} />
-          <View style={{ alignItems: 'center' }}><LinkButton label={t('Settings kholein')} color={L.fg2} onPress={() => { Linking.openSettings().catch(() => {}) }} /></View>
+          <View style={{ alignItems: 'center' }}><LinkButton label={t('Settings kholein')} color={c2.fg2} onPress={() => { Linking.openSettings().catch(() => {}) }} /></View>
         </>
       ) : phase === 'bg' ? (
         <Button label={t("'Allow all the time' chuniye")} iconRight="arrow" variant="violet" onPress={askBg} />
@@ -268,6 +276,7 @@ function LocStep({ next }: { next: () => void }) {
 
 /* ---------------- 3. notifications ---------------- */
 function NotifStep({ next }: { next: () => void }) {
+  const { c: c2 } = useTheme();
   const [denied, setDenied] = useState(false);
   const [busy, setBusy] = useState(false);
   const ask = async () => {
@@ -287,7 +296,7 @@ function NotifStep({ next }: { next: () => void }) {
       actions={denied ? (
         <>
           <Button label={t('Phir bhi aage badhein')} iconRight="arrow" variant="violet" onPress={next} />
-          <View style={{ alignItems: 'center' }}><LinkButton label={t('Settings kholein')} color={L.fg2} onPress={() => { Linking.openSettings().catch(() => {}) }} /></View>
+          <View style={{ alignItems: 'center' }}><LinkButton label={t('Settings kholein')} color={c2.fg2} onPress={() => { Linking.openSettings().catch(() => {}) }} /></View>
         </>
       ) : (
         <Button label={busy ? t('Ek second…') : t('Alerts allow karein')} iconRight={busy ? undefined : 'arrow'} variant="violet" disabled={busy} onPress={ask} />
@@ -334,25 +343,22 @@ function StatusChip({ label, tone }: { label: string; tone: Tone }) {
 function StepCard({ n, title, sub, chip, done, muted, onPress }: {
   n: number; title: string; sub: string; chip: { label: string; tone: Tone }; done?: boolean; muted?: boolean; onPress?: () => void;
 }) {
+  const { c } = useTheme();
   const inner = (
-    <>
-      <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? brand.mint : muted ? 'rgba(26,10,51,0.08)' : brand.ink }}>
-        {done ? <Icon name="check" size={20} color="#fff" /> : <Text style={{ fontFamily: F.black, fontSize: 17, color: muted ? L.fg3 : brand.gold }}>{n}</Text>}
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, opacity: muted ? 0.7 : 1 }}>
+      <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? brand.mint : muted ? c.soft : c.primary }}>
+        {done ? <Icon name="check" size={20} color="#fff" /> : <Text style={{ fontFamily: F.black, fontSize: 17, color: muted ? c.fg3 : brand.gold }}>{n}</Text>}
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontFamily: F.bold, fontSize: 16, color: muted ? L.fg3 : L.fg }}>{title}</Text>
-        <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: L.fg3 }}>{sub}</Text>
+        <Text style={{ fontFamily: F.semi, fontSize: 16, color: muted ? c.fg3 : c.fg }}>{title}</Text>
+        <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3 }}>{sub}</Text>
         <StatusChip {...chip} />
       </View>
-      {onPress ? <Icon name="arrow" size={20} color={L.fg3} /> : null}
-    </>
+      {onPress ? <PillButton icon="arrow" label={title} size={34} flat onPress={onPress} /> : null}
+    </View>
   );
-  const st = {
-    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 14, padding: 14, borderRadius: 20, backgroundColor: muted ? 'rgba(255,255,255,0.55)' : '#fff',
-    borderWidth: 2, borderColor: muted ? L.line : done ? brand.mint : brand.ink, borderStyle: muted ? ('dashed' as const) : ('solid' as const),
-  };
-  if (onPress) return <Pressy onPress={onPress} scaleTo={0.98} accessibilityLabel={title + '. ' + chip.label} style={st}>{inner}</Pressy>;
-  return <View accessible accessibilityLabel={title + '. ' + chip.label} style={st}>{inner}</View>;
+  if (onPress) return <DashCard onPress={onPress} accessibilityLabel={title + '. ' + chip.label} style={{ padding: 14 }}>{inner}</DashCard>;
+  return <View accessible accessibilityLabel={title + '. ' + chip.label}><DashCard style={{ padding: 14 }}>{inner}</DashCard></View>;
 }
 
 function openDocsSheet() { sheet.open(close => <DocsSheet close={close} />) }
@@ -391,6 +397,7 @@ function ReferralSheet({ close, onSaved, initial }: { close: () => void; onSaved
 
 function PartnerStep() {
   const insets = useSafeAreaInsets();
+  const { c } = useTheme();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -411,12 +418,14 @@ function PartnerStep() {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ alignItems: 'center', paddingTop: 4 }}><WasherArt size={128} /></View>
-      <View style={{ flex: 1, backgroundColor: L.bg, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingTop: 24, paddingHorizontal: GUT, paddingBottom: 18 + insets.bottom }}>
+      <View style={{ flex: 1, backgroundColor: c.bg, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingTop: 20, paddingHorizontal: 16, paddingBottom: 18 + insets.bottom }}>
         <Rise delay={60}>
-          <Text accessibilityRole="header" style={{ fontFamily: F.shout, fontSize: 28, lineHeight: 31, textTransform: 'uppercase', color: L.fg }}>{t('Washing Daddy partner banein, sirf 3 aasaan steps mein')}</Text>
-          <Text style={{ fontFamily: F.semi, fontSize: 13, color: L.fg3, marginTop: 4 }}>{t('Become a Washing Daddy partner in 3 easy steps')}</Text>
+          <DashCard style={{ padding: 20 }}>
+            <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 22, lineHeight: 29, letterSpacing: -0.3, color: c.fg }}>{t('Washing Daddy partner banein, sirf 3 aasaan steps mein')}</Text>
+            <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3, marginTop: 4 }}>{t('Become a Washing Daddy partner in 3 easy steps')}</Text>
+          </DashCard>
         </Rise>
-        <View style={{ gap: 10, marginTop: 16 }}>
+        <View style={{ gap: 12, marginTop: 12 }}>
           <Rise delay={140}>
             <StepCard n={1} done title={t('Kaam ki settings')} sub={t('Bhasha aur permissions')} chip={{ label: t('Ho gaya'), tone: 'ok' }} />
           </Rise>
@@ -429,24 +438,23 @@ function PartnerStep() {
           </Rise>
         </View>
         <Rise delay={380}>
-          <Pressy scaleTo={0.98} accessibilityLabel={t('Referral code daalein')}
-            onPress={() => sheet.open(close => <ReferralSheet close={close} initial={code} onSaved={setCode} />)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 18, backgroundColor: 'rgba(84,9,218,0.07)', borderWidth: 1.5, borderColor: 'rgba(84,9,218,0.25)' }}>
-            <View style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: code ? brand.mint : brand.violet }}>
-              <Icon name={(code ? 'check' : 'user') as IconName} size={18} color="#fff" />
+          <DashCard accessibilityLabel={t('Referral code daalein')} style={{ marginTop: 12, padding: 14 }}
+            onPress={() => sheet.open(close => <ReferralSheet close={close} initial={code} onSaved={setCode} />)}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <IconBubble size={40} icon={(code ? 'check' : 'user') as IconName} tint="#fff" bg={code ? brand.mint : c.primary} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontFamily: F.semi, fontSize: 15, color: c.fg }}>{t('Referral code daalein')}</Text>
+                <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3 }}>{code ? code + ' · ' + t('Code save ho gaya, bonus jaldi milega') : t('Kisi dost ne bheja? Unka code yahan')}</Text>
+              </View>
+              <PillButton icon="plus" label={t('Referral code daalein')} size={34} flat onPress={() => sheet.open(close => <ReferralSheet close={close} initial={code} onSaved={setCode} />)} />
             </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ fontFamily: F.bold, fontSize: 15, color: L.fg }}>{t('Referral code daalein')}</Text>
-              <Text style={{ fontFamily: F.body, fontSize: 12.5, color: L.fg3 }}>{code ? code + ' · ' + t('Code save ho gaya, bonus jaldi milega') : t('Kisi dost ne bheja? Unka code yahan')}</Text>
-            </View>
-            <Icon name="plus" size={18} color={brand.violet} />
-          </Pressy>
+          </DashCard>
         </Rise>
         <View style={{ flex: 1, minHeight: 18 }} />
         {err ? <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.bold, fontSize: 13.5, color: brand.red, marginBottom: 10 }}>{err}</Text> : null}
         <Rise delay={440}>
           <Button label={busy ? t('Ek second…') : t('Aage badhein')} iconRight={busy ? undefined : 'arrow'} variant="violet" disabled={busy} onPress={finish} />
-          {err ? <View style={{ alignItems: 'center' }}><LinkButton label={t('Number badlo')} color={L.fg2} onPress={() => act.backToPhone()} /></View> : null}
+          {err ? <View style={{ alignItems: 'center' }}><LinkButton label={t('Number badlo')} color={c.fg2} onPress={() => act.backToPhone()} /></View> : null}
         </Rise>
       </View>
     </View>
@@ -464,10 +472,7 @@ function Progress({ i, n, onBack }: { i: number; n: number; onBack?: () => void 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: GUT, paddingTop: 10, paddingBottom: 6, minHeight: 56 }}>
       {onBack ? (
-        <Pressy onPress={onBack} scaleTo={0.9} accessibilityLabel={t('Peeche')} hitSlop={8}
-          style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,246,233,0.14)' }}>
-          <Icon name="back" size={22} color={brand.cream} />
-        </Pressy>
+        <PillButton icon="back" label={t('Peeche')} size={40} onPress={onBack} />
       ) : <View style={{ width: 40, height: 40 }} />}
       <View accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: n, now: i + 1 }} style={{ flex: 1, flexDirection: 'row', gap: 6 }}>
         {Array.from({ length: n }, (_, k) => (
@@ -485,6 +490,7 @@ function Progress({ i, n, onBack }: { i: number; n: number; onBack?: () => void 
 export default function Onboarding() {
   useStore();   // the language can change on the first screen
   const insets = useSafeAreaInsets();
+  const { c } = useTheme();
   const steps = useMemo<StepKey[]>(() => ['lang', 'loc', 'notif', ...(Platform.OS === 'android' ? ['battery' as const] : []), 'partner'], []);
   const [i, setI] = useState(0);
   const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
@@ -501,7 +507,7 @@ export default function Onboarding() {
   const key = steps[i];
   const next = () => go(1);
   return (
-    <View style={{ flex: 1, backgroundColor: brand.ink2, alignItems: 'center' }}>
+    <View style={{ flex: 1, backgroundColor: c.stage, alignItems: 'center' }}>
       <View style={{ flex: 1, width: '100%', maxWidth: 440, backgroundColor: brand.violet }}>
         <View style={{ height: insets.top }} />
         <Progress i={i} n={steps.length} onBack={i > 0 ? () => go(-1) : undefined} />

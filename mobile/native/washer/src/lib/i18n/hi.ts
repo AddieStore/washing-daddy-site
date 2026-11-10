@@ -616,4 +616,22 @@ Object.assign(HI, {
   "Kaam ka samay ho gaya hai. Taiyaar ho jaayen aur hub pahunchen.": "काम का समय हो गया है. तैयार हो जाएँ और हब पहुँचें.",
 });
 
+// redesign dashboard strings
+Object.assign(HI, {
+  "Mon":"सोम",
+  "Tue":"मंगल",
+  "Wed":"बुध",
+  "Thu":"गुरु",
+  "Fri":"शुक्र",
+  "Sat":"शनि",
+  "Sun":"रवि",
+  "Hafte ka progress":"हफ़्ते का प्रोग्रेस",
+  "Gaadi ho gayi":"गाड़ियाँ हो गईं",
+  "Aaj ki kamaai":"आज की कमाई",
+  "Gaadiyan":"गाड़ियाँ",
+  "Ghante":"घंटे",
+  "Bonus":"बोनस",
+  "Is hafte":"इस हफ़्ते",
+});
+
 export { HI as T, HI_PATTERNS as P };

@@ -1,9 +1,9 @@
-// Shared top bar: violet strip with a gold underline (the web app's day theme). Left: logo or back button;
+// Shared top bar: light page-coloured strip, round white icon buttons (2026 dashboard look). Left: logo or back button;
 // middle: title; right: any slot. SyncChipLive is the sync chip every screen shows.
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { F, Icon, OnViolet, Pressy, SyncChip, brand, type IconName } from '../ui';
+import { F, Icon, Pressy, SyncChip, cardShadow, useTheme, type IconName } from '../ui';
 import { syncState, useStore } from '../state/store';
 import { t } from '../lib/i18n';
 import { openSyncSheet } from './sheets';
@@ -12,9 +12,10 @@ const LOGO = require('../../assets/img/logo.webp');
 
 /** Round cream icon button with an ink outline, as on the web top bar. */
 export function TopIconBtn({ icon, label, onPress, size = 22 }: { icon: IconName; label: string; onPress?: () => void; size?: number }) {
+  const { c } = useTheme();
   return (
-    <Pressy onPress={onPress} scaleTo={0.88} accessibilityLabel={label} style={s.iconBtn}>
-      <Icon name={icon} size={size} color={brand.ink} />
+    <Pressy onPress={onPress} scaleTo={0.88} accessibilityLabel={label} style={[s.iconBtn, { backgroundColor: c.card }, cardShadow(c)]}>
+      <Icon name={icon} size={size} color={c.fg} />
     </Pressy>
   );
 }
@@ -45,35 +46,35 @@ export function TopBar({
   sync?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  const { c } = useTheme();
   const lnode = left === 'logo' ? <Logo />
     : left === 'back' ? <TopIconBtn icon="back" label={t('Wapas')} onPress={onBack} />
     : left;
   return (
-    <OnViolet>
-      <View style={[s.wrap, { backgroundColor: brand.violet, borderBottomWidth: border ? 4 : 0 }]}>
+    <>
+      <View style={[s.wrap, { backgroundColor: c.bg, borderBottomWidth: border ? 1 : 0, borderBottomColor: c.line }]}>
         <View style={{ height: insets.top }} />
         {top}
         <View style={s.bar}>
           {lnode}
-          {title ? <Text numberOfLines={1} style={s.title}>{title}</Text> : <View style={{ flex: 1 }} />}
+          {title ? <Text numberOfLines={1} style={[s.title, { color: c.fg }]}>{title}</Text> : <View style={{ flex: 1 }} />}
           <View style={s.right}>
             {right}
             {sync ? <SyncChipLive /> : null}
           </View>
         </View>
       </View>
-    </OnViolet>
+    </>
   );
 }
 
 const s = StyleSheet.create({
-  wrap: { borderBottomColor: brand.gold },
+  wrap: {},
   bar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 16, minHeight: 72 },
-  title: { flex: 1, minWidth: 0, fontFamily: F.black, fontSize: 17, color: brand.cream },
+  title: { flex: 1, minWidth: 0, fontFamily: F.semi, fontSize: 17 },
   right: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   iconBtn: {
-    width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: brand.cream,
-    borderWidth: 3, borderColor: brand.ink, shadowColor: brand.ink, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 3, height: 3 },
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
   },
-  chip: { backgroundColor: 'rgba(18,7,36,0.55)', borderColor: 'rgba(255,246,233,0.3)', height: 48 },
+  chip: { height: 44, borderWidth: 0 },
 });

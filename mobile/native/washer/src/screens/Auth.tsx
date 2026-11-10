@@ -1,5 +1,6 @@
 // Sign-in: the poster, the card (phone, OTP, join, waiting) and the "washed cars" slideshow.
-// Port of renderAuth + #auth in the web washer app. The card is always cream (it sits on violet).
+// Port of renderAuth + #auth in the web washer app. 2026 look: violet brand header (logo, poster, photos) on top,
+// then the form on a white DashCard over the light lavender page; ticker and slideshow keep the brand colours.
 import React, { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -7,14 +8,13 @@ import {
   ScrollView, Text, TextInput, View, useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, F, Float, LinkButton, Pressy, Rise, SuccessTick, brand, lightTokens, ui, useReducedMotion } from '../ui';
+import { Button, DashCard, F, Field, Float, LinkButton, Pressy, Rise, SuccessTick, brand, ui, useReducedMotion, useTheme } from '../ui';
 import { act, REAL, S, useStore, view } from '../state/store';
 import { backend } from '../backend';
 import { t } from '../lib/i18n';
 import { JOIN_AREAS, OWNER_WA, WASHERS, fmtPhone } from '../lib/data';
 import { referralKey } from './Onboarding';
 
-const L = lightTokens;
 const GUT = 20;
 const native = Platform.OS !== 'web';
 const IMG = {
@@ -125,37 +125,27 @@ function Poster({ width }: { width: number }) {
 }
 
 /* ---------------- card pieces (cream, fixed light tokens) ---------------- */
-const CardTitle = ({ children }: { children: string }) => (
-  <Text accessibilityRole="header" style={{ fontFamily: F.shout, fontSize: 28, lineHeight: 28, textTransform: 'uppercase', letterSpacing: 0.3, color: L.fg }}>{children}</Text>
-);
-const CardText = ({ children }: { children: React.ReactNode }) => (
-  <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 19, color: '#3B2C55', marginTop: 6, marginBottom: 14 }}>{children}</Text>
-);
+const CardTitle = ({ children }: { children: string }) => {
+  const { c } = useTheme();
+  return <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 24, lineHeight: 30, letterSpacing: -0.3, color: c.fg }}>{children}</Text>;
+};
+const CardText = ({ children }: { children: React.ReactNode }) => {
+  const { c } = useTheme();
+  return <Text style={{ fontFamily: F.body, fontSize: 13.5, lineHeight: 20, color: c.fg2, marginTop: 4, marginBottom: 16 }}>{children}</Text>;
+};
 const Err = ({ msg }: { msg: string }) => (msg ? <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.bold, fontSize: 13.5, color: brand.red, marginBottom: 10 }}>{msg}</Text> : <View style={{ minHeight: 4 }} />);
-const Hint = ({ children, style }: { children: React.ReactNode; style?: object }) => (
-  <Text style={[{ fontFamily: F.body, fontSize: 12.5, color: L.fg3, textAlign: 'center', marginTop: 10 }, style]}>{children}</Text>
-);
+const Hint = ({ children, style }: { children: React.ReactNode; style?: object }) => {
+  const { c } = useTheme();
+  return <Text style={[{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, textAlign: 'center', marginTop: 10 }, style]}>{children}</Text>;
+};
 const errOf = (e: any) => e?.hi ? t(e.hi) : e?.message || t('Nahi gaya. Internet dekh ke dobara try karo.');
 
-function Input(p: React.ComponentProps<typeof TextInput> & { box?: object }) {
-  const [focus, setFocus] = useState(false);
-  const { box, style, ...rest } = p;
-  return (
-    <TextInput
-      placeholderTextColor={L.fg3}
-      {...rest}
-      onFocus={e => { setFocus(true); rest.onFocus?.(e) }}
-      onBlur={e => { setFocus(false); rest.onBlur?.(e) }}
-      style={[{
-        width: '100%', fontFamily: F.semi, fontSize: 17, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 16, borderWidth: 2.5,
-        borderColor: focus ? brand.violet : brand.ink, backgroundColor: '#fff', color: L.fg,
-      }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null, box, style]}
-    />
-  );
-}
+// same input as the dashboard kit (Field)
+const Input = Field;
 
 /* ---------------- phone ---------------- */
 function PhoneStep() {
+  const { c } = useTheme();
   const [ph, setPh] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -173,8 +163,8 @@ function PhoneStep() {
     <View>
       <CardTitle>{t('Namaste! 👋')}</CardTitle>
       <CardText>{t('Apna phone number daalo. OTP aayega.')}</CardText>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 20, paddingVertical: 4, paddingLeft: 16, paddingRight: 8, backgroundColor: '#fff', borderWidth: 2.5, borderColor: focus ? brand.violet : brand.ink, marginBottom: 12 }}>
-        <Text style={{ fontFamily: F.black, fontSize: 18, color: '#3B2C55' }}>+91</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, paddingVertical: 2, paddingLeft: 16, paddingRight: 8, backgroundColor: c.inputBg, borderWidth: 2, borderColor: focus ? c.accent : c.line, marginBottom: 12 }}>
+        <Text style={{ fontFamily: F.black, fontSize: 18, color: c.fg2 }}>+91</Text>
         <TextInput
           value={ph}
           onChangeText={x => setPh(x.replace(/\D/g, '').slice(0, 10))}
@@ -187,9 +177,9 @@ function PhoneStep() {
           textContentType="telephoneNumber"
           maxLength={10}
           placeholder="98xxxxxxxx"
-          placeholderTextColor={L.fg3}
+          placeholderTextColor={c.fg3}
           accessibilityLabel="Phone number"
-          style={[{ flex: 1, minWidth: 0, fontFamily: F.bold, fontSize: 18, letterSpacing: 0.7, paddingVertical: 12, color: L.fg }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
+          style={[{ flex: 1, minWidth: 0, fontFamily: F.bold, fontSize: 18, letterSpacing: 0.7, paddingVertical: 12, color: c.fg }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
         />
       </View>
       <Err msg={err} />
@@ -206,14 +196,14 @@ function PhoneStep() {
                 scaleTo={0.96}
                 accessibilityLabel={w.name}
                 onPress={() => { setPh(w.phone); ui.haptic(6); void go(w.phone) }}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 18, borderWidth: 2.5, borderColor: brand.ink, backgroundColor: '#fff', minHeight: 56, minWidth: 140 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 18, backgroundColor: c.soft, minHeight: 56, minWidth: 140 }}
               >
                 {w.img
                   ? <Image source={IMG[w.img]} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: brand.gold }} resizeMode="cover" />
                   : <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: brand.gold, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: F.hero, fontSize: 20, color: brand.violet }}>{w.name[0]}</Text></View>}
                 <View>
-                  <Text style={{ fontFamily: F.bold, fontSize: 15, color: L.fg }}>{w.name}</Text>
-                  <Text style={{ fontFamily: F.semi, fontSize: 12, color: L.fg3 }}>{fmtPhone(w.phone)}</Text>
+                  <Text style={{ fontFamily: F.bold, fontSize: 15, color: c.fg }}>{w.name}</Text>
+                  <Text style={{ fontFamily: F.semi, fontSize: 12, color: c.fg3 }}>{fmtPhone(w.phone)}</Text>
                 </View>
               </Pressy>
             ))}
@@ -227,6 +217,7 @@ function PhoneStep() {
 /* ---------------- otp ---------------- */
 // one digit box: lifts and grows a little when it has the cursor
 function OtpBox({ on, big, inputRef, ...rest }: React.ComponentProps<typeof TextInput> & { on: boolean; big: boolean; inputRef: (r: React.ComponentRef<typeof TextInput> | null) => void }) {
+  const { c } = useTheme();
   const a = useRef(new Animated.Value(on ? 1 : 0)).current;
   const rm = useReducedMotion();
   useEffect(() => {
@@ -242,15 +233,16 @@ function OtpBox({ on, big, inputRef, ...rest }: React.ComponentProps<typeof Text
         ref={inputRef}
         {...rest}
         style={[{
-          flex: 1, textAlign: 'center', fontFamily: F.black, fontSize: big ? 30 : 24, color: L.fg, padding: 0,
-          borderRadius: big ? 18 : 14, borderWidth: on ? 3 : 2.5, borderColor: on ? brand.violet : brand.ink, backgroundColor: '#fff',
-        }, on ? { boxShadow: `0px 4px 0px ${brand.violet}` } : null, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
+          flex: 1, textAlign: 'center', fontFamily: F.black, fontSize: big ? 30 : 24, color: c.fg, padding: 0,
+          borderRadius: big ? 18 : 14, borderWidth: 2, borderColor: on ? c.accent : c.line, backgroundColor: c.inputBg,
+        }, on ? { boxShadow: '0px 6px 14px rgba(84,9,218,0.22)' } : null, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
       />
     </Animated.View>
   );
 }
 
 function OtpStep() {
+  const { c } = useTheme();
   const N = backend.auth.codeLength;
   const [codes, setCodes] = useState<string[]>(() => Array(N).fill(''));
   const [err, setErr] = useState('');
@@ -293,13 +285,13 @@ function OtpStep() {
         {REAL ? '' : <>{' '}{t('Test mein')} <Text style={{ fontFamily: F.black }}>1234</Text>.</>}
       </CardText>
       <Animated.View style={{ flexDirection: 'row', justifyContent: 'center', gap: N > 4 ? 7 : 10, marginTop: 6, marginBottom: 12, transform: [{ translateX: shake }] }}>
-        {codes.map((c, i) => (
+        {codes.map((digit, i) => (
           <OtpBox
             key={i}
             on={focused === i}
             big={N <= 4}
             inputRef={r => { refs.current[i] = r }}
-            value={c}
+            value={digit}
             onChangeText={x => change(i, x)}
             onFocus={() => setFocused(i)}
             onBlur={() => setFocused(f => (f === i ? -1 : f))}
@@ -317,11 +309,11 @@ function OtpStep() {
       </Animated.View>
       <Err msg={err} />
       <Button label={busy ? t('Check ho raha hai…') : t('Andar chalo')} iconRight={busy ? undefined : 'arrow'} variant="violet" disabled={busy} onPress={() => submit(codes.join(''))} />
-      <View style={{ alignItems: 'center' }}><LinkButton label={t('Number badlo')} color={L.fg2} onPress={() => act.backToPhone()} /></View>
+      <View style={{ alignItems: 'center' }}><LinkButton label={t('Number badlo')} color={c.fg2} onPress={() => act.backToPhone()} /></View>
       {ok ? (
-        <View accessibilityLiveRegion="polite" style={{ position: 'absolute', left: -6, right: -6, top: -6, bottom: -6, borderRadius: 22, backgroundColor: L.bg, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+        <View accessibilityLiveRegion="polite" style={{ position: 'absolute', left: -6, right: -6, top: -6, bottom: -6, borderRadius: 22, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
           <SuccessTick size={84} />
-          <Text style={{ fontFamily: F.shout, fontSize: 26, textTransform: 'uppercase', color: L.fg }}>{t('OTP sahi hai!')}</Text>
+          <Text style={{ fontFamily: F.black, fontSize: 22, color: c.fg }}>{t('OTP sahi hai!')}</Text>
         </View>
       ) : null}
     </View>
@@ -330,6 +322,7 @@ function OtpStep() {
 
 /* ---------------- join ---------------- */
 function JoinStep() {
+  const { c } = useTheme();
   const [name, setName] = useState('');
   const [area, setArea] = useState('');
   const [ref, setRef] = useState('');
@@ -350,7 +343,7 @@ function JoinStep() {
     setErr(''); setBusy(true);
     try { await act.join(nm, area, code) } catch (e) { console.warn(e); setBusy(false); setErr(t('Nahi gaya. Internet dekh ke dobara try karo.')) }
   };
-  const lab = { fontFamily: F.bold, fontSize: 14, color: L.fg } as const;
+  const lab = { fontFamily: F.semi, fontSize: 14, color: c.fg } as const;
   return (
     <View>
       <CardTitle>{t('Swagat hai! 🙌')}</CardTitle>
@@ -363,8 +356,8 @@ function JoinStep() {
           const on = a === area;
           return (
             <Pressy key={a} onPress={() => { setArea(a); ui.haptic(6) }} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={a}
-              style={{ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 999, borderWidth: 2.5, borderColor: on ? brand.violet : brand.ink, backgroundColor: on ? brand.violet : '#fff' }}>
-              <Text style={{ fontFamily: F.bold, fontSize: 14, color: on ? '#fff' : L.fg }}>{a}</Text>
+              style={{ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 999, backgroundColor: on ? c.primary : c.soft }}>
+              <Text style={{ fontFamily: F.bold, fontSize: 14, color: on ? '#fff' : c.softInk }}>{a}</Text>
             </Pressy>
           );
         })}
@@ -374,7 +367,7 @@ function JoinStep() {
       <View style={{ height: 12 }} />
       <Err msg={err} />
       <Button label={busy ? t('Bhej raha hoon…') : t('Approval ke liye bhejo')} iconRight={busy ? undefined : 'arrow'} variant="violet" disabled={busy} onPress={go} />
-      <View style={{ alignItems: 'center' }}><LinkButton label={t('Number badlo')} color={L.fg2} onPress={() => act.backToPhone()} /></View>
+      <View style={{ alignItems: 'center' }}><LinkButton label={t('Number badlo')} color={c.fg2} onPress={() => act.backToPhone()} /></View>
     </View>
   );
 }
@@ -386,15 +379,16 @@ const WAIT_TEXT: Record<string, [string, string]> = {
   blocked: ['Account band hai', 'Is number se abhi kaam nahi ho sakta. Owner se baat karo.'],
 };
 function WaitStep({ step }: { step: string }) {
+  const { c } = useTheme();
   const [ti, tx] = WAIT_TEXT[step] || WAIT_TEXT.wait;
   const p10 = (backend.auth.phone() || '').slice(-10) || S.session?.phone || '';
   return (
     <View>
       <CardTitle>{t(ti)}</CardTitle>
       <CardText>{t(tx)}</CardText>
-      <Text style={{ fontFamily: F.body, fontSize: 12.5, color: L.fg3, textAlign: 'center', marginBottom: 16 }}>+91 {fmtPhone(p10)}</Text>
+      <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, textAlign: 'center', marginBottom: 16 }}>+91 {fmtPhone(p10)}</Text>
       <Button label={t('Owner ko WhatsApp karo')} variant="violet" onPress={() => { void Linking.openURL('https://wa.me/' + OWNER_WA).catch(() => {}) }} />
-      <View style={{ alignItems: 'center' }}><LinkButton label={t('Log out')} color={L.fg2} onPress={() => { void act.logout() }} /></View>
+      <View style={{ alignItems: 'center' }}><LinkButton label={t('Log out')} color={c.fg2} onPress={() => { void act.logout() }} /></View>
     </View>
   );
 }
@@ -458,6 +452,7 @@ function Show({ width }: { width: number }) {
 export default function Auth() {
   useStore();
   const insets = useSafeAreaInsets();
+  const { c } = useTheme();
   const { width: ww } = useWindowDimensions();
   const width = Math.min(440, ww);
   const step = view.authStep;
@@ -480,9 +475,9 @@ export default function Auth() {
     return () => sub.remove();
   }, []);
   return (
-    <View style={{ flex: 1, backgroundColor: brand.ink2, alignItems: 'center' }}>
+    <View style={{ flex: 1, backgroundColor: c.stage, alignItems: 'center' }}>
       {/* edge-to-edge Android does not shrink the window for the keyboard any more, so pad on both platforms */}
-      <KeyboardAvoidingView behavior={native ? 'padding' : undefined} style={{ flex: 1, width: '100%', maxWidth: 440, backgroundColor: brand.violet }}>
+      <KeyboardAvoidingView behavior={native ? 'padding' : undefined} style={{ flex: 1, width: '100%', maxWidth: 440, backgroundColor: c.bg }}>
         <ScrollView
           ref={scroll}
           keyboardShouldPersistTaps="handled"
@@ -492,22 +487,27 @@ export default function Auth() {
           onScroll={e => { offset.current = e.nativeEvent.contentOffset.y }}
           contentContainerStyle={{ flexGrow: 1 }}
         >
-          <View ref={content} collapsable={false} style={{ flexGrow: 1, paddingTop: insets.top, paddingBottom: 26 + insets.bottom }}>
-            <Rise delay={0}><Header /></Rise>
-            <Rise delay={90}><Poster width={width} /></Rise>
-            <Rise delay={180}><PhotoStrip width={width} /></Rise>
-            <Rise delay={270} style={{ marginHorizontal: 12, marginTop: 4 }}>
-              <View style={{ backgroundColor: L.bg, borderRadius: 28, borderWidth: 2.5, borderColor: brand.ink, paddingTop: 22, paddingHorizontal: 18, paddingBottom: 16, boxShadow: `0px 6px 0px ${brand.ink}` }}>
+          <View ref={content} collapsable={false} style={{ flexGrow: 1, paddingBottom: 26 + insets.bottom }}>
+            {/* strong brand header: violet, rounded at the bottom; the form card overlaps its lower edge */}
+            <View style={{ backgroundColor: brand.violet, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, paddingTop: insets.top, paddingBottom: 44 }}>
+              <Rise delay={0}><Header /></Rise>
+              <Rise delay={90}><Poster width={width} /></Rise>
+              <Rise delay={180}><PhotoStrip width={width} /></Rise>
+            </View>
+            <Rise delay={270} style={{ marginHorizontal: 16, marginTop: -30 }}>
+              <DashCard style={{ paddingTop: 22, paddingHorizontal: 18, paddingBottom: 16 }}>
                 <Rise key={step + view.otpPhone} distance={12} duration={380}>
                   {step === 'phone' ? <PhoneStep />
                     : step === 'otp' ? <OtpStep key={'otp' + view.otpPhone} />
                     : step === 'join' ? <JoinStep />
                     : <WaitStep key={step} step={step} />}
                 </Rise>
-              </View>
+              </DashCard>
             </Rise>
             <View style={{ marginTop: 30 }}><Ticker /></View>
-            <Show width={width} />
+            <View style={{ backgroundColor: brand.violet, borderRadius: 28, marginHorizontal: 12, marginTop: 6, paddingTop: 2, paddingBottom: 18 }}>
+              <Show width={width} />
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

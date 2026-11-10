@@ -1,7 +1,7 @@
 // Profile tab sections: assigned clothes, my kit (add-only), my documents (read-only, set by Daddy).
 import React, { useState } from 'react';
 import { Image, Text, View } from 'react-native';
-import { Button, ChipPicker, F, Field, Icon, LinkButton, Pressy, Section, StatusPill, brand, sheet, ui, useTheme } from '../ui';
+import { BigNumber, Button, ChipPicker, DashCard, F, Field, Icon, LinkButton, ListCard, Pressy, SectionTitle, StatusPill, brand, sheet, ui, useTheme } from '../ui';
 import { Kit, addKitItem, clothesHave, useStore } from '../state/store';
 import { KIT_KINDS, type KitKind } from '../lib/data';
 import { t } from '../lib/i18n';
@@ -18,7 +18,19 @@ const kindLabel = (k: KitKind) => t(KIT_KINDS.find(x => x.kind === k)?.label ?? 
 
 function useBox() {
   const { c } = useTheme();
-  return { c, box: { borderRadius: 22, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line, overflow: 'hidden' } as const };
+  return { c, box: { padding: 0, overflow: 'hidden' } as const };
+}
+
+/** Titled block on the page background (title 17px semibold, optional grey meta on the right). */
+function Section({ title, meta, children }: { title: string; meta?: string; children?: React.ReactNode }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ marginTop: 8 }}>
+      <SectionTitle title={title} />
+      {meta ? <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: -6, marginBottom: 10 }}>{meta}</Text> : null}
+      {children}
+    </View>
+  );
 }
 
 function Note({ children }: { children: React.ReactNode }) {
@@ -32,20 +44,19 @@ export function ClothesCard() {
   const { c, box } = useBox();
   const given = Kit.profile?.assigned_clothes;
   const own = clothesHave();
-  const big = { fontFamily: F.shout, fontSize: 30, lineHeight: 32, color: c.fg } as const;
-  const cell = (n: React.ReactNode, label: string) => (
-    <View style={{ flex: 1, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 8 }}>
-      <Text style={big}>{n}</Text>
-      <Text style={{ fontFamily: F.bold, fontSize: 12.5, color: c.fg2, marginTop: 4, textAlign: 'center' }}>{label}</Text>
+  const cell = (n: string | number, label: string) => (
+    <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 12 }}>
+      <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg2 }} numberOfLines={2}>{label}</Text>
+      <BigNumber value={n} size={32} style={{ marginTop: 6 }} />
     </View>
   );
   return (
     <Section title={t('Mere kapde')}>
-      <View style={[box, { flexDirection: 'row' }]}>
+      <DashCard style={[box, { flexDirection: 'row' }]}>
         {cell(given == null ? '—' : given, t('Daddy ne diye'))}
-        <View style={{ width: 1, backgroundColor: c.line, marginVertical: 12 }} />
+        <View style={{ width: 1, backgroundColor: c.line, marginVertical: 14 }} />
         {cell(own, t('Maine khud add kiye'))}
-      </View>
+      </DashCard>
       {given == null ? <Note>{t('Daddy abhi kapde assign kar rahe hain')}</Note> : null}
     </Section>
   );
@@ -54,30 +65,28 @@ export function ClothesCard() {
 /* ---------- 2. Mera saaman ---------- */
 export function KitCard() {
   useStore();
-  const { c, box } = useBox();
+  const { c } = useBox();
   const items = Kit.items;
   return (
     <Section title={t('Mera saaman')} meta={Kit.loaded ? undefined : t('Aa raha hai…')}>
-      <View style={box}>
-        {items.length === 0 ? (
-          <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg2, padding: 16 }}>{t('Abhi koi saaman add nahi kiya')}</Text>
-        ) : KIT_KINDS.filter(k => items.some(i => i.kind === k.kind)).map((k, gi) => (
-          <View key={k.kind} style={gi ? { borderTopWidth: 1, borderTopColor: c.line } : undefined}>
-            <Text style={{ fontFamily: F.black, fontSize: 12.5, color: c.fg3, letterSpacing: 0.4, textTransform: 'uppercase', paddingHorizontal: 16, paddingTop: 12 }}>{kindLabel(k.kind)}</Text>
-            {items.filter(i => i.kind === k.kind).map(i => (
-              <View key={i.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}>
-                <Thumb uri={Kit.photos?.[i.id]} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ fontFamily: F.bold, fontSize: 15, color: c.fg }}>{i.name}</Text>
-                  <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 2 }}>{t('Add kiya')} {fmtDate(i.at)}</Text>
-                </View>
-                <Text style={{ fontFamily: F.black, fontSize: 18, color: c.fg }}>× {i.qty}</Text>
-              </View>
-            ))}
-          </View>
-        ))}
-      </View>
-      <View style={{ marginTop: 12 }}>
+      {items.length === 0 ? (
+        <DashCard style={{ padding: 16 }}>
+          <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg2 }}>{t('Abhi koi saaman add nahi kiya')}</Text>
+        </DashCard>
+      ) : (
+        <View style={{ gap: 12 }}>
+          {KIT_KINDS.filter(k => items.some(i => i.kind === k.kind)).map(k => (
+            <View key={k.kind} style={{ gap: 10 }}>
+              <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: c.fg3, letterSpacing: 0.4, textTransform: 'uppercase', paddingHorizontal: 4 }}>{kindLabel(k.kind)}</Text>
+              {items.filter(i => i.kind === k.kind).map(i => (
+                <ListCard key={i.id} leading={<Thumb uri={Kit.photos?.[i.id]} />} title={i.name} detail={`${t('Add kiya')} ${fmtDate(i.at)}`}
+                  right={<Text style={{ fontFamily: F.black, fontSize: 18, color: c.fg }}>× {i.qty}</Text>} />
+              ))}
+            </View>
+          ))}
+        </View>
+      )}
+      <View style={{ marginTop: 14 }}>
         <Button label={t('Saaman add karo')} variant="violet" icon="plus" onPress={openAddKit} />
       </View>
       <Note>{t('Ek baar add kiya to hata nahi sakte')}</Note>
@@ -88,7 +97,7 @@ export function KitCard() {
 function Thumb({ uri }: { uri?: string }) {
   const { c } = useTheme();
   return (
-    <View style={{ width: 48, height: 48, borderRadius: 12, overflow: 'hidden', backgroundColor: c.tile2, borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ width: 48, height: 48, borderRadius: 14, overflow: 'hidden', backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center' }}>
       {uri ? <Image source={{ uri }} style={{ width: 48, height: 48 }} resizeMode="cover" /> : <Icon name="cam" size={20} color={c.fg3} />}
     </View>
   );
@@ -125,18 +134,18 @@ function AddKitBody({ close }: { close: () => void }) {
   };
   const stepBtn = (label: string, d: number, off: boolean) => (
     <Pressy onPress={() => setQty(q => Math.min(999, Math.max(1, q + d)))} disabled={off} accessibilityLabel={label}
-      style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: c.line, backgroundColor: c.tile, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
-      <Text style={{ fontFamily: F.black, fontSize: 24, color: c.fg }}>{d > 0 ? '+' : '−'}</Text>
+      style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
+      <Text style={{ fontFamily: F.black, fontSize: 24, color: c.softInk }}>{d > 0 ? '+' : '−'}</Text>
     </Pressy>
   );
   if (step === 'confirm') {
     return (
       <View>
         <SheetTitle title={t('Pakka add karein?')} sub={t('Ek baar add kiya to hata nahi sakte. Naam aur ginti dobara check kar lo.')} />
-        <View style={{ padding: 14, borderRadius: 16, backgroundColor: 'rgba(84,9,218,0.08)', marginBottom: 12 }}>
+        <View style={{ padding: 14, borderRadius: 20, backgroundColor: c.soft, marginBottom: 12 }}>
           <Text style={{ fontFamily: F.black, fontSize: 18, color: c.fg }}>{nm} × {qty}</Text>
           <Text style={{ fontFamily: F.body, fontSize: 13.5, color: c.fg2, marginTop: 2 }}>{kindLabel(kind)}</Text>
-          {shot ? <Image source={{ uri: shot.preview }} style={{ width: 72, height: 72, borderRadius: 14, marginTop: 10 }} resizeMode="cover" /> : null}
+          {shot ? <Image source={{ uri: shot.preview }} style={{ width: 72, height: 72, borderRadius: 18, marginTop: 10 }} resizeMode="cover" /> : null}
         </View>
         <Button label={busy ? t('Add ho raha hai…') : t('Haan, pakka add karo')} variant="ink" disabled={busy} onPress={save} />
         <View style={{ alignItems: 'center' }}><LinkButton label={t('Wapas badlo')} onPress={() => setStep('form')} /></View>
@@ -154,18 +163,18 @@ function AddKitBody({ close }: { close: () => void }) {
       <Text style={lab}>{t('Kitne?')}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 22 }}>
         {stepBtn(t('Kam'), -1, qty <= 1)}
-        <Text accessibilityLabel={t('Ginti') + ' ' + qty} style={{ fontFamily: F.shout, fontSize: 36, color: c.fg, minWidth: 64, textAlign: 'center' }}>{qty}</Text>
+        <Text accessibilityLabel={t('Ginti') + ' ' + qty} style={{ fontFamily: F.black, fontSize: 36, color: c.fg, minWidth: 64, textAlign: 'center' }}>{qty}</Text>
         {stepBtn(t('Zyada'), 1, qty >= 999)}
       </View>
       <Text style={lab}>{t('Saaman ki photo (optional)')}</Text>
       {shot ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <Image source={{ uri: shot.preview }} style={{ width: 96, height: 96, borderRadius: 18 }} resizeMode="cover" />
+          <Image source={{ uri: shot.preview }} style={{ width: 96, height: 96, borderRadius: 24 }} resizeMode="cover" />
           <LinkButton label={t('Dobara lo')} onPress={snap} />
         </View>
       ) : (
         <Pressy onPress={snap} accessibilityLabel={t('Photo lo')} scaleTo={0.96}
-          style={{ height: 96, borderRadius: 20, borderWidth: 2.5, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.tile, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          style={{ height: 96, borderRadius: 24, borderWidth: 2, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
           <Icon name="cam" size={28} color={c.fg2} />
           <Text style={{ fontFamily: F.black, fontSize: 13, color: c.fg2 }}>{t('Photo lo')}</Text>
         </Pressy>
@@ -191,7 +200,7 @@ export function DocsCard() {
     : pcc ? <StatusPill status="arrived" label={t('Pending')} /> : null;
   const head = (label: string, right?: React.ReactNode) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-      <Text style={{ fontFamily: F.black, fontSize: 12.5, color: c.fg3, letterSpacing: 0.4, textTransform: 'uppercase' }}>{label}</Text>
+      <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: c.fg3, letterSpacing: 0.4, textTransform: 'uppercase' }}>{label}</Text>
       {right}
     </View>
   );
@@ -199,12 +208,12 @@ export function DocsCard() {
   const sub = { fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 4 } as const;
   return (
     <Section title={t('Mere documents')}>
-      <View style={box}>
+      <DashCard style={box}>
         <View style={{ padding: 16 }}>
           {head(t('Aadhaar'), last4 && p?.aadhaar_verified_at ? <StatusPill status="done" label={t('Verified')} /> : null)}
           {last4 ? (
             <>
-              <Text accessibilityLabel={t('Aadhaar') + ' ' + last4} style={{ fontFamily: F.black, fontSize: 22, letterSpacing: 1.5, color: c.fg, marginTop: 6 }}>XXXX XXXX {last4}</Text>
+              <Text accessibilityLabel={t('Aadhaar') + ' ' + last4} style={{ fontFamily: F.black, fontSize: 22, letterSpacing: 1.2, color: c.fg, marginTop: 6 }}>XXXX XXXX {last4}</Text>
               {p?.aadhaar_verified_at ? <Text style={sub}>{t('Verified')} {fmtDate(p.aadhaar_verified_at)}</Text> : <Text style={sub}>{t('Daddy abhi verify kar rahe hain')}</Text>}
             </>
           ) : wait}
@@ -220,7 +229,7 @@ export function DocsCard() {
             </>
           ) : wait}
         </View>
-      </View>
+      </DashCard>
       <View style={{ height: 14 }} />
       <DocsPanel />
     </Section>

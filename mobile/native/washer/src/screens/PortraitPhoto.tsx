@@ -21,7 +21,7 @@ function Pic({ uri, label, ring }: { uri: string; label: string; ring?: boolean 
   const { c } = useTheme();
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
-      <Image source={{ uri }} accessibilityLabel={label} resizeMode="cover" style={{ width: '100%', aspectRatio: 1, borderRadius: 24, backgroundColor: brand.gold, borderWidth: ring ? 3 : 1, borderColor: ring ? brand.gold : c.line }} />
+      <Image source={{ uri }} accessibilityLabel={label} resizeMode="cover" style={{ width: '100%', aspectRatio: 1, borderRadius: 24, backgroundColor: brand.gold, borderWidth: ring ? 3 : 0, borderColor: brand.gold }} />
       <Text style={{ fontFamily: F.bold, fontSize: 12.5, color: c.fg2, marginTop: 6 }}>{label}</Text>
     </View>
   );

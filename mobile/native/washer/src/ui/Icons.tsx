@@ -4,7 +4,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 export type IconName =
   | 'phone' | 'pin' | 'arrow' | 'check' | 'cam' | 'walk' | 'flag' | 'drop' | 'star' | 'note' | 'warn'
   | 'redo' | 'pause' | 'help' | 'plus' | 'back' | 'user' | 'globe' | 'sun' | 'reset' | 'logout' | 'sos'
-  | 'tabRound' | 'tabExtra' | 'tabPaisa' | 'tabMe';
+  | 'calendar' | 'bell' | 'tabRound' | 'tabExtra' | 'tabPaisa' | 'tabMe';
 
 export type TaskKey = 'pressure' | 'foam' | 'interior' | 'tyre' | 'detailing' | 'dry';
 
@@ -83,6 +83,13 @@ const ICONS: Record<IconName, (color: string, active: boolean) => React.ReactNod
       <Path d="M12 10v4.2M12 17h.01" />
     </>
   ),
+  calendar: () => (
+    <>
+      <Rect x={3.5} y={5} width={17} height={15.5} rx={3.5} />
+      <Path d="M3.5 10h17M8 3v4M16 3v4" />
+    </>
+  ),
+  bell: () => <Path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15zM10 21.5a2.2 2.2 0 0 0 4 0" />,
   tabRound: (c, a) => (
     <>
       <Circle cx={6} cy={18} r={2.5} fill={c} fillOpacity={a ? 0.22 : 0} />
@@ -129,6 +136,8 @@ const STROKE: Partial<Record<IconName, { w: number; cap?: 'round'; join?: 'round
   reset: { w: 2, cap: 'round' },
   logout: { w: 2, cap: 'round' },
   sos: { w: 2, cap: 'round', join: 'round' },
+  calendar: { w: 2, cap: 'round', join: 'round' },
+  bell: { w: 2, cap: 'round', join: 'round' },
   tabRound: { w: 2, cap: 'round', join: 'round' },
   tabExtra: { w: 2, cap: 'round', join: 'round' },
   tabPaisa: { w: 2, cap: 'round', join: 'round' },

@@ -14,7 +14,7 @@ export function SheetTitle({ title, sub }: { title: string; sub?: string }) {
   const { c } = useTheme();
   return (
     <View style={{ marginBottom: 12 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 24, color: c.fg, letterSpacing: -0.3 }}>{title}</Text>
+      <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 22, color: c.fg, letterSpacing: -0.2 }}>{title}</Text>
       {sub ? <Text style={{ fontFamily: F.body, fontSize: 14.5, color: c.fg2, marginTop: 4 }}>{sub}</Text> : null}
     </View>
   );
@@ -42,7 +42,7 @@ function LinkRow({ title, sub, onPress, first }: { title: string; sub?: string; 
 
 function RowsBox({ children }: { children: React.ReactNode }) {
   const { c } = useTheme();
-  return <View style={[{ borderRadius: 22, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line, overflow: 'hidden' }, cardShadow(c)]}>{children}</View>;
+  return <View style={[{ borderRadius: 24, backgroundColor: c.card, overflow: 'hidden', borderWidth: c.shadow ? 0 : 1, borderColor: c.line }, cardShadow(c)]}>{children}</View>;
 }
 
 /** The little 🧽 ····· 🚗 strip. */
@@ -79,7 +79,7 @@ function SyncBody({ label, n, close }: { label: string; n: number; close: () => 
             <Text style={{ fontFamily: F.bold, fontSize: 16, color: c.fg }}>{t('Ruke hue update')}</Text>
             <Text style={{ fontFamily: F.body, fontSize: 13, color: c.fg3 }}>{t('Net nahi ho to phone pe safe rehte hain')}</Text>
           </View>
-          <Text style={{ fontFamily: F.shout, fontSize: 24, color: c.fg }}>{n}</Text>
+          <Text style={{ fontFamily: F.black, fontSize: 24, color: c.fg }}>{n}</Text>
         </View>
         <View style={{ paddingVertical: 14, paddingHorizontal: 16, minHeight: 66, justifyContent: 'center', borderTopWidth: 1, borderTopColor: c.line }}>
           <Text style={{ fontFamily: F.bold, fontSize: 16, color: c.fg }}>{t('Photo')}</Text>
@@ -140,8 +140,8 @@ function ReferBody({ close }: { close: () => void }) {
   return (
     <View>
       <SheetTitle title={t('Dost ko laao')} sub={t('Dost sign-up pe aapka code bataye aur kaam shuru kare, toh aapko bonus milega.')} />
-      <View style={{ marginTop: 8, padding: 14, borderRadius: 16, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center' }}>
-        <Text accessibilityLabel={code} style={{ fontFamily: F.black, fontSize: 34, letterSpacing: 2.7, color: c.fg }}>{code}</Text>
+      <View style={{ marginTop: 8, padding: 14, borderRadius: 20, backgroundColor: c.soft, alignItems: 'center' }}>
+        <Text accessibilityLabel={code} style={{ fontFamily: F.black, fontSize: 34, letterSpacing: 2.7, color: c.softInk }}>{code}</Text>
       </View>
       <View style={{ marginTop: 12, gap: 10 }}>
         <Button label={t('WhatsApp pe bhejo')} variant="mint" onPress={() => open('https://wa.me/?text=' + encodeURIComponent(msg))} />
@@ -204,7 +204,7 @@ function LangBody({ close }: { close: () => void }) {
             <Pressy key={l.code} scaleTo={0.985} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={l.label + ', ' + l.sub}
               onPress={() => { ui.haptic(6); act.setLang(l.code); close() }}
               style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16, minHeight: 56 }, i > 0 && { borderTopWidth: 1, borderTopColor: c.line }]}>
-              <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: on ? brand.violet : c.line, backgroundColor: on ? brand.violet : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: on ? c.primary : c.line, backgroundColor: on ? c.primary : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
                 {on ? <Icon name="check" size={14} color="#fff" /> : null}
               </View>
               <View style={{ flex: 1 }}>

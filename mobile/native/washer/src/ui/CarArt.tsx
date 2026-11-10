@@ -49,7 +49,7 @@ export function CarArt({ car, width, height }: { car: Car; width: number; height
           <Stop offset="1" stopColor="#fff" stopOpacity={0} />
         </LinearGradient>
       </Defs>
-      <Ellipse cx={222} cy={152} rx={200} ry={10} fill="#000" opacity={0.28} />
+      <Ellipse cx={222} cy={152} rx={200} ry={10} fill="#000" opacity={0.18} />
       <Path d={BODY[t]} fill={`url(#${id})`} stroke="rgba(0,0,0,.35)" strokeWidth={1.5} />
       <Path d={BODY[t]} fill={`url(#${id}h)`} opacity={0.7} />
       <Path d={GLASS[t]} fill="#141a26" opacity={0.88} />

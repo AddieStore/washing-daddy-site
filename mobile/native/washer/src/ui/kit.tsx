@@ -313,7 +313,7 @@ export function Row({
   return <View style={st}>{body}</View>;
 }
 
-export function Tile({ emoji, value, unit, label, style }: { emoji?: string; value: string | number; unit?: string; label?: string; style?: S<ViewStyle> }) {
+export function LegacyTile({ emoji, value, unit, label, style }: { emoji?: string; value: string | number; unit?: string; label?: string; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   return (
     <View style={[{ borderRadius: 22, padding: 16, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line }, cardShadow(c), style]}>
@@ -595,7 +595,7 @@ export function ProgressBar({ fraction, color, height = 12, style }: { fraction:
   );
 }
 
-export function Ring({
+export function LegacyRing({
   fraction,
   size = 120,
   color,

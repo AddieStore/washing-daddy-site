@@ -59,7 +59,6 @@ export function Sheet({
               s.sheet,
               {
                 backgroundColor: c.sheetBg,
-                borderColor: c.line,
                 maxHeight: height * 0.92,
                 transform: [{ translateY }],
               },
@@ -87,14 +86,16 @@ const s = StyleSheet.create({
   sheet: {
     width: '100%',
     maxWidth: 440,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    borderWidth: 1,
-    borderBottomWidth: 0,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    shadowColor: '#24065F',
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -6 },
+    elevation: 12,
     paddingTop: 10,
-    overflow: 'hidden',
-  },
-  grab: { width: 48, height: 5, borderRadius: 3, alignSelf: 'center', marginTop: 4, marginBottom: 14 },
+    },
+  grab: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 4, marginBottom: 14 },
 });
 
 /* ---------- imperative host ---------- */

@@ -5,6 +5,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { F, Icon, TaskIcon, brand, cardShadow, sheet, ui, useTheme } from '../ui';
 import { Button, ChipPicker, Field, LinkButton, Pressy, SyncChip } from '../ui';
+import { DashCard, IconBubble, Ring } from '../ui/dash';
+import { guideAt } from '../lib/washGuide';
 import { act, photoSrc, syncState } from '../state/store';
 import { t } from '../lib/i18n';
 import { t12 } from '../lib/time';
@@ -26,26 +28,31 @@ export function ScreenBar({ title, back }: { title: string; back?: boolean }) {
   return (
     <View style={{ paddingTop: insets.top + 6, paddingBottom: 8, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.bg }}>
       {back ? (
-        <Pressy onPress={goBack} accessibilityLabel={t('Round par wapas')} style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: c.tile, borderWidth: 1, borderColor: c.line }}>
+        <Pressy onPress={goBack} accessibilityLabel={t('Round par wapas')} style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card, ...cardShadow(c) }}>
           <Icon name="back" size={22} color={c.fg} />
         </Pressy>
       ) : null}
-      <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, fontFamily: F.black, fontSize: 17, color: c.fg }}>{title}</Text>
+      <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, fontFamily: F.semi, fontSize: 17, color: c.fg }}>{title}</Text>
       <LiveSyncChip />
     </View>
   );
 }
 
 /* ---------- wash timer, ticks every second ---------- */
-export function WashTimer({ startedAt, extraMinutes = 0 }: { startedAt: string; extraMinutes?: number }) {
+export function WashTimer({ startedAt, extraMinutes = 0, interiorFrom }: { startedAt: string; extraMinutes?: number; interiorFrom?: number | null }) {
+  const { c } = useTheme();
   const [, setN] = useState(0);
   useEffect(() => { const i = setInterval(() => setN(n => n + 1), 1000); return () => clearInterval(i) }, []);
   const s = Math.max(0, Math.floor((Date.now() - Date.parse(startedAt)) / 1000));
   const mm = String(Math.floor(s / 60)).padStart(2, '0'), ss = String(s % 60).padStart(2, '0');
+  const g = guideAt(startedAt, Date.now(), interiorFrom);
+  const total = g ? g.plan[g.plan.length - 1].from : 660;
   return (
-    <View style={{ position: 'absolute', top: 58, left: 0, right: 0, alignItems: 'center', zIndex: 3 }} pointerEvents="none">
-      <Text style={{ fontFamily: F.shout, fontSize: 58, lineHeight: 64, color: brand.cream, letterSpacing: 1, textShadowColor: brand.ink, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0 }}>{mm}:{ss}</Text>
-      <Text style={{ fontFamily: F.black, fontSize: 11, letterSpacing: 1.8, color: brand.gold, marginTop: 2 }}>{t('WASH TIME')}{extraMinutes > 0 ? ` · +${extraMinutes} MIN` : ''}</Text>
+    <View style={{ alignItems: 'center' }} accessibilityLabel={`${t('WASH TIME')} ${mm}:${ss}`}>
+      <Ring size={104} stroke={9} fraction={total ? s / total : 0}>
+        <Text style={{ fontFamily: F.black, fontSize: 22, lineHeight: 26, color: c.heroInk }}>{mm}:{ss}</Text>
+        <Text style={{ fontFamily: F.semi, fontSize: 9.5, letterSpacing: 1, color: c.heroInk, opacity: 0.65 }}>{t('WASH TIME')}{extraMinutes > 0 ? ` +${extraMinutes}` : ''}</Text>
+      </Ring>
     </View>
   );
 }
@@ -68,14 +75,12 @@ export function openInteriorSheet(reg: string) { sheet.open(close => <InteriorSh
 export function InteriorButton({ reg }: { reg: string }) {
   const { c } = useTheme();
   return (
-    <Pressy onPress={() => openInteriorSheet(reg)} accessibilityLabel={t('Interior kar raha hoon · +10 min')} scaleTo={0.97}
-      style={{ marginTop: 12, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, backgroundColor: c.tile, borderWidth: 2, borderColor: brand.violet }}>
-      <View style={{ width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: brand.violet }}>
-        <TaskIcon k="interior" size={24} color="#fff" />
-      </View>
-      <Text style={{ flex: 1, fontFamily: F.black, fontSize: 16, color: c.fg }}>{t('Interior kar raha hoon · +10 min')}</Text>
-      <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: brand.gold }}><Text style={{ fontFamily: F.black, fontSize: 12, color: brand.ink }}>+10</Text></View>
-    </Pressy>
+    <DashCard onPress={() => openInteriorSheet(reg)} accessibilityLabel={t('Interior kar raha hoon · +10 min')}
+      style={{ marginTop: 12, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 14 }}>
+      <IconBubble size={44} bg={c.primary}><TaskIcon k="interior" size={22} color="#fff" /></IconBubble>
+      <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 15.5, color: c.fg }}>{t('Interior kar raha hoon · +10 min')}</Text>
+      <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: brand.gold }}><Text style={{ fontFamily: F.black, fontSize: 12, color: brand.ink }}>+10</Text></View>
+    </DashCard>
   );
 }
 
@@ -85,13 +90,13 @@ export function ExtrasRow({ addons, compact }: { addons: { key: string; at: stri
   if (!addons.length) return null;
   const name = (k: string) => (k === 'interior' ? t('Interior') : k);
   return (
-    <View style={{ marginTop: 12, gap: 6 }}>
-      {compact ? null : <Text style={{ fontFamily: F.black, fontSize: 11, letterSpacing: 1.6, textTransform: 'uppercase', color: c.fg3 }}>{t('Extras')}</Text>}
+    <View style={{ marginTop: 12, gap: 8 }}>
+      {compact ? null : <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 17, color: c.fg, marginTop: 10 }}>{t('Extras')}</Text>}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {addons.map((a, i) => (
-          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(20,192,138,0.14)', borderWidth: 1.5, borderColor: 'rgba(20,192,138,0.45)' }}>
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(20,192,138,0.14)' }}>
             <Icon name="check" size={16} color={brand.mint} />
-            <Text style={{ fontFamily: F.black, fontSize: 14, color: c.fg }}>{compact && a.key === 'interior' ? t('Interior jud gaya · +10 min') : `${name(a.key)} · +${a.minutes} min`}</Text>
+            <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg }}>{compact && a.key === 'interior' ? t('Interior jud gaya · +10 min') : `${name(a.key)} · +${a.minutes} min`}</Text>
           </View>
         ))}
       </View>
@@ -111,16 +116,16 @@ export function TaskRow({ k, done, doneAt, can, onPress }: { k: TaskKey; done: b
   const extra = !['pressure', 'dry'].includes(k);
   return (
     <Pressy onPress={press} scaleTo={0.97} accessibilityLabel={m.hi} accessibilityState={{ checked: done, disabled: !can && !done }}
-      style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 72, padding: 10, paddingRight: 14, borderRadius: 20, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line }, cardShadow(c), { transform: [{ translateX: sh }] } as any]}>
-      <View style={{ width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: done ? brand.mint : c.line, backgroundColor: done ? brand.mint : 'transparent' }}>
-        {done ? <Icon name="check" size={26} color="#fff" /> : <TaskIcon k={k} size={26} color={c.fg3} />}
+      style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 72, padding: 14, borderRadius: 24, backgroundColor: c.card }, cardShadow(c), { transform: [{ translateX: sh }] } as any]}>
+      <View style={{ width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? brand.mint : c.soft }}>
+        {done ? <Icon name="check" size={24} color="#fff" /> : <TaskIcon k={k} size={24} color={c.softInk} />}
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <Text style={{ fontFamily: F.black, fontSize: 17, color: c.fg, textDecorationLine: done ? 'line-through' : 'none', textDecorationColor: 'rgba(20,192,138,0.7)' }}>{t(m.hi)}</Text>
-          {extra ? <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: brand.gold }}><Text style={{ fontFamily: F.black, fontSize: 10, letterSpacing: 1, color: brand.ink }}>{t('AAJ')}</Text></View> : null}
+          <Text style={{ fontFamily: F.semi, fontSize: 15.5, color: c.fg, textDecorationLine: done ? 'line-through' : 'none', textDecorationColor: 'rgba(20,192,138,0.7)' }}>{t(m.hi)}</Text>
+          {extra ? <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99, backgroundColor: brand.gold }}><Text style={{ fontFamily: F.black, fontSize: 10, letterSpacing: 1, color: brand.ink }}>{t('AAJ')}</Text></View> : null}
         </View>
-        <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3 }}>{t(m.sub)}</Text>
+        <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3 }}>{t(m.sub)}</Text>
       </View>
       <Text style={{ fontFamily: F.black, fontSize: 13, color: c.ok }}>{done && doneAt ? t12(doneAt).replace(/ (AM|PM)/, '') : ''}</Text>
     </Pressy>
@@ -136,15 +141,15 @@ export function Shot({ kind, list, enabled, onTake, onView }: { kind: 'after' | 
   const fly = useRef(new Animated.Value(1)).current;
   const n = list.length;
   useEffect(() => { if (n) { fly.setValue(0.85); Animated.spring(fly, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 10 }).start() } }, [n, fly]);
-  const R = 20;
+  const R = 24;
   // the wrapper owns the flex slot; the tile inside is a fixed-aspect square that can never exceed it
   if (!last) {
     return (
       <View style={{ flex: 1, minWidth: 0 }}>
         <Pressy onPress={onTake} disabled={!enabled} accessibilityLabel={lab} scaleTo={0.94}
-          style={{ width: '100%', aspectRatio: 1, borderRadius: R, borderWidth: 2.5, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.tile, alignItems: 'center', justifyContent: 'center', gap: 4, overflow: 'hidden', opacity: enabled ? 1 : 0.5 }}>
-          <Icon name={kind === 'issue' ? 'warn' : 'cam'} size={30} color={c.fg2} />
-          <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 13, color: c.fg2 }}>{lab}</Text>
+          style={{ width: '100%', aspectRatio: 1, borderRadius: R, backgroundColor: c.card, ...cardShadow(c), alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden', opacity: enabled ? 1 : 0.5 }}>
+          <IconBubble icon={kind === 'issue' ? 'warn' : 'cam'} size={52} />
+          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 14, color: c.fg }}>{lab}</Text>
         </Pressy>
       </View>
     );
@@ -194,9 +199,9 @@ export function ReqCard({ q, customer }: { q: Req; customer: string }) {
   const { c } = useTheme();
   const seen = q.status === 'seen';
   return (
-    <View style={{ gap: 10, padding: 14, borderRadius: 20, backgroundColor: seen ? c.tile : 'rgba(255,140,30,0.14)', borderWidth: 1.5, borderColor: seen ? c.line : 'rgba(255,106,26,0.4)' }}>
+    <View style={{ gap: 10, padding: 14, borderRadius: 24, backgroundColor: seen ? c.card : 'rgba(255,140,30,0.14)', ...(seen ? cardShadow(c) : null) }}>
       <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-        <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: brand.orange, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: brand.orange, alignItems: 'center', justifyContent: 'center' }}>
           <Icon name={q.kind === 'rewash' ? 'redo' : 'note'} size={22} color="#fff" />
         </View>
         <View style={{ flex: 1 }}>
@@ -215,11 +220,11 @@ export function ReqCard({ q, customer }: { q: Req; customer: string }) {
         </View>
       ) : null}
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <View style={{ flex: 1 }}><Pressy disabled={seen} onPress={() => act.reqSeen(q.id)} style={{ width: '100%', minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: c.tile, borderWidth: 1, borderColor: c.line, opacity: seen ? 0.5 : 1 }}>
+        <View style={{ flex: 1 }}><Pressy disabled={seen} onPress={() => act.reqSeen(q.id)} style={{ width: '100%', minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: c.soft, opacity: seen ? 0.5 : 1 }}>
           <Text style={{ fontFamily: F.black, fontSize: 15, color: c.fg }}>{seen ? t('Dekh liya ✓') : t('Dekh liya')}</Text>
         </Pressy></View>
-        <View style={{ flex: 1 }}><Pressy onPress={() => act.reqDone(q.id)} style={{ width: '100%', minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: brand.ink, borderWidth: 1, borderColor: brand.ink }}>
-          <Text style={{ fontFamily: F.black, fontSize: 15, color: brand.cream }}>{t('Kar diya')}</Text>
+        <View style={{ flex: 1 }}><Pressy onPress={() => act.reqDone(q.id)} style={{ width: '100%', minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary }}>
+          <Text style={{ fontFamily: F.black, fontSize: 15, color: '#fff' }}>{t('Kar diya')}</Text>
         </Pressy></View>
       </View>
     </View>
@@ -321,7 +326,7 @@ function SuccessSheet({ customer, next, goPaisa, close }: { customer: string; ne
       <Animated.View style={{ width: 104, height: 104, borderRadius: 52, marginTop: 6, marginBottom: 14, backgroundColor: brand.mint, alignItems: 'center', justifyContent: 'center', borderWidth: 12, borderColor: 'rgba(20,192,138,0.18)', transform: [{ scale: pop }] }}>
         <Icon name="check" size={48} color="#fff" />
       </Animated.View>
-      <Text style={{ fontFamily: F.shout, fontSize: 44, textTransform: 'uppercase', color: c.fg }}>{t('Chamak gayi!')}</Text>
+      <Text style={{ fontFamily: F.black, fontSize: 30, color: c.fg }}>{t('Chamak gayi!')}</Text>
       <Text style={{ fontFamily: F.body, fontSize: 15, color: c.fg2, marginTop: 4, textAlign: 'center' }}>{t(`${customer} ke phone pe pahunch gaya`)}</Text>
       <Text style={{ fontSize: 24, marginTop: 10, letterSpacing: 2 }}>{'🧽 · · · · 📱'}</Text>
       <View style={{ alignSelf: 'stretch', marginTop: 14 }}>

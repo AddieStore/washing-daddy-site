@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BigTitle, Button, CallButton, Card, DemoNote, Empty, Eyebrow, F, Icon, Pressy, brand, ui, useTheme } from '../../ui';
+import { BigNumber, Button, CallButton, DashCard, DemoNote, Empty, F, Icon, IconBubble, ListCard, Pressy, SectionTitle, brand, ui, useTheme } from '../../ui';
 import { Extra, Money, act, isOnline, useStore } from '../../state/store';
 import { mapsOf, telOf, type Job } from '../../lib/data';
 import { rupee } from '../../lib/time';
@@ -11,16 +11,6 @@ import { t } from '../../lib/i18n';
 import { TopBar } from '../../screens/TopBar';
 
 const open = (url: string) => { void Linking.openURL(url).catch(() => {}); };
-
-function SecHead({ title, meta }: { title: string; meta?: string }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.shout, fontSize: 24, lineHeight: 28, textTransform: 'uppercase', color: c.fg, flexShrink: 1 }}>{title}</Text>
-      {meta ? <Text style={{ fontFamily: F.body, fontSize: 13, color: c.fg3 }}>{meta}</Text> : null}
-    </View>
-  );
-}
 
 function JobCard({ j }: { j: Job }) {
   const { c } = useTheme();
@@ -76,8 +66,18 @@ function JobCard({ j }: { j: Job }) {
   }
 
   return (
-    <Card style={{ padding: 16, marginBottom: 14 }}>
-      <SecHead title={j.service || t('Extra kaam')} meta={`${rupee(j.price)} · ${t('aapke')} ${share}`} />
+    <DashCard style={{ padding: 16, marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+        <IconBubble icon="plus" size={42} tint={brand.orange} bg="rgba(255,106,26,0.14)" />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 16, color: c.fg }}>{j.service || t('Extra kaam')}</Text>
+          <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3 }}>{t('Customer')} {rupee(j.price)}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end', flexShrink: 0, maxWidth: '40%' }}>
+          <BigNumber value={share} size={28} style={{ color: c.ok }} />
+          <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{t('aapke')}</Text>
+        </View>
+      </View>
       {maps
         ? <Pressy onPress={() => open(maps)} scaleTo={0.99} accessibilityRole="link" accessibilityLabel={t('Google Maps mein kholo')}>{where}</Pressy>
         : where}
@@ -88,9 +88,9 @@ function JobCard({ j }: { j: Job }) {
           {tel ? <CallButton small label={t('Call')} phone={tel.slice(4)} /> : null}
         </View>
       ) : null}
-      {j.photo ? <Image source={{ uri: j.photo }} accessibilityLabel={t('Kaam ki photo')} resizeMode="contain" style={{ width: '100%', height: 240, borderRadius: 22, marginVertical: 10, backgroundColor: c.tile2 }} /> : null}
+      {j.photo ? <Image source={{ uri: j.photo }} accessibilityLabel={t('Kaam ki photo')} resizeMode="contain" style={{ width: '100%', height: 240, borderRadius: 18, marginVertical: 10, backgroundColor: c.tile2 }} /> : null}
       {action}
-    </Card>
+    </DashCard>
   );
 }
 
@@ -105,32 +105,27 @@ export default function ExtraScreen() {
       <ScrollView stickyHeaderIndices={[0]} contentContainerStyle={{ paddingBottom: 128 + insets.bottom }} showsVerticalScrollIndicator={false}>
         <TopBar title={t('Extra kaam')} />
         <View style={{ paddingHorizontal: 16 }}>
-          <View style={{ paddingTop: 18, paddingBottom: 4 }}>
-            <Eyebrow>{list.length ? t(`${list.length} kaam baaki`) : t('Sab ho gaya')}</Eyebrow>
-            <BigTitle size={50} em={t('kaam.')}>{t('On-demand')}</BigTitle>
-          </View>
-          <View style={{ marginTop: 18 }}>
+          <SectionTitle title={t('On-demand')} action={list.length ? t(`${list.length} kaam baaki`) : t('Sab ho gaya')} style={{ marginTop: 18 }} />
+          <View>
             {list.length
               ? list.map((j) => <JobCard key={j.id} j={j} />)
               : isOnline()
                 ? <Empty title={t('Abhi koi extra kaam nahi')} text={t('Customer ya Ravi ka koi kaam aaya toh yahan dikhega.')} />
                 : <Empty title={t('Aap offline ho')} text={t('Naye customer kaam nahi dikhenge. Round tab pe online karo.')} />}
           </View>
-          <View style={{ marginTop: 26 }}>
-            <SecHead title={t('Ho gaye')} meta={done.length ? `${rupee(earned)} ${t('ab tak')}` : undefined} />
-            {done.length ? (
-              <Card style={{ overflow: 'hidden' }}>
-                {done.slice(0, 20).map((j, i) => (
-                  <View key={j.id} style={[s.row, i > 0 && { borderTopWidth: 1, borderTopColor: c.line }]}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 16, color: c.fg }}>{j.service || t('Extra kaam')}</Text>
-                      <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 13, color: c.fg3 }}>{j.car || j.reg || ''} · {(j.finished_at || j.date || '').slice(0, 10)}</Text>
-                    </View>
-                    <Text style={{ fontFamily: F.black, fontSize: 16, color: c.fg }}>{rupee(Money.share(j.price))}</Text>
-                  </View>
-                ))}
-              </Card>
-            ) : <Empty title={t('Abhi kuch nahi')} text={t('Jo extra kaam khatam karoge woh yahan jama hoga.')} />}
+          <View style={{ marginTop: 14 }}>
+            <SectionTitle title={t('Ho gaye')} action={done.length ? `${rupee(earned)} ${t('ab tak')}` : undefined} />
+            {done.length ? done.slice(0, 20).map((j) => (
+              <ListCard
+                key={j.id}
+                style={{ marginBottom: 12 }}
+                title={j.service || t('Extra kaam')}
+                detail={`${j.car || j.reg || ''} · ${(j.finished_at || j.date || '').slice(0, 10)}`}
+                icon="check"
+                iconTone={brand.mint}
+                right={<BigNumber value={rupee(Money.share(j.price))} size={20} />}
+              />
+            )) : <Empty title={t('Abhi kuch nahi')} text={t('Jo extra kaam khatam karoge woh yahan jama hoga.')} />}
           </View>
         </View>
       </ScrollView>
@@ -141,5 +136,4 @@ export default function ExtraScreen() {
 const s = StyleSheet.create({
   where: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 4 },
   whereTxt: { flex: 1, fontFamily: F.semi, fontSize: 14 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 16, minHeight: 66 },
 });

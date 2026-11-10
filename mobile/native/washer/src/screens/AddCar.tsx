@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Button, ChipPicker, Eyebrow, Field, F, LinkButton, Pressy, brand, sheet, ui, useTheme } from '../ui';
+import { BigNumber, Button, ChipPicker, DashCard, Eyebrow, Field, F, LinkButton, Pressy, brand, sheet, ui, useTheme } from '../ui';
 import { act, DAY, route } from '../state/store';
 import { PLAN, PLAN_PRICE, normReg, type PlanId } from '../lib/schedule';
 import { SHARE } from '../lib/data';
@@ -57,30 +57,35 @@ function AddCarForm({ close }: { close: () => void }) {
       <Text style={{ fontFamily: F.body, fontSize: 14.5, color: c.fg2, marginTop: 4, marginBottom: 10 }}>
         {t('Aaj se aapke round pe aa jayegi. Ravi manzoori denge aur book mein daalenge.')}
       </Text>
-      <Eyebrow style={lbl(0)}>{t('Gaadi')}</Eyebrow>
-      <Field value={model} onChangeText={setModel} maxLength={60} placeholder={t('Jaise: Swift')} />
-      <Eyebrow style={lbl()}>{t('Gaadi ka number')}</Eyebrow>
-      <Field value={plate} onChangeText={(v) => setPlate(v.toUpperCase())} maxLength={20} autoCapitalize="characters" autoCorrect={false} placeholder="DL 8C AB 1234" />
-      <Eyebrow style={lbl()}>{t('Ghar / area')}</Eyebrow>
-      <Field value={area} onChangeText={setArea} maxLength={80} placeholder="GH-9, 212" />
-      <Eyebrow style={lbl()}>{t('Customer')}</Eyebrow>
-      <Field value={name} onChangeText={setName} maxLength={80} placeholder={t('Naam')} />
-      <Field value={phone} onChangeText={(v) => setPhone(v.replace(/\D/g, ''))} maxLength={10} keyboardType="number-pad" inputMode="numeric" placeholder={t('Phone (10 number)')} style={{ marginTop: 8 }} />
-      <Eyebrow style={lbl()}>{t('Plan')}</Eyebrow>
-      <ChipPicker
-        options={PLANS.map((k) => ({ value: k, label: PLAN[k].name }))}
-        value={plan}
-        onChange={(k) => { setPlan(k); setF(PLAN_PRICE[k]); ui.haptic(4); }}
-      />
-      <Eyebrow style={lbl()}>{t('Mahine ka kitna tay hua?')}</Eyebrow>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <StepBtn label="−" a11y={t('Kam')} onPress={() => step(-100)} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 56, borderRadius: 16, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line, flexDirection: 'row', gap: 6 }}>
-          <Text style={{ fontFamily: F.shout, fontSize: 34, color: c.fg }}>₹{fee}</Text>
-          <Text style={{ fontFamily: F.bold, fontSize: 13, color: c.fg3 }}>{t('mahina')}</Text>
+      <DashCard style={{ padding: 16 }}>
+        <Eyebrow style={lbl(0)}>{t('Gaadi')}</Eyebrow>
+        <Field value={model} onChangeText={setModel} maxLength={60} placeholder={t('Jaise: Swift')} />
+        <Eyebrow style={lbl()}>{t('Gaadi ka number')}</Eyebrow>
+        <Field value={plate} onChangeText={(v) => setPlate(v.toUpperCase())} maxLength={20} autoCapitalize="characters" autoCorrect={false} placeholder="DL 8C AB 1234" />
+        <Eyebrow style={lbl()}>{t('Ghar / area')}</Eyebrow>
+        <Field value={area} onChangeText={setArea} maxLength={80} placeholder="GH-9, 212" />
+      </DashCard>
+      <DashCard style={{ padding: 16, marginTop: 12 }}>
+        <Eyebrow style={lbl(0)}>{t('Customer')}</Eyebrow>
+        <Field value={name} onChangeText={setName} maxLength={80} placeholder={t('Naam')} />
+        <Field value={phone} onChangeText={(v) => setPhone(v.replace(/\D/g, ''))} maxLength={10} keyboardType="number-pad" inputMode="numeric" placeholder={t('Phone (10 number)')} style={{ marginTop: 8 }} />
+      </DashCard>
+      <DashCard style={{ padding: 16, marginTop: 12 }}>
+        <Eyebrow style={lbl(0)}>{t('Plan')}</Eyebrow>
+        <ChipPicker
+          options={PLANS.map((k) => ({ value: k, label: PLAN[k].name }))}
+          value={plan}
+          onChange={(k) => { setPlan(k); setF(PLAN_PRICE[k]); ui.haptic(4); }}
+        />
+        <Eyebrow style={lbl()}>{t('Mahine ka kitna tay hua?')}</Eyebrow>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <StepBtn label="−" a11y={t('Kam')} onPress={() => step(-100)} />
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 56, borderRadius: 20, backgroundColor: c.soft }}>
+            <BigNumber value={`₹${fee}`} unit={t('mahina')} size={28} style={{ color: c.softInk }} />
+          </View>
+          <StepBtn label="+" a11y={t('Zyada')} onPress={() => step(100)} />
         </View>
-        <StepBtn label="+" a11y={t('Zyada')} onPress={() => step(100)} />
-      </View>
+      </DashCard>
       <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, textAlign: 'center', marginTop: 12 }}>
         {t(`Aapka aadha: ${rupee(share)} mahina, ${rupee(share / daysInMonth(DAY))} roz. Ravi ki manzoori ke baad ginna shuru hoga.`)}
       </Text>
@@ -98,8 +103,8 @@ const lbl = (mt = 12) => ({ marginTop: mt, marginBottom: 6 });
 function StepBtn({ label, a11y, onPress }: { label: string; a11y: string; onPress: () => void }) {
   const { c } = useTheme();
   return (
-    <Pressy onPress={onPress} accessibilityLabel={a11y} scaleTo={0.9} style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: c.tile2, borderWidth: 1, borderColor: c.line }}>
-      <Text style={{ fontFamily: F.black, fontSize: 26, color: c.fg, marginTop: -2 }}>{label}</Text>
+    <Pressy onPress={onPress} accessibilityLabel={a11y} scaleTo={0.9} style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: c.soft }}>
+      <Text style={{ fontFamily: F.black, fontSize: 26, color: c.softInk, marginTop: -2 }}>{label}</Text>
     </Pressy>
   );
 }

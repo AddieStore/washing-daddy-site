@@ -3,7 +3,7 @@ import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text, View, 
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { onConfetti, onFlash, onToast } from './bus';
 import { SheetHost } from './Sheet';
-import { F, brand } from './theme';
+import { F, useTheme } from './theme';
 
 /** true when the phone asks for less motion (Settings > Accessibility); loops and entrances should then stay still */
 export function useReducedMotion() {
@@ -22,6 +22,7 @@ export function useReducedMotion() {
 
 /* ---------- Toast ---------- */
 function ToastHost({ rm }: { rm: boolean }) {
+  const { c } = useTheme();
   const insets = React.useContext(SafeAreaInsetsContext);
   const [msg, setMsg] = useState('');
   const t = useRef(new Animated.Value(0)).current;
@@ -50,8 +51,8 @@ function ToastHost({ rm }: { rm: boolean }) {
         { bottom: 96 + (insets?.bottom ?? 0), opacity: t, transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] },
       ]}
     >
-      <View style={st.toast}>
-        <Text style={st.toastTxt}>{msg}</Text>
+      <View style={[st.toast, { backgroundColor: c.card, borderColor: c.line, borderWidth: c.shadow ? 0 : 1 }]}>
+        <Text style={[st.toastTxt, { color: c.fg }]}>{msg}</Text>
       </View>
     </Animated.View>
   );
@@ -171,16 +172,15 @@ export function UiHosts() {
 const st = StyleSheet.create({
   toastWrap: { position: 'absolute', left: 16, right: 16, alignItems: 'center' },
   toast: {
-    backgroundColor: brand.ink,
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 999,
+    borderRadius: 24,
     maxWidth: 420,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
+    shadowColor: '#24065F',
+    shadowOpacity: 0.18,
     shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
-  toastTxt: { color: brand.cream, fontFamily: F.bold, fontSize: 15, textAlign: 'center' },
+  toastTxt: { fontFamily: F.semi, fontSize: 15, textAlign: 'center' },
 });

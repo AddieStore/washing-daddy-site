@@ -2,7 +2,7 @@
 // Shared by the onboarding "Profile" step and the Profile tab ("Mere documents"). Data layer: state/store.ts (Docs, uploadDoc).
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Text, View } from 'react-native';
-import { F, Icon, LinkButton, Pressy, brand, sheet, ui, useTheme, type IconName } from '../ui';
+import { DashCard, F, Icon, LinkButton, Pressy, brand, sheet, ui, useTheme, type IconName } from '../ui';
 import { DOC_KINDS, Docs, uploadDoc, useStore, watchDocs, type DocItem, type DocKind } from '../state/store';
 import { pickDocument } from '../lib/docs';
 import { t } from '../lib/i18n';
@@ -34,7 +34,7 @@ export function docsSummary(items: Partial<Record<DocKind, DocItem>> = Docs.item
 function Thumb({ d }: { d?: DocItem }) {
   const { c } = useTheme();
   return (
-    <View style={{ width: 56, height: 56, borderRadius: 12, overflow: 'hidden', backgroundColor: c.tile2, borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ width: 56, height: 56, borderRadius: 16, overflow: 'hidden', backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center' }}>
       {!d ? <Icon name={'cam' as IconName} size={22} color={c.fg3} />
         : d.mime === 'application/pdf' ? <Text style={{ fontSize: 26 }}>📄</Text>
         : <Image source={{ uri: d.data }} style={{ width: 56, height: 56 }} resizeMode="cover" accessibilityIgnoresInvertColors />}
@@ -71,7 +71,7 @@ function ChooseSheet({ kind, label, close, onDone }: { kind: DocKind; label: str
       <View style={{ gap: 10 }}>
         {OPTIONS.map(o => (
           <Pressy key={o.source} scaleTo={0.97} disabled={!!busy} accessibilityLabel={t(o.label)} onPress={() => go(o.source)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 60, paddingHorizontal: 16, borderRadius: 18, borderWidth: 2, borderColor: c.line, backgroundColor: c.tile, opacity: busy && busy !== o.source ? 0.5 : 1 }}>
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 60, paddingHorizontal: 16, borderRadius: 20, backgroundColor: c.card, shadowColor: c.shadowColor, shadowOpacity: c.shadow ? 0.07 : 0, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: c.shadow ? 2 : 0, borderWidth: c.shadow ? 0 : 1, borderColor: c.line, opacity: busy && busy !== o.source ? 0.5 : 1 }}>
             <Text style={{ fontSize: 26 }}>{o.emoji}</Text>
             <Text style={{ flex: 1, fontFamily: F.bold, fontSize: 16, color: c.fg }}>{t(o.label)}</Text>
             {busy === o.source ? <ActivityIndicator color={brand.violet} /> : null}
@@ -94,7 +94,7 @@ export function DocsPanel({ reopen }: { reopen?: () => void }) {
   useEffect(() => { watchDocs() }, []);
   return (
     <View>
-      <View style={{ borderRadius: 22, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line, overflow: 'hidden' }}>
+      <DashCard style={{ overflow: 'hidden' }}>
         {DOC_KINDS.map((k, i) => {
           const d = Docs.items[k.kind];
           const s = statusOf(d);
@@ -117,14 +117,14 @@ export function DocsPanel({ reopen }: { reopen?: () => void }) {
               {locked ? null : (
                 <Pressy scaleTo={0.95} accessibilityRole="button" accessibilityLabel={(d ? t('Badlo') : t('Upload karo')) + ' ' + label}
                   onPress={() => sheet.open(close => <ChooseSheet kind={k.kind} label={label} close={close} onDone={reopen} />)}
-                  style={{ minHeight: 44, paddingHorizontal: 14, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: d ? c.tile2 : brand.violet, borderWidth: d ? 1 : 0, borderColor: c.line }}>
-                  <Text style={{ fontFamily: F.black, fontSize: 14, color: d ? c.fg : brand.cream }}>{d ? t('Badlo') : t('Upload karo')}</Text>
+                  style={{ minHeight: 44, paddingHorizontal: 16, borderRadius: 99, alignItems: 'center', justifyContent: 'center', backgroundColor: d ? c.soft : c.primary }}>
+                  <Text style={{ fontFamily: F.semi, fontSize: 14, color: d ? c.softInk : '#fff' }}>{d ? t('Badlo') : t('Upload karo')}</Text>
                 </Pressy>
               )}
             </View>
           );
         })}
-      </View>
+      </DashCard>
       <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 10 }}>{t('Aapke documents sirf Washing Daddy team verify karne ke liye dekhegi.')}</Text>
     </View>
   );

@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, F, brand, ui, useTheme } from '../ui';
+import { BigNumber, Button, DashCard, F, IconBubble, brand, ui, useTheme } from '../ui';
 import { Money, act, emit, useStore, view } from '../state/store';
 import { rupee } from '../lib/time';
 import { t } from '../lib/i18n';
@@ -41,7 +41,7 @@ export default function JobAlert() {
       <Animated.View
         accessibilityRole="alert"
         style={{
-          width: '100%', maxWidth: 420, maxHeight: height * 0.9, backgroundColor: c.bg, borderTopLeftRadius: 30, borderTopRightRadius: 30,
+          width: '100%', maxWidth: 420, maxHeight: height * 0.9, backgroundColor: c.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28,
           paddingTop: 24, paddingHorizontal: 20, paddingBottom: 24 + insets.bottom,
           opacity: a, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }],
         }}
@@ -50,9 +50,17 @@ export default function JobAlert() {
           <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: brand.orange, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }} />
           <Text style={{ fontFamily: F.black, fontSize: 13, color: brand.ink2, letterSpacing: 0.3 }}>{t('⚡ Naya kaam aaya!')}</Text>
         </View>
-        <Text style={{ fontFamily: F.black, fontSize: 22, color: c.fg, marginBottom: 4 }}>{job.service || t('Extra kaam')}</Text>
-        <Text style={{ fontFamily: F.body, fontSize: 14, color: c.fg3, marginBottom: 20 }}>{meta}</Text>
-        <Text style={{ fontFamily: F.black, fontSize: 28, color: c.ok, marginBottom: 20 }}>{rupee(Money.share(job.price)) + ' ' + t('aapke')}</Text>
+        <DashCard style={{ padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <IconBubble icon="plus" size={46} tint={brand.orange} bg="rgba(255,106,26,0.14)" />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 16, color: c.fg }}>{job.service || t('Extra kaam')}</Text>
+            {meta ? <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 2 }}>{meta}</Text> : null}
+          </View>
+          <View style={{ alignItems: 'flex-end', flexShrink: 0, maxWidth: '42%' }}>
+            <BigNumber value={rupee(Money.share(job.price))} size={30} style={{ color: c.ok }} />
+            <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{t('aapke')}</Text>
+          </View>
+        </DashCard>
         <View style={{ gap: 10 }}>
           <Button label={t('✓ Lo yeh kaam')} variant="gold" onPress={accept} />
           <Button label={t('Nahi karna')} variant="ghost" onPress={() => act.alertPass()} />

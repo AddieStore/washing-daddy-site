@@ -6,3 +6,4 @@ export * from './Sheet';
 export { UiHosts, useReducedMotion } from './Hosts';
 export * from './motion';
 export * from './kit';
+export * from './dash';

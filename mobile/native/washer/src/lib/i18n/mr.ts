@@ -604,3 +604,21 @@ Object.assign(T, {
   "Is gaadi par kaam nahi hua. Kripya is gaadi par pahunchein aur kaam shuru karein.": "या गाडीवर काम झालं नाही. कृपया या गाडीपाशी पोहोचा आणि काम सुरू करा.",
   "Kaam ka samay ho gaya hai. Taiyaar ho jaayen aur hub pahunchen.": "कामाची वेळ झाली आहे. तयार व्हा आणि हबला पोहोचा.",
 });
+
+// redesign dashboard strings
+Object.assign(T, {
+  "Mon":"सोम",
+  "Tue":"मंगळ",
+  "Wed":"बुध",
+  "Thu":"गुरु",
+  "Fri":"शुक्र",
+  "Sat":"शनि",
+  "Sun":"रवि",
+  "Hafte ka progress":"आठवड्याची प्रगती",
+  "Gaadi ho gayi":"गाड्या झाल्या",
+  "Aaj ki kamaai":"आजची कमाई",
+  "Gaadiyan":"गाड्या",
+  "Ghante":"तास",
+  "Bonus":"बोनस",
+  "Is hafte":"या आठवड्यात",
+});

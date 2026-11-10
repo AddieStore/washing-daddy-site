@@ -1,27 +1,27 @@
 // Round tab: today's round, the next car, the list, and the "No pocha" showcase. Port of renderRound / #s-round.
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  Button, CallButton, CarArt, Card, Chip, DemoNote, Empty, Eyebrow, F, Icon, OnViolet, OnlineSwitch, Plate,
-  Pressy, ProgressBar, SlideToConfirm, StatusPill, Tier, XChip, brand, useTheme,
+  AppHeader, Button, CallButton, CarArt, DashCard, DemoNote, Empty, Eyebrow, F, HeroCard, Icon, ListCard, OnViolet, OnlineSwitch,
+  Plate, Pressy, SectionTitle, SlideToConfirm, StatCard, StatusPill, Tier, WeekStrip, XChip, brand, useTheme,
+  type WeekDay,
 } from '../../ui';
 import {
-  DAY, Route, S, W, act, carBy, isOnline, me, myPhoto, openReqs, planName, route, useStore, view,
+  DAY, Money, Route, S, W, act, carBy, isOnline, me, myPhoto, openReqs, planName, route, useStore, view,
 } from '../../state/store';
 import { STATUS, navOf, telOf } from '../../lib/data';
 import { TASK, tasksFor } from '../../lib/schedule';
-import { dayShort, hm12, hourIST, short12, t12 } from '../../lib/time';
+import { addDaysStr, dayShort, dObj, hm12, hourIST, rupee, short12, t12 } from '../../lib/time';
 import { isHindi, t } from '../../lib/i18n';
-import { TopBar, TopIconBtn } from '../../screens/TopBar';
+import { SyncChipLive } from '../../screens/TopBar';
 import { openAddCar } from '../../screens/AddCar';
 import { openHelpSheet } from '../../screens/sheets';
 import { CheckInCard } from '../../screens/RoundTimeline';
 import { SLOTS, slotRange } from '../../lib/slots';
 
 const VIOLET_INK = '#2A0478';
-const WASHER_IMG = require('../../../assets/img/washer.webp');
 const TRUST = require('../../../assets/img/trust.webp');
 const POLAS = [
   { src: require('../../../assets/img/slide1.webp'), cap: 'Foam first', sub: 'Loosens the dust before anything touches the paint' },
@@ -31,75 +31,47 @@ const POLAS = [
   { src: require('../../../assets/img/slide5.webp'), cap: 'GH-9 every morning', sub: 'Our busiest round' },
   { src: require('../../../assets/img/slide6.webp'), cap: 'Wheels too', sub: 'Pressure inside the rims' },
 ];
-const TICK = ['No more pocha', 'Sirf pressure wash', 'Car wash in 10 min', 'Paschim Vihar', 'Meera Bagh', 'Sundar Vihar'];
 // trust.webp is 400 x 470 px; fixed here because Image.resolveAssetSource does not exist on web
 const TRUST_RATIO = 400 / 470;
 
-/* gold ticker band that scrolls */
-function Ticker() {
-  const x = useRef(new Animated.Value(0)).current;
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    if (!w) return;
-    x.setValue(0);
-    const l = Animated.loop(Animated.timing(x, { toValue: -w / 2, duration: 28000, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }));
-    l.start();
-    return () => l.stop();
-  }, [w, x]);
-  const run = [...TICK, ...TICK];
-  return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={s.ticker}>
-      <Animated.View onLayout={(e) => setW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', alignSelf: 'flex-start', transform: [{ translateX: x }] }}>
-        {run.map((tx, i) => (
-          <Text key={i} numberOfLines={1} style={s.tickTxt}>{t(tx)}<Text style={{ color: brand.violet }}>{'   ★   '}</Text></Text>
-        ))}
-      </Animated.View>
-    </View>
-  );
-}
-
-function SecHead({ title, em, meta }: { title: string; em?: string; meta?: string }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.shout, fontSize: 28, lineHeight: 30, textTransform: 'uppercase', color: c.fg, flexShrink: 1 }}>
-        {title}{em ? <Text style={{ color: c.em }}> {em}</Text> : null}
-      </Text>
-      {meta ? <Text style={{ fontFamily: F.body, fontSize: 13, color: c.fg3 }}>{meta}</Text> : null}
-    </View>
-  );
-}
-
 function Hero({ started }: { started: boolean }) {
-  const w = me(), cn = Route.counts(), photo = myPhoto();
+  const w = me(), cn = Route.counts();
   const etas = Route.etaList(), rt = route();
   const first = W(rt[0]?.reg)?.eta || etas[0], last = W(rt[rt.length - 1]?.reg)?.eta || etas[etas.length - 1];
   const left = cn.total - cn.done - cn.skipped;
-  const src = photo?.url ? { uri: photo.url } : w.img ? WASHER_IMG : null;
-  const frac = cn.total ? (started ? (cn.done + cn.skipped) / cn.total : 0.04) : 0;
   const sub = !started ? t(`Pehli ${hm12(first)} · aakhri ~${hm12(last)}`)
     : left ? t(`${left} baaki · ${cn.skipped ? cn.skipped + ' skip · ' : ''}aakhri ~${hm12(last)}`)
     : t('Round poora! Shabash.');
+  const title = started ? (left ? `${left} ${t('gaadi')}` : t('Round poora! Shabash.')) : `${cn.total} ${t('gaadi')}`;
   return (
-    <OnViolet>
-      <View style={s.hero}>
-        <Text pointerEvents="none" numberOfLines={1} style={s.heroGhost}>PRESSURE WASH · NO POCHA</Text>
-        <View pointerEvents="none" style={s.stripe} />
-        {src
-          ? <Image source={src} style={s.man} resizeMode="cover" accessibilityElementsHidden />
-          : <View style={s.manIni}><Text style={{ fontFamily: F.hero, fontSize: 80, color: brand.gold }}>{(w.name[0] || '').toUpperCase()}</Text></View>}
-        <View style={{ maxWidth: '62%' }}>
-          <Chip>{dayShort(DAY, isHindi())} · {w.areas.split(' · ')[0]}</Chip>
-          <Text style={s.count}>
-            {started ? cn.done : cn.total}
-            <Text style={s.countSmall}>{started ? `/${cn.total}` : ` ${t('gaadi')}`}</Text>
-          </Text>
-          <Text style={s.heroSub}>{sub}</Text>
-          <ProgressBar fraction={frac} color="gold" height={12} style={{ marginTop: 18 }} />
-        </View>
-      </View>
-    </OnViolet>
+    <HeroCard
+      eyebrow={t('Aaj ka round')}
+      title={title}
+      subtitle={cn.total ? sub : undefined}
+      ring={{ fraction: cn.total ? cn.done / cn.total : 0, value: cn.done, label: `/ ${cn.total}` }}
+    >
+      <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: '#1A0A33', opacity: 0.72 }} numberOfLines={1}>{dayShort(DAY, isHindi())} · {w.areas.split(' · ')[0]}</Text>
+    </HeroCard>
   );
+}
+
+function Stats() {
+  const cn = Route.counts();
+  return (
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      <StatCard style={{ flex: 1 }} label={t('Gaadi ho gayi')} value={cn.done} unit={`/ ${cn.total}`} icon="check" tone={brand.mint} />
+      <StatCard style={{ flex: 1 }} label={t('Aaj ki kamai')} value={rupee(Money.today())} icon="star" tone={brand.orange} />
+    </View>
+  );
+}
+
+function Week() {
+  const hi = isHindi();
+  const days: WeekDay[] = [...Array(7)].map((_, i) => {
+    const d = addDaysStr(DAY, i - 3);
+    return { key: d, label: dayShort(d, hi).split(',')[0], date: dObj(d).getDate(), dot: d === DAY && route().length > 0 };
+  });
+  return <WeekStrip days={days} selected={DAY} />;
 }
 
 function PrimaryAction({ started }: { started: boolean }) {
@@ -126,13 +98,13 @@ function XChips({ reg, plan, small }: { reg: string; plan: string; small?: boole
 }
 
 function NextUp({ started }: { started: boolean }) {
-  const { c, dark } = useTheme();
+  const { c } = useTheme();
   const cn = Route.counts();
   const nr = Route.liveReg() || Route.nextReg();
   if (started && nr) {
     const car = carBy(nr)!, wd = W(nr)!, q = openReqs(nr).length, nav = navOf(car), tel = telOf(car.phone);
     return (
-      <View style={[s.next, { backgroundColor: c.tile, borderColor: dark ? brand.gold : brand.violet }]}>
+      <DashCard style={s.next}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <Eyebrow style={{ flexShrink: 1, color: c.em }}>{t(wd.status === 'scheduled' ? 'Agli gaadi' : 'Abhi chal raha')} · {hm12(wd.eta)}</Eyebrow>
           <StatusPill status={wd.status} label={t(STATUS[wd.status])} />
@@ -164,7 +136,7 @@ function NextUp({ started }: { started: boolean }) {
         ) : null}
         <Button variant="violet" label={t(wd.status === 'scheduled' ? 'Chalo' : 'Kholo')} iconRight="arrow" style={{ marginTop: 14 }}
           onPress={() => { act.setCurrent(nr); router.push('/job'); }} />
-      </View>
+      </DashCard>
     );
   }
   if (started) return <Empty title={t('Aaj ka round poora 🎉')} text={t(`${cn.done} gaadi chamka di. Hisaab tab mein poora din dekho.`)} />;
@@ -172,14 +144,13 @@ function NextUp({ started }: { started: boolean }) {
 }
 
 function SlotGroup({ title, regs, placed }: { title: string; regs: string[]; placed: boolean }) {
-  const { c } = useTheme();
   return (
-    <View style={{ marginTop: 14 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <Text accessibilityRole="header" style={{ fontFamily: F.shout, fontSize: 20, textTransform: 'uppercase', color: c.fg, flex: 1 }}>{title}</Text>
+    <View style={{ marginTop: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <SectionTitle title={title} style={{ flex: 1 }} />
         <View style={[s.cnt, { backgroundColor: placed ? brand.violet : brand.orange }]}><Text style={s.cntTxt}>{regs.length}</Text></View>
       </View>
-      <View style={{ gap: 8 }}>{regs.map((r) => <SlotCar key={r} reg={r} />)}</View>
+      <View style={{ gap: 10 }}>{regs.map((r) => <SlotCar key={r} reg={r} />)}</View>
     </View>
   );
 }
@@ -191,15 +162,15 @@ function SlotCar({ reg }: { reg: string }) {
   const eta = st === 'done' && wd?.finished_at ? short12(t12(wd.finished_at)) : Route.slotEta(reg) ? short12(hm12(Route.slotEta(reg))) : '';
   const q = openReqs(reg).length;
   return (
-    <Pressy onPress={() => { act.setCurrent(reg); router.push('/job'); }} scaleTo={0.97} accessibilityLabel={`${car.plate} ${car.model}`}
-      style={[s.stop, { backgroundColor: c.tile, borderColor: late ? brand.red : c.line, opacity: st === 'done' || st === 'skipped' ? 0.78 : 1 }]}>
+    <DashCard onPress={() => { act.setCurrent(reg); router.push('/job'); }} accessibilityLabel={`${car.plate} ${car.model}`}
+      style={[s.stop, late && { borderWidth: 1.5, borderColor: brand.red }, { opacity: st === 'done' || st === 'skipped' ? 0.78 : 1 }]}>
       <View style={{ width: 64, height: 42, alignItems: 'center', justifyContent: 'center' }}><CarArt car={car} width={64} height={42} /></View>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 15, color: c.fg, flexShrink: 1 }}>{car.model}</Text>
+          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 15.5, color: c.fg, flexShrink: 1 }}>{car.model}</Text>
           {q ? <View style={s.reqdot}><Text style={s.reqTxt}>{q}</Text></View> : null}
         </View>
-        <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12, color: late ? brand.red : c.fg3 }}>
+        <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12.5, color: late ? brand.red : c.fg3 }}>
           {late && sl != null ? t(`${short12(hm12(slotRange(sl).to))} tak due tha`) : `${car.house} · ${car.plate}`}
         </Text>
       </View>
@@ -207,35 +178,36 @@ function SlotCar({ reg }: { reg: string }) {
         {eta ? <Text style={{ fontFamily: F.black, fontSize: 15, color: c.fg }}>{eta}</Text> : null}
         {late ? <View style={s.late}><Text style={s.lateTxt}>{t('Late')}</Text></View> : <StatusPill status={st} label={t(wd ? STATUS[wd.status] : 'Baaki')} />}
       </View>
-    </Pressy>
+    </DashCard>
   );
 }
 
 function RouteList() {
-  const rt = route(), cn = Route.counts(), w = me();
+  const rt = route(), cn = Route.counts();
+  const { c } = useTheme();
   const lay = Route.layout(), placed = rt.length - lay.pool.length;
   const setup = () => router.push('/round-setup');
   return (
-    <View style={{ marginTop: 26 }}>
-      <SecHead title={t('Aaj ka round')} meta={cn.total ? `${cn.total} ${t('gaadi')} · ${w.areas.split(' · ')[0]}` : undefined} />
+    <View style={{ marginTop: 18 }}>
+      <SectionTitle title={t('Aaj ka round')} />
       {!cn.total
         ? (view.bookState === 'loading'
           ? <Empty title={t('List aa rahi hai…')} text={t('Book se aaj ka round padha ja raha hai.')} />
           : <Empty title={t('Koi gaadi nahi')} text={t('Book mein aaj aapke naam koi active gaadi nahi hai.')} />)
         : (
           <>
-            <Pressy onPress={setup} accessibilityLabel={t('Round badlo')} style={s.change}>
-              <Icon name="redo" size={16} color={brand.violet} />
-              <Text style={{ fontFamily: F.black, fontSize: 13, color: brand.violet }}>{t('Round badlo')}</Text>
+            <Pressy onPress={setup} accessibilityLabel={t('Round badlo')} style={[s.change, { backgroundColor: c.soft }]}>
+              <Icon name="redo" size={16} color={c.softInk} />
+              <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.softInk }}>{t('Round badlo')}</Text>
             </Pressy>
             {!placed ? <Empty title={t('Profile mein jaakar round set karo')} text={t('Apna round set karo')} /> : null}
             {lay.slots.map((regs, i) => regs.length
               ? <SlotGroup key={i} placed title={`${short12(hm12(SLOTS[i].from))} – ${short12(hm12(SLOTS[i].to))}`} regs={regs} /> : null)}
             {placed && lay.pool.length ? <SlotGroup placed={false} title={t('Slot mein nahi')} regs={lay.pool} /> : null}
-            {!placed ? <View style={{ gap: 8, marginTop: 12 }}>{lay.pool.map((r) => <SlotCar key={r} reg={r} />)}</View> : null}
+            {!placed ? <View style={{ gap: 10, marginTop: 12 }}>{lay.pool.map((r) => <SlotCar key={r} reg={r} />)}</View> : null}
           </>
         )}
-      <Button variant="ghost" label={t('+ Nayi gaadi add karo')} onPress={openAddCar} style={{ marginTop: 12 }} />
+      <Button variant="ghost" label={t('+ Nayi gaadi add karo')} onPress={openAddCar} style={{ marginTop: 14 }} />
       <DemoNote>{t('Naya customer mila? Gaadi yahan add karo, aaj se dhona shuru. Ravi manzoori denge.')}</DemoNote>
     </View>
   );
@@ -244,6 +216,7 @@ function RouteList() {
 function Showcase() {
   const tr = TRUST_RATIO;
   return (
+    <View style={s.workWrap}>
     <OnViolet>
       <View style={s.work}>
         <Text accessibilityRole="header" style={s.workH}>{t('No pocha.')}<Text style={{ color: brand.gold }}> {t('Sirf pressure wash.')}</Text></Text>
@@ -266,6 +239,7 @@ function Showcase() {
         </View>
       </View>
     </OnViolet>
+    </View>
   );
 }
 
@@ -276,34 +250,35 @@ export default function RoundScreen() {
   const w = me(), started = !!S.day?.started, on = isOnline();
   const h = hourIST();
   const hi = t(h < 12 ? 'Subah bakhair' : h < 17 ? 'Namaste' : 'Shaam ho gayi');
+  const photo = myPhoto();
+  const avatar = photo?.url || null;
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 128 + insets.bottom }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={s.violetTop}>
-          <TopBar
-            border={false}
-            top={<Ticker />}
-            left="logo"
-            right={<>
-              <TopIconBtn icon="help" label={t('Madad / SOS')} onPress={openHelpSheet} />
-              <TopIconBtn icon="plus" label={t('Nayi gaadi add karo')} onPress={openAddCar} />
-            </>}
-          />
-          <Text accessibilityRole="header" style={s.hello}>
-            <Text style={s.helloSmall}>{hi}{'\n'}</Text>
-            {w.name.split(' ')[0]}, <Text style={s.helloEm}>{t('aaj ka round!')}</Text>
-          </Text>
-          <Hero started={started} />
-        </View>
+        <AppHeader
+          safeTop={insets.top}
+          greeting={hi}
+          name={w.name.split(' ')[0]}
+          avatarUri={avatar}
+          onAvatarPress={() => router.push('/profile')}
+          actions={[
+            { icon: 'calendar', label: t('Round badlo'), onPress: () => router.push('/round-setup') },
+            { icon: 'bell', label: t('Madad / SOS'), onPress: openHelpSheet },
+          ]}
+        />
         <View style={s.pad}>
-          {S.day?.checkin_at || !started ? <View style={{ marginTop: 16 }}><CheckInCard /></View> : null}
-          <Card style={{ marginTop: 12 }}>
+          <View style={{ alignItems: 'flex-end', marginBottom: 8 }}><SyncChipLive /></View>
+          <Hero started={started} />
+          <View style={{ marginTop: 12 }}><Stats /></View>
+          <View style={{ marginTop: 12 }}><Week /></View>
+          {S.day?.checkin_at || !started ? <View style={{ marginTop: 12 }}><CheckInCard /></View> : null}
+          <DashCard style={{ marginTop: 12 }}>
             <OnlineSwitch value={on} onChange={() => act.toggleOnline()}
               title={t(on ? 'Aap online ho' : 'Aap offline ho')}
               subtitle={t(on ? 'Naye extra kaam aapko dikhenge' : 'Naye extra kaam nahi aayenge. Round chalta rahega')} />
-          </Card>
+          </DashCard>
           <View style={{ marginTop: 12 }}><PrimaryAction started={started} /></View>
-          <View style={{ marginTop: 26 }}><NextUp started={started} /></View>
+          <View style={{ marginTop: 18 }}><NextUp started={started} /></View>
           <RouteList />
         </View>
         <Showcase />
@@ -313,26 +288,8 @@ export default function RoundScreen() {
 }
 
 const s = StyleSheet.create({
-  violetTop: { backgroundColor: brand.violet, borderBottomWidth: 4, borderBottomColor: brand.gold, paddingBottom: 26 },
-  ticker: { backgroundColor: brand.gold, borderBottomWidth: 3, borderBottomColor: brand.ink, overflow: 'hidden' },
-  tickTxt: { fontFamily: F.shout, fontSize: 15, letterSpacing: 0.9, textTransform: 'uppercase', color: brand.ink, paddingVertical: 7 },
   pad: { paddingHorizontal: 16 },
-  hello: { paddingHorizontal: 16, paddingTop: 22, paddingBottom: 18, fontFamily: F.shout, fontSize: 54, lineHeight: 50, textTransform: 'uppercase', color: brand.cream },
-  helloSmall: { fontFamily: F.black, fontSize: 17, lineHeight: 24, textTransform: 'none', color: brand.cream },
-  helloEm: { color: brand.gold, textShadowColor: brand.ink, textShadowOffset: { width: 5, height: 5 }, textShadowRadius: 0 },
-  hero: {
-    marginHorizontal: 16, borderRadius: 28, borderWidth: 4, borderColor: brand.gold, backgroundColor: brand.violet2, overflow: 'hidden',
-    paddingTop: 20, paddingHorizontal: 18, paddingBottom: 18, minHeight: 250,
-    shadowColor: VIOLET_INK, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 8, height: 8 },
-  },
-  heroGhost: { position: 'absolute', top: 18, left: 0, fontFamily: F.shout, fontSize: 120, lineHeight: 130, color: 'rgba(255,246,233,0.07)', width: 2000 },
-  stripe: { position: 'absolute', left: -30, right: -30, bottom: 46, height: 14, backgroundColor: brand.gold, opacity: 0.95, transform: [{ rotate: '-3deg' }] },
-  man: { position: 'absolute', right: -6, bottom: 0, width: 168, height: 200 },
-  manIni: { position: 'absolute', right: 6, bottom: 20, width: 150, height: 170, borderRadius: 85, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.08)' },
-  count: { fontFamily: F.shout, fontSize: 84, lineHeight: 84, textTransform: 'uppercase', color: brand.cream, marginTop: 6, textShadowColor: brand.ink, textShadowOffset: { width: 0, height: 5 }, textShadowRadius: 0 },
-  countSmall: { fontSize: 34, color: brand.gold },
-  heroSub: { fontFamily: F.semi, fontSize: 14, color: 'rgba(255,246,233,0.84)', marginTop: 8 },
-  next: { borderRadius: 24, borderWidth: 2, padding: 16, overflow: 'hidden' },
+  next: { padding: 16, overflow: 'hidden' },
   wrap6: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 8 },
   where: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 10 },
   whereTxt: { flex: 1, fontFamily: F.semi, fontSize: 14 },
@@ -340,11 +297,12 @@ const s = StyleSheet.create({
   cntTxt: { fontFamily: F.black, fontSize: 12, color: '#fff' },
   late: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999, backgroundColor: brand.red },
   lateTxt: { fontFamily: F.black, fontSize: 11.5, color: '#fff' },
-  change: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1.5, borderColor: brand.violet, marginBottom: 4 },
-  stop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingLeft: 10, paddingRight: 12, borderRadius: 18, borderWidth: 1.5, minHeight: 62 },
+  change: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, marginBottom: 10 },
+  stop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingLeft: 12, paddingRight: 14, minHeight: 66 },
   reqdot: { minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11, backgroundColor: brand.orange, alignItems: 'center', justifyContent: 'center' },
   reqTxt: { fontFamily: F.black, fontSize: 11.5, color: '#fff' },
-  work: { marginTop: 34, paddingTop: 34, paddingBottom: 40, backgroundColor: brand.violet, borderTopWidth: 4, borderTopColor: brand.gold },
+  workWrap: { marginTop: 30, marginHorizontal: 16, borderRadius: 24, overflow: 'hidden' },
+  work: { paddingTop: 30, paddingBottom: 36, backgroundColor: brand.violet },
   workH: { fontFamily: F.shout, fontSize: 40, lineHeight: 40, textTransform: 'uppercase', textAlign: 'center', color: brand.cream, paddingHorizontal: 16 },
   workSub: { fontFamily: F.body, fontSize: 15, color: brand.cream, opacity: 0.92, textAlign: 'center', alignSelf: 'center', maxWidth: 300, marginTop: 10 },
   pola: { width: 200, backgroundColor: '#fff', padding: 10, paddingBottom: 14, borderRadius: 14, borderWidth: 3, borderColor: brand.ink, shadowColor: VIOLET_INK, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 6, height: 6 } },

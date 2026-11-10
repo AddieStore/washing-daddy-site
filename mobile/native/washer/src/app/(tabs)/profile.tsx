@@ -1,12 +1,12 @@
 // Profile tab: the violet me-card, settings rows, footer notes. Port of renderMe + #s-me.
-import React, { useEffect, useState } from 'react';
+import React, { useRef } from 'react';
 import { Image, Linking, Platform, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  DemoNote, F, Icon, OnViolet, Pressy, Row, Section, Segmented, SyncDot, brand, ui, useTheme,
+  DashCard, DemoNote, F, IconBubble, ListCard, PillButton, SectionTitle, Segmented, SyncDot, Tile, brand, useTheme,
 } from '../../ui';
-import { REAL, Route, S, act, me, myPhoto, syncState, useStore } from '../../state/store';
+import { DOC_KINDS, Docs, Kit, REAL, Route, S, act, me, myPhoto, syncState, useStore } from '../../state/store';
 import { openPhotoChooser } from '../../screens/PortraitPhoto';
 import { fmtPhone } from '../../lib/data';
 import { t } from '../../lib/i18n';
@@ -15,21 +15,6 @@ import { KitSections } from '../../screens/KitSections';
 import { openHelpSheet, openLangSheet, openLogoutSheet, openReferSheet, openResetSheet, openSyncSheet } from '../../screens/sheets';
 
 const WASHER_IMG = require('../../../assets/img/washer.webp');
-const INK_SHADOW = '#2A0478';
-
-function CountUp({ to, style }: { to: number; style?: object }) {
-  const [v, setV] = useState(0);
-  useEffect(() => {
-    const t0 = Date.now();
-    const id = setInterval(() => {
-      const p = Math.min(1, (Date.now() - t0) / 1400);
-      setV(Math.round(to * (1 - Math.pow(1 - p, 3))));
-      if (p >= 1) clearInterval(id);
-    }, 40);
-    return () => clearInterval(id);
-  }, [to]);
-  return <Text style={style}>{v.toLocaleString('en-IN')}</Text>;
-}
 
 function MeCard() {
   const { c } = useTheme();
@@ -37,35 +22,27 @@ function MeCard() {
   const sf = myPhoto();
   const src = sf?.url ? { uri: sf.url } : w.img === 'washer' ? WASHER_IMG : null;
   const cam = openPhotoChooser;
-  const stat = (big: React.ReactNode, small: string) => (
-    <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 6, borderRadius: 18, backgroundColor: 'rgba(18,7,36,0.3)', borderWidth: 2, borderColor: brand.cream, alignItems: 'center' }}>
-      {big}
-      <Text style={{ fontFamily: F.bold, fontSize: 11.5, color: c.fg2, marginTop: 4 }}>{small}</Text>
-    </View>
-  );
-  const num = { fontFamily: F.shout, fontSize: 28, lineHeight: 30, color: c.fg } as const;
   return (
-    <View style={{ marginHorizontal: 10, marginTop: 4, borderRadius: 28, backgroundColor: brand.violet, borderWidth: 3, borderColor: brand.gold, paddingTop: 22, paddingHorizontal: 20, paddingBottom: 20, alignItems: 'center', shadowColor: INK_SHADOW, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 8, height: 8 }, elevation: 6 }}>
-      <View style={{ width: 150, height: 150, marginTop: 6, borderRadius: 75, backgroundColor: brand.gold, padding: 5 }}>
+    <DashCard style={{ padding: 18, alignItems: 'center' }}>
+      <View style={{ width: 112, height: 112, borderRadius: 56, backgroundColor: brand.gold, padding: 4 }}>
         {src
-          ? <Image source={src} accessibilityLabel={w.name} resizeMode="cover" style={{ width: '100%', height: '100%', borderRadius: 70, backgroundColor: brand.cream }} />
-          : <View style={{ flex: 1, borderRadius: 70, backgroundColor: brand.cream, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: F.hero, fontSize: 60, color: brand.violet }}>{w.name[0]}</Text></View>}
-        <Pressy onPress={cam} scaleTo={0.9} accessibilityLabel={t('Profile photo badlo')}
-          style={{ position: 'absolute', right: -2, bottom: 1, width: 48, height: 48, borderRadius: 24, backgroundColor: brand.ink, borderWidth: 3, borderColor: brand.violet, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="cam" size={22} color={brand.gold} />
-        </Pressy>
+          ? <Image source={src} accessibilityLabel={w.name} resizeMode="cover" style={{ width: '100%', height: '100%', borderRadius: 52, backgroundColor: c.soft }} />
+          : <View style={{ flex: 1, borderRadius: 52, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: F.black, fontSize: 44, color: brand.gold }}>{w.name[0]}</Text></View>}
+        <PillButton icon="cam" label={t('Profile photo badlo')} onPress={cam} tone="violet" size={44} style={{ position: 'absolute', right: -6, bottom: -4 }} />
       </View>
-      <Text style={{ fontFamily: F.hero, fontSize: 36, lineHeight: 40, color: c.fg, marginTop: 12, textShadowColor: brand.ink, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0 }}>{w.name}</Text>
-      <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg2, marginTop: 8, textAlign: 'center' }}>{t('Washing Daddy washer')} · {w.areas}</Text>
-      <Text style={{ fontFamily: F.bold, fontSize: 13, color: brand.gold, marginTop: 14, textAlign: 'center' }}>
-        {sf ? t('✓ Profile photo set hai. Customers ko dikhegi.') : t('Camera icon se apni photo lagao — customer dekhega kaun aaya.')}
-      </Text>
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 18, alignSelf: 'stretch' }}>
-        {stat(<CountUp to={w.lifetime + Route.counts().done} style={num} />, t('Gaadi dhoyi'))}
-        {stat(<Text style={num}>{w.rating}★</Text>, t('Rating'))}
-        {stat(<Text style={num}>{w.since}</Text>, t('Se saath'))}
+      <Text numberOfLines={2} style={{ fontFamily: F.black, fontSize: 24, lineHeight: 30, color: c.fg, marginTop: 12, textAlign: 'center' }}>{w.name}</Text>
+      <Text style={{ fontFamily: F.semi, fontSize: 13.5, color: c.fg2, marginTop: 2, textAlign: 'center' }}>{t('Washing Daddy washer')} · {w.areas}</Text>
+      <View style={{ marginTop: 10, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 99, backgroundColor: sf ? 'rgba(20,192,138,0.15)' : c.soft }}>
+        <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: sf ? c.ok : c.softInk, textAlign: 'center' }}>
+          {sf ? t('✓ Profile photo set hai. Customers ko dikhegi.') : t('Camera icon se apni photo lagao — customer dekhega kaun aaya.')}
+        </Text>
       </View>
-    </View>
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 16, alignSelf: 'stretch' }}>
+        <Tile style={{ flex: 1 }} icon="check" label={t('Gaadi dhoyi')} value={(w.lifetime + Route.counts().done).toLocaleString('en-IN')} />
+        <Tile style={{ flex: 1 }} icon="star" tone={brand.orange} label={t('Rating')} value={String(w.rating)} />
+        <Tile style={{ flex: 1 }} icon="flag" tone={brand.mint} label={t('Se saath')} value={String(w.since)} />
+      </View>
+    </DashCard>
   );
 }
 
@@ -76,34 +53,43 @@ export default function Profile() {
   const w = me();
   const [sk, , label] = syncState();
   const dot = sk === 'offline' ? 'wait' : sk;
-  const box = { borderRadius: 22, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line, overflow: 'hidden' } as const;
+  const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const kitY = useRef(0);
+  const goKit = () => scroll.current?.scrollTo({ y: Math.max(0, kitY.current - 12), animated: true });
+  const kitCount = Kit.items.reduce((n, i) => n + (i.qty || 0), 0);
+  const docsOk = DOC_KINDS.filter(k => Docs.items[k.kind]?.status === 'verified').length;
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: c.bg }} contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-      <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-        <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 17, color: c.fg }}>{t('Profile')}</Text>
+    <ScrollView ref={scroll} style={{ flex: 1, backgroundColor: c.bg }} contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+      <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+        <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 22, color: c.fg }}>{t('Profile')}</Text>
       </View>
-      <OnViolet><MeCard /></OnViolet>
-      <View style={{ paddingHorizontal: 16 }}>
-        <KitSections />
-        <Section title={t('Settings')}>
-          <View style={box}>
-            <Row icon="tabRound" title={t('Apna round set karo')} subtitle={t('Gaadiyan slot mein daalo aur round lock karo')} onPress={() => router.push('/round-setup')} />
-            <Row divider icon="help" iconColor={brand.red} title={t('Madad / SOS')} subtitle={t('Paisa, customer ya accident ki problem')} onPress={openHelpSheet} />
-            <Row divider icon="user" title={t('Dost ko laao')} subtitle={t('Apna code share karo, bonus pao')} onPress={openReferSheet} />
-            <Row divider icon="globe" title={t('Bhasha')} subtitle={t('App ki bhasha chuno')} onPress={openLangSheet}
-              right={<Text style={{ fontFamily: F.bold, fontSize: 14, color: c.fg2 }}>{langLabel(S.lang)}</Text>} />
-            <Row divider icon="sun" title={t('Screen')} subtitle={t('Dhoop mein "Din" saaf dikhta hai')}
-              right={<Segmented options={[{ value: 'light' as const, label: t('Din') }, { value: 'dark' as const, label: t('Raat') }, { value: 'auto' as const, label: t('Auto') }]} value={S.theme} onChange={v => act.setTheme(v)} />} />
-            {Platform.OS === 'android' ? (
-              <Row divider icon="sun" title={t('Awaaz alerts pakke chalein')} subtitle={t('Battery saver mein App ko "No restrictions" do, tab band hone par bhi awaaz aayegi')}
-                onPress={() => { Linking.sendIntent('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS').catch(() => Linking.openSettings().catch(() => {})) }} />
-            ) : null}
-            <Row divider icon={<SyncDot state={dot} />} title={t('Customer app se sync')} subtitle={t(label)} onPress={openSyncSheet} />
-            <Row divider icon="reset" title={t('Aaj ka round reset')} subtitle={t('Sirf is phone se. Test ke liye.')}
-              onPress={() => openResetSheet(() => { try { router.navigate('/' as any) } catch { /* stay */ } })} />
-            <Row divider icon="logout" iconColor={brand.red} title={t('Log out')} subtitle={'+91 ' + fmtPhone(w.phone)} onPress={openLogoutSheet} />
-          </View>
-        </Section>
+      <View style={{ paddingHorizontal: 16, gap: 12 }}>
+        <MeCard />
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <Tile style={{ flex: 1 }} icon="tabExtra" label={t('Mera saaman')} value={kitCount} onPress={goKit} />
+          <Tile style={{ flex: 1 }} icon="note" tone={brand.mint} label={t('Mere documents')} value={`${docsOk}/${DOC_KINDS.length}`} onPress={goKit} />
+          <Tile style={{ flex: 1 }} icon="globe" tone={brand.orange} label={t('Bhasha')} value={langLabel(S.lang)} onPress={openLangSheet} />
+        </View>
+        <View onLayout={e => { kitY.current = e.nativeEvent.layout.y }}>
+          <KitSections />
+        </View>
+        <SectionTitle title={t('Settings')} style={{ marginBottom: 0 }} />
+        <ListCard icon="tabRound" title={t('Apna round set karo')} detail={t('Gaadiyan slot mein daalo aur round lock karo')} action="chevron" onPress={() => router.push('/round-setup')} />
+        <ListCard icon="help" iconTone={brand.red} title={t('Madad / SOS')} detail={t('Paisa, customer ya accident ki problem')} action="chevron" onPress={openHelpSheet} />
+        <ListCard icon="user" title={t('Dost ko laao')} detail={t('Apna code share karo, bonus pao')} action="chevron" onPress={openReferSheet} />
+        <ListCard icon="globe" title={t('Bhasha')} detail={t('App ki bhasha chuno')} onPress={openLangSheet} action="chevron"
+          right={<Text style={{ fontFamily: F.bold, fontSize: 13.5, color: c.fg2 }}>{langLabel(S.lang)}</Text>} />
+        <ListCard icon="sun" title={t('Screen')} detail={t('Dhoop mein "Din" saaf dikhta hai')}>
+          <Segmented options={[{ value: 'light' as const, label: t('Din') }, { value: 'dark' as const, label: t('Raat') }, { value: 'auto' as const, label: t('Auto') }]} value={S.theme} onChange={v => act.setTheme(v)} />
+        </ListCard>
+        {Platform.OS === 'android' ? (
+          <ListCard icon="sun" title={t('Awaaz alerts pakke chalein')} detail={t('Battery saver mein App ko "No restrictions" do, tab band hone par bhi awaaz aayegi')} action="chevron"
+            onPress={() => { Linking.sendIntent('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS').catch(() => Linking.openSettings().catch(() => {})) }} />
+        ) : null}
+        <ListCard leading={<IconBubble size={42}><SyncDot state={dot} /></IconBubble>} title={t('Customer app se sync')} detail={t(label)} action="chevron" onPress={openSyncSheet} />
+        <ListCard icon="reset" title={t('Aaj ka round reset')} detail={t('Sirf is phone se. Test ke liye.')} action="chevron"
+          onPress={() => openResetSheet(() => { try { router.navigate('/' as any) } catch { /* stay */ } })} />
+        <ListCard icon="logout" iconTone={brand.red} title={t('Log out')} detail={'+91 ' + fmtPhone(w.phone)} action="chevron" onPress={openLogoutSheet} />
         {!REAL ? <DemoNote>{t('Washing Daddy Washer · test version. OTP 1234.')}</DemoNote> : null}
         <DemoNote>{t('Washing Daddy Private Limited · New Delhi')}</DemoNote>
       </View>
