@@ -121,6 +121,7 @@ export const VOICE_CLIPS: Record<string, number> = {
   ph_photo_sun: require('../../assets/sound/voice/ph_photo_sun.mp3'),
   ph_polish: require('../../assets/sound/voice/ph_polish.mp3'),
   ph_s_back: require('../../assets/sound/voice/ph_s_back.mp3'),
+  ph_s_boot: require('../../assets/sound/voice/ph_s_boot.mp3'),
   ph_s_dash: require('../../assets/sound/voice/ph_s_dash.mp3'),
   ph_s_driver: require('../../assets/sound/voice/ph_s_driver.mp3'),
   ph_s_pass: require('../../assets/sound/voice/ph_s_pass.mp3'),
