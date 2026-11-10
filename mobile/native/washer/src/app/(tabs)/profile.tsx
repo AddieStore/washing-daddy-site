@@ -87,7 +87,8 @@ export default function Profile() {
         <KitSections />
         <Section title={t('Settings')}>
           <View style={box}>
-            <Row icon="help" iconColor={brand.red} title={t('Madad / SOS')} subtitle={t('Paisa, customer ya accident ki problem')} onPress={openHelpSheet} />
+            <Row icon="tabRound" title={t('Apna round set karo')} subtitle={t('Gaadiyan slot mein daalo aur round lock karo')} onPress={() => router.push('/round-setup')} />
+            <Row divider icon="help" iconColor={brand.red} title={t('Madad / SOS')} subtitle={t('Paisa, customer ya accident ki problem')} onPress={openHelpSheet} />
             <Row divider icon="user" title={t('Dost ko laao')} subtitle={t('Apna code share karo, bonus pao')} onPress={openReferSheet} />
             <Row divider icon="globe" title={t('Bhasha')} subtitle={t('App ki bhasha chuno')} onPress={openLangSheet}
               right={<Text style={{ fontFamily: F.bold, fontSize: 14, color: c.fg2 }}>{langLabel(S.lang)}</Text>} />

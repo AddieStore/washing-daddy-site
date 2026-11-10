@@ -17,7 +17,8 @@ import { isHindi, t } from '../../lib/i18n';
 import { TopBar, TopIconBtn } from '../../screens/TopBar';
 import { openAddCar } from '../../screens/AddCar';
 import { openHelpSheet } from '../../screens/sheets';
-import { CheckInCard, LockBar, RoundTimeline, type ScrollCtl } from '../../screens/RoundTimeline';
+import { CheckInCard } from '../../screens/RoundTimeline';
+import { SLOTS, slotRange } from '../../lib/slots';
 
 const VIOLET_INK = '#2A0478';
 const WASHER_IMG = require('../../../assets/img/washer.webp');
@@ -170,8 +171,50 @@ function NextUp({ started }: { started: boolean }) {
   return null;
 }
 
-function RouteList({ scroll, onBusy }: { scroll: ScrollCtl; onBusy: (b: boolean) => void }) {
-  const cn = Route.counts(), w = me();
+function SlotGroup({ title, regs, placed }: { title: string; regs: string[]; placed: boolean }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ marginTop: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <Text accessibilityRole="header" style={{ fontFamily: F.shout, fontSize: 20, textTransform: 'uppercase', color: c.fg, flex: 1 }}>{title}</Text>
+        <View style={[s.cnt, { backgroundColor: placed ? brand.violet : brand.orange }]}><Text style={s.cntTxt}>{regs.length}</Text></View>
+      </View>
+      <View style={{ gap: 8 }}>{regs.map((r) => <SlotCar key={r} reg={r} />)}</View>
+    </View>
+  );
+}
+
+function SlotCar({ reg }: { reg: string }) {
+  const { c } = useTheme();
+  const car = carBy(reg)!, wd = W(reg), st = wd ? wd.status : 'scheduled';
+  const late = Route.isLate(reg), sl = Route.slotOf(reg);
+  const eta = st === 'done' && wd?.finished_at ? short12(t12(wd.finished_at)) : Route.slotEta(reg) ? short12(hm12(Route.slotEta(reg))) : '';
+  const q = openReqs(reg).length;
+  return (
+    <Pressy onPress={() => { act.setCurrent(reg); router.push('/job'); }} scaleTo={0.97} accessibilityLabel={`${car.plate} ${car.model}`}
+      style={[s.stop, { backgroundColor: c.tile, borderColor: late ? brand.red : c.line, opacity: st === 'done' || st === 'skipped' ? 0.78 : 1 }]}>
+      <View style={{ width: 64, height: 42, alignItems: 'center', justifyContent: 'center' }}><CarArt car={car} width={64} height={42} /></View>
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 15, color: c.fg, flexShrink: 1 }}>{car.model}</Text>
+          {q ? <View style={s.reqdot}><Text style={s.reqTxt}>{q}</Text></View> : null}
+        </View>
+        <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12, color: late ? brand.red : c.fg3 }}>
+          {late && sl != null ? t(`${short12(hm12(slotRange(sl).to))} tak due tha`) : `${car.house} · ${car.plate}`}
+        </Text>
+      </View>
+      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+        {eta ? <Text style={{ fontFamily: F.black, fontSize: 15, color: c.fg }}>{eta}</Text> : null}
+        {late ? <View style={s.late}><Text style={s.lateTxt}>{t('Late')}</Text></View> : <StatusPill status={st} label={t(wd ? STATUS[wd.status] : 'Baaki')} />}
+      </View>
+    </Pressy>
+  );
+}
+
+function RouteList() {
+  const rt = route(), cn = Route.counts(), w = me();
+  const lay = Route.layout(), placed = rt.length - lay.pool.length;
+  const setup = () => router.push('/round-setup');
   return (
     <View style={{ marginTop: 26 }}>
       <SecHead title={t('Aaj ka round')} meta={cn.total ? `${cn.total} ${t('gaadi')} · ${w.areas.split(' · ')[0]}` : undefined} />
@@ -179,7 +222,19 @@ function RouteList({ scroll, onBusy }: { scroll: ScrollCtl; onBusy: (b: boolean)
         ? (view.bookState === 'loading'
           ? <Empty title={t('List aa rahi hai…')} text={t('Book se aaj ka round padha ja raha hai.')} />
           : <Empty title={t('Koi gaadi nahi')} text={t('Book mein aaj aapke naam koi active gaadi nahi hai.')} />)
-        : <RoundTimeline scroll={scroll} onBusy={onBusy} />}
+        : (
+          <>
+            <Pressy onPress={setup} accessibilityLabel={t('Round badlo')} style={s.change}>
+              <Icon name="redo" size={16} color={brand.violet} />
+              <Text style={{ fontFamily: F.black, fontSize: 13, color: brand.violet }}>{t('Round badlo')}</Text>
+            </Pressy>
+            {!placed ? <Empty title={t('Profile mein jaakar round set karo')} text={t('Apna round set karo')} /> : null}
+            {lay.slots.map((regs, i) => regs.length
+              ? <SlotGroup key={i} placed title={`${short12(hm12(SLOTS[i].from))} – ${short12(hm12(SLOTS[i].to))}`} regs={regs} /> : null)}
+            {placed && lay.pool.length ? <SlotGroup placed={false} title={t('Slot mein nahi')} regs={lay.pool} /> : null}
+            {!placed ? <View style={{ gap: 8, marginTop: 12 }}>{lay.pool.map((r) => <SlotCar key={r} reg={r} />)}</View> : null}
+          </>
+        )}
       <Button variant="ghost" label={t('+ Nayi gaadi add karo')} onPress={openAddCar} style={{ marginTop: 12 }} />
       <DemoNote>{t('Naya customer mila? Gaadi yahan add karo, aaj se dhona shuru. Ravi manzoori denge.')}</DemoNote>
     </View>
@@ -220,14 +275,10 @@ export default function RoundScreen() {
   const insets = useSafeAreaInsets();
   const w = me(), started = !!S.day?.started, on = isOnline();
   const h = hourIST();
-  const sref = useRef<any>(null), sy = useRef(0);
-  const [busy, setBusy] = useState(false);
-  const scroll = useRef<ScrollCtl>({ ref: sref, y: sy }).current;
   const hi = t(h < 12 ? 'Subah bakhair' : h < 17 ? 'Namaste' : 'Shaam ho gayi');
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <ScrollView ref={sref} scrollEnabled={!busy} onScroll={(e) => { sy.current = e.nativeEvent.contentOffset.y }} scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: 128 + insets.bottom + (route().length ? 96 : 0) }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ paddingBottom: 128 + insets.bottom }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={s.violetTop}>
           <TopBar
             border={false}
@@ -253,11 +304,10 @@ export default function RoundScreen() {
           </Card>
           <View style={{ marginTop: 12 }}><PrimaryAction started={started} /></View>
           <View style={{ marginTop: 26 }}><NextUp started={started} /></View>
-          <RouteList scroll={scroll} onBusy={setBusy} />
+          <RouteList />
         </View>
         <Showcase />
       </ScrollView>
-      <LockBar bottom={insets.bottom + 100} />
     </View>
   );
 }
@@ -286,8 +336,12 @@ const s = StyleSheet.create({
   wrap6: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 8 },
   where: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 10 },
   whereTxt: { flex: 1, fontFamily: F.semi, fontSize: 14 },
-  stop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingLeft: 10, paddingRight: 12, borderRadius: 22, borderWidth: 1, minHeight: 84 },
-  sq: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  cnt: { minWidth: 26, height: 26, paddingHorizontal: 8, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  cntTxt: { fontFamily: F.black, fontSize: 12, color: '#fff' },
+  late: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999, backgroundColor: brand.red },
+  lateTxt: { fontFamily: F.black, fontSize: 11.5, color: '#fff' },
+  change: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1.5, borderColor: brand.violet, marginBottom: 4 },
+  stop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingLeft: 10, paddingRight: 12, borderRadius: 18, borderWidth: 1.5, minHeight: 62 },
   reqdot: { minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11, backgroundColor: brand.orange, alignItems: 'center', justifyContent: 'center' },
   reqTxt: { fontFamily: F.black, fontSize: 11.5, color: '#fff' },
   work: { marginTop: 34, paddingTop: 34, paddingBottom: 40, backgroundColor: brand.violet, borderTopWidth: 4, borderTopColor: brand.gold },
