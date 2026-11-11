@@ -9,6 +9,7 @@ import { addDaysStr, dayLong, dayNarrow, rupee, t12 } from '../../lib/time';
 import { isHindi, t } from '../../lib/i18n';
 import type { Car } from '../../lib/data';
 import { ScreenBar } from '../../screens/JobParts';
+import { RewardsCard } from '../../screens/RewardsCards';
 
 function PayRow({ car }: { car: Car }) {
   const { c } = useTheme();
@@ -87,6 +88,8 @@ export default function Paisa() {
             {t('Aaj')} {rupee(Money.today())}{exToday ? t(` · ${exToday} extra kaam`) : ''}{S.day?.startedAt ? t(` · shuru ${t12(S.day.startedAt)}`) : ''}
           </Text>
         </HeroCard>
+
+        <View style={{ marginTop: 16 }}><RewardsCard /></View>
 
         <SectionTitle title={t('Is hafte')} action={MODE === 'demo' ? t('Demo data') : t('Gaadi roz')} style={{ marginTop: 20 }} />
         <DashCard style={{ padding: 16 }}>

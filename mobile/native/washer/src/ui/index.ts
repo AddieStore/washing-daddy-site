@@ -7,3 +7,4 @@ export { UiHosts, useReducedMotion } from './Hosts';
 export * from './motion';
 export * from './kit';
 export * from './dash';
+export * from './trust';

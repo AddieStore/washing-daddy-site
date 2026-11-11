@@ -35,6 +35,7 @@ export function photoNeeds(w: { started_at?: string | null; photos: { kind: stri
   // the voice asks for the inside photos once the car photos are done
   return { sunday, car, missing, nextSpot: car >= MIN_PHOTOS ? missing[0] || null : null, ok: car >= MIN_PHOTOS && missing.length === 0 };
 };
+import type { Attend } from '../lib/rewards';
 export const REAL = auth.real;
 export const MODE = backend.mode;
 
@@ -49,11 +50,20 @@ type State = {
   session: Session | null; online: boolean; theme: 'light' | 'dark' | 'auto'; lang: Lang;
   lang_pref?: LangPref; onboarded?: Record<string, string>;   // onboarded: 10-digit phone -> when the first-run onboarding was finished
   day: Day | null; outbox: Record<string, Wash>; rejected?: Record<string, Wash>; current: string | null;
-  selfie: Selfie | null; hist: Record<string, number>; rounds: Record<string, { at: string; cars: Data[] }>;
+  selfie: Selfie | null; hist: Record<string, number>; attend?: Attend; rounds: Record<string, { at: string; cars: Data[] }>;
 };
 export let S: State = { session: null, online: true, theme: 'light', lang: 'hinglish', day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
 const KEY = 'wd-washer-v1';
 let saveT: ReturnType<typeof setTimeout> | null = null;
+// attendance log for the rewards: one entry per day, `first` is only kept when it is the first car photo of that day
+function noteAttend(v: { in?: string; first?: string }, onlyIfNew = false) {
+  S.attend = S.attend || {}; const e = S.attend[DAY] = S.attend[DAY] || {};
+  if (v.in && !e.in) e.in = v.in;
+  if (v.first && !(onlyIfNew && e.first)) e.first = v.first;
+  save();
+  const id = myDocId();
+  if (id && id !== '+91') db.doc('checkins/' + DAY + '_' + id).update(v).catch(() => {});
+}
 function save() {
   if (saveT) clearTimeout(saveT);
   saveT = setTimeout(() => { AsyncStorage.setItem(KEY, JSON.stringify(S)).catch(() => {}) }, 150);
@@ -466,7 +476,7 @@ export const act = {
   // "Hub pahunch gaya": the morning check-in, seen live on the dashboard
   async checkIn() {
     ensureDay(); const day = S.day!; if (day.checkin_at) return true;
-    day.checkin_at = isoIST(); save(); emit(); ui.haptic([20, 40, 20]);
+    day.checkin_at = isoIST(); noteAttend({ in: day.checkin_at }); save(); emit(); ui.haptic([20, 40, 20]);
     try {
       const id = myDocId();
       if (id && id !== '+91') await db.doc('checkins/' + DAY + '_' + id).set({ phone: id, name: me().name, date: DAY, at: day.checkin_at });
@@ -504,6 +514,8 @@ export const act = {
       if (d.photos.length >= 12) d.photos.shift();
       d.photos.push({ kind, at: isoIST(), url, ...(spot ? { spot } : {}) });
     });
+    // the first car photo of the day, with its time, counts for the early-bird reward
+    if (kind === 'after' && !spot) noteAttend({ first: isoIST() }, true);
     ui.toast(t(kind === 'issue' ? 'Problem ki photo customer ko gayi' : 'Photo customer ko gayi'));
     // Sunday: once the car photos are done, the voice asks for the next inside photo
     const w = W(reg); const nx = w && isSundayIST(w.started_at) && kind === 'after' ? photoNeeds(w).nextSpot : null;
@@ -551,10 +563,18 @@ export const act = {
   },
   reqSeen(id: string) { Sync.setRequest(id, { status: 'seen', seen_at: isoIST() }); ui.haptic(6) },
   reqDone(id: string) { Sync.setRequest(id, { status: 'done', done_at: isoIST() }); ui.haptic([10, 30, 10]); ui.toast(t('Customer ko dikh gaya: kar diya')) },
-  async addCar(car: { reg: string; plate: string; model: string; area: string; plan: string; fee: number; customer_name: string; customer_phone: string }) {
+  // A new customer signed up in front of the washer. One doc per car (the owner approves each); the extra details the
+  // security rules have no field for (address, map pin, payment, the other cars of the same customer) travel in `note`.
+  async addCar(car: { reg: string; plate: string; model: string; area: string; plan: string; fee: number; customer_name: string; customer_phone: string;
+    address?: string; geo?: { lat: number; lng: number } | null; paid?: { method: 'cash' | 'upi'; amount: number } | null; others?: string[] }) {
+    const bits: string[] = [];
+    if (car.address) bits.push('Addr: ' + car.address.replace(/\s+/g, ' ').slice(0, 120));
+    if (car.geo) bits.push(`Map: https://maps.google.com/?q=${car.geo.lat.toFixed(5)},${car.geo.lng.toFixed(5)}`);
+    if (car.paid) bits.push(`Paid ${car.paid.method.toUpperCase()} Rs${Math.round(car.paid.amount)}`);
+    const note = (bits.join(' | ') + (car.others && car.others.length ? ' | Same customer: ' + car.others.join(', ') : '')).slice(0, 300);
     const doc = {
-      reg: car.reg, plate: car.plate, model: car.model, area: car.area || '', plan: car.plan || 'std', fee: Number(car.fee) || 0,
-      customer_name: car.customer_name || '', customer_phone: car.customer_phone || '', note: '', washer_id: me().id,
+      reg: car.reg, plate: car.plate, model: car.model, area: (car.area || '').slice(0, 80), plan: car.plan || 'std', fee: Number(car.fee) || 0,
+      customer_name: car.customer_name || '', customer_phone: car.customer_phone || '', note, washer_id: me().id,
       added_by: auth.phone() || '', status: 'pending', created_at: isoIST(), updated_at: isoIST(),
     };
     await db.doc('newcars/' + doc.reg).set(doc);
@@ -876,3 +896,5 @@ export function syncState(): ['connecting' | 'demo' | 'wait' | 'offline' | 'live
 }
 export const outboxSize = () => Object.keys(S.outbox).length;
 export const planName = (c: Car) => PLAN[c.plan]?.name || 'WD Standard';
+/** The attendance log behind the monthly rewards (read-only view). */
+export const attendLog = (): Attend => S.attend || {};

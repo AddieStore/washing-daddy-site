@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AppHeader, Button, CallButton, CarArt, DashCard, DemoNote, Empty, Eyebrow, F, HeroCard, Icon, ListCard, OnViolet, OnlineSwitch,
-  Plate, Pressy, SectionTitle, SlideToConfirm, StatCard, StatusPill, Tier, WeekStrip, XChip, brand, useTheme,
+  Plate, Pressy, SectionTitle, SlideToConfirm, StatCard, StatusPill, Tier, VerifiedBadge, WeekStrip, XChip, brand, useTheme,
   type WeekDay,
 } from '../../ui';
 import {
@@ -19,6 +19,8 @@ import { SyncChipLive } from '../../screens/TopBar';
 import { openAddCar } from '../../screens/AddCar';
 import { openHelpSheet } from '../../screens/sheets';
 import { CheckInCard } from '../../screens/RoundTimeline';
+import { RewardsMini } from '../../screens/RewardsCards';
+import { myTrust } from '../../screens/TrustData';
 import { SLOTS, slotRange } from '../../lib/slots';
 
 const VIOLET_INK = '#2A0478';
@@ -35,6 +37,7 @@ const POLAS = [
 const TRUST_RATIO = 400 / 470;
 
 function Hero({ started }: { started: boolean }) {
+  const { c } = useTheme();
   const w = me(), cn = Route.counts();
   const etas = Route.etaList(), rt = route();
   const first = W(rt[0]?.reg)?.eta || etas[0], last = W(rt[rt.length - 1]?.reg)?.eta || etas[etas.length - 1];
@@ -50,7 +53,7 @@ function Hero({ started }: { started: boolean }) {
       subtitle={cn.total ? sub : undefined}
       ring={{ fraction: cn.total ? cn.done / cn.total : 0, value: cn.done, label: `/ ${cn.total}` }}
     >
-      <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: '#1A0A33', opacity: 0.72 }} numberOfLines={1}>{dayShort(DAY, isHindi())} · {w.areas.split(' · ')[0]}</Text>
+      <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: c.heroInk, opacity: 0.72 }} numberOfLines={1}>{dayShort(DAY, isHindi())} · {w.areas.split(' · ')[0]}</Text>
     </HeroCard>
   );
 }
@@ -251,6 +254,7 @@ export default function RoundScreen() {
   const h = hourIST();
   const hi = t(h < 12 ? 'Subah bakhair' : h < 17 ? 'Namaste' : 'Shaam ho gayi');
   const photo = myPhoto();
+  const trust = myTrust();
   const avatar = photo?.url || null;
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -267,10 +271,14 @@ export default function RoundScreen() {
           ]}
         />
         <View style={s.pad}>
-          <View style={{ alignItems: 'flex-end', marginBottom: 8 }}><SyncChipLive /></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+            <VerifiedBadge small verified={trust.verified} label={t(trust.verified ? 'WD Verified' : 'Verification baaki')} style={{ flexShrink: 1 }} />
+            <SyncChipLive />
+          </View>
           <Hero started={started} />
           <View style={{ marginTop: 12 }}><Stats /></View>
           <View style={{ marginTop: 12 }}><Week /></View>
+          <View style={{ marginTop: 12 }}><RewardsMini /></View>
           {S.day?.checkin_at || !started ? <View style={{ marginTop: 12 }}><CheckInCard /></View> : null}
           <DashCard style={{ marginTop: 12 }}>
             <OnlineSwitch value={on} onChange={() => act.toggleOnline()}

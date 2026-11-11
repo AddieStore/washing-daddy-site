@@ -15,6 +15,9 @@ import { t } from '../lib/i18n';
 import { hm12, t12 } from '../lib/time';
 import { takePhoto } from '../lib/photo';
 import { WashGuide } from '../screens/WashGuide';
+import { myPhotoSource, myTrust } from '../screens/TrustData';
+import { VerifiedStrip } from '../ui/trust';
+import { me } from '../state/store';
 import { ScreenBar, ReqCard, Shot, TaskRow, WashTimer, InteriorButton, ExtrasRow, openNoteSheet, openPhotoSheet, openSkipSheet, openSuccessSheet, type ShotItem } from '../screens/JobParts';
 
 const ORDER = ['scheduled', 'on_the_way', 'arrived', 'washing', 'done'];
@@ -110,6 +113,25 @@ function Stage({ reg, st }: { reg: string; st: string }) {
         {tel && c0.phone ? <CallButton phone={c0.phone} small label={t('Call')} /> : null}
       </View>
     </View>
+  );
+}
+
+/* ---------- who the customer sees ---------- */
+function PartnerStrip() {
+  const w = me(), tr = myTrust();
+  return (
+    <VerifiedStrip
+      style={{ marginHorizontal: 16, marginTop: 12 }}
+      title={t(tr.verified ? 'Verified WD partner' : 'WD partner')}
+      name={w.name}
+      source={myPhotoSource()}
+      verified={tr.verified}
+      badge={t(tr.verified ? 'WD Verified' : 'Verification baaki')}
+      rating={w.rating}
+      ratingLabel={t('Rating')}
+      cars={(w.lifetime + Route.counts().done).toLocaleString('en-IN')}
+      carsLabel={t('gaadi dhoyi')}
+    />
   );
 }
 
@@ -285,6 +307,7 @@ export default function JobScreen() {
       <ScreenBar title={`${car.model} · ${car.house}`} back />
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <Stage reg={reg} st={st} />
+        <PartnerStrip />
         <View style={{ paddingHorizontal: 16 }}>
           <DashCard style={{ marginTop: 12, paddingVertical: 6, paddingHorizontal: 6 }}><Stepper steps={steps} /></DashCard>
 

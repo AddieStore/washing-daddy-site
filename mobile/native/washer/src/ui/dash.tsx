@@ -77,10 +77,12 @@ export type RingProps = {
   children?: React.ReactNode;
   /** Text colour of the centre. Default heroInk. */
   ink?: string;
+  /** Fill of the inner disc. Default a translucent white (right for the gold hero card; pass 'transparent' on plain cards). */
+  disc?: string;
   style?: S<ViewStyle>;
 };
 /** Progress ring with an inner lighter disc and a centre number + label. Animates in. */
-export function Ring({ fraction, size = 92, stroke = 9, color, track, value, label, children, ink, style }: RingProps) {
+export function Ring({ fraction, size = 92, stroke = 9, color, track, value, label, children, ink, disc, style }: RingProps) {
   const { c } = useTheme();
   const f = Math.max(0, Math.min(1, fraction || 0));
   const g = useGrow(f);
@@ -94,7 +96,7 @@ export function Ring({ fraction, size = 92, stroke = 9, color, track, value, lab
   return (
     <View style={[{ width: size, height: size }, style]} accessible accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(f * 100) }}>
       <Svg width={size} height={size} viewBox="0 0 100 100" style={{ transform: [{ rotate: '-90deg' }] }}>
-        <Circle cx={50} cy={50} r={r - stroke / 2 - 3} fill="rgba(255,255,255,0.45)" />
+        <Circle cx={50} cy={50} r={r - stroke / 2 - 3} fill={disc ?? 'rgba(255,255,255,0.45)'} />
         <Circle cx={50} cy={50} r={r} fill="none" stroke={track ?? c.heroTrack} strokeWidth={stroke} />
         <Circle cx={50} cy={50} r={r} fill="none" stroke={color ?? brand.gold} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${C}`} strokeDashoffset={C * (1 - f * v)} />
       </Svg>
@@ -273,20 +275,20 @@ export function WeekStrip({ days, selected, onSelect, title, onPrev, onNext, sty
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         {days.map((d) => {
           const on = d.key === selected;
-          return (
-            <Pressy
-              key={d.key}
-              onPress={onSelect ? () => onSelect(d.key) : undefined}
-              disabled={!onSelect}
-              scaleTo={0.94}
-              accessibilityLabel={`${d.label} ${d.date}`}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: on }}
-              style={{ flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 22, backgroundColor: on ? c.primary : 'transparent', gap: 8 }}
-            >
+          const dayStyle = { flex: 1, alignItems: 'center' as const, paddingVertical: 8, borderRadius: 22, backgroundColor: on ? c.primary : 'transparent', gap: 8 };
+          const inner = (
+            <>
               <Text style={{ fontFamily: F.body, fontSize: 11, color: on ? '#fff' : c.fg3 }} numberOfLines={1}>{d.label}</Text>
               <Text style={{ fontFamily: F.semi, fontSize: 14, color: on ? '#fff' : c.fg }}>{d.date}</Text>
               <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: d.dot ? (on ? brand.gold : c.primary) : 'transparent' }} />
+            </>
+          );
+          // no handler = a plain read-only day (not announced as a button)
+          if (!onSelect) return <View key={d.key} accessible accessibilityLabel={`${d.label} ${d.date}`} style={dayStyle}>{inner}</View>;
+          return (
+            <Pressy key={d.key} onPress={() => onSelect(d.key)} scaleTo={0.94} accessibilityLabel={`${d.label} ${d.date}`}
+              accessibilityRole="radio" accessibilityState={{ selected: on }} style={dayStyle}>
+              {inner}
             </Pressy>
           );
         })}

@@ -35,6 +35,7 @@ function Gate() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="job" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="round-setup" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="rewards" options={{ animation: 'slide_from_right' }} />
           </Stack>
         : <AuthScreen />}
       <JobAlert />
