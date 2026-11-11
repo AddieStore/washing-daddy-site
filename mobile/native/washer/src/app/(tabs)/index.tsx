@@ -80,7 +80,7 @@ function Week() {
 function PrimaryAction({ started }: { started: boolean }) {
   const [key, setKey] = useState(0);
   const total = route().length;
-  if (!total) return <DemoNote>{view.bookState === 'loading' ? t('Aaj ki list aa rahi hai…') : t('Aaj aapke naam koi gaadi nahi hai. Ravi se baat karo.')}</DemoNote>;
+  if (!total) return <DemoNote>{view.bookState === 'loading' ? t('Aaj ki list aa rahi hai…') : t('Aaj aapke naam koi gaadi nahi hai. Manager se baat karo.')}</DemoNote>;
   if (started) return null;
   return (
     <View>
@@ -211,7 +211,7 @@ function RouteList() {
           </>
         )}
       <Button variant="ghost" label={t('+ Nayi gaadi add karo')} onPress={openAddCar} style={{ marginTop: 14 }} />
-      <DemoNote>{t('Naya customer mila? Gaadi yahan add karo, aaj se dhona shuru. Ravi manzoori denge.')}</DemoNote>
+      <DemoNote>{t('Naya customer mila? Gaadi yahan add karo, aaj se dhona shuru. Manager manzoori denge.')}</DemoNote>
     </View>
   );
 }

@@ -349,7 +349,7 @@ export const Sync = {
             S.rejected = S.rejected || {}; S.rejected[key] = doc; delete S.outbox[key]; save(); await this.adopt(key, true);
             refused++;
             if (refused >= 3) { view.readOnly = true; ui.toast(t('Is account se customer tak update nahi jaa raha')); break }
-            const c = carBy(doc.reg); ui.toast(t(`${c ? c.model : doc.reg}: update nahi gaya, Ravi ko batao`)); continue;
+            const c = carBy(doc.reg); ui.toast(t(`${c ? c.model : doc.reg}: update nahi gaya, Manager ko batao`)); continue;
           }
           if (e && e.code === 'unavailable') { view.netOk = false; emit(); await new Promise(r => setTimeout(r, 800 + Math.random() * 800)); continue }
           view.netOk = false; break;
@@ -578,7 +578,7 @@ export const act = {
       added_by: auth.phone() || '', status: 'pending', created_at: isoIST(), updated_at: isoIST(),
     };
     await db.doc('newcars/' + doc.reg).set(doc);
-    ui.haptic([20, 50, 20]); ui.confetti(.5); ui.toast(t('Gaadi round pe aa gayi. Ravi ko bhej diya'));
+    ui.haptic([20, 50, 20]); ui.confetti(.5); ui.toast(t('Gaadi round pe aa gayi. Manager ko bhej diya'));
   },
   toggleOnline() {
     S.online = !isOnline(); save(); ui.haptic(S.online ? [10, 30, 10] : 12);

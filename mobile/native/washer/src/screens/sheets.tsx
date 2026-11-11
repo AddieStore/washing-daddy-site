@@ -110,14 +110,14 @@ function HelpBody({ close }: { close: () => void }) {
   ];
   return (
     <View>
-      <SheetTitle title={t('Madad chahiye?')} sub={t('Kya hua? Support ko WhatsApp pe seedha message jayega.')} />
+      <SheetTitle title={t('Madad chahiye?')} sub={t('Kya hua? Manager ko WhatsApp pe seedha message jayega.')} />
       <RowsBox>
         {items.map(([ti, d], i) => (
-          <LinkRow key={ti} first={i === 0} title={t(ti)} sub={t(d)} onPress={() => open(waTo(`Namaste Support, ${who}. ${ti}.`))} />
+          <LinkRow key={ti} first={i === 0} title={t(ti)} sub={t(d)} onPress={() => open(waTo(`Namaste Manager, ${who}. ${ti}.`))} />
         ))}
       </RowsBox>
       <View style={{ marginTop: 14 }}>
-        <Button label={t('SOS · Support ko abhi call karo')} variant="sos" onPress={() => open('tel:' + OWNER_PHONE)} />
+        <Button label={t('SOS · Manager ko abhi call karo')} variant="sos" onPress={() => open('tel:' + OWNER_PHONE)} />
       </View>
       <Note>{t('Accident ya khatre mein pehle 112 pe call karo.')}</Note>
       <View style={{ alignItems: 'center' }}><LinkButton label={t('Band karo')} onPress={close} /></View>

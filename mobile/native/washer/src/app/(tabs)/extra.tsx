@@ -71,7 +71,6 @@ function JobCard({ j }: { j: Job }) {
         <IconBubble icon="plus" size={42} tint={brand.orange} bg="rgba(255,106,26,0.14)" />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 16, color: c.fg }}>{j.service || t('Extra kaam')}</Text>
-          <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3 }}>{t('Customer')} {rupee(j.price)}</Text>
         </View>
         <View style={{ alignItems: 'flex-end', flexShrink: 0, maxWidth: '40%' }}>
           <BigNumber value={share} size={28} style={{ color: c.ok }} />
@@ -110,7 +109,7 @@ export default function ExtraScreen() {
             {list.length
               ? list.map((j) => <JobCard key={j.id} j={j} />)
               : isOnline()
-                ? <Empty title={t('Abhi koi extra kaam nahi')} text={t('Customer ya Ravi ka koi kaam aaya toh yahan dikhega.')} />
+                ? <Empty title={t('Abhi koi extra kaam nahi')} text={t('Customer ya Manager ka koi kaam aaya toh yahan dikhega.')} />
                 : <Empty title={t('Aap offline ho')} text={t('Naye customer kaam nahi dikhenge. Round tab pe online karo.')} />}
           </View>
           <View style={{ marginTop: 14 }}>

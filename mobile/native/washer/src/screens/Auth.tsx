@@ -185,7 +185,7 @@ function PhoneStep() {
       <Err msg={err} />
       <Button label={busy ? t('Bhej raha hoon…') : t('OTP bhejo')} iconRight={busy ? undefined : 'arrow'} variant="violet" disabled={busy} onPress={() => go(ph)} />
       {REAL ? (
-        <Hint>{t('Naye washer ho? Apna number daalo. OTP ke baad naam bharo, owner approve karenge.')}</Hint>
+        <Hint>{t('Naye washer ho? Apna number daalo. OTP ke baad naam bharo, manager approve karenge.')}</Hint>
       ) : (
         <>
           <Hint>{t('Test version. Washer chuno:')}</Hint>
@@ -347,7 +347,7 @@ function JoinStep() {
   return (
     <View>
       <CardTitle>{t('Swagat hai! 🙌')}</CardTitle>
-      <CardText>{t('Naya number hai. Apna naam aur area batao, owner approve karenge.')}</CardText>
+      <CardText>{t('Naya number hai. Apna naam aur area batao, manager approve karenge.')}</CardText>
       <Text style={[lab, { marginBottom: 6 }]}>{t('Aapka naam')}</Text>
       <Input value={name} onChangeText={setName} maxLength={60} autoComplete="name" placeholder={t('Jaise: Ramesh Kumar')} />
       <Text style={[lab, { marginTop: 14, marginBottom: 8 }]}>{t('Kaunsa area?')}</Text>
@@ -374,9 +374,9 @@ function JoinStep() {
 
 /* ---------------- waiting / blocked / no round ---------------- */
 const WAIT_TEXT: Record<string, [string, string]> = {
-  wait: ['Approval ka intezaar ⏳', 'Aapki details owner ke paas pahunch gayi. Jaise hi woh approve karenge, app khud khul jayega. App band bhi kar sakte ho.'],
-  noround: ['Round abhi set nahi hua', 'Aap approve ho gaye ho, par aapka round abhi set nahi hua. Owner se baat karo.'],
-  blocked: ['Account band hai', 'Is number se abhi kaam nahi ho sakta. Owner se baat karo.'],
+  wait: ['Approval ka intezaar ⏳', 'Aapki details manager ke paas pahunch gayi. Jaise hi woh approve karenge, app khud khul jayega. App band bhi kar sakte ho.'],
+  noround: ['Round abhi set nahi hua', 'Aap approve ho gaye ho, par aapka round abhi set nahi hua. Manager se baat karo.'],
+  blocked: ['Account band hai', 'Is number se abhi kaam nahi ho sakta. Manager se baat karo.'],
 };
 function WaitStep({ step }: { step: string }) {
   const { c } = useTheme();
@@ -387,7 +387,7 @@ function WaitStep({ step }: { step: string }) {
       <CardTitle>{t(ti)}</CardTitle>
       <CardText>{t(tx)}</CardText>
       <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, textAlign: 'center', marginBottom: 16 }}>+91 {fmtPhone(p10)}</Text>
-      <Button label={t('Owner ko WhatsApp karo')} variant="violet" onPress={() => { void Linking.openURL('https://wa.me/' + OWNER_WA).catch(() => {}) }} />
+      <Button label={t('Manager ko WhatsApp karo')} variant="violet" onPress={() => { void Linking.openURL('https://wa.me/' + OWNER_WA).catch(() => {}) }} />
       <View style={{ alignItems: 'center' }}><LinkButton label={t('Log out')} color={c.fg2} onPress={() => { void act.logout() }} /></View>
     </View>
   );

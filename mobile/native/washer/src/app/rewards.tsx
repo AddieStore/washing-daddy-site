@@ -133,7 +133,7 @@ export default function Rewards() {
           subtitle={`${t('Abhi mumkin')}: ${rupee(o.possible)}${o.earnedSoFar ? ` · ${t('Pakka')}: ${rupee(o.earnedSoFar)}` : ''}`}
           ring={{ fraction: m.total ? m.came / m.total : 0, value: m.came, label: `/${m.total} ${t('din')}` }}
         >
-          <Text style={{ fontFamily: F.semi, fontSize: 13, lineHeight: 18, color: c.heroInk }}>{t('Bonus Ravi mahine ke end mein deta hai. App mein paisa nahi chalta.')}</Text>
+          <Text style={{ fontFamily: F.semi, fontSize: 13, lineHeight: 18, color: c.heroInk }}>{t('Bonus Manager mahine ke end mein deta hai. App mein paisa nahi chalta.')}</Text>
         </HeroCard>
 
         <SectionTitle title={t('Is mahine ki attendance')} style={{ marginTop: 20 }} />

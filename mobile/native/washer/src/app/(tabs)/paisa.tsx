@@ -14,7 +14,7 @@ import { RewardsCard } from '../../screens/RewardsCards';
 function PayRow({ car }: { car: Car }) {
   const { c } = useTheme();
   const w = W(car.reg), dn = !!w && w.status === 'done';
-  const sub = car.plate + (car.pending ? t(' · Ravi ki manzoori baaki') : typeof car.fee === 'number' && car.fee ? t(` · gaadi ${rupee(car.fee)}/mahina`) : t(' · fee book mein nahi hai'));
+  const sub = car.plate + (car.pending ? t(' · Manager ki manzoori baaki') : '');
   return (
     <ListCard
       style={{ marginBottom: 12 }}
@@ -107,7 +107,7 @@ export default function Paisa() {
           <Tile style={{ width: '48%' }} icon="plus" tone={brand.gold} label={t('Extra kaam se')} value={bonus ? rupee(bonus) : '–'} />
         </View>
 
-        <SectionTitle title={t('Gaadi se kamai')} action={t(`${paid.length} gaadi · aadha aapka`)} style={{ marginTop: 20 }} />
+        <SectionTitle title={t('Gaadi se kamai')} action={`${paid.length} ${t('gaadi')}`} style={{ marginTop: 20 }} />
         {cars.length
           ? paid.concat(pend).map(car => <PayRow key={car.reg} car={car} />)
           : <Empty title={t('Koi gaadi nahi')} text={t('Round aayega to kamai yahan dikhegi.')} />}
@@ -125,12 +125,11 @@ export default function Paisa() {
               right={(
                 <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
                   <Text style={{ fontFamily: F.black, fontSize: 20, color: c.fg }}>{rupee(Money.share(j.price))}</Text>
-                  <Text style={{ fontFamily: F.body, fontSize: 11.5, color: c.fg3 }}>{t('kaam')} {rupee(j.price)}</Text>
                 </View>
               )}
             />
           ))
-          : <Empty title={t('Abhi koi extra kaam nahi')} text={t('Ravi jo extra kaam denge, uska aadha aapka.')} />}
+          : <Empty title={t('Abhi koi extra kaam nahi')} text={t('Manager jo extra kaam denge woh yahan aayega.')} />}
 
         <SectionTitle title={t('Aaj ki timeline')} style={{ marginTop: 12 }} />
         {tl.length

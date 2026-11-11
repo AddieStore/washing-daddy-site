@@ -1,5 +1,5 @@
 // "Naya customer jodo": the washer signs a new customer up in front of them, step by step. The car(s) land on his round
-// today; Ravi approves. One newcars doc per car (the store takes one car per call); the first car carries the extras' numbers.
+// today; The manager approves. One newcars doc per car (the store takes one car per call); the first car carries the extras' numbers.
 import React, { useState } from 'react';
 import { Linking, Text, View } from 'react-native';
 import { router } from 'expo-router';
@@ -33,19 +33,17 @@ function AddCarForm({ close }: { close: () => void }) {
   const [locBusy, setLocBusy] = useState(false);
   const [locMsg, setLocMsg] = useState('');
   const [plan, setPlan] = useState<PlanId>('std');
-  const [fee, setFee] = useState(PLAN_PRICE.std);
-  const [extras, setExtras] = useState<string[]>([]);
+    const [extras, setExtras] = useState<string[]>([]);
   const [pay, setPay] = useState<Pay>('later');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
   const bad = (m: string) => { setErr(m); ui.haptic(14); return false; };
-  const setF = (v: number) => setFee(Math.max(0, Math.min(20000, v)));
-  const bump = (d: number) => { setF(fee + d); ui.haptic(4); };
   const ph = phone.replace(/\D/g, '');
   const ex = extras.filter((x) => x.trim());   // an empty extra box is just ignored
   const regs = [normReg(plate), ...ex.map((x) => normReg(x))];
-  const total = fee * regs.length;
+  const fee = PLAN_PRICE[plan];   // list price; never shown to the washer
+  const total = fee * regs.length;   // recorded with the payment, never shown
 
   const useLocation = async () => {
     if (locBusy) return;
@@ -122,7 +120,7 @@ function AddCarForm({ close }: { close: () => void }) {
     }
   };
 
-  const share = fee * SHARE;
+  const share = fee * regs.length * SHARE;
   const last = step === STEPS.length - 1;
   return (
     <View style={{ paddingBottom: 8 }}>
@@ -187,20 +185,15 @@ function AddCarForm({ close }: { close: () => void }) {
             <ChipPicker
               options={PLANS.map((k) => ({ value: k, label: PLAN[k].name }))}
               value={plan}
-              onChange={(k) => { setPlan(k); setF(PLAN_PRICE[k]); ui.haptic(4); }}
+              onChange={(k) => { setPlan(k); ui.haptic(4); }}
             />
-            <Eyebrow style={lbl()}>{t('Mahine ka kitna tay hua?')}</Eyebrow>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <StepBtn label="−" a11y={t('Kam')} onPress={() => bump(-100)} />
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 56, borderRadius: 20, backgroundColor: c.soft }}>
-                <BigNumber value={`₹${fee}`} unit={t('mahina')} size={28} style={{ color: c.softInk }} />
-              </View>
-              <StepBtn label="+" a11y={t('Zyada')} onPress={() => bump(100)} />
-            </View>
           </DashCard>
-          <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, textAlign: 'center', marginTop: 12 }}>
-            {t(`Aapka aadha: ${rupee(share)} mahina, ${rupee(share / daysInMonth(DAY))} roz. Ravi ki manzoori ke baad ginna shuru hoga.`)}
-          </Text>
+          <DashCard style={{ padding: 16, marginTop: 12 }}>
+            <Text style={{ fontFamily: F.bold, fontSize: 16, color: c.fg }}>
+              {t(`Aapko milega: ${rupee(share)} / mahina (${rupee(share / daysInMonth(DAY))} roz)`)}
+            </Text>
+            <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 6 }}>{t('Manager ki manzoori ke baad ginna shuru hoga.')}</Text>
+          </DashCard>
         </>
       ) : null}
 
@@ -227,13 +220,13 @@ function AddCarForm({ close }: { close: () => void }) {
             <Row k={t('Customer')} v={`${name.trim() ? name.trim() + ' · ' : ''}+91 ${ph}`} />
             <Row k={t('Pata')} v={address.trim()} />
             <Row k={t('gaadi')} v={regs.map((r, i) => (i === 0 ? plate.trim().toUpperCase() || r : ex[i - 1].trim().toUpperCase())).join(', ')} />
-            <Row k={t('Plan')} v={`${PLAN[plan].name} · ₹${fee} × ${regs.length}`} />
+            <Row k={t('Plan')} v={PLAN[plan].name} />
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.line }}>
-              <Text style={{ fontFamily: F.bold, fontSize: 15, color: c.fg2 }}>{t('Kul')}</Text>
-              <BigNumber value={`₹${total}`} unit={t('mahina')} size={26} />
+              <Text style={{ fontFamily: F.bold, fontSize: 15, color: c.fg2 }}>{t('Aapko milega')}</Text>
+              <BigNumber value={rupee(share)} unit={t('mahina')} size={26} />
             </View>
           </DashCard>
-          <Eyebrow style={lbl(14)}>{t('Paisa kaise mila?')}</Eyebrow>
+          <Eyebrow style={lbl(14)}>{t('Customer se paisa liya?')}</Eyebrow>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {(['cash', 'upi', 'later'] as Pay[]).map((k) => {
               const on = pay === k;
@@ -293,14 +286,5 @@ function PinMap() {
         <Icon name="pin" size={32} color={brand.red} />
       </View>
     </View>
-  );
-}
-
-function StepBtn({ label, a11y, onPress }: { label: string; a11y: string; onPress: () => void }) {
-  const { c } = useTheme();
-  return (
-    <Pressy onPress={onPress} accessibilityLabel={a11y} scaleTo={0.9} style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: c.soft }}>
-      <Text style={{ fontFamily: F.black, fontSize: 26, color: c.softInk, marginTop: -2 }}>{label}</Text>
-    </Pressy>
   );
 }

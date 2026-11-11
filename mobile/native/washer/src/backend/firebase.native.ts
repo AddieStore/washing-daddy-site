@@ -74,8 +74,8 @@ const AUTH_ERR: Record<string, [string, string]> = {
   'too-many-requests': ['too_many', 'Bahut baar try hua. Thodi der baad try karo.'],
   'quota-exceeded': ['too_many', 'Abhi OTP nahi ja raha. Thodi der baad try karo.'],
   'network-request-failed': ['offline', 'Internet nahi hai. Signal dekh ke dobara try karo.'],
-  'app-not-authorized': ['setup', 'App abhi Firebase mein register nahi hai. Ravi ko batao.'],
-  'missing-client-identifier': ['setup', 'App abhi Firebase mein register nahi hai. Ravi ko batao.'],
+  'app-not-authorized': ['setup', 'App abhi Firebase mein register nahi hai. Manager ko batao.'],
+  'missing-client-identifier': ['setup', 'App abhi Firebase mein register nahi hai. Manager ko batao.'],
   'missing-verification-code': ['wrong_code', '6 number ka OTP daalo.'],
 };
 const authErr = (e: any): AuthError => {

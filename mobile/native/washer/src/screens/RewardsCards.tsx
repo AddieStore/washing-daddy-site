@@ -70,7 +70,7 @@ export function RewardsCard() {
         <MiniRing fraction={o.streak / EARLY_DAYS} value={o.streak} label={`/${EARLY_DAYS}`} tone={earlyLine(o).tone} title={t('Early bird')} line={earlyLine(o)} />
         <MiniRing fraction={m.total ? m.came / m.total : 0} value={m.came} label={`/${m.total}`} tone={monthLine(o).tone} title={t('Poora mahina')} line={monthLine(o)} />
       </View>
-      <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3, marginTop: 14, textAlign: 'center' }}>{t('Bonus Ravi mahine ke end mein deta hai')}</Text>
+      <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3, marginTop: 14, textAlign: 'center' }}>{t('Bonus Manager mahine ke end mein deta hai')}</Text>
     </DashCard>
   );
 }
