@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Image, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { F, Icon, TaskIcon, brand, cardShadow, sheet, ui, useTheme } from '../ui';
+import { F, Icon, R as RAD, TaskIcon, brand, cardBox, cardShadow, sheet, ui, useTheme } from '../ui';
 import { Button, ChipPicker, Field, LinkButton, Pressy, SyncChip } from '../ui';
 import { DashCard, IconBubble, Ring } from '../ui/dash';
 import { guideAt } from '../lib/washGuide';
@@ -26,13 +26,13 @@ export function ScreenBar({ title, back }: { title: string; back?: boolean }) {
   const insets = useSafeAreaInsets();
   const goBack = () => { if (router.canGoBack()) router.back(); else router.navigate('/') };
   return (
-    <View style={{ paddingTop: insets.top + 6, paddingBottom: 8, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.bg }}>
+    <View style={{ paddingTop: insets.top + 12, paddingBottom: 8, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.bg }}>
       {back ? (
-        <Pressy onPress={goBack} accessibilityLabel={t('Round par wapas')} style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card, ...cardShadow(c) }}>
-          <Icon name="back" size={22} color={c.fg} />
+        <Pressy onPress={goBack} accessibilityLabel={t('Round par wapas')} hitSlop={6} style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.tile2, ...cardShadow(c) }}>
+          <Icon name="back" size={18} color={c.fg} />
         </Pressy>
       ) : null}
-      <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, fontFamily: F.semi, fontSize: 17, color: c.fg }}>{title}</Text>
+      <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, fontFamily: back ? F.semi : F.bold, fontSize: back ? 17 : 20, lineHeight: back ? 24 : 28, color: c.fg }}>{title}</Text>
       <LiveSyncChip />
     </View>
   );
@@ -49,9 +49,9 @@ export function WashTimer({ startedAt, extraMinutes = 0, interiorFrom }: { start
   const total = g ? g.plan[g.plan.length - 1].from : 660;
   return (
     <View style={{ alignItems: 'center' }} accessibilityLabel={`${t('WASH TIME')} ${mm}:${ss}`}>
-      <Ring size={104} stroke={9} fraction={total ? s / total : 0}>
-        <Text style={{ fontFamily: F.black, fontSize: 22, lineHeight: 26, color: c.heroInk }}>{mm}:{ss}</Text>
-        <Text style={{ fontFamily: F.semi, fontSize: 9.5, letterSpacing: 1, color: c.heroInk, opacity: 0.65 }}>{t('WASH TIME')}{extraMinutes > 0 ? ` +${extraMinutes}` : ''}</Text>
+      <Ring size={104} stroke={11.5} color={c.fg} fraction={total ? s / total : 0}>
+        <Text style={{ fontFamily: F.bold, fontSize: 22, lineHeight: 26, color: c.heroInk }}>{mm}:{ss}</Text>
+        <Text style={{ fontFamily: F.semi, fontSize: 9.5, letterSpacing: 1, color: c.fg3 }}>{t('WASH TIME')}{extraMinutes > 0 ? ` +${extraMinutes}` : ''}</Text>
       </Ring>
     </View>
   );
@@ -76,10 +76,10 @@ export function InteriorButton({ reg }: { reg: string }) {
   const { c } = useTheme();
   return (
     <DashCard onPress={() => openInteriorSheet(reg)} accessibilityLabel={t('Interior kar raha hoon · +10 min')}
-      style={{ marginTop: 12, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 14 }}>
+      style={{ marginTop: 12, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 11 }}>
       <IconBubble size={44} bg={c.primary}><TaskIcon k="interior" size={22} color="#fff" /></IconBubble>
-      <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 15.5, color: c.fg }}>{t('Interior kar raha hoon · +10 min')}</Text>
-      <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: brand.gold }}><Text style={{ fontFamily: F.black, fontSize: 12, color: brand.ink }}>+10</Text></View>
+      <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 17, color: c.fg }}>{t('Interior kar raha hoon · +10 min')}</Text>
+      <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: c.primary }}><Text style={{ fontFamily: F.bold, fontSize: 12, color: '#fff' }}>+10</Text></View>
     </DashCard>
   );
 }
@@ -94,9 +94,9 @@ export function ExtrasRow({ addons, compact }: { addons: { key: string; at: stri
       {compact ? null : <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 17, color: c.fg, marginTop: 10 }}>{t('Extras')}</Text>}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {addons.map((a, i) => (
-          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(20,192,138,0.14)' }}>
-            <Icon name="check" size={16} color={brand.mint} />
-            <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg }}>{compact && a.key === 'interior' ? t('Interior jud gaya · +10 min') : `${name(a.key)} · +${a.minutes} min`}</Text>
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 5, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(20,192,138,0.16)' }}>
+            <Icon name="check" size={14} color="#0B7A57" />
+            <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg }}>{compact && a.key === 'interior' ? t('Interior jud gaya · +10 min') : `${name(a.key)} · +${a.minutes} min`}</Text>
           </View>
         ))}
       </View>
@@ -116,18 +116,18 @@ export function TaskRow({ k, done, doneAt, can, onPress }: { k: TaskKey; done: b
   const extra = !['pressure', 'dry'].includes(k);
   return (
     <Pressy onPress={press} scaleTo={0.97} accessibilityLabel={m.hi} accessibilityState={{ checked: done, disabled: !can && !done }}
-      style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 72, padding: 14, borderRadius: 24, backgroundColor: c.card }, cardShadow(c), { transform: [{ translateX: sh }] } as any]}>
+      style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 70, padding: 11 }, cardBox(c), cardShadow(c), { transform: [{ translateX: sh }] } as any]}>
       <View style={{ width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? brand.mint : c.soft }}>
         {done ? <Icon name="check" size={24} color="#fff" /> : <TaskIcon k={k} size={24} color={c.softInk} />}
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 15.5, color: c.fg, textDecorationLine: done ? 'line-through' : 'none', textDecorationColor: 'rgba(20,192,138,0.7)' }}>{t(m.hi)}</Text>
-          {extra ? <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99, backgroundColor: brand.gold }}><Text style={{ fontFamily: F.black, fontSize: 10, letterSpacing: 1, color: brand.ink }}>{t('AAJ')}</Text></View> : null}
+          <Text style={{ fontFamily: F.semi, fontSize: 17, lineHeight: 24, color: c.fg, textDecorationLine: done ? 'line-through' : 'none', textDecorationColor: 'rgba(20,192,138,0.7)' }}>{t(m.hi)}</Text>
+          {extra ? <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99, backgroundColor: c.primary }}><Text style={{ fontFamily: F.bold, fontSize: 10, letterSpacing: 1, color: '#fff' }}>{t('AAJ')}</Text></View> : null}
         </View>
-        <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3 }}>{t(m.sub)}</Text>
+        <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3 }}>{t(m.sub)}</Text>
       </View>
-      <Text style={{ fontFamily: F.black, fontSize: 13, color: c.ok }}>{done && doneAt ? t12(doneAt).replace(/ (AM|PM)/, '') : ''}</Text>
+      <Text style={{ fontFamily: F.bold, fontSize: 12, color: c.ok }}>{done && doneAt ? t12(doneAt).replace(/ (AM|PM)/, '') : ''}</Text>
     </Pressy>
   );
 }
@@ -141,15 +141,15 @@ export function Shot({ kind, list, enabled, onTake, onView }: { kind: 'after' | 
   const fly = useRef(new Animated.Value(1)).current;
   const n = list.length;
   useEffect(() => { if (n) { fly.setValue(0.85); Animated.spring(fly, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 10 }).start() } }, [n, fly]);
-  const R = 24;
+  const R = RAD.card;
   // the wrapper owns the flex slot; the tile inside is a fixed-aspect square that can never exceed it
   if (!last) {
     return (
       <View style={{ flex: 1, minWidth: 0 }}>
         <Pressy onPress={onTake} disabled={!enabled} accessibilityLabel={lab} scaleTo={0.94}
-          style={{ width: '100%', aspectRatio: 1, borderRadius: R, backgroundColor: c.card, ...cardShadow(c), alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden', opacity: enabled ? 1 : 0.5 }}>
-          <IconBubble icon={kind === 'issue' ? 'warn' : 'cam'} size={52} />
-          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 14, color: c.fg }}>{lab}</Text>
+          style={{ width: '100%', aspectRatio: 1, ...cardBox(c), ...cardShadow(c), alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden', opacity: enabled ? 1 : 0.5 }}>
+          <IconBubble icon={kind === 'issue' ? 'warn' : 'cam'} size={52} tint={kind === 'issue' ? '#C41F37' : undefined} bg={kind === 'issue' ? 'rgba(232,56,79,0.12)' : undefined} />
+          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 14, color: c.fg3 }}>{lab}</Text>
         </Pressy>
       </View>
     );
@@ -162,13 +162,13 @@ export function Shot({ kind, list, enabled, onTake, onView }: { kind: 'after' | 
         <Animated.View style={{ flex: 1, borderRadius: R, overflow: 'hidden', backgroundColor: c.tile2, transform: [{ scale: fly }] }}>
           {src ? <Image source={{ uri: src }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
           {last.pending ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(26,10,51,0.45)', alignItems: 'center', justifyContent: 'center' }]}>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(17,17,20,0.45)', alignItems: 'center', justifyContent: 'center' }]}>
               <ActivityIndicator color="#fff" size="large" />
             </View>
           ) : null}
           {n > 1 ? (
-            <View style={{ position: 'absolute', right: 8, top: 8, minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5, backgroundColor: brand.gold, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: F.black, fontSize: 12, color: brand.ink }}>{n}</Text>
+            <View style={{ position: 'absolute', right: 8, top: 8, minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: F.bold, fontSize: 12, color: '#111114' }}>{n}</Text>
             </View>
           ) : null}
           {thumbs.length ? (
@@ -199,17 +199,17 @@ export function ReqCard({ q, customer }: { q: Req; customer: string }) {
   const { c } = useTheme();
   const seen = q.status === 'seen';
   return (
-    <View style={{ gap: 10, padding: 14, borderRadius: 24, backgroundColor: seen ? c.card : 'rgba(255,140,30,0.14)', ...(seen ? cardShadow(c) : null) }}>
+    <View style={{ gap: 10, padding: 11, ...cardBox(c), backgroundColor: seen ? c.card : c.soft, ...(seen ? cardShadow(c) : null) }}>
       <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: brand.orange, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
           <Icon name={q.kind === 'rewash' ? 'redo' : 'note'} size={22} color="#fff" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: F.black, fontSize: 16, color: c.fg }}>{t(REQ_KIND[q.kind] || 'Customer ka note')}</Text>
-          <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: c.fg3 }}>{customer} · {q.created_at ? t12(q.created_at) : ''}{seen ? t(' · dekh liya') : ''}</Text>
+          <Text style={{ fontFamily: F.bold, fontSize: 17, color: c.fg }}>{t(REQ_KIND[q.kind] || 'Customer ka note')}</Text>
+          <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{customer} · {q.created_at ? t12(q.created_at) : ''}{seen ? t(' · dekh liya') : ''}</Text>
         </View>
       </View>
-      {q.text ? <Text style={{ fontFamily: F.semi, fontSize: 16, color: c.fg }}>{'“'}{q.text}{'”'}</Text> : null}
+      {q.text ? <Text style={{ fontFamily: F.semi, fontSize: 17, lineHeight: 24, color: c.fg }}>{'“'}{q.text}{'”'}</Text> : null}
       {q.spots && q.spots.length ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
           {q.spots.map((s, i) => (
@@ -220,11 +220,11 @@ export function ReqCard({ q, customer }: { q: Req; customer: string }) {
         </View>
       ) : null}
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <View style={{ flex: 1 }}><Pressy disabled={seen} onPress={() => act.reqSeen(q.id)} style={{ width: '100%', minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: c.soft, opacity: seen ? 0.5 : 1 }}>
-          <Text style={{ fontFamily: F.black, fontSize: 15, color: c.fg }}>{seen ? t('Dekh liya ✓') : t('Dekh liya')}</Text>
+        <View style={{ flex: 1 }}><Pressy disabled={seen} onPress={() => act.reqSeen(q.id)} style={{ width: '100%', minHeight: 40, borderRadius: RAD.button, alignItems: 'center', justifyContent: 'center', backgroundColor: c.tile2, opacity: seen ? 0.5 : 1 }}>
+          <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg }}>{seen ? t('Dekh liya ✓') : t('Dekh liya')}</Text>
         </Pressy></View>
-        <View style={{ flex: 1 }}><Pressy onPress={() => act.reqDone(q.id)} style={{ width: '100%', minHeight: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary }}>
-          <Text style={{ fontFamily: F.black, fontSize: 15, color: '#fff' }}>{t('Kar diya')}</Text>
+        <View style={{ flex: 1 }}><Pressy onPress={() => act.reqDone(q.id)} style={{ width: '100%', minHeight: 40, borderRadius: RAD.button, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary }}>
+          <Text style={{ fontFamily: F.semi, fontSize: 14, color: '#fff' }}>{t('Kar diya')}</Text>
         </Pressy></View>
       </View>
     </View>
@@ -236,8 +236,8 @@ function SheetTitle({ title, sub }: { title: string; sub?: string }) {
   const { c } = useTheme();
   return (
     <View style={{ marginBottom: 12 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 22, color: c.fg }}>{title}</Text>
-      {sub ? <Text style={{ fontFamily: F.body, fontSize: 14.5, color: c.fg2, marginTop: 2 }}>{sub}</Text> : null}
+      <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 20, color: c.fg }}>{title}</Text>
+      {sub ? <Text style={{ fontFamily: F.body, fontSize: 13, color: c.fg3, marginTop: 2 }}>{sub}</Text> : null}
     </View>
   );
 }
@@ -250,8 +250,8 @@ function NoteSheet({ reg, customer, current, close }: { reg: string; customer: s
       <SheetTitle title={t('Customer ke liye note')} sub={t(`${customer} ke app mein turant dikhega.`)} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
         {NOTE_CHIPS.map(ch => (
-          <Pressy key={ch} onPress={() => setText(v => (v ? v.replace(/\s*$/, '. ') + ch : ch))} style={{ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 999, borderWidth: 2, borderColor: c.line, backgroundColor: c.tile }}>
-            <Text style={{ fontFamily: F.bold, fontSize: 14, color: c.fg }}>{t(ch)}</Text>
+          <Pressy key={ch} onPress={() => setText(v => (v ? v.replace(/\s*$/, '. ') + ch : ch))} style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: c.line, backgroundColor: c.tile }}>
+            <Text style={{ fontFamily: F.semi, fontSize: 13.5, color: c.fg }}>{t(ch)}</Text>
           </Pressy>
         ))}
       </View>

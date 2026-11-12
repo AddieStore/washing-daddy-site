@@ -1,8 +1,8 @@
 // Extra tab: on-demand jobs (from Ravi, or customer bookings anyone can claim). Port of renderExtra / #s-extra.
 import React, { useState } from 'react';
-import { Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BigNumber, Button, CallButton, DashCard, DemoNote, Empty, F, Icon, IconBubble, ListCard, Pressy, SectionTitle, brand, ui, useTheme } from '../../ui';
+import { BigNumber, Button, DutyToggle, Footer, PullToRefresh, CallButton, DashCard, DemoNote, Empty, F, Icon, IconBubble, ListCard, Pressy, SectionTitle, brand, ui, useTheme } from '../../ui';
 import { Extra, Money, act, isOnline, useStore } from '../../state/store';
 import { mapsOf, telOf, type Job } from '../../lib/data';
 import { rupee } from '../../lib/time';
@@ -32,10 +32,10 @@ function JobCard({ j }: { j: Job }) {
 
   const where = (
     <View style={s.where}>
-      <View style={{ marginTop: 2 }}><Icon name="pin" size={18} color={brand.orange} /></View>
-      <Text style={[s.whereTxt, { color: c.fg2 }]}>
+      <View style={{ marginTop: 2 }}><Icon name="pin" size={18} color={c.primary} /></View>
+      <Text style={[s.whereTxt, { color: c.fg3 }]}>
         {j.car || j.reg || t('Gaadi')}
-        {j.area ? <Text>{' · '}<Text style={maps ? { textDecorationLine: 'underline', textDecorationColor: brand.orange } : undefined}>{j.area}</Text></Text> : null}
+        {j.area ? <Text>{' · '}<Text style={maps ? { textDecorationLine: 'underline', textDecorationColor: c.fg3 } : undefined}>{j.area}</Text></Text> : null}
         {j.customer_name ? ` · ${j.customer_name}` : ''}
       </Text>
     </View>
@@ -66,14 +66,14 @@ function JobCard({ j }: { j: Job }) {
   }
 
   return (
-    <DashCard style={{ padding: 16, marginBottom: 12 }}>
+    <DashCard style={{ padding: 15, marginBottom: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-        <IconBubble icon="plus" size={42} tint={brand.orange} bg="rgba(255,106,26,0.14)" />
+        <IconBubble icon="plus" size={40} tint="#8A5B00" bg="rgba(255,186,8,0.22)" />
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 16, color: c.fg }}>{j.service || t('Extra kaam')}</Text>
+          <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 17, color: c.fg }}>{j.service || t('Extra kaam')}</Text>
         </View>
         <View style={{ alignItems: 'flex-end', flexShrink: 0, maxWidth: '40%' }}>
-          <BigNumber value={share} size={28} style={{ color: c.ok }} />
+          <BigNumber value={share} size={29} style={{ color: c.ok }} />
           <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{t('aapke')}</Text>
         </View>
       </View>
@@ -87,7 +87,7 @@ function JobCard({ j }: { j: Job }) {
           {tel ? <CallButton small label={t('Call')} phone={tel.slice(4)} /> : null}
         </View>
       ) : null}
-      {j.photo ? <Image source={{ uri: j.photo }} accessibilityLabel={t('Kaam ki photo')} resizeMode="contain" style={{ width: '100%', height: 240, borderRadius: 18, marginVertical: 10, backgroundColor: c.tile2 }} /> : null}
+      {j.photo ? <Image source={{ uri: j.photo }} accessibilityLabel={t('Kaam ki photo')} resizeMode="contain" style={{ width: '100%', height: 240, borderRadius: 16, marginVertical: 10, backgroundColor: c.tile2 }} /> : null}
       {action}
     </DashCard>
   );
@@ -101,8 +101,8 @@ export default function ExtraScreen() {
   const earned = done.reduce((a, j) => a + Money.share(j.price), 0);
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <ScrollView stickyHeaderIndices={[0]} contentContainerStyle={{ paddingBottom: 128 + insets.bottom }} showsVerticalScrollIndicator={false}>
-        <TopBar title={t('Extra kaam')} />
+      <PullToRefresh stickyHeaderIndices={[0]} contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
+        <TopBar title={t('Extra kaam')} top={<View style={{ paddingHorizontal: 16, paddingTop: 6 }}><DutyToggle /></View>} />
         <View style={{ paddingHorizontal: 16 }}>
           <SectionTitle title={t('On-demand')} action={list.length ? t(`${list.length} kaam baaki`) : t('Sab ho gaya')} style={{ marginTop: 18 }} />
           <View>
@@ -127,12 +127,13 @@ export default function ExtraScreen() {
             )) : <Empty title={t('Abhi kuch nahi')} text={t('Jo extra kaam khatam karoge woh yahan jama hoga.')} />}
           </View>
         </View>
-      </ScrollView>
+        <Footer bottomPad={128} />
+      </PullToRefresh>
     </View>
   );
 }
 
 const s = StyleSheet.create({
   where: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 4 },
-  whereTxt: { flex: 1, fontFamily: F.semi, fontSize: 14 },
+  whereTxt: { flex: 1, fontFamily: F.semi, fontSize: 13.5, lineHeight: 20 },
 });

@@ -56,7 +56,7 @@ export const REQ_KIND: Record<string, string> = { note: 'Customer ka note', rewa
 export const JOIN_AREAS = ['GH-9 Paschim Vihar', 'GH-6 Paschim Vihar', 'GH-14 Paschim Vihar', 'Meera Bagh', 'Sundar Vihar', 'Guru Hari Apartments'];
 
 // where an area sits on the map, same table the customer app draws its map from [lng,lat]
-const AREA_LL: Record<string, [number, number]> = {
+export const AREA_LL: Record<string, [number, number]> = {
   'GH-9 Paschim Vihar': [77.0989, 28.6680], 'GH-6 Paschim Vihar': [77.0970, 28.6695], 'GH-14 Paschim Vihar': [77.0982, 28.6705],
   'Meera Bagh': [77.1065, 28.6720], 'Sundar Vihar': [77.1110, 28.6710], 'Guru Hari Apartments': [77.0960, 28.6650],
 };

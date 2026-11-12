@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Image, Linking, StyleSheet, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { F, Icon, brand, cardShadow, ui, useTheme } from '../ui';
+import { F, Footer, Icon, PullToRefresh, R, brand, cardBox, cardShadow, ui, useTheme } from '../ui';
 import { DashCard, IconBubble } from '../ui/dash';
 import { Pressy, Button, CallButton, CarArt, DemoNote, Empty, Eyebrow, LinkButton, Plate, ProgressBar, SlideToConfirm, Stepper, Tier } from '../ui';
 import type { StepItem } from '../ui';
@@ -32,7 +32,7 @@ const STEPS: [string, string, StepItem['icon'], string][] = [
 function HChip({ icon, children }: { icon?: React.ComponentProps<typeof Icon>['name']; children: React.ReactNode }) {
   const { c } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.6)' }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: c.soft }}>
       {icon ? <Icon name={icon} size={14} color={c.heroInk} /> : null}
       <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12.5, color: c.heroInk }}>{children}</Text>
     </View>
@@ -42,9 +42,9 @@ function HChip({ icon, children }: { icon?: React.ComponentProps<typeof Icon>['n
 function SecHead({ title, meta }: { title: string; meta?: string }) {
   const { c } = useTheme();
   return (
-    <View style={{ marginTop: 22, marginBottom: 10 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 17, color: c.fg }}>{title}</Text>
-      {meta ? <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 2 }}>{meta}</Text> : null}
+    <View style={{ marginTop: 24, marginBottom: 12 }}>
+      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 17, lineHeight: 24, color: c.fg }}>{title}</Text>
+      {meta ? <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3 }}>{meta}</Text> : null}
     </View>
   );
 }
@@ -85,7 +85,7 @@ function Stage({ reg, st }: { reg: string; st: string }) {
   const fmt = (h: string) => h.replace(/^0/, '');
   const slotTxt = wd && wd.slot_from && wd.slot_to ? `${t('Slot')} ${fmt(wd.slot_from)} – ${fmt(wd.slot_to)}` : null;
   return (
-    <View style={{ marginHorizontal: 16, marginTop: 4, borderRadius: 24, backgroundColor: c.hero, padding: 18, overflow: 'hidden' }}>
+    <View style={{ marginHorizontal: 16, marginTop: 4, borderRadius: R.card, backgroundColor: c.hero, borderWidth: 1, borderColor: c.line, padding: 16, overflow: 'hidden' }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <HChip>{chipA}</HChip>
         <HChip>{`${idx} / ${route().length}`}</HChip>
@@ -101,8 +101,8 @@ function Stage({ reg, st }: { reg: string; st: string }) {
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={2} style={{ fontFamily: F.black, fontSize: 24, lineHeight: 30, color: c.heroInk }}>{c0.model}</Text>
-          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 14, color: c.heroInk, opacity: 0.75, marginTop: 2 }}>{c0.customer}</Text>
+          <Text numberOfLines={2} style={{ fontFamily: F.bold, fontSize: 29, lineHeight: 40, color: c.heroInk }}>{c0.model}</Text>
+          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 14, lineHeight: 20, color: c.fg3 }}>{c0.customer}</Text>
         </View>
         {washing && wd?.started_at ? <WashTimer startedAt={wd.started_at} interiorFrom={wd.interior_from} extraMinutes={wd.extra_minutes || 0} /> : null}
       </View>
@@ -172,6 +172,8 @@ export default function JobScreen() {
                 <Button variant="gold" label={t('Round pe chalo')} onPress={goRound} />
               </>}
         </View>
+        <View style={{ flex: 1 }} />
+        <Footer />
       </View>
     );
   }
@@ -242,7 +244,7 @@ export default function JobScreen() {
         <View>
           {sk ? (
             <View>
-              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 14, borderRadius: 20, backgroundColor: 'rgba(232,56,79,0.1)', marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 14, borderRadius: R.card, backgroundColor: 'rgba(232,56,79,0.1)', marginBottom: 12 }}>
                 <Icon name="pause" size={22} color={brand.red} />
                 <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 14, color: th.fg }}>
                   <Text style={{ fontFamily: F.black, color: brand.red }}>{t('Customer ne aaj mana kiya hai.')}</Text> {sk.text || t('Kal wash mat karna.')}
@@ -270,8 +272,8 @@ export default function JobScreen() {
       );
       return (
         <View>
-          <View style={{ borderRadius: 24, padding: 20, backgroundColor: '#0f9f72', overflow: 'hidden' }}>
-            <Text style={{ fontFamily: F.black, fontSize: 12, letterSpacing: 1.7, textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)' }}>{t('Customer ko bhej diya')}</Text>
+          <View style={{ borderRadius: R.card, padding: 20, backgroundColor: '#0f9f72', overflow: 'hidden' }}>
+            <Text style={{ fontFamily: F.bold, fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)' }}>{t('Customer ko bhej diya')}</Text>
             <Text style={{ fontFamily: F.black, fontSize: 32, lineHeight: 38, color: '#fff', marginTop: 2 }}>{t('Chamak gayi!')}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 22, marginTop: 14 }}>
               {stat(t12(wd.finished_at), t('Khatam'))}
@@ -291,9 +293,9 @@ export default function JobScreen() {
     // skipped
     return (
       <View>
-        <View style={{ borderRadius: 24, padding: 20, backgroundColor: th.card, ...cardShadow(th) }}>
+        <View style={{ ...cardBox(th), padding: 16, ...cardShadow(th) }}>
           <Eyebrow>{t('Skip kiya')}</Eyebrow>
-          <Text style={{ fontFamily: F.black, fontSize: 20, color: th.fg }}>{wd.skip_reason || t('Skip')}</Text>
+          <Text style={{ fontFamily: F.bold, fontSize: 20, color: th.fg }}>{wd.skip_reason || t('Skip')}</Text>
           <Text style={{ fontFamily: F.body, fontSize: 14, color: th.fg3, marginTop: 4 }}>{t('Customer ko wajah dikh rahi hai.')}</Text>
           <View style={{ marginTop: 12 }}><Button variant="ghost" icon="redo" label={t('Galti se hua? Wapas kholo')} onPress={() => act.unskip(reg)} /></View>
         </View>
@@ -305,7 +307,7 @@ export default function JobScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: th.bg }}>
       <ScreenBar title={`${car.model} · ${car.house}`} back />
-      <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+      <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
         <Stage reg={reg} st={st} />
         <PartnerStrip />
         <View style={{ paddingHorizontal: 16 }}>
@@ -318,8 +320,8 @@ export default function JobScreen() {
           ) : null}
 
           {late ? (
-            <View accessibilityRole="alert" style={{ marginTop: 18, flexDirection: 'row', gap: 10, alignItems: 'center', padding: 14, borderRadius: 24, backgroundColor: 'rgba(232,56,79,0.12)' }}>
-              <IconBubble icon="warn" size={38} tint={brand.red} bg="rgba(232,56,79,0.16)" />
+            <View accessibilityRole="alert" style={{ marginTop: 18, flexDirection: 'row', gap: 10, alignItems: 'center', padding: 14, borderRadius: R.card, backgroundColor: 'rgba(232,56,79,0.12)' }}>
+              <IconBubble icon="warn" size={40} tint={brand.red} bg="rgba(232,56,79,0.16)" />
               <Text style={{ flex: 1, fontFamily: F.black, fontSize: 15, color: brand.red }}>{t('Late · slot khatam ho gaya')}</Text>
             </View>
           ) : null}
@@ -360,11 +362,11 @@ export default function JobScreen() {
                   return (
                     <View key={sp.key} style={{ width: '48.5%' }}>
                       <Pressy onPress={pendSrc || st !== 'washing' ? undefined : () => { void shoot('after', sp.key) }} accessibilityLabel={t(sp.label)} scaleTo={0.94}
-                        style={{ width: '100%', aspectRatio: 1, borderRadius: 20, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', gap: 4,
+                        style={{ width: '100%', aspectRatio: 1, borderRadius: R.card, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', gap: 4,
                           ...(src ? { backgroundColor: th.tile2 } : { backgroundColor: th.soft }) }}>
                         {src ? <Image source={{ uri: src }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : <Icon name="cam" size={30} color={th.softInk} />}
                         {pendSrc ? (
-                          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(26,10,51,0.45)', alignItems: 'center', justifyContent: 'center' }]}>
+                          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(17,17,20,0.45)', alignItems: 'center', justifyContent: 'center' }]}>
                             <ActivityIndicator color="#fff" size="large" />
                           </View>
                         ) : null}
@@ -401,11 +403,11 @@ export default function JobScreen() {
 
           {wd ? (
             <View style={{ marginTop: 22 }}>
-              <DashCard onPress={() => openNoteSheet(reg, car.customer, wd.washer_note)} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', padding: 16, minHeight: 64 }}>
-                <IconBubble icon="note" size={42} />
+              <DashCard onPress={() => openNoteSheet(reg, car.customer, wd.washer_note)} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', padding: 11, minHeight: 64 }}>
+                <IconBubble icon="note" size={40} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: F.black, fontSize: 16, color: th.fg }}>{wd.washer_note ? t('Customer ke liye note') : t('Customer ko kuch batana hai?')}</Text>
-                  <Text style={{ fontFamily: F.body, fontSize: 14, color: th.fg2 }}>{wd.washer_note ? wd.washer_note : t('Scratch, tyre, kuch bhi. Unke app mein dikhega.')}</Text>
+                  <Text style={{ fontFamily: F.semi, fontSize: 15, color: th.fg }}>{wd.washer_note ? t('Customer ke liye note') : t('Customer ko kuch batana hai?')}</Text>
+                  <Text style={{ fontFamily: F.body, fontSize: 12.5, color: th.fg3 }}>{wd.washer_note ? wd.washer_note : t('Scratch, tyre, kuch bhi. Unke app mein dikhega.')}</Text>
                 </View>
               </DashCard>
             </View>
@@ -415,7 +417,8 @@ export default function JobScreen() {
             ? <View style={{ alignItems: 'center', marginTop: 14 }}><LinkButton label={t('Gaadi nahi dho paye? Skip karo')} onPress={() => openSkipSheet(reg, car.customer)} /></View>
             : null}
         </View>
-      </ScrollView>
+        <Footer />
+      </PullToRefresh>
     </View>
   );
 }

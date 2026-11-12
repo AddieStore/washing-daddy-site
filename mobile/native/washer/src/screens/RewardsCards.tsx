@@ -1,17 +1,23 @@
 // Monthly rewards: the shared status wording, the card for the Paisa tab and the compact one for the Round tab.
-// Numbers come from lib/rewards.ts (+ lib/rewardsView.ts) over the attendance log; nothing moves money in the app.
-import React from 'react';
+// Numbers come from lib/rewards.ts (+ lib/rewardsView.ts) over the attendance log and this month's customer
+// complaints/ratings (lib/complaints.ts); nothing moves money in the app, the manager pays at month end.
+import React, { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { DashCard, F, Icon, IconBubble, ListCard, Ring, brand, useTheme } from '../ui';
-import { DAY, attendLog } from '../state/store';
-import { EARLY_BONUS, EARLY_DAYS, MONTH_BONUS } from '../lib/rewards';
+import { DAY, attendLog, cleanNow, loadMonthRatings, Complaints } from '../state/store';
+import { BEST, CLEAN_MIN_AVG, EARLY_DAYS } from '../lib/rewards';
 import { outlook } from '../lib/rewardsView';
+import { cleanState, showAvg } from '../lib/complaints';
 import { rupee } from '../lib/time';
 import { t } from '../lib/i18n';
 
 export const openRewards = () => router.push('/rewards' as any);
-export const useOutlook = () => outlook(attendLog(), DAY);
+export const openComplaints = () => router.push('/complaints' as any);
+export const useOutlook = () => {
+  useEffect(() => { void loadMonthRatings() }, []);   // the month's stars for the No Complaint Bonus (cached, <=120 reads)
+  return outlook(attendLog(), DAY, cleanNow());
+};
 export type Outlook = ReturnType<typeof outlook>;
 
 export type Line = { text: string; tone: 'ok' | 'live' | 'dead' };
@@ -28,6 +34,24 @@ export function monthLine(o: Outlook): Line {
   if (m.earned) return { text: t('Poora mahina aaye! Bonus pakka'), tone: 'ok' };
   if (!o.monthLive) return { text: t('Din chhoot gaya, is mahine bonus nahi'), tone: 'dead' };
   return { text: `${m.total - m.came} ${t('din aur aana hai')}`, tone: 'live' };
+}
+
+/** The same for the No Complaint Bonus. */
+export function cleanLine(o: Outlook): Line {
+  const c = o.r.clean, st = cleanState(c);
+  if (st.kind === 'loading') return { text: Complaints.failed ? t('Manager mahine ke end mein dekh ke batayega') : t('Complaint ki jaankari aa rahi hai'), tone: 'live' };
+  if (st.kind === 'none') return { text: c.earned ? t('Koi complaint nahi! Bonus pakka') : t('Abhi koi complaint nahi'), tone: 'ok' };
+  const head = `${st.n} ${t('complaint aayi')}, ${t('rating')} ${st.avg}`;
+  if (st.kind === 'rated') return { text: `${head} · ${c.earned ? t('Rating 4.8+ rahi! Bonus pakka') : t('Rating 4.8+ hai, bonus abhi bhi mil sakta hai')}`, tone: 'ok' };
+  if (st.kind === 'lost') return { text: `${head} · ${t('Is mahine yeh bonus nahi')}`, tone: 'dead' };
+  return { text: `${head} ${t('(4.8 chahiye)')}${st.few ? ` · ${t('kam se kam 5 rating chahiye')}` : ''}`, tone: 'live' };
+}
+/** Ring numbers for it: no complaints -> a full ring with 0; otherwise the month's average against 4.8. */
+export function cleanRing(o: Outlook) {
+  const c = o.r.clean;
+  if (!c.known) return { fraction: 0, value: '–', unit: t('complaint') };
+  if (c.byNone) return { fraction: 1, value: 0, unit: t('complaint') };
+  return { fraction: c.ratingAvg ? Math.min(1, c.ratingAvg / CLEAN_MIN_AVG) : 0, value: showAvg(c.ratingAvg), unit: '★ / 4.8' };
 }
 
 export function useToneColors() {
@@ -53,22 +77,23 @@ function MiniRing({ fraction, value, label, tone, title, line }: { fraction: num
 /** Paisa tab: both bonuses side by side with what is still possible. Opens the rewards screen. */
 export function RewardsCard() {
   const { c } = useTheme();
-  const o = useOutlook(), m = o.r.month;
+  const o = useOutlook(), m = o.r.month, cr = cleanRing(o), cl = cleanLine(o);
   return (
     <DashCard onPress={openRewards} accessibilityLabel={t('Attendance aur bonus')} style={{ padding: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <IconBubble icon="gift" size={42} tint={brand.orange} bg="rgba(255,106,26,0.14)" />
+        <IconBubble icon="gift" size={42} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 15.5, color: c.fg }}>{t('Attendance aur bonus')}</Text>
           <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 2 }}>
-            {t('Dono saath')} {rupee(EARLY_BONUS + MONTH_BONUS)} · {t('Abhi mumkin')} {rupee(o.possible)}
+            {t('Teeno saath')} {rupee(BEST)} · {t('Abhi mumkin')} {rupee(o.possible)}
           </Text>
         </View>
         <Icon name="arrow" size={18} color={c.fg3} />
       </View>
-      <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
         <MiniRing fraction={o.streak / EARLY_DAYS} value={o.streak} label={`/${EARLY_DAYS}`} tone={earlyLine(o).tone} title={t('Early bird')} line={earlyLine(o)} />
         <MiniRing fraction={m.total ? m.came / m.total : 0} value={m.came} label={`/${m.total}`} tone={monthLine(o).tone} title={t('Poora mahina')} line={monthLine(o)} />
+        <MiniRing fraction={cr.fraction} value={cr.value} label={cr.unit.length > 8 ? '' : cr.unit} tone={cl.tone} title={t('No complaint')} line={cl} />
       </View>
       <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3, marginTop: 14, textAlign: 'center' }}>{t('Bonus Manager mahine ke end mein deta hai')}</Text>
     </DashCard>
@@ -77,13 +102,13 @@ export function RewardsCard() {
 
 /** Round tab: one compact row. */
 export function RewardsMini() {
-  const o = useOutlook(), m = o.r.month;
+  const o = useOutlook(), m = o.r.month, cl = o.r.clean;
   return (
     <ListCard
       icon="gift"
-      iconTone={brand.orange}
+     
       title={t('Bonus')}
-      detail={`${t('Early bird')} ${o.streak}/${EARLY_DAYS} · ${t('Poora mahina')} ${m.came}/${m.total}`}
+      detail={`${t('Early bird')} ${o.streak}/${EARLY_DAYS} · ${t('Poora mahina')} ${m.came}/${m.total} · ${t('No complaint')} ${cl.known ? (cl.eligible ? '✓' : cl.complaints) : '–'}`}
       action="chevron"
       onPress={openRewards}
     />

@@ -22,7 +22,14 @@ test('full month attendance, a missed day kills it', () => {
   delete a['2026-11-12'];
   const m = monthAttendance(a, '2026-11-30'); assert.equal(m.missed, 1); assert.equal(m.possible, false); assert.equal(rewards(a, '2026-11-30').month.bonus, 0);
 });
-test('both together are 2000', () => {
+test('both attendance bonuses together are 2000 (complaints not loaded: nothing counted for them yet)', () => {
   const a = days('2026-11-30', 30, d => ({ in: d + 'T05:20:00+05:30', first: d + 'T05:50:00+05:30' }));
-  assert.equal(rewards(a, '2026-11-30').total, 2000);
+  const r = rewards(a, '2026-11-30');
+  assert.equal(r.total, 2000); assert.equal(r.best, 3000); assert.equal(r.clean.known, false); assert.equal(r.clean.possible, true);
+});
+test('all three are 3000: no complaint bonus on top', () => {
+  const a = days('2026-11-30', 30, d => ({ in: d + 'T05:20:00+05:30', first: d + 'T05:50:00+05:30' }));
+  assert.equal(rewards(a, '2026-11-30', { complaints: 0, ratingCount: 0, ratingAvg: null }).total, 3000);
+  assert.equal(rewards(a, '2026-11-30', { complaints: 1, ratingCount: 6, ratingAvg: 4.9 }).total, 3000);
+  assert.equal(rewards(a, '2026-11-30', { complaints: 1, ratingCount: 6, ratingAvg: 4.7 }).total, 2000);
 });

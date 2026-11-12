@@ -1,5 +1,5 @@
 // What the rewards screen shows, worked out on top of rewards.ts (which stays as it is).
-import { EARLY_BONUS, EARLY_DAYS, MONTH_BONUS, isEarly, rewards, type Attend } from './rewards.ts';
+import { BEST, CLEAN_BONUS, EARLY_BONUS, EARLY_DAYS, MONTH_BONUS, isEarly, rewards, type Attend, type CleanInput } from './rewards.ts';
 
 export type DayState = 'came' | 'missed' | 'today' | 'upcoming';
 export function monthDays(a: Attend, today: string) {
@@ -14,18 +14,19 @@ export function monthDays(a: Attend, today: string) {
   return { lead, days };
 }
 
-export function outlook(a: Attend, today: string) {
-  const r = rewards(a, today), e = a[today];
+export function outlook(a: Attend, today: string, clean?: CleanInput | null) {
+  const r = rewards(a, today, clean), e = a[today];
   const lateToday = !!e?.first && !isEarly(e.first);            // today's first photo came after 06:00: the streak is broken
   const streak = lateToday ? 0 : r.early.streak;
   const days = r.month.left + (e?.first ? 0 : 1);               // days that can still add to the streak
   const earlyLive = r.early.earned || streak + days >= EARLY_DAYS;
   const monthLive = r.month.possible;
+  const cleanLive = r.clean.possible;                            // No Complaint Bonus: see cleanMonth() in rewards.ts
   return {
-    r, streak, lateToday, earlyLive, monthLive,
+    r, streak, lateToday, earlyLive, monthLive, cleanLive,
     need: Math.max(0, EARLY_DAYS - streak),
-    possible: (earlyLive ? EARLY_BONUS : 0) + (monthLive ? MONTH_BONUS : 0),
+    possible: (earlyLive ? EARLY_BONUS : 0) + (monthLive ? MONTH_BONUS : 0) + (cleanLive ? CLEAN_BONUS : 0),
     earnedSoFar: r.total,
-    best: EARLY_BONUS + MONTH_BONUS,
+    best: BEST,
   };
 }

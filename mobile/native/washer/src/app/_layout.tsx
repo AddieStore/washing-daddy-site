@@ -8,7 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { Anton_400Regular } from '@expo-google-fonts/anton';
 import { AlfaSlabOne_400Regular } from '@expo-google-fonts/alfa-slab-one';
-import { Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
+import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 import { ThemeProvider, useTheme } from '../ui/theme';
 import { UiHosts } from '../ui/Hosts';
 import { boot, onForeground, useStore, view, S } from '../state/store';
@@ -36,6 +36,9 @@ function Gate() {
             <Stack.Screen name="job" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="round-setup" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="rewards" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="complaints" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="today" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="day" options={{ animation: 'slide_from_right' }} />
           </Stack>
         : <AuthScreen />}
       <JobAlert />
@@ -45,7 +48,7 @@ function Gate() {
 }
 
 export default function RootLayout() {
-  const [fontsOk, fontErr] = useFonts({ Anton_400Regular, AlfaSlabOne_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold });
+  const [fontsOk, fontErr] = useFonts({ Anton_400Regular, AlfaSlabOne_400Regular, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold });
   useStore();
   useEffect(() => {
     boot();

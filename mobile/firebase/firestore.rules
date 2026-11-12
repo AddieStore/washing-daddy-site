@@ -240,6 +240,51 @@ service cloud.firestore {
         && d().stars is int && d().stars >= 1 && d().stars <= 5;
     }
 
+    // Customer complaints / feedback about a wash (customer app -> manager in the approvals page, and the washer).
+    // washer_id is the washer's ROUND id (route_id), the same key washes/newcars/ondemand carry. '' when the customer
+    // app did not know the washer yet (the manager still sees it). Doc id == d().id.
+    //   customer  creates one for a car on his own active account, under his own number, status 'open';
+    //             reads his own. Cannot change or delete it.
+    //   washer    reads the ones on his round; may only move 'open' -> 'seen' (+ seen_at, updated_at).
+    //   admin     reads all; may set status, manager_note, seen_at, resolved_at, updated_at (nothing else).
+    // The No Complaint Bonus (WD Partner rewards) counts open/seen/resolved ones in the month; 'invalid' is not counted.
+    function complaintFields() {
+      return ['id', 'date', 'month', 'reg', 'washer_id', 'customer_phone', 'customer_name', 'text', 'kind', 'stars',
+              'status', 'manager_note', 'created_at', 'seen_at', 'resolved_at', 'updated_at'];
+    }
+    function nullOrStr(m, k, n) { return !(k in m) || m[k] == null || str(m[k], n); }
+    match /complaints/{id} {
+      allow read: if isAdmin()
+        || (isWasher() && resource.data.washer_id == myRound())
+        || (signedIn() && resource.data.customer_phone == me());
+      allow create: if ownsReg(d().reg)
+        && d().keys().hasOnly(complaintFields())
+        && d().keys().hasAll(['id', 'date', 'month', 'reg', 'washer_id', 'customer_phone', 'text', 'kind', 'status', 'created_at'])
+        && d().id == id && id.matches('^[A-Za-z0-9_-]{6,80}$')
+        && d().customer_phone == me()
+        && str(d().reg, 20) && str(d().washer_id, 40)
+        && d().month is string && d().month.matches('^[0-9]{4}-[0-9]{2}$')
+        && d().date is string && d().date.matches('^' + d().month + '-[0-9]{2}$')
+        && str(d().text, 500) && d().text.size() > 0
+        && d().kind in ['quality', 'late', 'behaviour', 'damage', 'other']
+        && (!('stars' in d()) || d().stars == null || (d().stars is int && d().stars >= 1 && d().stars <= 5))
+        && optStr(d(), 'customer_name', 80)
+        && d().status == 'open'
+        && (!('manager_note' in d()) || d().manager_note == null || d().manager_note == '')
+        && (!('seen_at' in d()) || d().seen_at == null)
+        && (!('resolved_at' in d()) || d().resolved_at == null)
+        && str(d().created_at, 40) && nullOrStr(d(), 'updated_at', 40);
+      allow update: if (isAdmin()
+            && d().diff(resource.data).affectedKeys().hasOnly(['status', 'manager_note', 'seen_at', 'resolved_at', 'updated_at'])
+            && d().status in ['open', 'seen', 'resolved', 'invalid']
+            && nullOrStr(d(), 'manager_note', 300) && nullOrStr(d(), 'seen_at', 40)
+            && nullOrStr(d(), 'resolved_at', 40) && nullOrStr(d(), 'updated_at', 40))
+        || (isWasher() && resource.data.washer_id == myRound() && resource.data.status == 'open'
+            && d().diff(resource.data).affectedKeys().hasOnly(['status', 'seen_at', 'updated_at'])
+            && d().status == 'seen' && str(d().seen_at, 40) && nullOrStr(d(), 'updated_at', 40));
+      allow delete: if isAdmin();
+    }
+
     match /{other=**} {
       allow read, write: if false;
     }

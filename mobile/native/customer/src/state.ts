@@ -28,6 +28,7 @@ import {
 import { toast, openSheet, closeSheet, sheetOpen, confetti, haptic } from './ui/hosts';
 export { toast, openSheet, closeSheet, confetti, haptic };
 
+export type ComplaintKind = 'quality' | 'late' | 'behaviour' | 'damage' | 'other';
 /* ---------- config ---------- */
 const N8N = 'https://n8n.washingdaddy.com/webhook';
 // Live payments: this flag plus SANDBOX in the n8n order node (see pay/README.md)
@@ -451,6 +452,21 @@ export const act = {
     A().requests.unshift({ id: 'R' + Date.now(), carId: c.id, spots, open: true, at: iso(TODAY) }); commit();
   },
   closeReq(id: string) { const r = A().requests.find(x => x.id === id); if (r) r.open = false; commit(); toast('Marked as fixed') },
+  // complaints/{id}: a complaint or feedback about the car's wash, read by the manager (approvals page) and, without
+  // the customer's number, by that car's washer. washer_id = the washer's ROUND id from today's (or the latest) wash
+  // doc of this car, the same key the washes docs carry; '' when no wash has synced yet (the manager still sees it).
+  async complaint(x: { kind: ComplaintKind; text: string }) {
+    const c = car(), text = x.text.trim().slice(0, 500);
+    if (!text) throw new Error('Tell us what went wrong.');
+    if (!DB || !AUTH || !realAcct() || !AUTH.phone()) { await wait(600); return }
+    const reg = regOf(c), date = iso(TODAY), at = nowIST(), id = `${date}_${reg}_${Date.now().toString(36)}`;
+    const wid = String((REMOTE[c.id] || []).map(d => d.washer && d.washer.id).find(Boolean) || '').slice(0, 40);
+    try {
+      await DB.doc('complaints/' + id).set({ id, date, month: date.slice(0, 7), reg, washer_id: wid, customer_phone: AUTH.phone(),
+        customer_name: (A().name || '').slice(0, 80), text, kind: x.kind, ...(c.rating >= 1 && c.rating <= 5 ? { stars: c.rating } : {}),
+        status: 'open', manager_note: '', created_at: at, seen_at: null, resolved_at: null, updated_at: at });
+    } catch (e) { console.warn('complaint', e); throw failed() }
+  },
   // ratings/{date_REG}
   rate(n: number) {
     const c = car(); c.rating = n; commit(); haptic();

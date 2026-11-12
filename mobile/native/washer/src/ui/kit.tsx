@@ -19,7 +19,7 @@ import {
 import Svg, { Circle } from 'react-native-svg';
 import { Icon, IconName } from './Icons';
 import { ui } from './bus';
-import { F, brand, cardShadow, useTheme } from './theme';
+import { F, R, brand, cardShadow, useTheme } from './theme';
 
 type S<T> = StyleProp<T>;
 const useNative = Platform.OS !== 'web';
@@ -96,11 +96,11 @@ export function Button({
 }) {
   const { c } = useTheme();
   const v: Record<ButtonVariant, { bg: string; fg: string; shadow?: string; inset?: number; border?: boolean }> = {
-    gold: { bg: brand.gold, fg: brand.ink, shadow: brand.gold, inset: 0.12 },
-    violet: { bg: brand.violet, fg: brand.cream, shadow: brand.violet, inset: 0.18 },
-    ink: { bg: brand.ink, fg: brand.cream },
-    ghost: { bg: c.tile2, fg: c.fg, border: true },
-    mint: { bg: brand.mint, fg: '#fff', shadow: brand.mint, inset: 0.14 },
+    gold: { bg: c.primary, fg: '#fff' },
+    violet: { bg: c.primary, fg: '#fff' },
+    ink: { bg: brand.ink, fg: '#fff' },
+    ghost: { bg: c.tile2, fg: c.fg },
+    mint: { bg: brand.mint, fg: '#06281D' },
     sos: { bg: brand.red, fg: '#fff' },
   };
   const t = v[variant];
@@ -114,30 +114,26 @@ export function Button({
         b.btn,
         {
           backgroundColor: t.bg,
-          minHeight: ghost ? 56 : 64,
+          minHeight: ghost ? 40 : 44,
           alignSelf: full ? 'stretch' : 'flex-start',
           opacity: disabled ? 0.45 : 1,
           overflow: 'hidden',
         },
-        t.border && { borderWidth: 1, borderColor: c.line },
-        t.shadow && { shadowColor: t.shadow, shadowOpacity: 0.35, shadowRadius: 13, shadowOffset: { width: 0, height: 10 }, elevation: 6 },
         style,
       ]}
     >
-      {t.inset ? <View pointerEvents="none" style={[b.inset, { backgroundColor: `rgba(0,0,0,${t.inset})` }]} /> : null}
-      {icon ? <Icon name={icon} size={24} color={t.fg} /> : null}
-      <Text style={[b.txt, { color: t.fg, fontSize: ghost ? 16 : 18 }]} numberOfLines={2}>
+      {icon ? <Icon name={icon} size={18} color={t.fg} /> : null}
+      <Text style={[b.txt, { color: t.fg, fontSize: 14 }]} numberOfLines={2}>
         {label}
       </Text>
-      {iconRight ? <Icon name={iconRight} size={24} color={t.fg} /> : null}
+      {iconRight ? <Icon name={iconRight} size={18} color={t.fg} /> : null}
     </Pressy>
   );
 }
 
 const b = StyleSheet.create({
-  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16, paddingHorizontal: 18, borderRadius: 22 },
-  inset: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 4 },
-  txt: { fontFamily: F.black, textAlign: 'center', flexShrink: 1 },
+  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 9, paddingHorizontal: 16, borderRadius: R.button },
+  txt: { fontFamily: F.semi, textAlign: 'center', flexShrink: 1 },
 });
 
 export function LinkButton({
@@ -156,7 +152,7 @@ export function LinkButton({
   const { c } = useTheme();
   return (
     <Pressy onPress={onPress} accessibilityLabel={label} accessibilityRole="link" scaleTo={0.95} style={[{ minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 }, style]}>
-      <Text style={[{ fontFamily: F.bold, fontSize: 15, color: color ?? c.fg2, textDecorationLine: 'underline' }, textStyle]}>{label}</Text>
+      <Text style={[{ fontFamily: F.semi, fontSize: 14, color: color ?? c.fg2, textDecorationLine: 'underline' }, textStyle]}>{label}</Text>
     </Pressy>
   );
 }
@@ -166,7 +162,7 @@ export function LinkButton({
 /* ------------------------------------------------------------------ */
 export function Card({ children, style, onPress }: { children?: React.ReactNode; style?: S<ViewStyle>; onPress?: () => void }) {
   const { c } = useTheme();
-  const st: S<ViewStyle> = [{ borderRadius: 28, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line }, cardShadow(c), style];
+  const st: S<ViewStyle> = [{ borderRadius: R.card, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line }, cardShadow(c), style];
   if (onPress) return <Pressy onPress={onPress} style={st}>{children}</Pressy>;
   return <View style={st}>{children}</View>;
 }
@@ -174,11 +170,11 @@ export function Card({ children, style, onPress }: { children?: React.ReactNode;
 export function Section({ title, meta, children, style }: { title?: string; meta?: string; children?: React.ReactNode; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   return (
-    <View style={[{ marginTop: 26 }, style]}>
+    <View style={[{ marginTop: 24 }, style]}>
       {title || meta ? (
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-          {title ? <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 20, color: c.fg, letterSpacing: -0.2, flexShrink: 1 }}>{title}</Text> : <View />}
-          {meta ? <Text style={{ fontFamily: F.body, fontSize: 13, color: c.fg3 }}>{meta}</Text> : null}
+          {title ? <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 17, color: c.fg, flexShrink: 1 }}>{title}</Text> : <View />}
+          {meta ? <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{meta}</Text> : null}
         </View>
       ) : null}
       {children}
@@ -188,7 +184,7 @@ export function Section({ title, meta, children, style }: { title?: string; meta
 
 export function Eyebrow({ children, style }: { children?: React.ReactNode; style?: S<TextStyle> }) {
   const { c } = useTheme();
-  return <Text style={[{ fontFamily: F.black, fontSize: 12, letterSpacing: 1.7, textTransform: 'uppercase', color: c.fg3 }, style]}>{children}</Text>;
+  return <Text style={[{ fontFamily: F.bold, fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', color: c.fg3 }, style]}>{children}</Text>;
 }
 
 export function BigTitle({ children, em, size = 44, style }: { children?: React.ReactNode; em?: string; size?: number; style?: S<TextStyle> }) {
@@ -205,12 +201,12 @@ export function Chip({ children, icon, style }: { children?: React.ReactNode; ic
   return (
     <View
       style={[
-        { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', paddingVertical: 8, paddingLeft: 10, paddingRight: 12, borderRadius: 999, backgroundColor: 'rgba(18,7,36,0.55)', borderWidth: 1, borderColor: 'rgba(255,246,233,0.18)' },
+        { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', paddingVertical: 8, paddingLeft: 10, paddingRight: 12, borderRadius: 999, backgroundColor: 'rgba(17,17,20,0.6)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
         style,
       ]}
     >
-      {icon ? <Icon name={icon} size={16} color={brand.cream} /> : null}
-      <Text style={{ fontFamily: F.bold, fontSize: 13, color: brand.cream }}>{children}</Text>
+      {icon ? <Icon name={icon} size={16} color="#fff" /> : null}
+      <Text style={{ fontFamily: F.bold, fontSize: 13, color: '#fff' }}>{children}</Text>
     </View>
   );
 }
@@ -220,33 +216,33 @@ export type StatusKey = 'scheduled' | 'on_the_way' | 'arrived' | 'washing' | 'do
 export function StatusPill({ status, label, style }: { status: StatusKey | string; label: string; style?: S<ViewStyle> }) {
   const { c, dark } = useTheme();
   const map: Record<string, { bg: string; fg: string }> = {
-    scheduled: { bg: c.tile2, fg: c.fg2 },
-    on_the_way: { bg: 'rgba(46,139,255,0.18)', fg: dark ? '#8fc0ff' : '#1f6fd6' },
-    arrived: { bg: 'rgba(255,106,26,0.18)', fg: dark ? '#ffb38a' : '#c94d0c' },
-    washing: { bg: brand.violet, fg: '#fff' },
-    done: { bg: 'rgba(20,192,138,0.2)', fg: dark ? '#6ff0c4' : '#0b8a62' },
-    skipped: { bg: 'rgba(232,56,79,0.15)', fg: dark ? '#ff8a9a' : brand.red },
+    scheduled: { bg: dark ? '#2E2E33' : '#E2E2E2', fg: dark ? '#E4E4E7' : '#1B1B1B' },
+    on_the_way: { bg: '#0074E2', fg: '#fff' },
+    arrived: { bg: '#0074E2', fg: '#fff' },
+    washing: { bg: '#0074E2', fg: '#fff' },
+    done: { bg: brand.mint, fg: '#06281D' },
+    skipped: { bg: brand.gold, fg: brand.ink },
   };
   const t = map[status] ?? map.scheduled;
   return (
-    <View style={[{ alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999, backgroundColor: t.bg }, style]}>
-      <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 11.5, color: t.fg }}>{label}</Text>
+    <View style={[{ alignSelf: 'flex-start', height: 20, justifyContent: 'center', paddingHorizontal: 8, borderRadius: 999, backgroundColor: t.bg }, style]}>
+      <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: t.fg }}>{label}</Text>
     </View>
   );
 }
 
 export function Plate({ reg, style }: { reg: string; style?: S<ViewStyle> }) {
   return (
-    <View style={[{ alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 6, backgroundColor: '#fff', borderWidth: 2, borderColor: brand.ink }, style]}>
-      <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 13, letterSpacing: 1, color: brand.ink }}>{reg}</Text>
+    <View style={[{ alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 6, backgroundColor: '#fff', borderWidth: 2, borderColor: '#111114' }, style]}>
+      <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 13, letterSpacing: 1, color: '#111114' }}>{reg}</Text>
     </View>
   );
 }
 
 export function Tier({ label, style }: { label: string; style?: S<ViewStyle> }) {
   return (
-    <View style={[{ alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: brand.gold }, style]}>
-      <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 12, color: brand.ink }}>{label}</Text>
+    <View style={[{ alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: '#F3F4F6' }, style]}>
+      <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 12, color: '#111114' }}>{label}</Text>
     </View>
   );
 }
@@ -257,9 +253,9 @@ export function XChip({ kind, label, small, style }: { kind?: XKind | string; la
   const { c, dark } = useTheme();
   const map: Record<string, { bg: string; fg: string }> = {
     foam: { bg: 'rgba(46,139,255,0.16)', fg: dark ? '#8fc0ff' : '#1f6fd6' },
-    interior: { bg: 'rgba(255,106,26,0.16)', fg: dark ? '#ffb38a' : '#c94d0c' },
+    interior: { bg: c.soft, fg: c.softInk },
     tyre: { bg: 'rgba(20,192,138,0.16)', fg: dark ? '#6ff0c4' : '#0b8a62' },
-    detailing: { bg: 'rgba(255,186,8,0.24)', fg: dark ? '#ffd45c' : '#8a6200' },
+    detailing: { bg: c.soft, fg: c.softInk },
   };
   const t = (kind && map[kind]) || { bg: c.tile2, fg: c.fg };
   return (
@@ -293,19 +289,19 @@ export function Row({
   const body = (
     <>
       {icon ? (
-        <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: c.tile2, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center' }}>
           {typeof icon === 'string' ? <Icon name={icon as IconName} size={20} color={iconColor ?? c.fg} /> : icon}
         </View>
       ) : null}
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontFamily: F.bold, fontSize: 16, color: c.fg }}>{title}</Text>
-        {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 13, color: c.fg3 }}>{subtitle}</Text> : null}
+        <Text style={{ fontFamily: F.semi, fontSize: 15, color: c.fg }}>{title}</Text>
+        {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{subtitle}</Text> : null}
       </View>
       {right}
     </>
   );
   const st: S<ViewStyle> = [
-    { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 16, minHeight: 66 },
+    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16, minHeight: 60 },
     divider && { borderTopWidth: 1, borderTopColor: c.line },
     style,
   ];
@@ -316,9 +312,9 @@ export function Row({
 export function LegacyTile({ emoji, value, unit, label, style }: { emoji?: string; value: string | number; unit?: string; label?: string; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   return (
-    <View style={[{ borderRadius: 22, padding: 16, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line }, cardShadow(c), style]}>
+    <View style={[{ borderRadius: R.card, padding: 16, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line }, cardShadow(c), style]}>
       {emoji ? <Text style={{ fontSize: 22, marginBottom: 6 }}>{emoji}</Text> : null}
-      <Text style={{ fontFamily: F.shout, fontSize: 40, lineHeight: 46, color: c.fg }}>
+      <Text style={{ fontFamily: F.bold, fontSize: 32, lineHeight: 40, color: c.fg }}>
         {value}
         {unit ? <Text style={{ fontFamily: F.bold, fontSize: 15, color: c.fg3 }}> {unit}</Text> : null}
       </Text>
@@ -351,7 +347,7 @@ export function SyncDot({ state, size = 10 }: { state: SyncState; size?: number 
       return () => l.stop();
     }
   }, [state, a]);
-  const col = state === 'live' ? brand.mint : state === 'wait' ? brand.orange : state === 'demo' ? brand.gold : c.fg3;
+  const col = state === 'live' ? brand.mint : state === 'wait' ? brand.orange : state === 'demo' ? c.fg3 : c.fg3;
   return (
     <View style={{ width: size, height: size }}>
       {state === 'live' ? (
@@ -382,13 +378,13 @@ export function SyncChip({ state, text, onPress, style }: { state: SyncState; te
       scaleTo={0.94}
       accessibilityLabel={text}
       style={[
-        { flexDirection: 'row', alignItems: 'center', gap: 8, height: 48, paddingLeft: 12, paddingRight: 14, borderRadius: 999, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line, alignSelf: 'flex-start' },
+        { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 12, paddingRight: 14, borderRadius: 999, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line, alignSelf: 'flex-start' },
         cardShadow(c),
         style,
       ]}
     >
       <SyncDot state={state} />
-      <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 13, color: c.fg }}>{text}</Text>
+      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12.5, color: c.fg }}>{text}</Text>
     </Pressy>
   );
 }
@@ -423,8 +419,8 @@ export function OnlineSwitch({
       style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }, style]}
     >
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <Text style={{ fontFamily: F.bold, fontSize: 16, color: c.fg }}>{title}</Text>
-        {subtitle ? <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3 }}>{subtitle}</Text> : null}
+        <Text style={{ fontFamily: F.semi, fontSize: 15, color: c.fg }}>{title}</Text>
+        {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{subtitle}</Text> : null}
       </View>
       <Animated.View style={{ width: 52, height: 30, borderRadius: 99, padding: 3, backgroundColor: a.interpolate({ inputRange: [0, 1], outputRange: [c.fg3, brand.mint] }) }}>
         <Animated.View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: a.interpolate({ inputRange: [0, 1], outputRange: [0, 22] }) }] }} />
@@ -458,9 +454,9 @@ export function Segmented<T extends string | number = string>({
             accessibilityRole="radio"
             accessibilityLabel={o.label}
             accessibilityState={{ selected: on }}
-            style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? brand.violet : c.tile2, transform: on ? [{ scale: 1.04 }] : undefined }}
+            style={{ minHeight: 40, paddingHorizontal: 12, borderRadius: R.button, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.primary : c.tile2 }}
           >
-            <Text style={{ fontFamily: F.bold, fontSize: 13.5, color: on ? brand.cream : c.fg }}>{o.label}</Text>
+            <Text style={{ fontFamily: F.semi, fontSize: 13.5, color: on ? '#fff' : c.fg }}>{o.label}</Text>
           </Pressy>
         );
       })}
@@ -492,9 +488,9 @@ export function ChipPicker<T extends string | number = string>({
             accessibilityRole="radio"
             accessibilityState={{ selected: on }}
             accessibilityLabel={opt.label}
-            style={{ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 999, borderWidth: 2, borderColor: on ? brand.violet : c.line, backgroundColor: on ? brand.violet : c.tile }}
+            style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: on ? c.primary : c.line, backgroundColor: on ? c.primary : c.tile }}
           >
-            <Text style={{ fontFamily: F.bold, fontSize: 14, color: on ? '#fff' : c.fg }}>{opt.label}</Text>
+            <Text style={{ fontFamily: F.semi, fontSize: 13.5, color: on ? '#fff' : c.fg }}>{opt.label}</Text>
           </Pressy>
         );
       })}
@@ -515,15 +511,15 @@ export function Field({ big = true, style, onFocus, onBlur, multiline, ...rest }
       style={[
         {
           width: '100%',
-          borderRadius: 16,
-          borderWidth: 2,
+          borderRadius: R.input,
+          borderWidth: 1,
           borderColor: focus ? c.accent : c.line,
           backgroundColor: c.inputBg,
           color: c.fg,
-          fontFamily: big && !multiline ? F.semi : F.body,
-          fontSize: big && !multiline ? 17 : 16,
-          paddingVertical: 14,
-          paddingHorizontal: big && !multiline ? 16 : 14,
+          fontFamily: F.medium,
+          fontSize: big && !multiline ? 16 : 15,
+          paddingVertical: 11,
+          paddingHorizontal: 14,
           minHeight: multiline ? 96 : undefined,
           textAlignVertical: multiline ? 'top' : 'center',
         },
@@ -540,16 +536,16 @@ export function Field({ big = true, style, onFocus, onBlur, multiline, ...rest }
 export function Empty({ title, text, style }: { title: string; text?: string; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   return (
-    <View style={[{ borderRadius: 28, paddingVertical: 26, paddingHorizontal: 20, alignItems: 'center', borderWidth: 2, borderStyle: 'dashed', borderColor: c.dash }, style]}>
-      <Text style={{ fontFamily: F.black, fontSize: 17, color: c.fg, marginBottom: 4, textAlign: 'center' }}>{title}</Text>
-      {text ? <Text style={{ fontFamily: F.body, fontSize: 14.5, color: c.fg2, textAlign: 'center' }}>{text}</Text> : null}
+    <View style={[{ borderRadius: R.card, paddingVertical: 12, paddingHorizontal: 12, alignItems: 'center', borderWidth: 1, borderColor: c.fg, backgroundColor: c.soft }, style]}>
+      <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg, marginBottom: 2, textAlign: 'center' }}>{title}</Text>
+      {text ? <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3, textAlign: 'center' }}>{text}</Text> : null}
     </View>
   );
 }
 
 export function DemoNote({ children, style }: { children?: React.ReactNode; style?: S<TextStyle> }) {
   const { c } = useTheme();
-  return <Text style={[{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, textAlign: 'center', marginTop: 12 }, style]}>{children}</Text>;
+  return <Text style={[{ fontFamily: F.body, fontSize: 12, color: c.fg3, textAlign: 'center', marginTop: 10 }, style]}>{children}</Text>;
 }
 
 export function CallButton({ phone, small, label, style }: { phone: string; small?: boolean; label?: string; style?: S<ViewStyle> }) {
@@ -562,35 +558,33 @@ export function CallButton({ phone, small, label, style }: { phone: string; smal
       accessibilityLabel={label ?? 'Call'}
       style={[
         small
-          ? { height: 44, borderRadius: 22, paddingHorizontal: 16, flexDirection: 'row', gap: 8 }
-          : { width: 52, height: 52, borderRadius: 26 },
-        { alignItems: 'center', justifyContent: 'center', backgroundColor: brand.mint },
-        cardShadow(c),
+          ? { height: 40, borderRadius: 999, paddingHorizontal: 16, flexDirection: 'row', gap: 6 }
+          : { width: 44, height: 44, borderRadius: R.button },
+        { alignItems: 'center', justifyContent: 'center', backgroundColor: brand.ink },
         style,
       ]}
     >
-      <Icon name="phone" size={small ? 20 : 24} color="#fff" />
-      {small ? <Text style={{ fontFamily: F.black, fontSize: 15, color: '#fff' }}>{label ?? 'Call'}</Text> : null}
+      <Icon name="phone" size={small ? 16 : 22} color="#fff" />
+      {small ? <Text style={{ fontFamily: F.bold, fontSize: 13, color: '#fff' }}>{label ?? 'Call'}</Text> : null}
     </Pressy>
   );
 }
 
-export function ProgressBar({ fraction, color, height = 12, style }: { fraction: number; color?: 'mint' | 'gold' | string; height?: number; style?: S<ViewStyle> }) {
+export function ProgressBar({ fraction, color, height = 8, style }: { fraction: number; color?: 'mint' | 'gold' | string; height?: number; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   const a = useRef(new Animated.Value(0)).current;
   const f = Math.max(0, Math.min(1, fraction || 0));
   useEffect(() => {
     Animated.timing(a, { toValue: f, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
   }, [f, a]);
-  const col = color === 'gold' ? brand.gold : !color || color === 'mint' ? brand.mint : color;
-  const cap = color === 'gold' ? '#ffd45c' : '#5fe0b4';
+  const col = color === 'gold' ? c.primary : !color || color === 'mint' ? brand.mint : color;
   return (
     <View
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: 100, now: Math.round(f * 100) }}
-      style={[{ height, borderRadius: height / 2, backgroundColor: c.line, overflow: 'hidden' }, style]}
+      style={[{ height, borderRadius: height / 2, backgroundColor: c.soft, overflow: 'hidden' }, style]}
     >
-      <Animated.View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: a.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }), borderRadius: height / 2, backgroundColor: col, borderRightWidth: height * 0.5, borderRightColor: cap }} />
+      <Animated.View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: a.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }), borderRadius: height / 2, backgroundColor: col }} />
     </View>
   );
 }
@@ -626,7 +620,7 @@ export function LegacyRing({
     <View style={[{ width: size, height: size }, style]}>
       <Svg width={size} height={size} viewBox="0 0 100 100" style={{ transform: [{ rotate: '-90deg' }] }}>
         <Circle cx={50} cy={50} r={44} fill="none" stroke={c.line} strokeWidth={stroke} />
-        <Circle cx={50} cy={50} r={44} fill="none" stroke={color ?? brand.gold} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${C}`} strokeDashoffset={C * (1 - v)} />
+        <Circle cx={50} cy={50} r={44} fill="none" stroke={color ?? brand.violet} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${C}`} strokeDashoffset={C * (1 - v)} />
       </Svg>
       <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>{children}</View>
     </View>
@@ -652,8 +646,8 @@ export function Stepper({ steps, style }: { steps: StepItem[]; style?: S<ViewSty
   const inset = `${50 / n}%` as const;
   return (
     <View style={[{ flexDirection: 'row', marginTop: 18, marginHorizontal: 4 }, style]}>
-      <View pointerEvents="none" style={{ position: 'absolute', left: inset, right: inset, top: 17, height: 4, borderRadius: 2, backgroundColor: c.line }}>
-        <Animated.View style={{ height: 4, borderRadius: 2, backgroundColor: dark ? brand.gold : brand.violet, width: a.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }} />
+      <View pointerEvents="none" style={{ position: 'absolute', left: inset, right: inset, top: 15, height: 4, borderRadius: 2, backgroundColor: c.line }}>
+        <Animated.View style={{ height: 4, borderRadius: 2, backgroundColor: c.primary, width: a.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }} />
       </View>
       {steps.map((s, i) => {
         const ok = s.state === 'ok';
@@ -662,17 +656,16 @@ export function Stepper({ steps, style }: { steps: StepItem[]; style?: S<ViewSty
           <View key={i} style={{ flex: 1, alignItems: 'center', gap: 6 }} accessible accessibilityLabel={`${s.label}${s.time ? ' ' + s.time : ''}`}>
             <View
               style={{
-                width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 3,
-                backgroundColor: ok ? brand.mint : now ? brand.violet : c.bg,
-                borderColor: ok ? brand.mint : now ? brand.violet : c.line,
+                width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 3,
+                backgroundColor: ok ? brand.mint : now ? c.primary : c.bg,
+                borderColor: ok ? brand.mint : now ? c.primary : c.line,
                 transform: now ? [{ scale: 1.12 }] : undefined,
-                ...(now ? { shadowColor: brand.violet, shadowOpacity: 0.4, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 3 } : null),
               }}
             >
-              <Icon name={s.icon} size={18} color={ok || now ? '#fff' : c.fg3} />
+              <Icon name={s.icon} size={16} color={ok || now ? '#fff' : c.fg3} />
             </View>
-            <Text style={{ fontFamily: F.bold, fontSize: 12, color: ok || now ? c.fg : c.fg3, textAlign: 'center' }} numberOfLines={1}>{s.label}</Text>
-            {s.time ? <Text style={{ fontFamily: F.semi, fontSize: 11, color: c.fg3, marginTop: -4 }}>{s.time}</Text> : null}
+            <Text style={{ fontFamily: now ? F.bold : F.semi, fontSize: 12, color: ok || now ? c.fg : c.fg3, textAlign: 'center' }} numberOfLines={1}>{s.label}</Text>
+            {s.time ? <Text style={{ fontFamily: F.body, fontSize: 10, color: c.fg3, marginTop: -4 }}>{s.time}</Text> : null}
           </View>
         );
       })}
@@ -683,9 +676,9 @@ export function Stepper({ steps, style }: { steps: StepItem[]; style?: S<ViewSty
 /* ------------------------------------------------------------------ */
 /* Slide to confirm                                                    */
 /* ------------------------------------------------------------------ */
-const KNOB = 60;
+const KNOB = 44;
 const PAD = 6;
-const H = 72;
+const H = 56;
 
 export function SlideToConfirm({
   label,
@@ -703,12 +696,12 @@ export function SlideToConfirm({
   resetKey?: string | number;
   style?: S<ViewStyle>;
 }) {
-  const { onViolet } = useTheme();
-  const isGold = gold || onViolet;
-  const bg = isGold ? brand.gold : brand.ink;
-  const fg = isGold ? brand.ink : brand.cream;
-  const knobBg = isGold ? brand.ink : brand.gold;
-  const knobFg = isGold ? brand.gold : brand.ink;
+  const { c } = useTheme();
+  const isGold = !!gold;   // 'gold' = the primary (violet) slider; otherwise a neutral dark one
+  const bg = isGold ? c.primary : brand.ink;
+  const fg = '#fff';
+  const knobBg = '#fff';
+  const knobFg = isGold ? c.primary : brand.ink;
 
   const [width, setWidth] = useState(0);
   const [done, setDone] = useState(false);
@@ -808,29 +801,27 @@ export function SlideToConfirm({
       onLayout={(e) => { widthRef.current = e.nativeEvent.layout.width; setWidth(e.nativeEvent.layout.width); }}
       style={[
         {
-          height: H, borderRadius: H / 2, backgroundColor: bg, overflow: 'hidden', opacity: disabled ? 0.5 : 1,
-          shadowColor: isGold ? brand.gold : '#1A0A33', shadowOpacity: isGold ? 0.35 : 0.3, shadowRadius: 17, shadowOffset: { width: 0, height: 14 }, elevation: 8,
+          height: H, borderRadius: R.button, backgroundColor: bg, overflow: 'hidden', opacity: disabled ? 0.5 : 1,
         },
         style,
       ]}
     >
       <Animated.View
         pointerEvents="none"
-        style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: width || '100%', borderRadius: H / 2, backgroundColor: 'rgba(255,255,255,0.14)', transform: [{ translateX: width ? fillX : -9999 }] }}
+        style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: width || '100%', borderRadius: R.button, backgroundColor: 'rgba(255,255,255,0.14)', transform: [{ translateX: width ? fillX : -9999 }] }}
       />
-      <Animated.View pointerEvents="none" style={{ ...StyleSheet.absoluteFill as object, alignItems: 'center', justifyContent: 'center', paddingLeft: 56, paddingRight: 16, opacity: done ? 0 : txtOpacity }}>
-        <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 18, color: fg }}>{label}</Text>
+      <Animated.View pointerEvents="none" style={{ ...StyleSheet.absoluteFill as object, alignItems: 'center', justifyContent: 'center', paddingLeft: 44, paddingRight: 16, opacity: done ? 0 : txtOpacity }}>
+        <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 15, color: fg }}>{label}</Text>
       </Animated.View>
       <Animated.View
         {...pan.panHandlers}
         style={{
-          position: 'absolute', left: PAD, top: PAD, width: KNOB, height: KNOB, borderRadius: KNOB / 2, backgroundColor: knobBg,
+          position: 'absolute', left: PAD, top: PAD, width: KNOB, height: KNOB, borderRadius: R.button - 2, backgroundColor: knobBg,
           alignItems: 'center', justifyContent: 'center', transform: [{ translateX: knobX }],
-          shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 6 }, elevation: 4,
           ...(Platform.OS === 'web' ? ({ cursor: 'grab', touchAction: 'none', userSelect: 'none' } as any) : null),
         }}
       >
-        <Icon name={done ? 'check' : 'arrow'} size={28} color={knobFg} />
+        <Icon name={done ? 'check' : 'arrow'} size={22} color={knobFg} />
       </Animated.View>
     </Pressable>
   );

@@ -5,7 +5,14 @@ import { monthDays, outlook } from './rewardsView.ts';
 const A = (o: Record<string, [string?, string?]>) => Object.fromEntries(Object.entries(o).map(([k, [i, f]]) => [k, { in: i, first: f }]));
 test('empty log: today pending, everything still possible early in the month', () => {
   const o = outlook({}, '2026-11-01');
-  assert.equal(o.possible, 2000);
+  assert.equal(o.possible, 3000);
+  assert.equal(o.best, 3000);
+});
+test('complaints with a low rating keep the no-complaint money possible until the month ends', () => {
+  const low = { complaints: 1, ratingCount: 6, ratingAvg: 4.2 };
+  assert.equal(outlook({}, '2026-11-12', low).cleanLive, true);
+  assert.equal(outlook({}, '2026-11-30', low).cleanLive, false);
+  assert.equal(outlook({}, '2026-11-30', { complaints: 0, ratingCount: 0, ratingAvg: null }).cleanLive, true);
 });
 import { addDays } from './rewards.ts';
 const run = (end: string, n: number, skipIn: string[] = []) => Object.fromEntries(Array.from({ length: n }, (_, i) => {
@@ -17,7 +24,7 @@ test('a missed day kills the full-month bonus only', () => {
   assert.equal(o.monthLive, false);
   assert.equal(o.streak, 29);
   assert.equal(o.earlyLive, true);
-  assert.equal(o.possible, 1000);
+  assert.equal(o.possible, 2000);   // early bird + no complaint
 });
 test('late photo today breaks the streak', () => {
   const log = run('2026-11-09', 29);
@@ -27,7 +34,7 @@ test('late photo today breaks the streak', () => {
   assert.equal(o.streak, 0);
   assert.equal(o.earlyLive, false);   // only 20 days left after today
   assert.equal(o.monthLive, true);
-  assert.equal(o.possible, 1000);
+  assert.equal(o.possible, 2000);   // full month + no complaint
 });
 test('month grid starts on Monday and marks states', () => {
   const g = monthDays(A({ '2026-11-01': ['x'] }), '2026-11-03');   // 1 Nov 2026 is a Sunday

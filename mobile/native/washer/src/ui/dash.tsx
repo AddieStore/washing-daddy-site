@@ -3,12 +3,12 @@
 // (card, soft, primary, hero, heroTrack...), so every piece works in light and dark mode. Text is passed in already
 // translated (call t() at the usage site). Preview of everything: the hidden /_kit route.
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Image, StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
+import { Animated, Easing, Image, ScrollView, StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, Line, Path, Pattern, Rect } from 'react-native-svg';
 import { Icon, IconName } from './Icons';
 import { Pressy } from './kit';
 import { useReducedMotion } from './Hosts';
-import { F, brand, cardShadow, useTheme } from './theme';
+import { F, R, brand, cardBox, cardShadow, useTheme } from './theme';
 
 type S<T> = StyleProp<T>;
 
@@ -26,29 +26,29 @@ function useGrow(key: unknown, duration = 900, delay = 0) {
   return v;
 }
 
-/** Plain white card (radius 24, soft shadow, no border). Pass onPress to make it tappable. */
+/** Astryx card: radius 16, 1px neutral border, very light shadow. Pass onPress to make it tappable. */
 export function DashCard({ children, style, onPress, accessibilityLabel }: {
   children?: React.ReactNode; style?: S<ViewStyle>; onPress?: () => void; accessibilityLabel?: string;
 }) {
   const { c } = useTheme();
-  const st: S<ViewStyle> = [{ borderRadius: 24, backgroundColor: c.card }, cardShadow(c), style];
+  const st: S<ViewStyle> = [cardBox(c), cardShadow(c), style];
   if (onPress) return <Pressy onPress={onPress} scaleTo={0.985} accessibilityLabel={accessibilityLabel} style={st}>{children}</Pressy>;
   return <View style={st}>{children}</View>;
 }
 
-/** Section heading, 17px semibold, with an optional small action text on the right. */
+/** Section heading, 17px semibold, with an optional small grey note on the right. */
 export function SectionTitle({ title, action, onAction, style }: { title: string; action?: string; onAction?: () => void; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 10 }, style]}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 17, color: c.fg }}>{title}</Text>
-      {action ? <Text onPress={onAction} style={{ fontFamily: F.semi, fontSize: 13, color: c.primary }}>{action}</Text> : null}
+    <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 12 }, style]}>
+      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 17, lineHeight: 24, color: c.fg }}>{title}</Text>
+      {action ? <Text onPress={onAction} style={{ fontFamily: F.body, fontSize: 12, color: onAction ? c.primary : c.fg3 }}>{action}</Text> : null}
     </View>
   );
 }
 
 /** Round icon bubble used inside cards (icon on a soft tinted circle). */
-export function IconBubble({ icon, size = 38, tint, bg, children }: { icon?: IconName; size?: number; tint?: string; bg?: string; children?: React.ReactNode }) {
+export function IconBubble({ icon, size = 40, tint, bg, children }: { icon?: IconName; size?: number; tint?: string; bg?: string; children?: React.ReactNode }) {
   const { c } = useTheme();
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg ?? c.soft, alignItems: 'center', justifyContent: 'center' }}>
@@ -82,7 +82,7 @@ export type RingProps = {
   style?: S<ViewStyle>;
 };
 /** Progress ring with an inner lighter disc and a centre number + label. Animates in. */
-export function Ring({ fraction, size = 92, stroke = 9, color, track, value, label, children, ink, disc, style }: RingProps) {
+export function Ring({ fraction, size = 86, stroke = 11.5, color, track, value, label, children, ink, disc, style }: RingProps) {
   const { c } = useTheme();
   const f = Math.max(0, Math.min(1, fraction || 0));
   const g = useGrow(f);
@@ -96,15 +96,15 @@ export function Ring({ fraction, size = 92, stroke = 9, color, track, value, lab
   return (
     <View style={[{ width: size, height: size }, style]} accessible accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(f * 100) }}>
       <Svg width={size} height={size} viewBox="0 0 100 100" style={{ transform: [{ rotate: '-90deg' }] }}>
-        <Circle cx={50} cy={50} r={r - stroke / 2 - 3} fill={disc ?? 'rgba(255,255,255,0.45)'} />
+        <Circle cx={50} cy={50} r={r - stroke / 2 - 3} fill={disc ?? 'transparent'} />
         <Circle cx={50} cy={50} r={r} fill="none" stroke={track ?? c.heroTrack} strokeWidth={stroke} />
-        <Circle cx={50} cy={50} r={r} fill="none" stroke={color ?? brand.gold} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${C}`} strokeDashoffset={C * (1 - f * v)} />
+        <Circle cx={50} cy={50} r={r} fill="none" stroke={color ?? c.primary} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${C}`} strokeDashoffset={C * (1 - f * v)} />
       </Svg>
       <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
         {children ?? (
           <>
-            {value !== undefined ? <Text style={{ fontFamily: F.black, fontSize: size * 0.3, lineHeight: size * 0.34, color: col }}>{value}</Text> : null}
-            {label ? <Text style={{ fontFamily: F.body, fontSize: Math.max(10, size * 0.115), color: col, opacity: 0.7 }}>{label}</Text> : null}
+            {value !== undefined ? <Text style={{ fontFamily: F.bold, fontSize: size * 0.34, lineHeight: size * 0.4, color: col }}>{value}</Text> : null}
+            {label ? <Text style={{ fontFamily: F.body, fontSize: Math.max(10, size * 0.116), color: c.fg3 }}>{label}</Text> : null}
           </>
         )}
       </View>
@@ -129,34 +129,32 @@ export type HeroCardProps = {
   onPress?: () => void;
   style?: S<ViewStyle>;
 };
-/** Tinted (soft gold) hero card: eyebrow, title, subtitle on the left, a Ring on the right. */
+/** Hero card: neutral bordered surface, eyebrow, title, subtitle on the left, a Ring on the right. */
 export function HeroCard({ eyebrow, eyebrowIcon = 'flag', title, subtitle, ring, children, onPress, style }: HeroCardProps) {
   const { c } = useTheme();
   const body = (
     <>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1 }}>
-          {heroEyebrow(eyebrow, eyebrowIcon, c.heroInk)}
-          <Text style={{ fontFamily: F.black, fontSize: 24, lineHeight: 30, color: c.heroInk, marginTop: eyebrow ? 10 : 0 }}>{title}</Text>
-          {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 13.5, color: c.heroInk, opacity: 0.72, marginTop: 4 }}>{subtitle}</Text> : null}
+          {heroEyebrow(eyebrow, eyebrowIcon, c.fg3)}
+          <Text style={{ fontFamily: F.bold, fontSize: 29, lineHeight: 40, color: c.heroInk, marginTop: eyebrow ? 2 : 0 }}>{title}</Text>
+          {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 18, color: c.fg3, marginTop: 4 }}>{subtitle}</Text> : null}
+          {children ? <View style={{ marginTop: 4 }}>{children}</View> : null}
         </View>
-        {ring ? <Ring size={96} {...ring} /> : null}
+        {ring ? <Ring size={86} {...ring} /> : null}
       </View>
-      {children ? <View style={{ marginTop: 14 }}>{children}</View> : null}
     </>
   );
-  const st: S<ViewStyle> = [{ borderRadius: 24, backgroundColor: c.hero, padding: 18 }, style];
+  const st: S<ViewStyle> = [{ borderRadius: R.card, backgroundColor: c.hero, borderWidth: 1, borderColor: c.line, padding: 20 }, style];
   if (onPress) return <Pressy onPress={onPress} scaleTo={0.985} accessibilityLabel={title} style={st}>{body}</Pressy>;
   return <View style={st}>{body}</View>;
 }
 function heroEyebrow(text: string | undefined, icon: IconName, ink: string) {
   if (!text) return null;
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.6)', alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name={icon} size={13} color={ink} />
-      </View>
-      <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: ink, opacity: 0.8 }}>{text}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      {icon && icon !== 'flag' ? <Icon name={icon} size={13} color={ink} /> : null}
+      <Text style={{ fontFamily: F.bold, fontSize: 10, lineHeight: 14, letterSpacing: 0.8, textTransform: 'uppercase', color: ink }}>{text}</Text>
     </View>
   );
 }
@@ -180,26 +178,26 @@ export type StatCardProps = {
 };
 /** White card: label + icon bubble on top, big number + small unit below. Put two side by side with flex: 1. */
 export function StatCard({ label, value, unit, icon, tone, onPress, style }: StatCardProps) {
-  const { c } = useTheme();
-  const tint = tone ?? c.softInk;
+  const { c, dark } = useTheme();
+  const tint = toneInk(tone, dark, c.softInk);
   return (
-    <DashCard onPress={onPress} accessibilityLabel={`${label} ${value}${unit ? ' ' + unit : ''}`} style={[{ padding: 16, minHeight: 104, justifyContent: 'space-between' }, style]}>
+    <DashCard onPress={onPress} accessibilityLabel={`${label} ${value}${unit ? ' ' + unit : ''}`} style={[{ padding: 15, gap: 12, justifyContent: 'space-between' }, style]}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-        <Text style={{ fontFamily: F.semi, fontSize: 14, lineHeight: 19, color: c.fg, flex: 1 }}>{label}</Text>
-        {icon ? <IconBubble icon={icon} tint={tint} bg={tone ? withAlpha(tone, 0.14) : undefined} /> : null}
+        <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3, flex: 1, paddingTop: 10 }}>{label}</Text>
+        {icon ? <IconBubble icon={icon} tint={tint} bg={tone ? withAlpha(tone, 0.16) : undefined} /> : null}
       </View>
-      <BigNumber value={value} unit={unit} />
+      <BigNumber value={value} unit={unit} size={35} />
     </DashCard>
   );
 }
 
-/** Big extra-bold number with a small grey unit. size defaults to 28. */
+/** Big bold number with a small grey unit. size defaults to 28. */
 export function BigNumber({ value, unit, size = 28, style }: { value: string | number; unit?: string; size?: number; style?: S<TextStyle> }) {
   const { c } = useTheme();
   return (
-    <Text style={[{ fontFamily: F.black, fontSize: size, lineHeight: size * 1.2, color: c.fg }, style]} numberOfLines={1} adjustsFontSizeToFit>
+    <Text style={[{ fontFamily: F.bold, fontSize: size, lineHeight: size * 1.2, color: c.fg }, style]} numberOfLines={1} adjustsFontSizeToFit>
       {value}
-      {unit ? <Text style={{ fontFamily: F.body, fontSize: Math.max(12, size * 0.5), color: c.fg3 }}> {unit}</Text> : null}
+      {unit ? <Text style={{ fontFamily: F.body, fontSize: Math.min(14, Math.max(11, size * 0.4)), color: c.fg3 }}> {unit}</Text> : null}
     </Text>
   );
 }
@@ -216,21 +214,36 @@ export type TileProps = {
   /** Optional mini chart under the label (see Sparkline). */
   spark?: number[];
   sparkKind?: SparklineProps['kind'];
+  /** Vertical layout for 3-up rows: icon bubble on top, number, then the label. */
+  compact?: boolean;
   onPress?: () => void;
   style?: S<ViewStyle>;
 };
-/** Small metric card (radius 20): icon + label, optional sparkline, number + unit. Use two per row (width '48%'). */
-export function Tile({ label, value, unit, icon, tone, spark, sparkKind = 'bars', onPress, style }: TileProps) {
-  const { c } = useTheme();
-  const tint = tone ?? c.softInk;
+/** Metric card: label on the left, icon bubble on the right, number + unit (and optional sparkline) below. Two per row (width '48%'). */
+export function Tile({ label, value, unit, icon, tone, spark, sparkKind = 'line', compact, onPress, style }: TileProps) {
+  const { c, dark } = useTheme();
+  const tint = toneInk(tone, dark, c.primary);
+  if (compact) {
+    return (
+      <DashCard onPress={onPress} accessibilityLabel={`${label} ${value}${unit ? ' ' + unit : ''}`} style={[{ padding: 11, gap: 8 }, style]}>
+        {icon ? <IconBubble icon={icon} size={32} tint={tint} bg={withAlpha(tone ?? c.primary, 0.14)} /> : null}
+        <View style={{ minWidth: 0 }}>
+          <Text style={{ fontFamily: F.bold, fontSize: 17, lineHeight: 24, color: c.fg }} numberOfLines={1} adjustsFontSizeToFit>{value}{unit ? <Text style={{ fontFamily: F.body, fontSize: 11, color: c.fg3 }}> {unit}</Text> : null}</Text>
+          <Text style={{ fontFamily: F.body, fontSize: 11, lineHeight: 16, color: c.fg3 }} numberOfLines={2}>{label}</Text>
+        </View>
+      </DashCard>
+    );
+  }
   return (
-    <DashCard onPress={onPress} accessibilityLabel={`${label} ${value}${unit ? ' ' + unit : ''}`} style={[{ borderRadius: 20, padding: 14, gap: 10 }, style]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        {icon ? <IconBubble icon={icon} size={32} tint={tint} bg={tone ? withAlpha(tone, 0.14) : undefined} /> : null}
-        <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg2, flex: 1 }} numberOfLines={1}>{label}</Text>
+    <DashCard onPress={onPress} accessibilityLabel={`${label} ${value}${unit ? ' ' + unit : ''}`} style={[{ padding: 15, gap: 12 }, style]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3, flex: 1 }} numberOfLines={2}>{label}</Text>
+        {icon ? <IconBubble icon={icon} size={36} tint={tint} bg={withAlpha(tone ?? c.primary, 0.14)} /> : null}
       </View>
-      {spark && spark.length > 1 ? <Sparkline data={spark} kind={sparkKind} color={tone ?? c.primary} height={30} /> : null}
-      <BigNumber value={value} unit={unit} size={24} />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
+        <BigNumber value={value} unit={unit} size={26} style={{ flexShrink: 1 }} />
+        {spark && spark.length > 1 ? <Sparkline data={spark} kind={sparkKind} color={c.primary} width={64} height={28} /> : null}
+      </View>
     </DashCard>
   );
 }
@@ -246,6 +259,10 @@ export type WeekDay = {
   date: string | number;
   /** Small dot under the date (e.g. a round exists that day). */
   dot?: boolean;
+  /** Greyed out and not selectable (a day that has not come yet). */
+  disabled?: boolean;
+  /** Month + year this day belongs to ("November 2026"); the title follows the middle day while scrolling. */
+  month?: string;
 };
 export type WeekStripProps = {
   days: WeekDay[];
@@ -256,43 +273,96 @@ export type WeekStripProps = {
   title?: string;
   onPrev?: () => void;
   onNext?: () => void;
+  /** Horizontally scrollable, 7 days visible, snapping; starts at the right end (the newest days). */
+  scroll?: boolean;
+  /** Small pill on the right of the title while the selected day is out of view (e.g. "Today"). */
+  jumpLabel?: string;
   style?: S<ViewStyle>;
 };
-/** White card with an optional month title + arrows and 7 day columns; the selected one is a tall violet pill. */
-export function WeekStrip({ days, selected, onSelect, title, onPrev, onNext, style }: WeekStripProps) {
+/** White card with an optional month title + arrows and day columns; the selected one is a tall violet pill. */
+export function WeekStrip({ days, selected, onSelect, title, onPrev, onNext, scroll, jumpLabel, style }: WeekStripProps) {
   const { c } = useTheme();
+  const rm = useReducedMotion();
+  const ref = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const [w, setW] = useState(0);
+  const [mid, setMid] = useState(days.length - 1);
+  const [off, setOff] = useState(0);
+  const cell = w ? w / 7 : 0;
+  const dayView = (d: WeekDay, itemW?: number) => {
+    const on = d.key === selected;
+    const dayStyle = { width: itemW, flex: itemW ? undefined : 1, alignItems: 'center' as const, paddingTop: 8, paddingBottom: 10, borderRadius: 999, backgroundColor: on ? c.primary : 'transparent', gap: 2, opacity: d.disabled ? 0.38 : 1 };
+    const inner = (
+      <>
+        <Text style={{ fontFamily: F.medium, fontSize: 11, lineHeight: 17, color: on ? '#fff' : c.fg, opacity: on ? 0.85 : 0.6 }} numberOfLines={1}>{d.label}</Text>
+        <Text style={{ fontFamily: F.bold, fontSize: 16, lineHeight: 24, color: on ? '#fff' : c.fg }}>{d.date}</Text>
+        <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: d.dot ? (on ? '#FFFFFF' : c.primary) : 'transparent' }} />
+      </>
+    );
+    // no handler = a plain read-only day (not announced as a button)
+    if (!onSelect || d.disabled) return <View key={d.key} accessible accessibilityLabel={`${d.label} ${d.date}`} accessibilityState={{ disabled: !!d.disabled }} style={dayStyle}>{inner}</View>;
+    return (
+      <Pressy key={d.key} onPress={() => onSelect(d.key)} scaleTo={0.94} accessibilityLabel={`${d.label} ${d.date}`}
+        accessibilityRole="radio" accessibilityState={{ selected: on }} style={dayStyle}>
+        {inner}
+      </Pressy>
+    );
+  };
+  const selIdx = days.findIndex((d) => d.key === selected);
+  const first = cell ? Math.round(off / cell) : 0;
+  const away = scroll && cell && selIdx >= 0 && (selIdx < first || selIdx > first + 6);
+  const head = scroll ? (days[Math.min(days.length - 1, Math.max(0, mid))]?.month || title) : title;
+  // start at the newest days (contentOffset is not honoured on web, so scroll once the width is known)
+  useEffect(() => {
+    if (!scroll || !cell) return;
+    const x = Math.max(0, selIdx >= 0 && selIdx < days.length - 7 ? Math.min(days.length - 7, selIdx - 3) : days.length - 7) * cell;
+    const id = setTimeout(() => ref.current?.scrollTo({ x, animated: false }), 0);
+    return () => clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scroll, cell, days.length]);
+  const toSel = () => {
+    if (!cell || selIdx < 0) return;
+    const x = Math.max(0, Math.min(days.length - 7, selIdx - 4)) * cell;
+    ref.current?.scrollTo({ x, animated: !rm });
+  };
   return (
-    <DashCard style={[{ padding: 16 }, style]}>
-      {title || onPrev || onNext ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 16, color: c.fg }}>{title}</Text>
+    <DashCard style={[{ padding: 7 }, style]}>
+      {head || onPrev || onNext ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 9, paddingTop: 5, paddingBottom: 6, minHeight: 28 }}>
+          <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg }}>{head}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            {onPrev ? <PillButton icon="back" label="‹" size={30} onPress={onPrev} flat /> : null}
-            {onNext ? <PillButton icon="arrow" label="›" size={30} onPress={onNext} flat /> : null}
+            {away && jumpLabel ? (
+              <Pressy onPress={toSel} accessibilityLabel={jumpLabel} style={{ paddingVertical: 3, paddingHorizontal: 10, borderRadius: 999, backgroundColor: c.soft }}>
+                <Text style={{ fontFamily: F.semi, fontSize: 12, color: c.softInk }}>{jumpLabel}</Text>
+              </Pressy>
+            ) : null}
+            {onPrev ? <PillButton icon="back" label="‹" size={28} onPress={onPrev} flat /> : null}
+            {onNext ? <PillButton icon="arrow" label="›" size={28} onPress={onNext} flat /> : null}
           </View>
         </View>
       ) : null}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        {days.map((d) => {
-          const on = d.key === selected;
-          const dayStyle = { flex: 1, alignItems: 'center' as const, paddingVertical: 8, borderRadius: 22, backgroundColor: on ? c.primary : 'transparent', gap: 8 };
-          const inner = (
-            <>
-              <Text style={{ fontFamily: F.body, fontSize: 11, color: on ? '#fff' : c.fg3 }} numberOfLines={1}>{d.label}</Text>
-              <Text style={{ fontFamily: F.semi, fontSize: 14, color: on ? '#fff' : c.fg }}>{d.date}</Text>
-              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: d.dot ? (on ? brand.gold : c.primary) : 'transparent' }} />
-            </>
-          );
-          // no handler = a plain read-only day (not announced as a button)
-          if (!onSelect) return <View key={d.key} accessible accessibilityLabel={`${d.label} ${d.date}`} style={dayStyle}>{inner}</View>;
-          return (
-            <Pressy key={d.key} onPress={() => onSelect(d.key)} scaleTo={0.94} accessibilityLabel={`${d.label} ${d.date}`}
-              accessibilityRole="radio" accessibilityState={{ selected: on }} style={dayStyle}>
-              {inner}
-            </Pressy>
-          );
-        })}
-      </View>
+      {scroll ? (
+        <View onLayout={(e) => setW(Math.floor(e.nativeEvent.layout.width))}>
+          {w ? (
+            <ScrollView
+              ref={ref} horizontal showsHorizontalScrollIndicator={false} snapToInterval={cell} decelerationRate="fast" scrollEventThrottle={16}
+              onScroll={(e) => {
+                const x = e.nativeEvent.contentOffset.x;
+                const m = Math.round(x / cell) + 3;
+                setMid((p) => (p === m ? p : m));
+                const f = Math.round(x / cell);
+                setOff((p) => (Math.round(p / cell) === f ? p : x));
+              }}
+              style={{ ...({ scrollSnapType: 'x mandatory' } as object) }}
+              contentContainerStyle={{ width: cell * days.length }}
+              accessibilityRole="radiogroup"
+            >
+              {days.map((d) => <View key={d.key} style={{ width: cell, ...({ scrollSnapAlign: 'start' } as object) }}>{dayView(d, cell)}</View>)}
+            </ScrollView>
+          ) : <View style={{ height: 68 }} />}
+        </View>
+      ) : (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>{days.map((d) => dayView(d))}</View>
+      )}
     </DashCard>
   );
 }
@@ -314,46 +384,31 @@ export type BarChartProps = {
   data: BarDatum[];
   /** Index of the violet bar; others are light violet. */
   highlight?: number;
-  /** Chart area height (bars only). Default 190. */
+  /** Lane height. Default 120. */
   height?: number;
   /** Scale maximum; default the biggest of value/target. */
   max?: number;
   onSelect?: (index: number) => void;
   style?: S<ViewStyle>;
 };
-/** 7 (or any number of) paired bars: hatched target behind, solid value in front, label above, day name below. */
-export function BarChart({ data, highlight, height = 190, max, onSelect, style }: BarChartProps) {
+/** Lane chart: each day is a muted rounded lane filled from the bottom (share of target), today solid violet, % on top, day below. */
+export function BarChart({ data, highlight, height = 120, max, onSelect, style }: BarChartProps) {
   const { c } = useTheme();
-  const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   const top = max ?? Math.max(1, ...data.map((d) => Math.max(d.value, d.target ?? 0)));
   const g = useGrow(data.map((d) => d.value).join(','), 800, 100);
-  const BW = 14;
   return (
-    <View style={[{ flexDirection: 'row', justifyContent: 'space-between' }, style]}>
+    <View style={[{ flexDirection: 'row', gap: 8 }, style]}>
       {data.map((d, i) => {
         const on = i === highlight;
-        const vh = Math.max(d.value > 0 ? 6 : 2, (d.value / top) * height);
-        const th = d.target ? Math.max(6, (d.target / top) * height) : 0;
-        const label = d.top ?? (d.target ? `${Math.round((d.value / d.target) * 100)}%` : String(d.value));
+        const f = Math.max(0, Math.min(1, d.target ? d.value / d.target : d.value / top));
+        const label = d.top ?? (d.target ? `${Math.round(f * 100)}%` : String(d.value));
         return (
-          <Pressy key={i} onPress={onSelect ? () => onSelect(i) : undefined} disabled={!onSelect} scaleTo={0.96} accessibilityLabel={`${d.label} ${label}`} style={{ flex: 1, alignItems: 'center' }}>
-            <View style={{ height: height + 22, justifyContent: 'flex-end', alignItems: 'center' }}>
-              <Animated.Text style={{ fontFamily: on ? F.bold : F.body, fontSize: 11.5, color: on ? c.fg : c.fg3, marginBottom: 4, opacity: g }}>{label}</Animated.Text>
-              <View style={{ height: Math.max(vh, th), width: BW * 2 - 4, flexDirection: 'row', alignItems: 'flex-end' }}>
-                {th ? (
-                  <Svg width={BW} height={th} style={{ zIndex: 0 }}>
-                    <Defs>
-                      <Pattern id={`${id}h`} width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                        <Line x1={0} y1={0} x2={0} y2={5} stroke={c.soft} strokeWidth={2.2} />
-                      </Pattern>
-                    </Defs>
-                    <Rect x={0} y={0} width={BW} height={th} rx={7} fill={`url(#${id}h)`} />
-                  </Svg>
-                ) : <View style={{ width: BW }} />}
-                <Animated.View style={{ width: BW, marginLeft: -4, height: g.interpolate({ inputRange: [0, 1], outputRange: [2, vh] }), borderRadius: 7, backgroundColor: on ? c.primary : c.soft, zIndex: 1 }} />
-              </View>
+          <Pressy key={i} onPress={onSelect ? () => onSelect(i) : undefined} disabled={!onSelect} scaleTo={0.96} accessibilityLabel={`${d.label} ${label}`} style={{ flex: 1, alignItems: 'center', gap: 6 }}>
+            <Text style={{ fontFamily: on ? F.bold : F.medium, fontSize: 10.5, lineHeight: 16, color: on ? c.primary : c.fg3 }}>{label}</Text>
+            <View style={{ height, width: '100%', borderRadius: 10, backgroundColor: c.soft, overflow: 'hidden', justifyContent: 'flex-end' }}>
+              <Animated.View style={{ width: '100%', borderRadius: 10, backgroundColor: on ? c.primary : withAlpha(c.primary, 0.14), height: g.interpolate({ inputRange: [0, 1], outputRange: [6, Math.max(6, f * height)] }) }} />
             </View>
-            <Text style={{ fontFamily: on ? F.semi : F.body, fontSize: 12, color: on ? c.fg : c.fg3, marginTop: 8 }} numberOfLines={1}>{d.label}</Text>
+            <Text style={{ fontFamily: on ? F.bold : F.medium, fontSize: 10.5, lineHeight: 16, color: on ? c.primary : c.fg3 }} numberOfLines={1}>{d.label}</Text>
           </Pressy>
         );
       })}
@@ -395,10 +450,7 @@ export function Sparkline({ data, kind = 'line', width, height = 36, color, styl
                 return <Rect key={i} x={x} y={height - bh} width={bw} height={bh} rx={bw / 2} fill={col} />;
               })
             : (
-              <>
-                <Path d={`${smooth(pts)} L ${W} ${height} L 0 ${height} Z`} fill={col} opacity={0.12} />
-                <Path d={smooth(pts)} fill="none" stroke={col} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-              </>
+              <Path d={smooth(pts)} fill="none" stroke={col} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
             )}
         </Svg>
       ) : null}
@@ -443,21 +495,21 @@ export type ListCardProps = {
 };
 /** Row card: title + detail on the left, chips / thumbnails and a round "+" or chevron button on the right. */
 export function ListCard({ title, detail, icon, iconTone, leading, chips, right, action = 'none', onPress, onAction, style, children }: ListCardProps) {
-  const { c } = useTheme();
+  const { c, dark } = useTheme();
   const hasAction = action !== 'none';
   return (
-    <DashCard onPress={onPress} accessibilityLabel={detail ? `${title}, ${detail}` : title} style={[{ padding: 14 }, style]}>
+    <DashCard onPress={onPress} accessibilityLabel={detail ? `${title}, ${detail}` : title} style={[{ padding: 11 }, style]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        {leading ?? (icon ? <IconBubble icon={icon} size={42} tint={iconTone} bg={iconTone ? withAlpha(iconTone, 0.14) : undefined} /> : null)}
+        {leading ?? (icon ? <IconBubble icon={icon} size={40} tint={iconTone ? toneInk(iconTone, dark, c.softInk) : undefined} bg={iconTone ? withAlpha(iconTone, 0.16) : undefined} /> : null)}
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 15.5, color: c.fg }} numberOfLines={1}>{title}</Text>
-          {detail ? <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 2 }} numberOfLines={2}>{detail}</Text> : null}
+          <Text style={{ fontFamily: F.semi, fontSize: 14, lineHeight: 20, color: c.fg }} numberOfLines={1}>{title}</Text>
+          {detail ? <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 18, color: c.fg3 }} numberOfLines={2}>{detail}</Text> : null}
         </View>
         {chips?.length ? (
           <View style={{ flexDirection: 'row', gap: 4, flexShrink: 0 }}>
             {chips.map((ch, i) => (
-              <View key={i} style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, backgroundColor: ch.tone ? withAlpha(ch.tone, 0.15) : c.soft }}>
-                <Text style={{ fontFamily: F.semi, fontSize: 11, color: ch.tone ?? c.softInk }}>{ch.label}</Text>
+              <View key={i} style={{ height: 20, justifyContent: 'center', paddingHorizontal: 8, borderRadius: 99, backgroundColor: ch.tone ? withAlpha(ch.tone, 0.15) : c.soft }}>
+                <Text style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: ch.tone ?? c.softInk }}>{ch.label}</Text>
               </View>
             ))}
           </View>
@@ -465,9 +517,9 @@ export function ListCard({ title, detail, icon, iconTone, leading, chips, right,
         {right}
         {hasAction ? (
           <PillButton
-            icon={action === 'plus' ? 'plus' : action === 'check' ? 'check' : 'arrow'}
+            icon={action === 'plus' ? 'plus' : action === 'check' ? 'check' : action === 'chevron' ? 'chevron' : 'arrow'}
             label={title}
-            size={34}
+            size={32}
             flat
             onPress={onAction ?? onPress}
           />
@@ -498,17 +550,17 @@ export type PillButtonProps = {
   children?: React.ReactNode;
   style?: S<ViewStyle>;
 };
-/** Fully round icon button, 44px by default. */
-export function PillButton({ icon, label, onPress, size = 44, tone = 'white', badge, flat, children, style }: PillButtonProps) {
+/** Rounded-square (radius 12) icon button, 32px by default, with a 44px touch area. */
+export function PillButton({ icon, label, onPress, size = 32, tone = 'white', badge, flat, children, style }: PillButtonProps) {
   const { c } = useTheme();
-  const bg = flat ? c.soft : tone === 'violet' ? c.primary : tone === 'gold' ? brand.gold : c.card;
-  const fg = flat ? c.softInk : tone === 'violet' ? '#fff' : tone === 'gold' ? brand.ink : c.fg;
+  const bg = flat ? c.soft : tone === 'violet' ? c.primary : tone === 'gold' ? c.primary : c.tile2;
+  const fg = flat ? c.softInk : tone === 'violet' ? '#fff' : tone === 'gold' ? '#fff' : c.fg;
   return (
-    <Pressy onPress={onPress} accessibilityLabel={label} scaleTo={0.92} hitSlop={size < 44 ? (44 - size) / 2 : 0} style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }, flat ? null : cardShadow(c), style]}>
-      {children ?? (icon ? <Icon name={icon} size={Math.round(size * 0.46)} color={fg} /> : null)}
+    <Pressy onPress={onPress} accessibilityLabel={label} scaleTo={0.92} hitSlop={size < 44 ? (44 - size) / 2 : 0} style={[{ width: size, height: size, borderRadius: size * 0.375, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }, flat ? null : cardShadow(c), style]}>
+      {children ?? (icon ? <Icon name={icon} size={Math.round(size * 0.5)} color={fg} /> : null)}
       {badge && badge > 0 ? (
-        <View style={{ position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: brand.orange, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontFamily: F.black, fontSize: 10.5, color: '#fff' }}>{badge}</Text>
+        <View style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontFamily: F.bold, fontSize: 10, color: '#fff' }}>{badge}</Text>
         </View>
       ) : null}
     </Pressy>
@@ -529,31 +581,48 @@ export type AppHeaderProps = {
   onAvatarPress?: () => void;
   /** Up to two round buttons on the right. */
   actions?: HeaderAction[];
+  /** Node drawn above the avatar row, first thing on screen (the Duty switch). */
+  top?: React.ReactNode;
+  /** Node drawn under the name (the place chip). */
+  sub?: React.ReactNode;
   /** Adds the top safe-area inset itself. Default true. */
   safeTop?: number;
   style?: S<ViewStyle>;
 };
 /** Header for every tab: round avatar + greeting + name on the left, two 44px white round buttons on the right. */
-export function AppHeader({ name, greeting, avatarUri, onAvatarPress, actions, safeTop = 0, style }: AppHeaderProps) {
+export function AppHeader({ name, greeting, avatarUri, onAvatarPress, actions, top, sub, safeTop = 0, style }: AppHeaderProps) {
   const { c } = useTheme();
   const initial = (name.trim()[0] || '?').toUpperCase();
   const av = avatarUri
-    ? <Image source={{ uri: avatarUri }} style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.soft }} />
+    ? <Image source={{ uri: avatarUri }} style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.tile2 }} />
     : (
-      <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontFamily: F.black, fontSize: 20, color: brand.gold }}>{initial}</Text>
+      <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.tile2, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontFamily: F.medium, fontSize: 19, color: c.fg }}>{initial}</Text>
       </View>
     );
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: safeTop + 12, paddingBottom: 12 }, style]}>
-      <Pressy onPress={onAvatarPress} disabled={!onAvatarPress} accessibilityLabel={name} scaleTo={0.94}>{av}</Pressy>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        {greeting ? <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3 }} numberOfLines={1}>{greeting}</Text> : null}
-        <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 17, color: c.fg }} numberOfLines={1}>{name}</Text>
+    <View style={[{ paddingHorizontal: 16, paddingTop: safeTop + 16, paddingBottom: 12 }, style]}>
+      {top ? <View style={{ marginBottom: 8 }}>{top}</View> : null}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Pressy onPress={onAvatarPress} disabled={!onAvatarPress} accessibilityLabel={name} scaleTo={0.94}>{av}</Pressy>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          {greeting ? <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3 }} numberOfLines={1}>{greeting}</Text> : null}
+          <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 20, lineHeight: 28, color: c.fg }} numberOfLines={1}>{name}</Text>
+          {sub ? <View style={{ marginTop: 2 }}>{sub}</View> : null}
+        </View>
+        {(actions ?? []).slice(0, 2).map((a, i) => <PillButton key={i} icon={a.icon} label={a.label} onPress={a.onPress} badge={a.badge} />)}
       </View>
-      {(actions ?? []).slice(0, 2).map((a, i) => <PillButton key={i} icon={a.icon} label={a.label} onPress={a.onPress} badge={a.badge} />)}
     </View>
   );
+}
+
+/** Icon colour for a tinted bubble (Astryx text-success / text-warning / accent); unknown tones pass through. */
+function toneInk(tone: string | undefined, dark: boolean, fallback: string): string {
+  if (!tone) return fallback;
+  if (tone === brand.mint) return dark ? '#5CE6B5' : '#0B7A57';
+  if (tone === brand.gold) return dark ? '#FFD566' : '#8A5B00';
+  if (tone === brand.red) return dark ? '#FF8A99' : '#C41F37';
+  return tone;
 }
 
 /** '#RRGGBB' + alpha -> rgba(). Other colour formats come back unchanged. */

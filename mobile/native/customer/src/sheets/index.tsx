@@ -14,7 +14,7 @@ import { TODAY, addDays, fmt, iso, inr, ampm, parse } from '../data/dates';
 import { IMG, RATIO, src, ImgKey } from '../img';
 import {
   A, car, carImg, doc, planOf, maskPlate, fmtPhone, pName, cartLines, planPayDates, switchQuote, dayDetail, calendar, realAcct, chipText, payReal, pendingRef,
-  act, toast, openSheet, closeSheet, confetti, go, sheetHooks, trackWasher, distance, useApp, Track,
+  act, toast, openSheet, closeSheet, confetti, go, sheetHooks, trackWasher, distance, useApp, Track, type ComplaintKind,
 } from '../state';
 import { TrackMap } from './TrackMap';
 
@@ -350,6 +350,23 @@ function Issue() {
     </View>
   );
 }
+// complaint or feedback about the wash: goes to complaints/{id} (act.complaint); the manager handles it
+const KINDS: { key: ComplaintKind; label: string }[] = [
+  { key: 'quality', label: 'Cleaning' }, { key: 'late', label: 'Came late' }, { key: 'behaviour', label: 'Behaviour' }, { key: 'damage', label: 'Damage' }, { key: 'other', label: 'Something else' },
+];
+function ComplaintSheet() {
+  const c = car(), [kind, setKind] = useState<ComplaintKind>('quality'), [text, setText] = useState(''), [busy, run] = useRun();
+  return (
+    <View>
+      <SheetTitle>Complaint or feedback</SheetTitle>
+      <SheetSub>{`It goes to the Washing Daddy manager, who sorts it out. ${c.washer} sees it too, never your number.`}</SheetSub>
+      <Pick seg items={KINDS} value={kind} onChange={k => setKind(k as ComplaintKind)} />
+      <Field label="What happened?" value={text} onChangeText={setText} multiline numberOfLines={4} maxLength={500} placeholder="e.g. The rear glass still had streaks" style={{ minHeight: 96, textAlignVertical: 'top' }} />
+      <Btn variant="violet" label="Send" disabled={!text.trim()} busy={busy ? 'Sending…' : false}
+        onPress={() => run(async () => { await act.complaint({ kind, text }); openSheet(<Success title="Thanks, we've got it" sub="The manager looks into it today. You can also WhatsApp us any time." />); })} />
+    </View>
+  );
+}
 function Requests() {
   useApp(); const ok = useInk().ok;
   return (
@@ -565,6 +582,7 @@ export const sheets = {
   book: () => openSheet(<Book />),
   track: (docId: string) => openSheet(<TrackSheet id={docId} />),
   bookings: () => openSheet(<Bookings />),
+  complaint: () => { if (car().status === 'new') { toast('You can send feedback after your first wash'); return; } openSheet(<ComplaintSheet />); },
   issue: () => { if (car().status === 'new') { toast('You can report a spot after your first wash'); return; } openSheet(<Issue />); },
   requests: () => openSheet(<Requests />),
   orders: () => openSheet(<Orders />),

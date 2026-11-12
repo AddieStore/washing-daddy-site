@@ -18,11 +18,13 @@ export const brand = {
 
 export const F = {
   shout: 'Anton_400Regular',
-  hero: 'AlfaSlabOne_400Regular',
-  body: 'Poppins_500Medium',
+  hero: 'Poppins_700Bold',
+  // Astryx scale tops out at 700: `black` (formerly 800) maps to bold so every heading matches the web preview.
+  body: 'Poppins_400Regular',
+  medium: 'Poppins_500Medium',
   semi: 'Poppins_600SemiBold',
   bold: 'Poppins_700Bold',
-  black: 'Poppins_800ExtraBold',
+  black: 'Poppins_700Bold',
 } as const;
 
 export type Tokens = {
@@ -78,78 +80,66 @@ const base = {
 
 export const lightTokens: Tokens = {
   ...base,
-  bg: '#F4F2FA',
-  stage: '#E9E5F4',
-  fg: '#1A0A33',
-  fg2: 'rgba(26,10,51,0.76)',
-  fg3: 'rgba(26,10,51,0.56)',
-  line: 'rgba(26,10,51,0.12)',
+  bg: '#FFFFFF',
+  stage: '#EFEFF1',
+  fg: '#111114',
+  fg2: '#4B4B55',
+  fg3: '#6B6B76',
+  line: 'rgba(17,17,20,0.094)',
   tile: '#FFFFFF',
-  tile2: 'rgba(84,9,218,0.07)',
+  tile2: 'rgba(17,17,20,0.06)',
   accent: '#5409DA',
-  accentInk: '#FFF6E9',
-  em: '#5409DA',
-  barBg: 'rgba(244,242,250,0.88)',
+  accentInk: '#FFFFFF',
+  em: '#111114',
+  barBg: 'rgba(255,255,255,0.92)',
   tabBg: '#FFFFFF',
   sheetBg: '#FFFFFF',
   inputBg: '#FFFFFF',
-  ok: '#0E9F6E',
-  dash: 'rgba(26,10,51,0.28)',
+  ok: '#0B7A57',
+  dash: 'rgba(17,17,20,0.28)',
   shadow: true,
   card: '#FFFFFF',
-  soft: '#E3D9FB',
-  softInk: '#5409DA',
+  soft: '#F3F4F6',
+  softInk: '#3F3F46',
   primary: '#5409DA',
-  hero: '#FFF1C7',
-  heroTrack: '#FFE08A',
-  heroInk: '#1A0A33',
-  shadowColor: '#24065F',
+  hero: '#F7F7F8',
+  heroTrack: '#E7E7EA',
+  heroInk: '#111114',
+  shadowColor: '#111114',
 };
 
 export const darkTokens: Tokens = {
   ...lightTokens,
-  bg: '#120724',
-  stage: '#0C0418',
-  fg: '#FFF6E9',
-  fg2: 'rgba(255,246,233,0.78)',
-  fg3: 'rgba(255,246,233,0.56)',
-  line: 'rgba(255,246,233,0.14)',
-  tile: '#1E1233',
-  tile2: 'rgba(255,255,255,0.11)',
-  accent: '#FFBA08',
-  accentInk: '#1A0A33',
-  em: '#FFBA08',
-  barBg: 'rgba(18,7,36,0.86)',
-  tabBg: '#1E1233',
-  sheetBg: '#1E1233',
-  inputBg: 'rgba(255,255,255,0.07)',
-  ok: '#2EE6A6',
-  dash: 'rgba(255,246,233,0.32)',
+  bg: '#0E0E10',
+  stage: '#08080A',
+  fg: '#F4F4F5',
+  fg2: '#C4C4CC',
+  fg3: '#A1A1AA',
+  line: 'rgba(255,255,255,0.10)',
+  tile: '#161618',
+  tile2: 'rgba(255,255,255,0.08)',
+  accent: '#7A42F0',
+  accentInk: '#FFFFFF',
+  em: '#F4F4F5',
+  barBg: 'rgba(14,14,16,0.88)',
+  tabBg: '#161618',
+  sheetBg: '#161618',
+  inputBg: 'rgba(255,255,255,0.06)',
+  ok: '#5CE6B5',
+  dash: 'rgba(244,244,245,0.32)',
   shadow: false,
-  card: '#1E1233',
-  soft: 'rgba(255,255,255,0.14)',
-  softInk: '#CDB8FF',
+  card: '#161618',
+  soft: '#232326',
+  softInk: '#D4D4D8',
   primary: '#7A42F0',
-  hero: '#3A2C14',
-  heroTrack: 'rgba(255,186,8,0.22)',
-  heroInk: '#FFF6E9',
+  hero: '#1B1B1E',
+  heroTrack: '#34343A',
+  heroInk: '#F4F4F5',
   shadowColor: '#000000',
 };
 
-/** Overrides applied inside violet hero cards (.on-violet). */
-export const onVioletOverrides: Partial<Tokens> = {
-  fg: '#FFF6E9',
-  fg2: 'rgba(255,246,233,0.84)',
-  fg3: 'rgba(255,246,233,0.62)',
-  line: 'rgba(255,246,233,0.18)',
-  tile: 'rgba(255,255,255,0.1)',
-  tile2: 'rgba(255,255,255,0.16)',
-  accent: '#FFBA08',
-  accentInk: '#1A0A33',
-  ok: '#2EE6A6',
-  dash: 'rgba(255,246,233,0.38)',
-  shadow: false,
-};
+/** Violet panels are gone (white look): OnViolet is now a pass-through with no overrides. */
+export const onVioletOverrides: Partial<Tokens> = {};
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
 type Ctx = { c: Tokens; dark: boolean; onViolet: boolean };
@@ -166,7 +156,7 @@ export function ThemeProvider({ mode, children }: { mode: ThemeMode; children?: 
 export function OnViolet({ children }: { children?: React.ReactNode }) {
   const parent = useContext(ThemeCtx);
   const value = useMemo<Ctx>(
-    () => ({ c: { ...parent.c, ...onVioletOverrides }, dark: parent.dark, onViolet: true }),
+    () => ({ c: { ...parent.c, ...onVioletOverrides }, dark: parent.dark, onViolet: false }),
     [parent.c, parent.dark],
   );
   return React.createElement(ThemeCtx.Provider, { value }, children);
@@ -176,15 +166,22 @@ export function useTheme(): { c: Tokens; dark: boolean; onViolet: boolean } {
   return useContext(ThemeCtx);
 }
 
-/** Soft card shadow (0 4 16, 6-7% violet-deep), light mode only. */
+/** Astryx "low" elevation: a very light 0 2 6 shadow, light mode only. */
 export function cardShadow(c: Tokens) {
   return c.shadow
     ? ({
-        shadowColor: c.shadowColor,
+        shadowColor: '#000000',
         shadowOpacity: 0.07,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 2,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 1,
       } as const)
     : ({} as const);
+}
+
+/** Astryx shape tokens: cards 16, buttons 12, small chips/badges are pills. */
+export const R = { card: 16, button: 12, pill: 9999, input: 12 } as const;
+/** Card surface: 1px neutral border + radius 16 (spread into a style). */
+export function cardBox(c: Tokens) {
+  return { borderRadius: R.card, backgroundColor: c.card, borderWidth: 1, borderColor: c.line } as const;
 }

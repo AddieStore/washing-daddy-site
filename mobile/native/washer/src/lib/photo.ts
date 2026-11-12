@@ -14,12 +14,12 @@ async function shrink(uri: string, max: number, q: number) {
 }
 
 // null when the washer backs out of the camera
-export async function takePhoto(opts: { selfie?: boolean; fromLibrary?: boolean } = {}): Promise<{ preview: string; url: string } | null> {
+export async function takePhoto(opts: { selfie?: boolean; fromLibrary?: boolean; quality?: number } = {}): Promise<{ preview: string; url: string } | null> {
   if (!opts.fromLibrary && Platform.OS !== 'web') {
     const p = await ImagePicker.requestCameraPermissionsAsync();
     if (!p.granted) throw fail('Camera ki permission chahiye. Settings mein on karo.');
   }
-  const o: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.8, cameraType: opts.selfie ? ImagePicker.CameraType.front : ImagePicker.CameraType.back };
+  const o: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: opts.quality ?? 0.8, cameraType: opts.selfie ? ImagePicker.CameraType.front : ImagePicker.CameraType.back };
   // the web preview has no camera: it opens the file picker instead
   const res = opts.fromLibrary || Platform.OS === 'web' ? await ImagePicker.launchImageLibraryAsync(o) : await ImagePicker.launchCameraAsync(o);
   if (res.canceled || !res.assets?.[0]) return null;

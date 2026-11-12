@@ -42,7 +42,7 @@ function LinkRow({ title, sub, onPress, first }: { title: string; sub?: string; 
 
 function RowsBox({ children }: { children: React.ReactNode }) {
   const { c } = useTheme();
-  return <View style={[{ borderRadius: 24, backgroundColor: c.card, overflow: 'hidden', borderWidth: c.shadow ? 0 : 1, borderColor: c.line }, cardShadow(c)]}>{children}</View>;
+  return <View style={[{ borderRadius: 16, backgroundColor: c.card, overflow: 'hidden', borderWidth: 1, borderColor: c.line }, cardShadow(c)]}>{children}</View>;
 }
 
 /** The little 🧽 ····· 🚗 strip. */

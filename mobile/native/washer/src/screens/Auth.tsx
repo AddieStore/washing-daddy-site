@@ -16,6 +16,9 @@ import { JOIN_AREAS, OWNER_WA, WASHERS, fmtPhone } from '../lib/data';
 import { referralKey } from './Onboarding';
 
 const GUT = 20;
+const INK = '#111114';
+const SHOUT = 'Poppins_800ExtraBold';   // Astryx display weight (Poppins 800, uppercase)
+const LAV = '#C9B6FF';   // Astryx login accent on the near-black header
 const native = Platform.OS !== 'web';
 const IMG = {
   logo: require('../../assets/img/logo.webp'),
@@ -31,37 +34,6 @@ const SLIDES: { src: number; title: string; sub: string }[] = [
   { src: require('../../assets/img/slide6.webp'), title: 'Wheels too', sub: 'Pressure inside the rims' },
   { src: require('../../assets/img/slide7.webp'), title: 'Same car, one wash', sub: 'It never left its spot' },
 ];
-const TICKER = ['No more pocha', 'Sirf pressure wash', 'Car wash in 10 min', 'Paschim Vihar'];
-
-/* ---------------- ticker band ---------------- */
-function Ticker() {
-  const x = useRef(new Animated.Value(0)).current;
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    if (!w) return;
-    x.setValue(0);
-    const loop = Animated.loop(Animated.timing(x, { toValue: -w, duration: 14000, easing: Easing.linear, useNativeDriver: native }));
-    loop.start();
-    return () => loop.stop();
-  }, [w, x]);
-  const set = (key: string, measure?: boolean) => (
-    <View key={key} style={{ flexDirection: 'row' }} onLayout={measure ? e => setW(e.nativeEvent.layout.width) : undefined}>
-      {TICKER.map(s => (
-        <View key={s} style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ fontFamily: F.shout, fontSize: 15, letterSpacing: 0.9, textTransform: 'uppercase', color: brand.ink, paddingVertical: 7 }}>{s}</Text>
-          <Text style={{ color: brand.violet, marginHorizontal: 18, fontSize: 13 }}>★</Text>
-        </View>
-      ))}
-    </View>
-  );
-  return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ backgroundColor: brand.gold, borderTopWidth: 3, borderBottomWidth: 3, borderColor: brand.ink, overflow: 'hidden', transform: [{ rotate: '-1.5deg' }], marginHorizontal: -8 }}>
-      <Animated.View style={{ flexDirection: 'row', width: 4000, transform: [{ translateX: x }] }}>
-        {set('a', true)}{set('b')}{set('c')}{set('d')}
-      </Animated.View>
-    </View>
-  );
-}
 
 /* ---------------- header + poster ---------------- */
 // the logo file is 260x157 with a little air around the letters
@@ -69,9 +41,11 @@ const LOGO_W = 104, LOGO_H = Math.round(LOGO_W * 157 / 260);
 function Header() {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: GUT, paddingTop: 8, paddingBottom: 4 }}>
-      <Image source={IMG.logo} accessibilityLabel="Washing Daddy" resizeMode="contain" style={{ width: LOGO_W, height: LOGO_H, marginLeft: -3 }} />
-      <View style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: brand.gold, borderWidth: 2, borderColor: brand.ink, transform: [{ rotate: '2deg' }] }}>
-        <Text style={{ fontFamily: F.black, fontSize: 12, letterSpacing: 1.2, color: brand.ink, textTransform: 'uppercase' }}>{t('Partner app')}</Text>
+      <Text accessibilityRole="header" accessibilityLabel="Washing Daddy" style={{ fontFamily: SHOUT, fontSize: 22, lineHeight: LOGO_H, letterSpacing: -0.5, color: '#fff' }}>
+        {'WASHING '}<Text style={{ color: LAV }}>DADDY</Text>
+      </Text>
+      <View style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: LAV, borderWidth: 2, borderColor: INK, transform: [{ rotate: '2deg' }] }}>
+        <Text style={{ fontFamily: F.bold, fontSize: 12, letterSpacing: 1.2, color: INK, textTransform: 'uppercase' }}>{t('Partner app')}</Text>
       </View>
     </View>
   );
@@ -91,16 +65,16 @@ function PhotoStrip({ width }: { width: number }) {
     <View style={{ flexDirection: 'row', justifyContent: 'center', gap, marginTop: 18, paddingTop: 8, paddingBottom: 18 }}>
       {PHOTOS.map((p, i) => (
         <View key={i} style={{ transform: [{ rotate: `${p.tilt}deg` }] }}><Float amp={4} period={3400 + i * 500} phase={i * 420}>
-          <View style={{ width: cw, height: ch, padding: 4, borderRadius: 18, backgroundColor: brand.cream, boxShadow: `0px 5px 0px ${brand.ink}` }}>
-            <View style={{ flex: 1, borderRadius: 14, overflow: 'hidden', backgroundColor: brand.cream2 }}>
+          <View style={{ width: cw, height: ch, padding: 3, borderRadius: 18, backgroundColor: '#fff' }}>
+            <View style={{ flex: 1, borderRadius: 14, overflow: 'hidden', backgroundColor: '#ECECEF' }}>
               <Image source={p.src} accessibilityLabel={p.label} resizeMode="cover" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' }} />
             </View>
           </View>
         </Float></View>
       ))}
-      <View pointerEvents="none" style={{ position: 'absolute', right: GUT - 6, bottom: 2, transform: [{ rotate: '-6deg' }], backgroundColor: brand.gold, borderWidth: 2.5, borderColor: brand.ink, borderRadius: 14, paddingVertical: 4, paddingHorizontal: 9, alignItems: 'center' }}>
-        <Text style={{ fontFamily: F.body, fontSize: 10.5, lineHeight: 12, color: brand.ink }}>Car wash in</Text>
-        <Text style={{ fontFamily: F.shout, fontSize: 19, lineHeight: 21, color: brand.ink }}>10 min.</Text>
+      <View pointerEvents="none" style={{ position: 'absolute', right: GUT - 6, bottom: 2, transform: [{ rotate: '-6deg' }], backgroundColor: '#fff', borderRadius: 14, paddingVertical: 4, paddingHorizontal: 9, alignItems: 'center' }}>
+        <Text style={{ fontFamily: F.body, fontSize: 10.5, lineHeight: 12, color: INK }}>Car wash in</Text>
+        <Text style={{ fontFamily: SHOUT, fontSize: 19, lineHeight: 21, textTransform: 'uppercase', color: INK }}>10 min.</Text>
       </View>
     </View>
   );
@@ -108,18 +82,18 @@ function PhotoStrip({ width }: { width: number }) {
 
 function Poster({ width }: { width: number }) {
   // the headline grows with the screen: 34 on a 320 phone, 42 from ~430
-  const size = Math.max(32, Math.min(42, Math.round(width * 0.098)));
-  const hl = { fontFamily: F.shout, fontSize: size, lineHeight: Math.round(size * 1.02), textTransform: 'uppercase' } as const;
+  const size = Math.max(30, Math.min(36, Math.round(width * 0.094)));
+  const hl = { fontFamily: SHOUT, fontSize: size, lineHeight: Math.round(size * 1.05), letterSpacing: -0.5, textTransform: 'uppercase' } as const;
   return (
     <View style={{ paddingHorizontal: GUT }}>
       <View style={{ marginTop: 10 }} accessibilityRole="header">
         <View style={{ alignSelf: 'flex-start' }}>
-          <Text style={[hl, { color: 'rgba(255,246,233,0.55)' }]}>Pocha?</Text>
-          <View pointerEvents="none" style={{ position: 'absolute', left: '-3%', right: '-3%', top: '50%', height: 5, borderRadius: 3, backgroundColor: brand.gold, transform: [{ rotate: '-3deg' }] }} />
+          <Text style={[hl, { color: 'rgba(255,255,255,0.5)' }]}>Pocha?</Text>
+          <View pointerEvents="none" style={{ position: 'absolute', left: '-3%', right: '-3%', top: '50%', height: 4, borderRadius: 2, backgroundColor: LAV, transform: [{ rotate: '-3deg' }] }} />
         </View>
-        <Text style={[hl, { color: brand.gold, paddingRight: 4, textShadowColor: brand.ink, textShadowOffset: { width: 3, height: 3 }, textShadowRadius: 0 }]}>Pressure wash everyday!</Text>
+        <Text style={[hl, { color: LAV, paddingRight: 4 }]}>Pressure wash everyday!</Text>
       </View>
-      <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: brand.cream, marginTop: 8 }}>{t('Washer app. Round, photo, customer, sab ek jagah.')}</Text>
+      <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.78)', marginTop: 8 }}>{t('Washer app. Round, photo, customer, sab ek jagah.')}</Text>
     </View>
   );
 }
@@ -127,13 +101,13 @@ function Poster({ width }: { width: number }) {
 /* ---------------- card pieces (cream, fixed light tokens) ---------------- */
 const CardTitle = ({ children }: { children: string }) => {
   const { c } = useTheme();
-  return <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 24, lineHeight: 30, letterSpacing: -0.3, color: c.fg }}>{children}</Text>;
+  return <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 20, lineHeight: 28, color: c.fg }}>{children}</Text>;
 };
 const CardText = ({ children }: { children: React.ReactNode }) => {
   const { c } = useTheme();
-  return <Text style={{ fontFamily: F.body, fontSize: 13.5, lineHeight: 20, color: c.fg2, marginTop: 4, marginBottom: 16 }}>{children}</Text>;
+  return <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3, marginTop: 2, marginBottom: 16 }}>{children}</Text>;
 };
-const Err = ({ msg }: { msg: string }) => (msg ? <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.bold, fontSize: 13.5, color: brand.red, marginBottom: 10 }}>{msg}</Text> : <View style={{ minHeight: 4 }} />);
+const Err = ({ msg }: { msg: string }) => (msg ? <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.semi, fontSize: 13, color: brand.red, marginBottom: 10 }}>{msg}</Text> : <View style={{ minHeight: 4 }} />);
 const Hint = ({ children, style }: { children: React.ReactNode; style?: object }) => {
   const { c } = useTheme();
   return <Text style={[{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, textAlign: 'center', marginTop: 10 }, style]}>{children}</Text>;
@@ -145,7 +119,7 @@ const Input = Field;
 
 /* ---------------- phone ---------------- */
 function PhoneStep() {
-  const { c } = useTheme();
+  const { c, dark } = useTheme();
   const [ph, setPh] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -163,8 +137,8 @@ function PhoneStep() {
     <View>
       <CardTitle>{t('Namaste! 👋')}</CardTitle>
       <CardText>{t('Apna phone number daalo. OTP aayega.')}</CardText>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, paddingVertical: 2, paddingLeft: 16, paddingRight: 8, backgroundColor: c.inputBg, borderWidth: 2, borderColor: focus ? c.accent : c.line, marginBottom: 12 }}>
-        <Text style={{ fontFamily: F.black, fontSize: 18, color: c.fg2 }}>+91</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 0, paddingLeft: 14, paddingRight: 8, backgroundColor: c.inputBg, borderWidth: 1, borderColor: focus ? c.accent : c.line, marginBottom: 12 }}>
+        <Text style={{ fontFamily: F.bold, fontSize: 16, color: c.fg3 }}>+91</Text>
         <TextInput
           value={ph}
           onChangeText={x => setPh(x.replace(/\D/g, '').slice(0, 10))}
@@ -179,7 +153,7 @@ function PhoneStep() {
           placeholder="98xxxxxxxx"
           placeholderTextColor={c.fg3}
           accessibilityLabel="Phone number"
-          style={[{ flex: 1, minWidth: 0, fontFamily: F.bold, fontSize: 18, letterSpacing: 0.7, paddingVertical: 12, color: c.fg }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
+          style={[{ flex: 1, minWidth: 0, fontFamily: F.medium, fontSize: 16, letterSpacing: 0.5, paddingVertical: 11, color: c.fg }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
         />
       </View>
       <Err msg={err} />
@@ -196,14 +170,14 @@ function PhoneStep() {
                 scaleTo={0.96}
                 accessibilityLabel={w.name}
                 onPress={() => { setPh(w.phone); ui.haptic(6); void go(w.phone) }}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 18, backgroundColor: c.soft, minHeight: 56, minWidth: 140 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 16, backgroundColor: dark ? 'rgba(139,92,246,0.24)' : 'rgba(84,9,218,0.12)', minHeight: 56, minWidth: 140 }}
               >
                 {w.img
-                  ? <Image source={IMG[w.img]} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: brand.gold }} resizeMode="cover" />
-                  : <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: brand.gold, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: F.hero, fontSize: 20, color: brand.violet }}>{w.name[0]}</Text></View>}
+                  ? <Image source={IMG[w.img]} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: c.tile2 }} resizeMode="cover" />
+                  : <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: F.hero, fontSize: 20, color: '#fff' }}>{w.name[0]}</Text></View>}
                 <View>
                   <Text style={{ fontFamily: F.bold, fontSize: 15, color: c.fg }}>{w.name}</Text>
-                  <Text style={{ fontFamily: F.semi, fontSize: 12, color: c.fg3 }}>{fmtPhone(w.phone)}</Text>
+                  <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{fmtPhone(w.phone)}</Text>
                 </View>
               </Pressy>
             ))}
@@ -234,7 +208,7 @@ function OtpBox({ on, big, inputRef, ...rest }: React.ComponentProps<typeof Text
         {...rest}
         style={[{
           flex: 1, textAlign: 'center', fontFamily: F.black, fontSize: big ? 30 : 24, color: c.fg, padding: 0,
-          borderRadius: big ? 18 : 14, borderWidth: 2, borderColor: on ? c.accent : c.line, backgroundColor: c.inputBg,
+          borderRadius: big ? 18 : 14, borderWidth: 1.5, borderColor: on ? c.accent : c.line, backgroundColor: c.inputBg,
         }, on ? { boxShadow: '0px 6px 14px rgba(84,9,218,0.22)' } : null, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
       />
     </Animated.View>
@@ -311,7 +285,7 @@ function OtpStep() {
       <Button label={busy ? t('Check ho raha hai…') : t('Andar chalo')} iconRight={busy ? undefined : 'arrow'} variant="violet" disabled={busy} onPress={() => submit(codes.join(''))} />
       <View style={{ alignItems: 'center' }}><LinkButton label={t('Number badlo')} color={c.fg2} onPress={() => act.backToPhone()} /></View>
       {ok ? (
-        <View accessibilityLiveRegion="polite" style={{ position: 'absolute', left: -6, right: -6, top: -6, bottom: -6, borderRadius: 22, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+        <View accessibilityLiveRegion="polite" style={{ position: 'absolute', left: -6, right: -6, top: -6, bottom: -6, borderRadius: 16, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
           <SuccessTick size={84} />
           <Text style={{ fontFamily: F.black, fontSize: 22, color: c.fg }}>{t('OTP sahi hai!')}</Text>
         </View>
@@ -356,8 +330,8 @@ function JoinStep() {
           const on = a === area;
           return (
             <Pressy key={a} onPress={() => { setArea(a); ui.haptic(6) }} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={a}
-              style={{ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 999, backgroundColor: on ? c.primary : c.soft }}>
-              <Text style={{ fontFamily: F.bold, fontSize: 14, color: on ? '#fff' : c.softInk }}>{a}</Text>
+              style={{ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 999, backgroundColor: on ? c.primary : (c.accent + '1F') }}>
+              <Text style={{ fontFamily: F.bold, fontSize: 14, color: on ? '#fff' : (c.primary) }}>{a}</Text>
             </Pressy>
           );
         })}
@@ -395,6 +369,7 @@ function WaitStep({ step }: { step: string }) {
 
 /* ---------------- slideshow ---------------- */
 function Show({ width }: { width: number }) {
+  const { c } = useTheme();
   const slideW = Math.min(220, width * 0.56);
   const step = slideW + 12;
   const ref = useRef<React.ComponentRef<typeof ScrollView>>(null);
@@ -415,8 +390,8 @@ function Show({ width }: { width: number }) {
   }, [step]);
   return (
     <View style={{ marginTop: 24 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.shout, fontSize: 26, lineHeight: 26, textTransform: 'uppercase', color: brand.cream, marginBottom: 12, paddingLeft: GUT }}>
-        {'Hamare '}<Text style={{ color: brand.gold }}>washed</Text>{' cars'}
+      <Text accessibilityRole="header" style={{ fontFamily: SHOUT, fontSize: 26, lineHeight: 26, letterSpacing: -0.5, textTransform: 'uppercase', color: '#fff', marginBottom: 12, paddingLeft: GUT }}>
+        {'Hamare '}<Text style={{ color: LAV }}>washed</Text>{' cars'}
       </Text>
       <ScrollView
         ref={ref}
@@ -432,17 +407,17 @@ function Show({ width }: { width: number }) {
         contentContainerStyle={{ paddingHorizontal: GUT, paddingTop: 4, paddingBottom: 8, gap: 12 }}
       >
         {SLIDES.map(s => (
-          <View key={s.title} style={{ width: slideW, borderRadius: 22, overflow: 'hidden', backgroundColor: brand.cream, shadowColor: brand.ink2, shadowOpacity: 0.35, shadowRadius: 15, shadowOffset: { width: 0, height: 14 }, elevation: 6 }}>
+          <View key={s.title} style={{ width: slideW, borderRadius: 22, overflow: 'hidden', backgroundColor: '#fff' }}>
             <Image source={s.src} accessibilityLabel={s.title} resizeMode="cover" style={{ width: '100%', aspectRatio: 4 / 5 }} />
             <View style={{ paddingTop: 9, paddingHorizontal: 12, paddingBottom: 11 }}>
-              <Text style={{ fontFamily: F.bold, fontSize: 13, lineHeight: 16, color: brand.ink }}>{s.title}</Text>
-              <Text style={{ fontFamily: F.body, fontSize: 11.5, lineHeight: 14, color: 'rgba(26,10,51,0.6)' }}>{s.sub}</Text>
+              <Text style={{ fontFamily: F.bold, fontSize: 13, lineHeight: 16, color: INK }}>{s.title}</Text>
+              <Text style={{ fontFamily: F.body, fontSize: 11.5, lineHeight: 14, color: 'rgba(17,17,20,0.6)' }}>{s.sub}</Text>
             </View>
           </View>
         ))}
       </ScrollView>
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 8 }}>
-        {SLIDES.map((s, i) => <View key={s.title} style={{ width: i === on ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === on ? brand.gold : 'rgba(255,246,233,0.4)' }} />)}
+        {SLIDES.map((s, i) => <View key={s.title} style={{ width: i === on ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === on ? LAV : 'rgba(255,255,255,0.4)' }} />)}
       </View>
     </View>
   );
@@ -489,7 +464,7 @@ export default function Auth() {
         >
           <View ref={content} collapsable={false} style={{ flexGrow: 1, paddingBottom: 26 + insets.bottom }}>
             {/* strong brand header: violet, rounded at the bottom; the form card overlaps its lower edge */}
-            <View style={{ backgroundColor: brand.violet, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, paddingTop: insets.top, paddingBottom: 44 }}>
+            <View style={{ backgroundColor: INK, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, paddingTop: insets.top, paddingBottom: 44 }}>
               <Rise delay={0}><Header /></Rise>
               <Rise delay={90}><Poster width={width} /></Rise>
               <Rise delay={180}><PhotoStrip width={width} /></Rise>
@@ -504,8 +479,7 @@ export default function Auth() {
                 </Rise>
               </DashCard>
             </Rise>
-            <View style={{ marginTop: 30 }}><Ticker /></View>
-            <View style={{ backgroundColor: brand.violet, borderRadius: 28, marginHorizontal: 12, marginTop: 6, paddingTop: 2, paddingBottom: 18 }}>
+            <View style={{ backgroundColor: INK, borderRadius: 28, marginHorizontal: 12, marginTop: 24, paddingTop: 18, paddingBottom: 18 }}>
               <Show width={width} />
             </View>
           </View>

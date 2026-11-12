@@ -1,15 +1,17 @@
-// Rewards screen: this month's attendance as a calendar, the two bonuses with progress, and what is still possible.
-// Ravi pays any bonus at the end of the month; the app only shows where the washer stands.
+// Rewards screen: this month's attendance as a calendar, the three bonuses with progress, and what is still possible.
+// The manager pays any bonus at the end of the month; the app only shows where the washer stands.
+// Third bonus (No Complaint): no customer complaint this month, or a 4.8+ average rating (lib/complaints.ts).
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { DashCard, DemoNote, F, HeroCard, Icon, SectionTitle, Ring, brand, useTheme } from '../ui';
-import { DAY, attendLog, useStore } from '../state/store';
-import { EARLY_BONUS, EARLY_DAYS, MONTH_BONUS } from '../lib/rewards';
+import { DashCard, Footer, DemoNote, F, HeroCard, Icon, ListCard, SectionTitle, Ring, brand, useTheme } from '../ui';
+import { DAY, attendLog, useStore, monthComplaints } from '../state/store';
+import { BEST, CLEAN_BONUS, EARLY_BONUS, EARLY_DAYS, MONTH_BONUS } from '../lib/rewards';
+import { unseen } from '../lib/complaints';
 import { monthDays, type DayState } from '../lib/rewardsView';
 import { rupee } from '../lib/time';
 import { t } from '../lib/i18n';
 import { ScreenBar } from '../screens/JobParts';
-import { earlyLine, monthLine, useOutlook, useToneColors, type Line } from '../screens/RewardsCards';
+import { cleanLine, cleanRing, earlyLine, monthLine, openComplaints, useOutlook, useToneColors, type Line } from '../screens/RewardsCards';
 
 const WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -36,7 +38,7 @@ function Cell({ day, state, early }: { day: number; state: DayState; early: bool
           : state === 'missed' ? <Text style={{ fontFamily: F.black, fontSize: 10, lineHeight: 10, color: brand.red }}>×</Text>
           : null}
       </View>
-      {early ? <View style={{ position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: 3, backgroundColor: brand.gold }} /> : null}
+      {early ? <View style={{ position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: 3, backgroundColor: c.primary }} /> : null}
     </View>
   );
 }
@@ -77,7 +79,7 @@ function Calendar() {
         <Legend label={t('Chhoot gaye')} swatch={sw(alpha(brand.red, 0.25))} />
         <Legend label={t('Aaj')} swatch={sw(c.soft, { borderWidth: 2, borderColor: c.primary })} />
         <Legend label={t('Aane wale din')} swatch={sw('transparent', { borderWidth: 1, borderColor: c.line })} />
-        <Legend label={t('Early bird din')} swatch={<View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: brand.gold, margin: 3 }} />} />
+        <Legend label={t('Early bird din')} swatch={<View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary, margin: 3 }} />} />
       </View>
     </DashCard>
   );
@@ -96,7 +98,7 @@ function StatusPill({ line }: { line: Line }) {
   );
 }
 
-function BonusCard({ title, amount, rule, fraction, value, unit, line }: { title: string; amount: number; rule: string; fraction: number; value: number; unit: string; line: Line }) {
+function BonusCard({ title, amount, rule, fraction, value, unit, line }: { title: string; amount: number; rule: string; fraction: number; value: number | string; unit: string; line: Line }) {
   const { c } = useTheme();
   const col = useToneColors();
   return (
@@ -119,17 +121,17 @@ function BonusCard({ title, amount, rule, fraction, value, unit, line }: { title
 export default function Rewards() {
   useStore();
   const { c } = useTheme();
-  const o = useOutlook(), m = o.r.month;
-  const total = EARLY_BONUS + MONTH_BONUS;
+  const o = useOutlook(), m = o.r.month, cr = cleanRing(o);
+  const total = BEST, mine = monthComplaints(), newOnes = unseen(mine);
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <ScreenBar title={t('Bonus')} back />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
         <HeroCard
           style={{ marginTop: 6 }}
           eyebrow={t('Is mahine ka bonus')}
           eyebrowIcon="tabPaisa"
-          title={`${t('Dono saath')}: ${rupee(total)}`}
+          title={`${t('Teeno saath')}: ${rupee(total)}`}
           subtitle={`${t('Abhi mumkin')}: ${rupee(o.possible)}${o.earnedSoFar ? ` · ${t('Pakka')}: ${rupee(o.earnedSoFar)}` : ''}`}
           ring={{ fraction: m.total ? m.came / m.total : 0, value: m.came, label: `/${m.total} ${t('din')}` }}
         >
@@ -139,7 +141,7 @@ export default function Rewards() {
         <SectionTitle title={t('Is mahine ki attendance')} style={{ marginTop: 20 }} />
         <Calendar />
 
-        <SectionTitle title={t('Do bonus')} style={{ marginTop: 20 }} />
+        <SectionTitle title={t('Teen bonus')} style={{ marginTop: 20 }} />
         <View style={{ gap: 12 }}>
           <BonusCard
             title={t('Early bird')} amount={EARLY_BONUS}
@@ -151,8 +153,22 @@ export default function Rewards() {
             rule={t('Mahine ke har din aao = ₹1,000')}
             fraction={m.total ? m.came / m.total : 0} value={m.came} unit={`/${m.total}`} line={monthLine(o)}
           />
+          <BonusCard
+            title={t('No complaint')} amount={CLEAN_BONUS}
+            rule={t('Mahine mein koi customer complaint nahi, ya rating 4.8★ ya upar (kam se kam 5 rating) = ₹1,000')}
+            fraction={cr.fraction} value={cr.value} unit={cr.unit} line={cleanLine(o)}
+          />
+          <ListCard
+            icon="note"
+            title={t('Customer feedback')}
+            detail={mine.length ? `${t('Is mahine')}: ${mine.length}${newOnes ? ` · ${t('Naya')}: ${newOnes}` : ''}` : t('Abhi koi complaint nahi')}
+            action="chevron"
+            onPress={openComplaints}
+          />
         </View>
         <DemoNote>{t('"Aaye" = us din hub pe check-in. Early bird = pehli gaadi ki photo 6:00 AM se pehle.')}</DemoNote>
+        <DemoNote style={{ marginTop: 4 }}>{t('Jo complaint Manager galat maane, woh nahi gini jaati.')}</DemoNote>
+        <View style={{ marginHorizontal: -16, marginTop: 'auto' }}><Footer /></View>
       </ScrollView>
     </View>
   );

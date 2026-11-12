@@ -27,7 +27,7 @@ export default function Kit() {
           <HeroCard eyebrow={t('Aaj ka round')} title={t('Hafte ka progress')} subtitle="6 / 8" ring={{ fraction: 0.75, value: 6, label: t('Gaadiyan') }} />
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <StatCard style={{ flex: 1 }} label={t('Gaadi ho gayi')} icon="check" tone={brand.mint} value={6} unit={t('Gaadiyan')} />
-            <StatCard style={{ flex: 1 }} label={t('Aaj ki kamaai')} icon="star" tone={brand.orange} value="₹480" />
+            <StatCard style={{ flex: 1 }} label={t('Aaj ki kamaai')} icon="star" value="₹480" />
           </View>
           <WeekStrip title="November 2026" days={week} selected={day} onSelect={setDay} onPrev={() => {}} onNext={() => {}} />
           <SectionTitle title={t('Is hafte')} action={t('Paisa')} />

@@ -14,8 +14,8 @@ const LOGO = require('../../assets/img/logo.webp');
 export function TopIconBtn({ icon, label, onPress, size = 22 }: { icon: IconName; label: string; onPress?: () => void; size?: number }) {
   const { c } = useTheme();
   return (
-    <Pressy onPress={onPress} scaleTo={0.88} accessibilityLabel={label} style={[s.iconBtn, { backgroundColor: c.card }, cardShadow(c)]}>
-      <Icon name={icon} size={size} color={c.fg} />
+    <Pressy onPress={onPress} scaleTo={0.88} accessibilityLabel={label} style={[s.iconBtn, { backgroundColor: c.tile2 }, cardShadow(c)]}>
+      <Icon name={icon} size={Math.min(size, 18)} color={c.fg} />
     </Pressy>
   );
 }
@@ -70,11 +70,11 @@ export function TopBar({
 
 const s = StyleSheet.create({
   wrap: {},
-  bar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 16, minHeight: 72 },
-  title: { flex: 1, minWidth: 0, fontFamily: F.semi, fontSize: 17 },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 16, minHeight: 60 },
+  title: { flex: 1, minWidth: 0, fontFamily: F.bold, fontSize: 20, lineHeight: 28 },
   right: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   iconBtn: {
-    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
   },
-  chip: { height: 44, borderWidth: 0 },
+  chip: { height: 36 },
 });

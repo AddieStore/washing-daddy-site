@@ -4,7 +4,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 export type IconName =
   | 'phone' | 'pin' | 'arrow' | 'check' | 'cam' | 'walk' | 'flag' | 'drop' | 'star' | 'note' | 'warn'
   | 'redo' | 'pause' | 'help' | 'plus' | 'back' | 'user' | 'globe' | 'sun' | 'reset' | 'logout' | 'sos'
-  | 'calendar' | 'bell' | 'shield' | 'id' | 'kit' | 'doc' | 'gift' | 'tabRound' | 'tabExtra' | 'tabPaisa' | 'tabMe';
+  | 'calendar' | 'bell' | 'shield' | 'id' | 'kit' | 'doc' | 'gift' | 'tabRound' | 'tabExtra' | 'tabPaisa' | 'tabMe' | 'car' | 'chevron' | 'clock';
 
 export type TaskKey = 'pressure' | 'foam' | 'interior' | 'tyre' | 'detailing' | 'dry';
 
@@ -121,25 +121,35 @@ const ICONS: Record<IconName, (color: string, active: boolean) => React.ReactNod
       <Path d="M5 12.5V20h14v-7.5M12 8.5V20M12 8.5C10 8.5 7.5 8 7.5 6a2 2 0 0 1 3.4-1.4c.7.7 1.1 2 1.1 3.9zM12 8.5c2 0 4.5-.5 4.5-2.5a2 2 0 0 0-3.4-1.4c-.7.7-1.1 2-1.1 3.9z" />
     </>
   ),
-  tabRound: (c, a) => (
+  car: () => (
     <>
-      <Circle cx={6} cy={18} r={2.5} fill={c} fillOpacity={a ? 0.22 : 0} />
-      <Circle cx={18} cy={6} r={2.5} fill={c} fillOpacity={a ? 0.22 : 0} />
-      <Path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5" />
+      <Path d="M4 16v-3l1.8-4.6A2 2 0 0 1 7.7 7h8.6a2 2 0 0 1 1.9 1.4L20 13v3z" />
+      <Path d="M4 16v2.5M20 16v2.5M4 13h16" />
+      <Circle cx={8} cy={14.5} r={0.6} />
+      <Circle cx={16} cy={14.5} r={0.6} />
     </>
   ),
-  tabExtra: (c, a) => <Path d="M13 2.5 4.5 13.5h6.5l-1 8 8.5-11H12z" fill={c} fillOpacity={a ? 0.22 : 0} />,
-  tabPaisa: (c, a) => (
+  chevron: () => <Path d="m9.5 6 6 6-6 6" />,
+  clock: () => (
     <>
-      <Rect x={2.5} y={5.5} width={19} height={14} rx={3} fill={c} fillOpacity={a ? 0.22 : 0} />
-      <Path d="M9 9h6M9 11.5h6M10.5 9c1.6 0 2.7.8 2.7 2.5s-1.1 2.5-2.7 2.5H9.5l3.8 3" />
+      <Circle cx={12} cy={12} r={8.5} />
+      <Path d="M12 7.5V12l3 2" />
     </>
   ),
-  tabMe: (c, a) => (
+  // Same glyphs as the Astryx preview (sun, bolt, rupee, person); "active" is shown by colour only.
+  tabRound: () => (
     <>
-      <Circle cx={12} cy={12} r={9.5} fill={c} fillOpacity={a ? 0.22 : 0} />
-      <Circle cx={12} cy={10} r={3.2} />
-      <Path d="M6.3 18.4c1.4-1.9 3.4-2.9 5.7-2.9s4.3 1 5.7 2.9" />
+      <Path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+      <Circle cx={12} cy={12} r={4.5} />
+      <Path d="m5.6 5.6 2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2" opacity={0.5} />
+    </>
+  ),
+  tabExtra: () => <Path d="M13 3 5 13.5h6L10 21l9-11h-6z" />,
+  tabPaisa: () => <Path d="M7 5h10M7 9h10M7 5c5 0 7 2 7 4s-2 4-7 4l6 6" />,
+  tabMe: () => (
+    <>
+      <Circle cx={12} cy={8.5} r={3.6} />
+      <Path d="M5 20c.6-3.6 3.6-5.6 7-5.6s6.4 2 7 5.6" />
     </>
   ),
 };
@@ -174,14 +184,17 @@ const STROKE: Partial<Record<IconName, { w: number; cap?: 'round'; join?: 'round
   kit: { w: 2, cap: 'round', join: 'round' },
   doc: { w: 2, cap: 'round', join: 'round' },
   gift: { w: 2, cap: 'round', join: 'round' },
-  tabRound: { w: 2, cap: 'round', join: 'round' },
-  tabExtra: { w: 2, cap: 'round', join: 'round' },
-  tabPaisa: { w: 2, cap: 'round', join: 'round' },
-  tabMe: { w: 2, cap: 'round', join: 'round' },
+  car: { w: 1.9, cap: 'round', join: 'round' },
+  clock: { w: 1.9, cap: 'round', join: 'round' },
+  chevron: { w: 2, cap: 'round', join: 'round' },
+  tabRound: { w: 1.9, cap: 'round', join: 'round' },
+  tabExtra: { w: 1.9, cap: 'round', join: 'round' },
+  tabPaisa: { w: 1.9, cap: 'round', join: 'round' },
+  tabMe: { w: 1.9, cap: 'round', join: 'round' },
 };
 
 export function Icon({ name, size = 24, color = '#000', active = false }: P & { name: IconName }) {
-  const solid = name === 'star';
+  const solid = name === 'star' && size <= 14;
   const s = STROKE[name];
   return (
     <Svg

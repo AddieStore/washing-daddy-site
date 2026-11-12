@@ -31,17 +31,17 @@ type StepKey = 'lang' | 'loc' | 'notif' | 'battery' | 'partner';
 /* ---------------- shared pieces ---------------- */
 const Title = ({ children }: { children: string }) => {
   const { c } = useTheme();
-  return <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 24, lineHeight: 30, letterSpacing: -0.3, color: c.fg }}>{children}</Text>;
+  return <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 20, lineHeight: 28, color: c.fg }}>{children}</Text>;
 };
 const Body = ({ children, style }: { children: React.ReactNode; style?: object }) => {
   const { c } = useTheme();
-  return <Text style={[{ fontFamily: F.body, fontSize: 14.5, lineHeight: 21, color: c.fg2, marginTop: 8 }, style]}>{children}</Text>;
+  return <Text style={[{ fontFamily: F.body, fontSize: 13, lineHeight: 20, color: c.fg3, marginTop: 6 }, style]}>{children}</Text>;
 };
 function Note({ children, tone = 'warn' }: { children: React.ReactNode; tone?: 'warn' | 'info' }) {
   const { c } = useTheme();
   const warn = tone === 'warn';
   return (
-    <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 14, padding: 12, borderRadius: 16, backgroundColor: warn ? 'rgba(232,56,79,0.10)' : 'rgba(84,9,218,0.08)' }}>
+    <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 14, padding: 12, borderRadius: 16, backgroundColor: warn ? 'rgba(232,56,79,0.10)' : 'rgba(17,17,20,0.06)' }}>
       <Icon name={warn ? 'warn' : 'help'} size={20} color={warn ? brand.red : c.softInk} />
       <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 13, lineHeight: 19, color: c.fg }}>{children}</Text>
     </View>
@@ -59,10 +59,10 @@ function Frame({ art, title, text, body, actions, sheetLook }: {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ height: artH, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>{art}</View>
-      <View style={{ flex: 1, backgroundColor: c.bg, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingTop: sheetLook ? 10 : 20, paddingHorizontal: 16, paddingBottom: 18 + insets.bottom }}>
+      <View style={{ flex: 1, backgroundColor: c.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: sheetLook ? 10 : 20, paddingHorizontal: 16, paddingBottom: 18 + insets.bottom }}>
         {sheetLook ? <View style={{ width: 48, height: 5, borderRadius: 3, backgroundColor: c.line, alignSelf: 'center', marginBottom: 12 }} /> : null}
         <Rise delay={80}>
-          <DashCard style={{ padding: 20 }}>
+          <DashCard style={{ padding: 19 }}>
             <Title>{title}</Title>
             <Body>{text}</Body>
             {body}
@@ -75,20 +75,20 @@ function Frame({ art, title, text, body, actions, sheetLook }: {
   );
 }
 
-/** A gold disc with an ink rim: the middle of every illustration. */
+/** A white disc: the middle of every illustration. */
 function Disc({ size = 116, children }: { size?: number; children?: React.ReactNode }) {
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: brand.gold, borderWidth: 3, borderColor: brand.ink, alignItems: 'center', justifyContent: 'center', boxShadow: `0px 6px 0px ${brand.ink}` }}>
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#C9B6FF', alignItems: 'center', justifyContent: 'center' }}>
       {children}
     </View>
   );
 }
-/** A small cream tag that floats beside an illustration. */
+/** A small white tag that floats beside an illustration. */
 function Tag({ children, style, phase = 0 }: { children: React.ReactNode; style: object; phase?: number }) {
   return (
     <View style={[{ position: 'absolute' }, style]}>
       <Float amp={5} period={2800} phase={phase}>
-        <View style={{ paddingVertical: 6, paddingHorizontal: 11, borderRadius: 999, backgroundColor: brand.cream, borderWidth: 2, borderColor: brand.ink }}>
+        <View style={{ paddingVertical: 6, paddingHorizontal: 11, borderRadius: 999, backgroundColor: '#fff' }}>
           <Text style={{ fontFamily: F.black, fontSize: 14, color: brand.ink }}>{children}</Text>
         </View>
       </Float>
@@ -111,7 +111,7 @@ function LangArt() {
 function LocArt() {
   return (
     <View style={{ width: 240, height: 170, alignItems: 'center', justifyContent: 'center' }}>
-      <Pulse size={150} />
+      <Pulse size={150} color="#fff" />
       <Float amp={6} period={2400}><Disc size={108}><Icon name="pin" size={52} color={brand.ink} /></Disc></Float>
       <Tag style={{ right: 0, top: 12 }} phase={400}>{t('🚗 2 min door')}</Tag>
     </View>
@@ -120,7 +120,7 @@ function LocArt() {
 function NotifArt() {
   return (
     <View style={{ width: 240, height: 170, alignItems: 'center', justifyContent: 'center' }}>
-      <Pulse size={146} color={brand.cream} period={1800} />
+      <Pulse size={146} color="#fff" period={1800} />
       <Disc size={108}><Float amp={1.5} period={700} sway={12}><Text style={{ fontSize: 50, lineHeight: 60 }}>🔔</Text></Float></Disc>
       <Tag style={{ left: 0, top: 10 }} phase={300}>{t('🔊 Awaaz alert')}</Tag>
       <Tag style={{ right: 0, bottom: 8 }} phase={900}>{t('⚡ Extra kaam')}</Tag>
@@ -145,8 +145,8 @@ function BatteryArt() {
     <View style={{ width: 240, height: 170, alignItems: 'center', justifyContent: 'center' }}>
       <Float amp={4} period={3000}>
         <View style={{ alignItems: 'center' }}>
-          <View style={{ width: 26, height: 10, borderTopLeftRadius: 5, borderTopRightRadius: 5, backgroundColor: brand.ink }} />
-          <View style={{ width: 70, height: H, borderRadius: 16, borderWidth: 4, borderColor: brand.ink, backgroundColor: brand.cream, overflow: 'hidden', boxShadow: `0px 6px 0px ${brand.ink}` }}>
+          <View style={{ width: 26, height: 10, borderTopLeftRadius: 5, borderTopRightRadius: 5, backgroundColor: '#fff' }} />
+          <View style={{ width: 70, height: H, borderRadius: 16, borderWidth: 4, borderColor: '#fff', backgroundColor: '#fff', overflow: 'hidden' }}>
             <Animated.View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: H, backgroundColor: brand.mint, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [H * 0.8, 0] }) }] }} />
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 34 }}>⚡</Text></View>
           </View>
@@ -161,7 +161,7 @@ function WasherArt({ size }: { size: number }) {
     <View style={{ width: size + 80, height: size + 30, alignItems: 'center', justifyContent: 'center' }}>
       <Bubbles width={size + 80} height={size + 30} count={9} />
       <Float amp={6} period={2600} sway={2}>
-        <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: brand.gold, borderWidth: 3, borderColor: brand.ink, overflow: 'hidden', boxShadow: `0px 6px 0px ${brand.ink}` }}>
+        <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#ECECEF', overflow: 'hidden' }}>
           <Image source={WASHER_IMG} accessibilityLabel={t('Washing Daddy washer')} resizeMode="cover" style={{ position: 'absolute', left: 0, top: size * 0.06, width: '100%', height: '100%' }} />
         </View>
       </Float>
@@ -189,10 +189,10 @@ function LangStep({ next }: { next: () => void }) {
               return (
                 <View key={l.code} style={{ width: '48.5%' }}><Pressy scaleTo={0.95} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={l.label + ', ' + l.sub}
                   onPress={() => { ui.haptic(6); act.setLangPref(l.code) }}
-                  style={{ minHeight: 66, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 18, backgroundColor: on ? c.primary : c.soft, justifyContent: 'center' }}>
+                  style={{ minHeight: 62, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 16, backgroundColor: on ? c.primary : c.accent + '1F', justifyContent: 'center' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: F.bold, fontSize: 17, color: on ? '#fff' : c.fg }}>{l.label}</Text>
-                    {on ? <Icon name="check" size={16} color={brand.gold} /> : null}
+                    {on ? <Icon name="check" size={16} color="#fff" /> : null}
                   </View>
                   <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 11.5, color: on ? 'rgba(255,255,255,0.8)' : c.fg3 }}>{t(l.sub)}</Text>
                 </Pressy></View>
@@ -328,9 +328,9 @@ function BatteryStep({ next }: { next: () => void }) {
 type Tone = 'ok' | 'wait' | 'todo' | 'off';
 const TONES: Record<Tone, { bg: string; fg: string }> = {
   ok: { bg: 'rgba(20,192,138,0.18)', fg: '#0b8a62' },
-  wait: { bg: 'rgba(255,186,8,0.28)', fg: '#8a6200' },
-  todo: { bg: 'rgba(255,106,26,0.15)', fg: '#c94d0c' },
-  off: { bg: 'rgba(26,10,51,0.07)', fg: 'rgba(26,10,51,0.56)' },
+  wait: { bg: 'rgba(17,17,20,0.07)', fg: '#52525B' },
+  todo: { bg: 'rgba(17,17,20,0.07)', fg: '#52525B' },
+  off: { bg: 'rgba(17,17,20,0.05)', fg: 'rgba(17,17,20,0.5)' },
 };
 function StatusChip({ label, tone }: { label: string; tone: Tone }) {
   const c = TONES[tone];
@@ -347,7 +347,7 @@ function StepCard({ n, title, sub, chip, done, muted, onPress }: {
   const inner = (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, opacity: muted ? 0.7 : 1 }}>
       <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? brand.mint : muted ? c.soft : c.primary }}>
-        {done ? <Icon name="check" size={20} color="#fff" /> : <Text style={{ fontFamily: F.black, fontSize: 17, color: muted ? c.fg3 : brand.gold }}>{n}</Text>}
+        {done ? <Icon name="check" size={20} color="#fff" /> : <Text style={{ fontFamily: F.black, fontSize: 17, color: muted ? c.fg3 : '#fff' }}>{n}</Text>}
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ fontFamily: F.semi, fontSize: 16, color: muted ? c.fg3 : c.fg }}>{title}</Text>
@@ -472,16 +472,16 @@ function Progress({ i, n, onBack }: { i: number; n: number; onBack?: () => void 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: GUT, paddingTop: 10, paddingBottom: 6, minHeight: 56 }}>
       {onBack ? (
-        <PillButton icon="back" label={t('Peeche')} size={40} onPress={onBack} />
+        <PillButton icon="back" label={t('Peeche')} size={36} onPress={onBack} />
       ) : <View style={{ width: 40, height: 40 }} />}
       <View accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: n, now: i + 1 }} style={{ flex: 1, flexDirection: 'row', gap: 6 }}>
         {Array.from({ length: n }, (_, k) => (
-          <View key={k} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,246,233,0.22)', overflow: 'hidden' }}>
-            <Animated.View style={{ height: 6, borderRadius: 3, backgroundColor: brand.gold, width: p.interpolate({ inputRange: [k - 1, k], outputRange: ['0%', '100%'], extrapolate: 'clamp' }) }} />
+          <View key={k} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.22)', overflow: 'hidden' }}>
+            <Animated.View style={{ height: 6, borderRadius: 3, backgroundColor: '#C9B6FF', width: p.interpolate({ inputRange: [k - 1, k], outputRange: ['0%', '100%'], extrapolate: 'clamp' }) }} />
           </View>
         ))}
       </View>
-      <Text style={{ fontFamily: F.black, fontSize: 13, color: brand.cream, minWidth: 30, textAlign: 'right' }}>{i + 1}/{n}</Text>
+      <Text style={{ fontFamily: F.bold, fontSize: 13, color: '#fff', minWidth: 30, textAlign: 'right' }}>{i + 1}/{n}</Text>
     </View>
   );
 }
@@ -508,7 +508,7 @@ export default function Onboarding() {
   const next = () => go(1);
   return (
     <View style={{ flex: 1, backgroundColor: c.stage, alignItems: 'center' }}>
-      <View style={{ flex: 1, width: '100%', maxWidth: 440, backgroundColor: brand.violet }}>
+      <View style={{ flex: 1, width: '100%', maxWidth: 440, backgroundColor: '#111114' }}>
         <View style={{ height: insets.top }} />
         <Progress i={i} n={steps.length} onBack={i > 0 ? () => go(-1) : undefined} />
         <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>

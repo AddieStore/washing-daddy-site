@@ -36,13 +36,17 @@ export function photoNeeds(w: { started_at?: string | null; photos: { kind: stri
   return { sunday, car, missing, nextSpot: car >= MIN_PHOTOS ? missing[0] || null : null, ok: car >= MIN_PHOTOS && missing.length === 0 };
 };
 import type { Attend } from '../lib/rewards';
+import type { CleanInput } from '../lib/rewards';
+import { arrivals, cleanComplaint, cleanInput, inMonth, ratingKeys, sampleComplaintDoc, type Complaint, type RatingRow } from '../lib/complaints';
 export const REAL = auth.real;
 export const MODE = backend.mode;
 
 /* ---------------- persisted state ---------------- */
 type Session = { washerId: string | null; real?: boolean; name?: string; phone?: string; since?: string; at?: string };
 // slots/order/locked: the round as a timeline (lib/slots.ts): which slot each car sits in, the order, and whether the washer locked it
-type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash>; slots?: Record<string, number>; order?: string[]; locked?: boolean; locked_at?: string | null; checkin_at?: string | null };
+type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash>; slots?: Record<string, number>; order?: string[]; locked?: boolean; locked_at?: string | null; checkin_at?: string | null; checkin_photo?: string | null; checkin_uniform?: Uniform | null };
+// the check-in selfie: shirt_match/shirt_share come from lib/shirt.ts; the cap is ticked by the washer and reviewed by the manager
+export type Uniform = { shirt_match: boolean; shirt_share: number; self_confirmed: true };
 type Selfie = { date: string; washer: string; url?: string; asset_id?: string };
 // the app language the washer picked in onboarding; only 'hinglish' and 'hi' are translated today, the rest fall back (see act.setLangPref)
 export type LangPref = Lang;
@@ -137,7 +141,7 @@ function composeRound(id: string) {
   const book = bookCars || [], have = new Set(book.map(c => c.reg));
   ROSTER[id] = book.concat(NewCar.mine.filter(c => !have.has(c.reg)));
 }
-const Book = {
+export const Book = {
   setRound(id: string, cars: Data[]) { bookCars = cars.filter(c => c && c.plate && normReg(c.plate)).map(shapeBookCar); composeRound(id) },
   async load() {
     if (!REAL) { view.bookState = 'demo'; emit(); return }
@@ -320,6 +324,8 @@ export const Sync = {
       if (booted && !first && isOnline()) { const nj = Extra.pending.find(j => !prevIds.has(j.id)); if (nj) showJobAlert(nj) }
       emit();
     }, err));
+    // customer complaints about me (lib/complaints.ts, block at the end of this file): live, read-only
+    unsubs.push(watchComplaints(id, err));
     // today's ratings, one doc per car
     regs.forEach(reg => unsubs.push(db.doc('ratings/' + DAY + '_' + reg).onSnapshot(d => {
       const v = d.exists ? d.data() : null, seen = reg in RT, was = RT[reg]; RT[reg] = v && v.stars ? v.stars : 0;
@@ -436,6 +442,7 @@ function showJobAlert(job: Job) { view.jobAlert = job; ui.haptic([20, 60, 20, 60
    Actions the screens call
    ===================================================================== */
 export const act = {
+  complaintSeen(id: string) { void markComplaintSeen(id) },   // the washer opened a complaint: open -> seen
   setCurrent(reg: string) { S.current = reg; save(); emit() },
   currentReg() { return S.current || Route.liveReg() || Route.nextReg() },
   // ---- the round timeline: drag a car into a slot, then lock the round ----
@@ -474,12 +481,15 @@ export const act = {
     return true;
   },
   // "Hub pahunch gaya": the morning check-in, seen live on the dashboard
-  async checkIn() {
+  async checkIn(o?: { photo?: string; shirt?: { shirt_match: boolean; shirt_share: number } }) {
     ensureDay(); const day = S.day!; if (day.checkin_at) return true;
-    day.checkin_at = isoIST(); noteAttend({ in: day.checkin_at }); save(); emit(); ui.haptic([20, 40, 20]);
+    const uniform: Uniform | null = o?.shirt ? { shirt_match: o.shirt.shirt_match, shirt_share: o.shirt.shirt_share, self_confirmed: true } : null;
+    const photo = o?.photo && o.photo.length <= 40000 ? o.photo : null;
+    day.checkin_at = isoIST(); if (photo) day.checkin_photo = photo; if (uniform) day.checkin_uniform = uniform;
+    noteAttend({ in: day.checkin_at }); save(); emit(); ui.haptic([20, 40, 20]);
     try {
       const id = myDocId();
-      if (id && id !== '+91') await db.doc('checkins/' + DAY + '_' + id).set({ phone: id, name: me().name, date: DAY, at: day.checkin_at });
+      if (id && id !== '+91') await db.doc('checkins/' + DAY + '_' + id).set({ phone: id, name: me().name, date: DAY, at: day.checkin_at, ...(photo ? { photo } : {}), ...(uniform ? { uniform } : {}) });
     } catch (e) { console.warn('checkin', e) }
     return true;
   },
@@ -898,3 +908,76 @@ export const outboxSize = () => Object.keys(S.outbox).length;
 export const planName = (c: Car) => PLAN[c.plan]?.name || 'WD Standard';
 /** The attendance log behind the monthly rewards (read-only view). */
 export const attendLog = (): Attend => S.attend || {};
+
+/* ---------------- customer complaints + this month's ratings (No Complaint Bonus) ----------------
+   Self-contained. complaints/{id} where washer_id == my round id (the key washes/newcars use), live; the washer can
+   only move one from 'open' to 'seen'. The customer's phone is dropped in cleanComplaint() and never kept here.
+   The month's rating average joins my washes docs with ratings/{DATE_REG} (ratings carry no washer_id): see
+   loadMonthRatings(). Rules for the bonus: lib/complaints.ts + cleanMonth() in lib/rewards.ts. */
+export const Complaints = { items: [] as Complaint[], loaded: false, failed: false, ratings: [] as RatingRow[], ratingsMonth: '', ratingsAt: 0 };
+const ratingCache: Record<string, number | null> = {};   // 'DATE_REG' -> stars, null = not rated (yet)
+let ratingsBusy = false, demoComplaintsDone = false;
+function watchComplaints(id: string, err: (e: DbError) => void): Unsub {
+  if (MODE === 'demo') demoComplaints(id);
+  let first = true;   // a listener's first answer is what was already there, not news
+  return db.collection('complaints').where('washer_id', '==', id).onSnapshot(sn => {
+    const prev = new Set(Complaints.items.map(c => c.id));
+    const next = sn.docs.map(d => cleanComplaint(d.data(), d.id)).filter((c): c is Complaint => !!c && c.washer_id === id);
+    const fresh = first ? [] : arrivals(prev, next);
+    first = false; Complaints.items = next; Complaints.loaded = true; Complaints.failed = false;
+    if (booted && fresh.length) { ui.toast(t('Ek customer ne feedback diya')); ui.haptic([10, 40, 10]) }
+    emit();
+  }, e => { Complaints.failed = true; emit(); err(e) });
+}
+async function markComplaintSeen(cid: string) {
+  const c = Complaints.items.find(x => x.id === cid); if (!c || c.status !== 'open') return;
+  const at = isoIST(); c.status = 'seen'; c.seen_at = at; emit();
+  try { await db.doc('complaints/' + cid).update({ status: 'seen', seen_at: at, updated_at: at }) } catch (e) { console.warn('complaint seen', e) }
+}
+/** This month's complaints (every status), newest first. */
+export const monthComplaints = (): Complaint[] => inMonth(Complaints.items, DAY.slice(0, 7));
+/** What rewards()/outlook() take for the No Complaint Bonus; null until the complaints have loaded. */
+export const cleanNow = (): CleanInput | null => (Complaints.loaded ? cleanInput(Complaints.items, Complaints.ratings, DAY.slice(0, 7)) : null);
+/** Fetch the stars for my washes this month: washes (washer_id, date) -> ratings/{DATE_REG}, at most 120 reads,
+ *  20 at a time, cached; re-run at most every 10 minutes unless forced. Only the last two days are re-read when unrated. */
+export async function loadMonthRatings(force = false): Promise<void> {
+  const month = DAY.slice(0, 7);
+  if (ratingsBusy || !S.session?.washerId) return;
+  if (!force && Complaints.ratingsMonth === month && Date.now() - Complaints.ratingsAt < 10 * 60e3) return;
+  ratingsBusy = true;
+  try {
+    const rows = await Sync.washesSince(month + '-01'); if (!rows) return;
+    const keys = ratingKeys(rows, month), recent = addDaysStr(DAY, -1);
+    const need = keys.filter(k => !(k in ratingCache) || (ratingCache[k] == null && k.slice(0, 10) >= recent));
+    for (let i = 0; i < need.length; i += 20) {
+      await Promise.all(need.slice(i, i + 20).map(async k => {
+        try { const g = await db.doc('ratings/' + k).get(); const v = g.exists ? g.data() : null; ratingCache[k] = v && Number.isInteger(v.stars) ? v.stars : null }
+        catch (e) { /* not cached: tried again next time */ }
+      }));
+    }
+    Complaints.ratings = keys.filter(k => ratingCache[k] != null).map(k => ({ date: k.slice(0, 10), reg: k.slice(11), stars: ratingCache[k] as number }));
+    Complaints.ratingsMonth = month; Complaints.ratingsAt = Date.now(); emit();
+  } finally { ratingsBusy = false }
+}
+// demo only: no complaints unless the preview's localStorage asks for some (tests and screenshots), e.g.
+//   localStorage['wd-demo-complaints'] = '{"complaints":[{"text":"...","kind":"late"}],"stars":[5,4,4,3],"later":true}'
+// complaints go on this month's cars; `stars` is cycled over this month's done washes as ratings; `later` adds one
+// more complaint a few seconds after sign-in so the live toast can be seen.
+function demoComplaints(id: string) {
+  if (demoComplaintsDone) return; demoComplaintsDone = true;
+  let x: any = null;
+  try { const raw = (globalThis as any).localStorage?.getItem('wd-demo-complaints'); x = raw ? JSON.parse(raw) : null } catch (e) { x = null }
+  if (!x || typeof x !== 'object') return;
+  const rs = route(), list: any[] = Array.isArray(x) ? x : Array.isArray(x.complaints) ? x.complaints : [];
+  const put = (p: any, i: number) => {
+    const reg = p.reg || rs[i % Math.max(1, rs.length)]?.reg || 'DL4CAB2731', cid = 'demo-c' + i;
+    db.doc('complaints/' + cid).set(sampleComplaintDoc({ id: cid, date: p.date || DAY, reg, washer_id: id, text: p.text, kind: p.kind, status: p.status, customer_name: p.customer_name, stars: p.stars }));
+  };
+  list.slice(0, 10).forEach(put);
+  if (x.later) setTimeout(() => put({ text: 'Aaj gaadi der se saaf hui.', kind: 'late' }, list.length), 6000);
+  const stars: number[] = Array.isArray(x.stars) ? x.stars.filter((n: any) => Number.isInteger(n) && n >= 1 && n <= 5) : [];
+  if (stars.length) db.collection('washes').where('washer_id', '==', id).get().then(sn => {
+    sn.docs.map(d => d.data()!).filter(w => w && w.status === 'done' && String(w.date).startsWith(DAY.slice(0, 7)))
+      .forEach((w, i) => db.doc('ratings/' + w.date + '_' + w.reg).set({ date: w.date, reg: w.reg, stars: stars[i % stars.length], at: w.date + 'T10:00:00+05:30' }));
+  });
+}

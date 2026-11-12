@@ -142,7 +142,7 @@ function AddKitBody({ close }: { close: () => void }) {
     return (
       <View>
         <SheetTitle title={t('Pakka add karein?')} sub={t('Ek baar add kiya to hata nahi sakte. Naam aur ginti dobara check kar lo.')} />
-        <View style={{ padding: 14, borderRadius: 20, backgroundColor: c.soft, marginBottom: 12 }}>
+        <View style={{ padding: 14, borderRadius: 16, backgroundColor: c.soft, marginBottom: 12 }}>
           <Text style={{ fontFamily: F.black, fontSize: 18, color: c.fg }}>{nm} × {qty}</Text>
           <Text style={{ fontFamily: F.body, fontSize: 13.5, color: c.fg2, marginTop: 2 }}>{kindLabel(kind)}</Text>
           {shot ? <Image source={{ uri: shot.preview }} style={{ width: 72, height: 72, borderRadius: 18, marginTop: 10 }} resizeMode="cover" /> : null}
@@ -169,12 +169,12 @@ function AddKitBody({ close }: { close: () => void }) {
       <Text style={lab}>{t('Saaman ki photo (optional)')}</Text>
       {shot ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <Image source={{ uri: shot.preview }} style={{ width: 96, height: 96, borderRadius: 24 }} resizeMode="cover" />
+          <Image source={{ uri: shot.preview }} style={{ width: 96, height: 96, borderRadius: 16 }} resizeMode="cover" />
           <LinkButton label={t('Dobara lo')} onPress={snap} />
         </View>
       ) : (
         <Pressy onPress={snap} accessibilityLabel={t('Photo lo')} scaleTo={0.96}
-          style={{ height: 96, borderRadius: 24, borderWidth: 2, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          style={{ height: 96, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
           <Icon name="cam" size={28} color={c.fg2} />
           <Text style={{ fontFamily: F.black, fontSize: 13, color: c.fg2 }}>{t('Photo lo')}</Text>
         </Pressy>

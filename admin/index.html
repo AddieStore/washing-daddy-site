@@ -85,6 +85,11 @@ select{flex:1 1 100%;min-width:0}
 .ph{display:flex;gap:8px}.ph .cc{display:grid;place-items:center;padding:0 12px;background:var(--tile);border:1.5px solid var(--line);border-radius:14px;font-weight:700}
 .err{color:var(--red);font-size:13px;font-weight:600;min-height:20px;margin:8px 0}
 .otp{letter-spacing:.5em;text-align:center;font-size:24px;font-weight:800}
+.tabs{overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}.tab{flex:1 0 auto;white-space:nowrap}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;font-weight:600}
+.tbl th,.tbl td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+.tbl th{color:var(--fg3);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.filters select,.filters .field{flex:1 1 140px;width:auto}
 .link{background:none;border:0;color:var(--violet);font-weight:700;padding:8px 0;font-size:14px}
 @media (prefers-color-scheme:dark){.link{color:var(--gold)}}
 [hidden]{display:none!important}
@@ -107,6 +112,7 @@ select{flex:1 1 100%;min-width:0}
       <button class="tab" data-tab="customers" role="tab">Customers <span class="badge" id="bC"></span></button>
       <button class="tab" data-tab="newcars" role="tab">New cars <span class="badge" id="bN"></span></button>
       <button class="tab" data-tab="extra" role="tab">Extra work <span class="badge" id="bX"></span></button>
+      <button class="tab" data-tab="complaints" role="tab">Complaints <span class="badge" id="bQ"></span></button>
     </nav>
   </div></header>
   <main>
@@ -114,6 +120,7 @@ select{flex:1 1 100%;min-width:0}
     <section id="t-customers" hidden></section>
     <section id="t-newcars" hidden></section>
     <section id="t-extra" hidden></section>
+    <section id="t-complaints" hidden></section>
   </main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -202,10 +209,11 @@ async function signedIn(u) {
   unsubs.push(db.collection('customers').onSnapshot(sn => { C = sn.docs.map(d => cleanCust({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
   unsubs.push(db.collection('newcars').onSnapshot(sn => { N = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
   unsubs.push(db.collection('ondemand').onSnapshot(sn => { X = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
+  unsubs.push(db.collection('complaints').onSnapshot(sn => { Q = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => { console.warn(e); QERR = true; render() }));
 }
 WDAuth.ready().then(signedIn);
 $('#signOut').onclick = async () => { stop(); await WDAuth.signOut(); signedIn(null) };
-$$('.tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; $$('.tab').forEach(x => x.classList.toggle('on', x === t)); ['washers', 'customers', 'newcars', 'extra'].forEach(k => $('#t-' + k).hidden = tab !== k); render() });
+$$('.tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; $$('.tab').forEach(x => x.classList.toggle('on', x === t)); ['washers', 'customers', 'newcars', 'extra', 'complaints'].forEach(k => $('#t-' + k).hidden = tab !== k); if (tab === 'complaints') loadRatings(qf.month); render() });
 
 async function act(btn, fn, ok) {
   btn.disabled = true;
@@ -431,10 +439,83 @@ function renderExtra() {
 function render() {
   if (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('idf')) return;   // don't wipe what is being typed
   if (tab === 'washers') renderWashers(); else if (tab === 'customers') renderCustomers();
-  else if (tab === 'newcars') renderNewCars(); else renderExtra();
+  else if (tab === 'newcars') renderNewCars(); else if (tab === 'complaints') renderComplaints(); else renderExtra();
   const p = W.filter(w => (w.status || 'pending') === 'pending').length; $('#bW').textContent = p || '';
   const np = N.filter(n => (n.status || 'pending') === 'pending').length; $('#bN').textContent = np || '';
   const xo = X.filter(x => (x.status || 'offered') !== 'done').length; $('#bX').textContent = xo || '';
+  const qo = Q.filter(x => (x.status || 'open') === 'open').length; $('#bQ').textContent = qo || ''; $('#bQ').dataset.n = qo;
+}
+
+/* ---------------- customer complaints (collection complaints, written by the customer app) ----------------
+   washer_id is the washer's ROUND id (same as washes/newcars). The washer sees his own read-only in WD Partner
+   (Bonus > Customer feedback) and can only mark one 'seen'; here the manager resolves it or marks it invalid.
+   No Complaint Bonus (Rs 1,000, paid by the manager at month end): in the calendar month (IST) the washer has no
+   complaint with status open/seen/resolved ('invalid' does not count), OR at least 5 ratings averaging 4.8+.
+   Ratings (ratings/{DATE_REG}) carry no washer_id, so they are joined with that month's washes docs by DATE_REG. */
+let Q = [], QERR = false, qf = { status: 'open', washer: '', month: nowIST().slice(0, 7) }, QR = {};   // QR[month] = { [washer]: {n, sum} } | 'loading' | 'err'
+const KIND_L = { quality: 'Cleaning', late: 'Late', behaviour: 'Behaviour', damage: 'Damage', other: 'Other' };
+const qMonth = x => /^\d{4}-\d{2}$/.test(String(x.month || '')) ? x.month : String(x.date || '').slice(0, 7);
+const qCounts = x => (x.status || 'open') !== 'invalid';
+const roundName = id => ROUNDS[id] ? ROUNDS[id].split(' · ')[0] : (id || 'Unknown washer');
+async function loadRatings(month, force) {
+  if (!db || (QR[month] && QR[month] !== 'err' && !force)) return;
+  QR[month] = 'loading';
+  try {
+    const from = month + '-01', to = month + '-31';
+    const [ws, rs] = await Promise.all([db.collection('washes').where('date', '>=', from).get(), db.collection('ratings').where('date', '>=', from).get()]);
+    const who = {}; ws.docs.forEach(d => { const v = d.data(); if (v && v.date <= to && v.washer_id) who[v.date + '_' + v.reg] = v.washer_id });
+    const m = {};
+    rs.docs.forEach(d => { const v = d.data(); if (!v || v.date > to || !Number.isInteger(v.stars) || v.stars < 1 || v.stars > 5) return;
+      const w = who[d.id]; if (!w) return; (m[w] = m[w] || { n: 0, sum: 0 }); m[w].n++; m[w].sum += v.stars });
+    QR[month] = m;
+  } catch (e) { console.warn(e); QR[month] = 'err' }
+  if (tab === 'complaints') render();
+}
+function bonusRows(month) {
+  const r = QR[month], ids = new Set([...Object.keys(ROUNDS), ...Q.filter(x => qMonth(x) === month).map(x => x.washer_id).filter(Boolean)]);
+  return [...ids].map(id => {
+    const n = Q.filter(x => x.washer_id === id && qMonth(x) === month && qCounts(x)).length, rt = r && typeof r === 'object' ? r[id] : null;
+    const avg = rt && rt.n ? rt.sum / rt.n : null, byRating = !!rt && rt.n >= 5 && avg >= 4.8;
+    return { id, n, avg, cnt: rt ? rt.n : 0, ok: n === 0 || byRating, known: !!r && typeof r === 'object' };
+  });
+}
+function complaintCard(x) {
+  const st = x.status || 'open', k = esc(x.id);
+  const pill = st === 'resolved' ? '<span class="pill a">Resolved</span>' : st === 'invalid' ? '<span class="pill b">Invalid</span>' : st === 'seen' ? '<span class="pill p">Washer saw it</span>' : '<span class="pill p">Open</span>';
+  return `<div class="card ${st === 'open' ? 'pending' : ''}"><div class="row"><div class="grow">
+    <div class="nm"><span class="plate">${esc(x.reg || '')}</span> ${pill}</div>
+    <div class="meta">${esc(x.date || '')} · ${esc(KIND_L[x.kind] || 'Other')}${x.stars ? ' · ' + '★'.repeat(Math.max(0, Math.min(5, x.stars | 0))) : ''} · ${esc(roundName(x.washer_id))}</div>
+    <div class="meta">${esc(x.customer_name || 'Customer')}${x.customer_phone ? ' · ' + contact(x.customer_phone) : ''}</div>
+    <div class="meta" style="color:var(--fg);font-size:14px;margin-top:6px">${esc(x.text || '')}</div>
+    ${x.manager_note ? `<div class="meta"><b>Your note:</b> ${esc(x.manager_note)}</div>` : ''}
+    <div class="meta">Sent ${esc(when(x.created_at))}${x.seen_at ? ' · washer saw it ' + esc(when(x.seen_at)) : ''}${x.resolved_at ? ' · closed ' + esc(when(x.resolved_at)) : ''}</div>
+    </div></div>
+    <input class="field idf" id="qn-${k}" maxlength="300" placeholder="Note (what was done, why it is invalid)" value="${esc(x.manager_note || '')}" style="margin-top:10px">
+    <div class="acts">${st !== 'resolved' ? `<button class="btn go" data-a="qresolve" data-id="${k}">Mark resolved</button>` : ''}${st !== 'invalid' ? `<button class="btn no" data-a="qinvalid" data-id="${k}">Invalid (not counted)</button>` : ''}${st === 'resolved' || st === 'invalid' ? `<button class="btn ghost" data-a="qreopen" data-id="${k}">Reopen</button>` : ''}</div></div>`;
+}
+function renderComplaints() {
+  const months = [...new Set([qf.month, nowIST().slice(0, 7), ...Q.map(qMonth)])].filter(Boolean).sort().reverse();
+  const washers = [...new Set([...Object.keys(ROUNDS), ...Q.map(x => x.washer_id).filter(Boolean)])];
+  const list = Q.filter(x => (!qf.status || (x.status || 'open') === qf.status) && (!qf.washer || x.washer_id === qf.washer) && (!qf.month || qMonth(x) === qf.month)).sort(byNew);
+  const r = QR[qf.month], rows = bonusRows(qf.month);
+  const opt = (v, l, cur) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(l)}</option>`;
+  $('#t-complaints').innerHTML = `
+    <h2>No Complaint Bonus <span class="n">${esc(qf.month)}</span></h2>
+    <p class="meta" style="margin:-4px 0 10px">₹1,000 at month end if the washer had no complaint that month (invalid ones don't count), or 5+ ratings averaging 4.8★ or more.</p>
+    <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Washer</th><th>Complaints</th><th>Avg rating</th><th>Eligible</th></tr></thead><tbody>
+      ${rows.map(w => `<tr><td>${esc(roundName(w.id))}</td><td>${w.n}</td><td>${w.avg != null ? (Math.floor(w.avg * 10 + 1e-9) / 10).toFixed(1) + '★ (' + w.cnt + ')' : w.known ? '– (0)' : r === 'err' ? 'n/a' : '…'}</td><td>${w.ok ? '<span class="pill a">Yes</span>' : w.known ? '<span class="pill b">No</span>' : '<span class="pill p">…</span>'}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="acts"><button class="btn ghost" data-a="qratings">Reload ratings</button>${r === 'err' ? '<span class="meta">Could not load ratings.</span>' : ''}</div></div>
+    <h2>Complaints <span class="n">${list.length}</span></h2>
+    <div class="filters">
+      <select id="qfS" aria-label="Status">${opt('', 'Any status', qf.status)}${opt('open', 'Open', qf.status)}${opt('seen', 'Seen by washer', qf.status)}${opt('resolved', 'Resolved', qf.status)}${opt('invalid', 'Invalid', qf.status)}</select>
+      <select id="qfW" aria-label="Washer">${opt('', 'All washers', qf.washer)}${washers.map(w => opt(w, roundName(w), qf.washer)).join('')}</select>
+      <select id="qfM" aria-label="Month">${opt('', 'All months', qf.month)}${months.map(m => opt(m, m, qf.month)).join('')}</select>
+    </div>
+    ${QERR ? '<div class="empty">Could not load complaints. The Firestore rules for complaints may not be published yet.</div>' : list.length ? list.map(complaintCard).join('') : '<div class="empty">No complaints here. When a customer sends one from the app, it shows up live.</div>'}`;
+  $('#qfS').onchange = e => { qf.status = e.target.value; render() };
+  $('#qfW').onchange = e => { qf.washer = e.target.value; render() };
+  $('#qfM').onchange = e => { qf.month = e.target.value; if (qf.month) loadRatings(qf.month); render() };
 }
 
 /* ---------------- actions ---------------- */
@@ -508,6 +589,15 @@ document.addEventListener('click', e => {
   } else if (a === 'rmcar') {
     if (!confirm('Remove this car from the list?')) return;
     act(b, () => db.doc('newcars/' + id).delete(), 'Removed');
+  } else if (a === 'qresolve' || a === 'qinvalid' || a === 'qreopen') {
+    const x = Q.find(y => y.id === id); if (!x) return;
+    const note = (document.getElementById('qn-' + id)?.value || '').trim().slice(0, 300);
+    if (a === 'qinvalid' && !note) { toast('Write why it is invalid'); document.getElementById('qn-' + id)?.focus(); return }
+    const status = a === 'qresolve' ? 'resolved' : a === 'qinvalid' ? 'invalid' : 'open';
+    act(b, () => db.doc('complaints/' + id).update({ status, manager_note: note, resolved_at: status === 'open' ? null : nowIST(), updated_at: nowIST() }),
+      status === 'resolved' ? 'Resolved. The washer sees it as sorted.' : status === 'invalid' ? 'Marked invalid. It does not count against his bonus.' : 'Reopened');
+  } else if (a === 'qratings') {
+    loadRatings(qf.month, true); render();
   } else if (a === 'addExtra') {
     const service = $('#xService').value.trim(), price = Math.round(Number($('#xPrice').value.replace(/\D/g, '')) || 0);
     const washer = $('#xRound').value, date = $('#xDate').value || nowIST().slice(0, 10);

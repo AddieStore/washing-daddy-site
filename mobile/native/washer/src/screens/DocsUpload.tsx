@@ -11,8 +11,8 @@ import { SheetTitle } from './sheets';
 type Tone = 'ok' | 'wait' | 'todo' | 'bad';
 const TONES: Record<Tone, { bg: string; fg: string }> = {
   ok: { bg: 'rgba(20,192,138,0.18)', fg: '#0b8a62' },
-  wait: { bg: 'rgba(255,186,8,0.28)', fg: '#8a6200' },
-  todo: { bg: 'rgba(255,106,26,0.15)', fg: '#c94d0c' },
+  wait: { bg: 'rgba(17,17,20,0.07)', fg: '#52525B' },
+  todo: { bg: 'rgba(17,17,20,0.07)', fg: '#52525B' },
   bad: { bg: 'rgba(232,56,79,0.14)', fg: '#c0182f' },
 };
 function statusOf(d?: DocItem): { label: string; tone: Tone } {
@@ -71,7 +71,7 @@ function ChooseSheet({ kind, label, close, onDone }: { kind: DocKind; label: str
       <View style={{ gap: 10 }}>
         {OPTIONS.map(o => (
           <Pressy key={o.source} scaleTo={0.97} disabled={!!busy} accessibilityLabel={t(o.label)} onPress={() => go(o.source)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 60, paddingHorizontal: 16, borderRadius: 20, backgroundColor: c.card, shadowColor: c.shadowColor, shadowOpacity: c.shadow ? 0.07 : 0, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: c.shadow ? 2 : 0, borderWidth: c.shadow ? 0 : 1, borderColor: c.line, opacity: busy && busy !== o.source ? 0.5 : 1 }}>
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 60, paddingHorizontal: 16, borderRadius: 16, backgroundColor: c.card, shadowColor: '#000', shadowOpacity: c.shadow ? 0.07 : 0, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: c.shadow ? 1 : 0, borderWidth: 1, borderColor: c.line, opacity: busy && busy !== o.source ? 0.5 : 1 }}>
             <Text style={{ fontSize: 26 }}>{o.emoji}</Text>
             <Text style={{ flex: 1, fontFamily: F.bold, fontSize: 16, color: c.fg }}>{t(o.label)}</Text>
             {busy === o.source ? <ActivityIndicator color={brand.violet} /> : null}

@@ -8,3 +8,6 @@ export * from './motion';
 export * from './kit';
 export * from './dash';
 export * from './trust';
+export * from './Refresh';
+export * from './Footer';
+export * from './TopBar';

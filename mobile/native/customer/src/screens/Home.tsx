@@ -305,6 +305,11 @@ function Ritual() {
           </View>
         </View>
       )}
+      {d.status === 'done' ? (
+        <Pressable onPress={() => sheets.complaint()} hitSlop={10} accessibilityRole="button" style={{ marginTop: 10, alignSelf: 'flex-start' }}>
+          <Txt weight={600} size={12.5} color={C.gold}>{c.rating && c.rating < 4 ? 'Tell us what went wrong' : 'Complaint or feedback'}</Txt>
+        </Pressable>
+      ) : null}
     </>;
   }
   return <Block pad={20} style={{ marginTop: SP.section }}>{body}</Block>;

@@ -81,7 +81,7 @@ export function Sheet({
 
 const s = StyleSheet.create({
   fill: { flex: 1 },
-  scrim: { ...StyleSheet.absoluteFill as object, backgroundColor: 'rgba(18,7,36,0.55)' },
+  scrim: { ...StyleSheet.absoluteFill as object, backgroundColor: 'rgba(17,17,20,0.55)' },
   bottom: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
   sheet: {
     width: '100%',

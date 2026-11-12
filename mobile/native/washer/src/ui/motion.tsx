@@ -50,7 +50,7 @@ export function Float({ amp = 5, period = 3200, phase = 0, sway = 0, children, s
 }
 
 /** Rings that grow out of the middle and fade, like a radar ping. Put it behind an icon. */
-export function Pulse({ size, color = brand.gold, rings = 2, period = 2200 }: { size: number; color?: string; rings?: number; period?: number }) {
+export function Pulse({ size, color = '#5409DA', rings = 2, period = 2200 }: { size: number; color?: string; rings?: number; period?: number }) {
   const rm = useReducedMotion();
   const vals = useRef(Array.from({ length: rings }, () => new Animated.Value(0))).current;
   useEffect(() => {

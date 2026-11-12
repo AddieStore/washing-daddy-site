@@ -36,7 +36,7 @@ export default function JobAlert() {
     ui.toast(t('Extra tab mein dekho'));
   };
   return (
-    <View accessibilityViewIsModal style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 600, backgroundColor: 'rgba(18,7,36,0.72)', justifyContent: 'flex-end', alignItems: 'center' }}>
+    <View accessibilityViewIsModal style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 600, backgroundColor: 'rgba(17,17,20,0.72)', justifyContent: 'flex-end', alignItems: 'center' }}>
       <Pressable accessibilityLabel="Close" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} onPress={dismiss} />
       <Animated.View
         accessibilityRole="alert"
@@ -46,12 +46,12 @@ export default function JobAlert() {
           opacity: a, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }],
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start', backgroundColor: brand.gold, borderRadius: 999, paddingVertical: 5, paddingHorizontal: 12, marginBottom: 12 }}>
-          <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: brand.orange, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start', backgroundColor: '#ECECEF', borderRadius: 999, paddingVertical: 5, paddingHorizontal: 12, marginBottom: 12 }}>
+          <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }} />
           <Text style={{ fontFamily: F.black, fontSize: 13, color: brand.ink2, letterSpacing: 0.3 }}>{t('⚡ Naya kaam aaya!')}</Text>
         </View>
         <DashCard style={{ padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <IconBubble icon="plus" size={46} tint={brand.orange} bg="rgba(255,106,26,0.14)" />
+          <IconBubble icon="plus" size={46} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 16, color: c.fg }}>{job.service || t('Extra kaam')}</Text>
             {meta ? <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 2 }}>{meta}</Text> : null}

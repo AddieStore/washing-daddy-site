@@ -17,23 +17,23 @@ export function WashGuide({ startedAt, onTakePhoto, interiorFrom }: { startedAt:
   if (!g) return null;
   const { idx, step, secsLeft, plan } = g;
   const photo = step.key === 'photo' || step.key === 'end';
-  const fg = photo ? brand.ink : c.fg, fg2 = photo ? 'rgba(26,10,51,0.72)' : c.fg3;
+  const fg = photo ? brand.ink : c.fg, fg2 = photo ? 'rgba(17,17,20,0.72)' : c.fg3;
   const mm = secsLeft == null ? '' : `${String(Math.floor(secsLeft / 60)).padStart(2, '0')}:${String(secsLeft % 60).padStart(2, '0')}`;
   return (
-    <DashCard style={[{ marginTop: 18, padding: 18 }, photo ? { backgroundColor: brand.gold } : null]}>
+    <DashCard style={[{ marginTop: 18, padding: 18 }, null]}>
       {/* more than 8 stages (Sunday, or the interior add-on): one compact segmented bar, so it never overflows the card */}
       <View style={{ flexDirection: 'row', gap: plan.length > 8 ? 2 : 6, overflow: 'hidden', borderRadius: 4 }} accessibilityLabel={`${idx + 1} / ${plan.length}`}>
         {plan.map((s, i) => (
           <View key={i} style={{
             flex: 1, minWidth: 0, height: 8, borderRadius: plan.length > 8 ? 1 : 4,
-            backgroundColor: photo ? (i < idx ? brand.ink : 'rgba(26,10,51,0.25)') : i < idx ? brand.mint : i === idx ? c.primary : c.soft,
+            backgroundColor: photo ? (i < idx ? brand.ink : 'rgba(17,17,20,0.25)') : i < idx ? brand.mint : i === idx ? c.primary : c.soft,
             ...(i === idx && photo ? { backgroundColor: brand.ink } : null),
           }} />
         ))}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 16 }}>
         <View style={{ width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: photo ? brand.ink : c.primary }}>
-          {photo ? <Icon name="cam" size={30} color={brand.gold} />
+          {photo ? <Icon name="cam" size={30} color={c.primary} />
             : step.key === 'check' ? <Icon name="flag" size={28} color="#fff" />
             : <TaskIcon k={STAGE_ICON[step.key as keyof typeof STAGE_ICON] || 'pressure'} size={30} color="#fff" />}
         </View>
