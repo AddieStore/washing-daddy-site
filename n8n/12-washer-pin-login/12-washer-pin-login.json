@@ -1,0 +1,92 @@
+{
+  "name": "12 — Washer PIN login",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "wd-washer-pin",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "pin-webhook",
+      "name": "PIN login (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "wd-washer-pin"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Washer PIN login. Needs n8n env NODE_FUNCTION_ALLOW_BUILTIN=crypto and FIREBASE_SA_JSON (the service account\n// key, set on the server only). Never paste a key into this node, and never log the request: it carries a PIN.\nconst crypto = require('crypto');\n// Washer PIN login: pure helpers. The workflow's Code node embeds this file (plus logic.js) after\n// `const crypto = require('crypto')`, and test.mjs runs the same text against Node's crypto.\n// Nothing here talks to the network and nothing here logs: a PIN, a hash or a key never leaves a function.\n\nconst PIN_ITER = 150000;        // PBKDF2-SHA256 iterations (the admin page uses the same number)\nconst PIN_KEYLEN = 32;          // bytes\nconst PIN_MAX_FAILS = 5;        // wrong PINs in a row before the lock\nconst PIN_LOCK_MS = 15 * 60 * 1000;\nconst FCM_AUD = 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit';\nconst OAUTH_URL = 'https://oauth2.googleapis.com/token';\nconst OAUTH_SCOPES = [\n  'https://www.googleapis.com/auth/datastore',\n  'https://www.googleapis.com/auth/identitytoolkit',\n  'https://www.googleapis.com/auth/cloud-platform',\n].join(' ');\n// Numbers that may never sign in with a PIN, whatever Firestore says: the admins (their phone number is what\n// makes them admin in the rules, so a PIN for them would be a PIN for the whole database).\nconst PIN_DENY = ['+917701808924'];\n\n// '9876504210' (exactly 10 digits, Indian mobile) -> '+919876504210', anything else -> null\nfunction pinPhone(v) {\n  const s = typeof v === 'string' || typeof v === 'number' ? String(v).trim() : '';\n  return /^[6-9]\\d{9}$/.test(s) ? '+91' + s : null;\n}\nconst pinOk = v => typeof v === 'string' && /^\\d{4,6}$/.test(v);\n\nfunction b64url(buf) {\n  return Buffer.from(buf).toString('base64').replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');\n}\n\n// PBKDF2-SHA256(pin, salt) -> base64. salt is base64 (16 random bytes from the admin page).\nfunction pinHash(pin, saltB64) {\n  return crypto.pbkdf2Sync(Buffer.from(String(pin), 'utf8'), Buffer.from(String(saltB64), 'base64'), PIN_ITER, PIN_KEYLEN, 'sha256').toString('base64');\n}\n\n// Constant-time check. Always runs the full PBKDF2, even when the stored record is malformed.\nfunction pinVerify(pin, rec) {\n  const salt = rec && typeof rec.salt === 'string' ? rec.salt : '';\n  const want = Buffer.from(rec && typeof rec.hash === 'string' ? rec.hash : '', 'base64');\n  const got = Buffer.from(pinHash(pin, salt || 'AAAAAAAAAAAAAAAAAAAAAA=='), 'base64');\n  const shapeOk = salt.length > 0 && want.length === PIN_KEYLEN;\n  const cmp = shapeOk ? want : Buffer.alloc(PIN_KEYLEN);\n  const same = crypto.timingSafeEqual(got, cmp);\n  return shapeOk && same;\n}\n\n// Is this record locked at `now` (ms)? Returns the unlock time in ms, or 0.\nfunction pinLockedUntil(rec, now) {\n  const t = rec && rec.locked_until ? Date.parse(rec.locked_until) : NaN;\n  return Number.isFinite(t) && t > now ? t : 0;\n}\n\n// Counters after a wrong PIN. The 5th wrong one in a row locks for 15 minutes and starts the count again.\nfunction pinAfterFail(rec, now) {\n  const before = rec && Number.isInteger(rec.fails) && rec.fails > 0 ? rec.fails : 0;\n  const fails = before + 1;\n  if (fails >= PIN_MAX_FAILS) return { fails: 0, locked_until: new Date(now + PIN_LOCK_MS).toISOString(), locked: true };\n  return { fails, locked_until: null, locked: false };\n}\n\n/* ---------- service account + JWTs (RS256) ---------- */\n// FIREBASE_SA_JSON may be the key JSON itself or the same JSON base64-encoded (one safe line for an env file).\nfunction parseSa(raw) {\n  let sa = raw;\n  if (typeof raw === 'string') {\n    let txt = raw.trim();\n    if (txt && txt[0] !== '{') { try { txt = Buffer.from(txt, 'base64').toString('utf8') } catch (e) { return null } }\n    try { sa = JSON.parse(txt) } catch (e) { return null }\n  }\n  if (!sa || typeof sa !== 'object') return null;\n  if (typeof sa.client_email !== 'string' || !/@.+\\.iam\\.gserviceaccount\\.com$/.test(sa.client_email)) return null;\n  if (typeof sa.private_key !== 'string' || sa.private_key.indexOf('PRIVATE KEY') < 0) return null;\n  if (typeof sa.project_id !== 'string' || !/^[a-z0-9-]{4,40}$/.test(sa.project_id)) return null;\n  return { client_email: sa.client_email, private_key: sa.private_key, project_id: sa.project_id };\n}\n\nfunction signJwt(payload, pem) {\n  const head = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));\n  const body = b64url(JSON.stringify(payload));\n  const s = crypto.createSign('RSA-SHA256');\n  s.update(head + '.' + body);\n  return head + '.' + body + '.' + b64url(s.sign(pem));\n}\n\n// The grant Google's token endpoint swaps for an access token (1 hour).\nfunction oauthAssertion(sa, nowMs) {\n  const iat = Math.floor(nowMs / 1000);\n  return signJwt({ iss: sa.client_email, sub: sa.client_email, scope: OAUTH_SCOPES, aud: OAUTH_URL, iat, exp: iat + 3600 }, sa.private_key);\n}\n\n// A Firebase custom token for `uid`: the app passes it to signInWithCustomToken. Valid for at most an hour.\nfunction customToken(sa, uid, nowMs) {\n  if (typeof uid !== 'string' || !uid || uid.length > 128) throw new Error('bad uid');\n  const iat = Math.floor(nowMs / 1000);\n  return signJwt({ iss: sa.client_email, sub: sa.client_email, aud: FCM_AUD, iat, exp: iat + 3600, uid }, sa.private_key);\n}\n\n/* ---------- Firestore REST values ---------- */\nfunction fsValue(v) {\n  if (!v || typeof v !== 'object') return undefined;\n  if ('stringValue' in v) return v.stringValue;\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return Number(v.doubleValue);\n  if ('booleanValue' in v) return v.booleanValue;\n  if ('nullValue' in v) return null;\n  if ('timestampValue' in v) return v.timestampValue;\n  return undefined;     // maps/arrays are not needed here\n}\nfunction fsFields(doc) {\n  const out = {}, f = doc && doc.fields && typeof doc.fields === 'object' ? doc.fields : {};\n  for (const k of Object.keys(f)) out[k] = fsValue(f[k]);\n  return out;\n}\nfunction fsEncode(v) {\n  if (v === null || v === undefined) return { nullValue: null };\n  if (typeof v === 'boolean') return { booleanValue: v };\n  if (Number.isInteger(v)) return { integerValue: String(v) };\n  if (typeof v === 'number') return { doubleValue: v };\n  return { stringValue: String(v) };\n}\n\n// Washer PIN login: the whole request, start to finish. deps carries everything that touches the outside:\n//   saRaw    the service account JSON (n8n env FIREBASE_SA_JSON)\n//   project  optional n8n env FIREBASE_PROJECT_ID; must match the key's project when set\n//   deny     optional extra numbers that may never use a PIN (n8n env PIN_DENY_PHONES, comma separated)\n//   http({method,url,headers,body}) -> {status, body}   never throws; status 0 = no answer\n//   now() -> ms, sleep(ms), jitter() -> ms of extra delay on a failure\n// Returns { status, body } for the Respond node. body is { ok:true, token } or { ok:false, code } with code one of\n// bad_pin | locked | not_set | not_washer | server, and nothing else, whatever went wrong.\n\nasync function pinLogin(reqBody, deps) {\n  const fail = async code => {\n    try { await deps.sleep(400 + Math.max(0, Math.min(600, Number(deps.jitter()) || 0))) } catch (e) { }\n    return { status: code === 'server' ? 500 : 200, body: { ok: false, code } };\n  };\n  try {\n    const b = reqBody && typeof reqBody === 'object' ? reqBody : {};\n    const phone = pinPhone(b.phone);\n    const pin = b.pin;\n    if (!phone || !pinOk(pin)) return await fail('bad_pin');\n\n    const sa = parseSa(deps.saRaw);\n    if (!sa) return await fail('server');\n    const project = String(deps.project || '').trim();\n    if (project && project !== sa.project_id) return await fail('server');\n    const deny = PIN_DENY.concat(String(deps.deny || '').split(',').map(s => s.trim()).filter(Boolean));\n    if (deny.indexOf(phone) >= 0) return await fail('not_washer');\n\n    // Google access token for Firestore + Identity Toolkit (asked fresh for every login: logins are rare)\n    const tok = await deps.http({\n      method: 'POST', url: OAUTH_URL,\n      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },\n      body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + encodeURIComponent(oauthAssertion(sa, deps.now())),\n    });\n    const access = tok.status === 200 && tok.body && typeof tok.body.access_token === 'string' ? tok.body.access_token : '';\n    if (!access) return await fail('server');\n    const auth = { Authorization: 'Bearer ' + access };\n    const docs = 'https://firestore.googleapis.com/v1/projects/' + sa.project_id + '/databases/(default)/documents/';\n    const pinUrl = docs + 'washerpins/' + encodeURIComponent(phone);\n    const getDoc = async url => {\n      const r = await deps.http({ method: 'GET', url, headers: auth });\n      if (r.status === 404) return { missing: true };\n      if (r.status !== 200 || !r.body || typeof r.body !== 'object') return null;\n      return { fields: fsFields(r.body), updateTime: r.body.updateTime };\n    };\n    // write only `fields`, and only if nobody else wrote the doc since we read it (two logins at once must not\n    // both count from the same `fails`). 'ok' | 'conflict' | 'error'\n    const patch = async (fields, updateTime) => {\n      const keys = Object.keys(fields);\n      const q = keys.map(k => 'updateMask.fieldPaths=' + encodeURIComponent(k)).join('&')\n        + '&currentDocument.updateTime=' + encodeURIComponent(updateTime);\n      const enc = {}; keys.forEach(k => { enc[k] = fsEncode(fields[k]) });\n      const r = await deps.http({ method: 'PATCH', url: pinUrl + '?' + q, headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: enc }) });\n      if (r.status === 200) return 'ok';\n      const st = r.body && r.body.error && r.body.error.status;\n      if (r.status === 409 || st === 'FAILED_PRECONDITION' || st === 'ABORTED') return 'conflict';\n      return 'error';\n    };\n\n    let passed = false;\n    for (let round = 0; round < 3 && !passed; round++) {\n      const d = await getDoc(pinUrl);\n      if (!d) return await fail('server');\n      const rec = d.fields || {};\n      if (d.missing || rec.active !== true || typeof rec.hash !== 'string' || typeof rec.salt !== 'string') return await fail('not_set');\n      if (typeof d.updateTime !== 'string' || !d.updateTime) return await fail('server');\n      const now = deps.now();\n      if (pinLockedUntil(rec, now)) return await fail('locked');\n      if (!pinVerify(pin, rec)) {\n        const nx = pinAfterFail(rec, now);\n        const w = await patch({ fails: nx.fails, locked_until: nx.locked_until }, d.updateTime);\n        if (w === 'conflict') continue;           // someone else tried at the same moment: count again from fresh\n        if (w !== 'ok') return await fail('server'); // never answer \"wrong PIN\" without having counted it\n        return await fail(nx.locked ? 'locked' : 'bad_pin');\n      }\n      // right PIN: only now is it worth saying whether this number may work at all\n      const wd = await getDoc(docs + 'washers/' + encodeURIComponent(phone));\n      if (!wd) return await fail('server');\n      if (wd.missing || !wd.fields || wd.fields.status !== 'approved') return await fail('not_washer');\n      if ((rec.fails || 0) !== 0 || rec.locked_until) {\n        const w = await patch({ fails: 0, locked_until: null }, d.updateTime);\n        if (w === 'conflict') continue;\n        if (w !== 'ok') return await fail('server');\n      }\n      passed = true;\n    }\n    if (!passed) return await fail('server');\n\n    // the Firebase user for this number: the same uid the phone-OTP sign-in made, so rules and data carry over\n    const it = 'https://identitytoolkit.googleapis.com/v1/projects/' + sa.project_id;\n    const json = { ...auth, 'Content-Type': 'application/json' };\n    const lookup = async () => {\n      const r = await deps.http({ method: 'POST', url: it + '/accounts:lookup', headers: json, body: JSON.stringify({ phoneNumber: [phone] }) });\n      if (r.status !== 200 || !r.body || typeof r.body !== 'object') return null;\n      const users = Array.isArray(r.body.users) ? r.body.users.filter(u => u && u.phoneNumber === phone) : [];\n      return { user: users[0] || null };\n    };\n    let found = await lookup();\n    if (!found) return await fail('server');\n    let user = found.user;\n    if (!user) {\n      const r = await deps.http({ method: 'POST', url: it + '/accounts', headers: json, body: JSON.stringify({ phoneNumber: phone }) });\n      if (r.status === 200 && r.body && typeof r.body.localId === 'string') user = { localId: r.body.localId, phoneNumber: phone };\n      else {\n        found = await lookup();            // made at the same moment by another login\n        user = found && found.user;\n      }\n      if (!user) return await fail('server');\n    }\n    if (user.disabled === true) return await fail('not_washer');\n    if (typeof user.localId !== 'string' || !user.localId) return await fail('server');\n    return { status: 200, body: { ok: true, token: customToken(sa, user.localId, deps.now()) } };\n  } catch (e) {\n    return await fail('server');\n  }\n}\n\nconst helpers = this.helpers;\nconst http = async o => {\n  try {\n    const r = await helpers.httpRequest({ method: o.method, url: o.url, headers: o.headers, body: o.body,\n      returnFullResponse: true, ignoreHttpStatusErrors: true, timeout: 10000 });\n    let b = r && r.body;\n    if (Buffer.isBuffer(b)) b = b.toString('utf8');\n    if (typeof b === 'string') { try { b = JSON.parse(b) } catch (e) { b = null } }\n    return { status: Number(r && r.statusCode) || 0, body: b };\n  } catch (e) { return { status: 0, body: null } }\n};\nconst out = await pinLogin($input.first().json.body, {\n  saRaw: $env.FIREBASE_SA_JSON, project: $env.FIREBASE_PROJECT_ID, deny: $env.PIN_DENY_PHONES,\n  http, now: () => Date.now(), jitter: () => crypto.randomInt(0, 400),\n  sleep: ms => new Promise(r => (typeof setTimeout === 'function' ? setTimeout(r, ms) : r())),\n});\nreturn [{ json: out }];"
+      },
+      "id": "pin-check",
+      "name": "PIN jaancho, token banao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "responseCode": "={{ $json.status }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "pin-reply",
+      "name": "Jawab bhejo",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "PIN login (webhook)": {
+      "main": [
+        [
+          {
+            "node": "PIN jaancho, token banao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PIN jaancho, token banao": {
+      "main": [
+        [
+          {
+            "node": "Jawab bhejo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false
+  },
+  "pinData": {}
+}

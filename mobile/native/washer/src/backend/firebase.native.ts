@@ -2,7 +2,7 @@
 // Same Firebase project as washingdaddy.com, same collections, same rules (mobile/firebase/firestore.rules).
 // The native config comes from google-services.json / GoogleService-Info.plist (see README.md).
 import { getApps } from '@react-native-firebase/app';
-import { getAuth, onAuthStateChanged, signInWithPhoneNumber, signOut } from '@react-native-firebase/auth';
+import { getAuth, onAuthStateChanged, signInWithCustomToken, signInWithPhoneNumber, signOut } from '@react-native-firebase/auth';
 import {
   getFirestore, doc, collection, query, where, onSnapshot, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
 } from '@react-native-firebase/firestore';
@@ -77,6 +77,10 @@ const AUTH_ERR: Record<string, [string, string]> = {
   'app-not-authorized': ['setup', 'App abhi Firebase mein register nahi hai. Manager ko batao.'],
   'missing-client-identifier': ['setup', 'App abhi Firebase mein register nahi hai. Manager ko batao.'],
   'missing-verification-code': ['wrong_code', '6 number ka OTP daalo.'],
+  // PIN login (custom token from n8n)
+  'invalid-custom-token': ['setup', 'Login nahi hua. Dobara try karo.'],
+  'custom-token-mismatch': ['setup', 'Login nahi hua. Dobara try karo.'],
+  'user-disabled': ['not_washer', 'Yeh number washer list mein nahi hai. Manager se baat karo.'],
 };
 const authErr = (e: any): AuthError => {
   const m = AUTH_ERR[bare(e)] || ['failed', 'Login nahi hua. Dobara try karo.'];
@@ -115,6 +119,15 @@ function makeAuth(): Auth {
         if (auth.currentUser?.phoneNumber && auth.currentUser.phoneNumber === sentTo) return;
         throw authErr(e);
       }
+    },
+    async signInWithToken(token) {
+      confirmer = null;
+      let cred: any;
+      try { cred = await signInWithCustomToken(auth, token) } catch (e) { throw authErr(e) }
+      // onAuthStateChanged may land a moment later; phone() must already be right for the next step
+      user = cred?.user ?? auth.currentUser;
+      // the rules know a washer only by the phone number on his Firebase user: without it nothing would work
+      if (!user?.phoneNumber) { try { await signOut(auth) } catch (e) { } throw authErr({ code: 'auth/invalid-custom-token' }) }
     },
     async signOut() { confirmer = null; try { await signOut(auth) } catch (e) { } },
     async idToken() { try { return auth.currentUser ? await auth.currentUser.getIdToken() : null } catch (e) { return null } },

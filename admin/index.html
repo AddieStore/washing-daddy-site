@@ -92,6 +92,14 @@ select{flex:1 1 100%;min-width:0}
 .filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.filters select,.filters .field{flex:1 1 140px;width:auto}
 .link{background:none;border:0;color:var(--violet);font-weight:700;padding:8px 0;font-size:14px}
 @media (prefers-color-scheme:dark){.link{color:var(--gold)}}
+/* Set PIN dialog */
+.dlg{position:fixed;inset:0;z-index:30;background:rgba(26,10,51,.55);display:grid;place-items:center;padding:16px}
+.dlg .box{background:var(--bg);color:var(--fg);width:100%;max-width:400px;border-radius:24px;padding:22px 20px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.dlg h3{font-family:var(--h);font-weight:400;font-size:26px;margin:0 0 4px;letter-spacing:.01em}
+.dlg .pinin{letter-spacing:.4em;text-align:center;font-size:24px;font-weight:800}
+.dlg .pinin::placeholder{letter-spacing:normal;font-size:16px;font-weight:600}
+.dlg .shown{font-family:ui-monospace,Menlo,monospace;font-size:40px;font-weight:800;letter-spacing:.25em;text-align:center;background:var(--tile);border:2px dashed var(--gold);border-radius:16px;padding:14px 8px;margin:12px 0;user-select:all}
+.pinst{font-size:12px;font-weight:700}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -124,6 +132,7 @@ select{flex:1 1 100%;min-width:0}
   </main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="dlg" id="pinDlg" role="dialog" aria-modal="true" aria-labelledby="pinTitle" hidden><div class="box" id="pinBox"></div></div>
 
 <script src="wd-sync.js"></script>
 <script>
@@ -188,6 +197,7 @@ function gateCode(d) {
 
 /* ---------------- data ---------------- */
 let W = [], C = [], N = [], X = [], K = {}, DOCS = {}, WAIT = {}, OPEN = new Set(), tab = 'washers', unsubs = [], q = '';
+let PINS = {}, PINERR = false;   // washerpins/{+91number}: sign-in PIN status per washer (phone + PIN login, n8n workflow 12)
 function stop() { unsubs.forEach(u => { try { u() } catch (e) {} }); unsubs = [] }
 
 async function signedIn(u) {
@@ -210,6 +220,8 @@ async function signedIn(u) {
   unsubs.push(db.collection('newcars').onSnapshot(sn => { N = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
   unsubs.push(db.collection('ondemand').onSnapshot(sn => { X = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
   unsubs.push(db.collection('complaints').onSnapshot(sn => { Q = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => { console.warn(e); QERR = true; render() }));
+  // PIN status only (salt/hash are never shown); fails until the washerpins rule is published
+  unsubs.push(db.collection('washerpins').onSnapshot(sn => { PINS = {}; PINERR = false; sn.docs.forEach(d => { const x = d.data() || {}; PINS[d.id] = { active: x.active === true, locked_until: x.locked_until || null, fails: x.fails || 0, updated_at: x.updated_at || '' } }); render() }, e => { console.warn('washerpins', e && e.code); PINERR = true; render() }));
 }
 WDAuth.ready().then(signedIn);
 $('#signOut').onclick = async () => { stop(); await WDAuth.signOut(); signedIn(null) };
@@ -229,14 +241,99 @@ function washerCard(w) {
   const pill = st === 'approved' ? '<span class="pill a">Approved</span>' : st === 'blocked' ? '<span class="pill b">Blocked</span>' : '<span class="pill p">Waiting</span>';
   let acts = '';
   if (st === 'pending') acts = `${roundSelect('r-' + k, '')}<button class="btn go" data-a="approve" data-id="${k}">Approve</button><button class="btn no" data-a="block" data-id="${k}">Reject</button>`;
-  else if (st === 'approved') acts = `${roundSelect('r-' + k, w.route_id)}<button class="btn ghost" data-a="round" data-id="${k}">Change round</button><button class="btn no" data-a="block" data-id="${k}">Block</button>`;
+  else if (st === 'approved') acts = `${roundSelect('r-' + k, w.route_id)}<button class="btn ghost" data-a="round" data-id="${k}">Change round</button><button class="btn no" data-a="block" data-id="${k}">Block</button>${pinActs(w)}`;
   else acts = `${roundSelect('r-' + k, w.route_id)}<button class="btn go" data-a="approve" data-id="${k}">Approve again</button><button class="btn ghost" data-a="delete" data-id="${k}">Remove</button>`;
   return `<div class="card ${st === 'pending' ? 'pending' : ''}"><div class="row"><div class="av">${esc((w.name || '?')[0].toUpperCase())}</div><div class="grow">
     <div class="nm">${esc(w.name || 'No name')} ${pill}</div>
     <div class="meta">${contact(w.phone || w.id)}</div>
     ${w.ref ? `<div class="meta">Friend code <b>${esc(w.ref)}</b>${referrerOf(w.ref) ? ' · from <b>' + esc(referrerOf(w.ref)) + '</b>' : ''}</div>` : ''}
     <div class="meta">${esc(w.area || '')}${w.area ? ' · ' : ''}${st === 'approved' && ROUNDS[w.route_id] ? esc(ROUNDS[w.route_id]) : st === 'approved' ? '<b style="color:var(--red)">No round yet</b>' : 'Signed up ' + esc(when(w.created_at))}</div>
+    ${st === 'approved' ? pinLine(w) : ''}
     </div></div><div class="acts">${acts}</div>${st === 'approved' ? idPanel(w) : ''}</div>`;
+}
+
+/* ---- sign-in PIN (washerpins/{+91number}) ----
+   The washer logs in with phone + PIN (no SMS). This page makes the salt and the PBKDF2-SHA256 hash in the browser and
+   stores only those; the PIN itself is shown once in the dialog and never saved, sent or logged anywhere. */
+const PIN_ITER = 150000;
+const NO_PIN = ['+917701808924'];   // admins: their number is their admin right, so they never get a PIN
+const pinable = id => /^\+91[6-9]\d{9}$/.test(String(id || '')) && !NO_PIN.includes(id);
+function pinLine(w) {
+  if (!pinable(w.id)) return '';
+  if (PINERR) return '<div class="meta pinst">Sign-in PIN: unavailable (publish the washerpins Firestore rule)</div>';
+  const p = PINS[w.id];
+  if (!p) return '<div class="meta pinst">Sign-in PIN: <span style="color:var(--fg3)">not set</span> (OTP only)</div>';
+  if (!p.active) return '<div class="meta pinst">Sign-in PIN: <span style="color:var(--red)">off</span></div>';
+  const lockT = Date.parse(p.locked_until || '');
+  if (lockT > Date.now()) return `<div class="meta pinst">Sign-in PIN: <span style="color:var(--red)">locked till ${esc(when(p.locked_until))}</span> (5 wrong tries). Set a new PIN to unlock now.</div>`;
+  return `<div class="meta pinst">Sign-in PIN: <span style="color:var(--ok)">on</span> · set ${esc(when(p.updated_at))}${p.fails ? ' · ' + esc(p.fails) + ' wrong tries' : ''}</div>`;
+}
+function pinActs(w) {
+  if (!pinable(w.id) || PINERR) return '';
+  const k = esc(w.id), p = PINS[w.id];
+  return `<button class="btn ghost" data-a="pinset" data-id="${k}">${p && p.active ? 'New PIN' : 'Set PIN'}</button>` + (p && p.active ? `<button class="btn no" data-a="pinoff" data-id="${k}">Disable PIN</button>` : '');
+}
+const b64 = buf => { let s = ''; new Uint8Array(buf).forEach(c => { s += String.fromCharCode(c) }); return btoa(s) };
+async function pinRecord(pin) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: PIN_ITER }, key, 256);
+  return { salt: b64(salt), hash: b64(bits), active: true, fails: 0, locked_until: null, updated_at: nowIST() };
+}
+// 6 random digits, uniform (rejection sampling), never a weak one
+function randomPin() {
+  for (;;) {
+    const x = crypto.getRandomValues(new Uint32Array(1))[0];
+    if (x >= 4294000000) continue;
+    const pin = String(x % 1000000).padStart(6, '0');
+    if (!weakPin(pin)) return pin;
+  }
+}
+// all the same digit, or a straight run up/down (1234, 987654, 0123...): the first things anyone tries
+function weakPin(pin) {
+  if (/^(\d)\1+$/.test(pin)) return true;
+  const d = [...pin].map(Number), up = d.every((v, i) => !i || v === (d[i - 1] + 1) % 10), down = d.every((v, i) => !i || v === (d[i - 1] + 9) % 10);
+  return up || down;
+}
+function closePin() { const dl = $('#pinDlg'); $('#pinBox').innerHTML = ''; dl.hidden = true; document.removeEventListener('keydown', pinEsc) }
+function pinEsc(e) { if (e.key === 'Escape') closePin() }
+function openPin(w) {
+  const dl = $('#pinDlg'), box = $('#pinBox'), name = esc(w.name || 'this washer');
+  box.innerHTML = `<h3 id="pinTitle">Sign-in PIN</h3>
+    <p class="meta" style="margin:0 0 12px">For <b>${name}</b> · ${nice(w.id)}. They sign in with this number and the PIN, no SMS.
+      A new PIN replaces the old one and unlocks the account.</p>
+    <input class="field pinin" id="pinIn" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="6" placeholder="4-6 digits" aria-label="New PIN, 4 to 6 digits">
+    <div class="acts" style="margin-top:8px"><button class="link" id="pinGen" type="button">Make a random 6-digit PIN</button></div>
+    <div class="err" id="pinErr"></div>
+    <div class="acts" style="margin-top:4px"><button class="btn go" id="pinSave">Save PIN</button><button class="btn ghost" id="pinCancel">Cancel</button></div>`;
+  dl.hidden = false; document.addEventListener('keydown', pinEsc);
+  const inp = $('#pinIn'); inp.focus();
+  inp.oninput = () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 6) };
+  inp.onkeydown = e => { if (e.key === 'Enter') $('#pinSave').click() };
+  $('#pinGen').onclick = () => { inp.value = randomPin(); inp.focus() };
+  $('#pinCancel').onclick = closePin;
+  dl.onclick = e => { if (e.target === dl) closePin() };
+  $('#pinSave').onclick = async () => {
+    const pin = inp.value;
+    if (!/^\d{4,6}$/.test(pin)) { $('#pinErr').textContent = 'The PIN must be 4 to 6 digits.'; inp.focus(); return }
+    if (weakPin(pin)) { $('#pinErr').textContent = 'Too easy to guess. Use another PIN or make a random one.'; inp.focus(); return }
+    const b = $('#pinSave'); b.disabled = true; b.textContent = 'Saving…';
+    try {
+      await db.doc('washerpins/' + w.id).set(await pinRecord(pin));
+    } catch (e) {
+      console.warn('pin save', e && e.code);   // never the PIN
+      b.disabled = false; b.textContent = 'Save PIN';
+      $('#pinErr').textContent = e && e.code === 'invalid_argument' ? 'Not allowed. Publish the washerpins Firestore rule first.' : "Didn't save. Check the internet.";
+      return;
+    }
+    // shown once: tell the washer now; it is not stored anywhere and cannot be shown again
+    box.innerHTML = `<h3 id="pinTitle">PIN saved</h3>
+      <p class="meta" style="margin:0">Tell <b>${name}</b> this PIN now (call or in person). It will not be shown again.</p>
+      <div class="shown" id="pinShown">${esc(pin)}</div>
+      <p class="meta" style="margin:0 0 12px">Phone ${nice(w.id)}. 5 wrong tries lock it for 15 minutes.</p>
+      <button class="btn go wide" id="pinDone">Done</button>`;
+    $('#pinDone').onclick = closePin; $('#pinDone').focus();
+  };
 }
 
 // kit, clothes and ID records for an approved washer. The washer sees these in WD Partner > Profile (read-only for them).
@@ -540,6 +637,13 @@ document.addEventListener('click', e => {
       patch = { status: 'rejected', note: why.trim().slice(0, 120), reviewed_at: nowIST() };
     }
     act(b, async () => { await db.doc('washerdocs/' + id + '_' + kind).update(patch); DOCS[id][kind] = { ...d, ...patch }; showDocs(id) }, a === 'docok' ? 'Marked verified' : 'Marked rejected');
+  } else if (a === 'pinset') {
+    if (!w || !pinable(id)) return;
+    openPin(w);
+  } else if (a === 'pinoff') {
+    if (!w || !pinable(id)) return;
+    if (!confirm(`Turn off the sign-in PIN for ${w.name || 'this washer'}? They can still sign in with OTP.`)) return;
+    act(b, () => db.doc('washerpins/' + id).update({ active: false, updated_at: nowIST() }), 'PIN turned off');
   } else if (a === 'approve') {
     const r = round(); if (!r) { toast('Choose a round first'); document.getElementById('r-' + id)?.focus(); return }
     act(b, () => db.doc('washers/' + id).update({ status: 'approved', route_id: r, decided_at: nowIST(), decided_by: WDAuth.phone(), updated_at: nowIST() }), `${w?.name || 'Washer'} approved. Their app opens now.`);

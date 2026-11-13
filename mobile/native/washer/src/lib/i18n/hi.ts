@@ -773,4 +773,24 @@ Object.assign(HI, {
   "Customer feedback Manager ke paas jaata hai. Woh dekh ke theek karte hain.": "ग्राहक फ़ीडबैक मैनेजर के पास जाता है। वह देखकर ठीक करते हैं।",
 });
 
+// phone + PIN login (Nov 2026)
+Object.assign(HI, {
+  "Apna phone number aur PIN daalo. PIN manager deta hai.": "अपना फ़ोन नंबर और PIN डालो। PIN मैनेजर देता है।",
+  "4 se 6 number ka PIN daalo": "4 से 6 नंबर का PIN डालो",
+  "4-6 number": "4-6 नंबर",
+  "OTP se login karo": "OTP से लॉगिन करो",
+  "PIN se login karo": "PIN से लॉगिन करो",
+  "Naye washer ho? OTP se login karo, naam bharo, manager approve karenge.": "नए वॉशर हो? OTP से लॉगिन करो, नाम भरो, मैनेजर अप्रूव करेंगे।",
+  "Test version. Washer chuno, PIN 1234 daalo.": "टेस्ट वर्ज़न। वॉशर चुनो, PIN 1234 डालो।",
+  "PIN sahi hai!": "PIN सही है!",
+  "PIN galat hai. Dobara daalo.": "PIN गलत है। दोबारा डालो।",
+  "Bahut baar galat PIN. 15 minute baad try karo.": "बहुत बार गलत PIN। 15 मिनट बाद कोशिश करो।",
+  "Aapka PIN abhi set nahi hai. Manager se PIN lo.": "आपका PIN अभी सेट नहीं है। मैनेजर से PIN लो।",
+  "Yeh number washer list mein nahi hai. Manager se baat karo.": "यह नंबर वॉशर लिस्ट में नहीं है। मैनेजर से बात करो।",
+  "Abhi login nahi ho raha. Thodi der baad try karo.": "अभी लॉगिन नहीं हो रहा। थोड़ी देर बाद कोशिश करो।",
+  "Internet nahi hai. Net dekh ke dobara try karo.": "इंटरनेट नहीं है। नेट देखकर दोबारा कोशिश करो।",
+  "PIN galat hai. Test mein 1234 daalo.": "PIN गलत है। टेस्ट में 1234 डालो।",
+  "Login nahi hua. Dobara try karo.": "लॉगिन नहीं हुआ। दोबारा कोशिश करो।",
+});
+
 export { HI as T, HI_PATTERNS as P };

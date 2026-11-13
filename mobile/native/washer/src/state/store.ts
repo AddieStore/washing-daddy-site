@@ -11,7 +11,7 @@ import { backend, type Data, type DbError, type Unsub } from '../backend';
 import { isoIST, dateIST, addDaysStr, daysInMonth } from '../lib/time';
 import { PLAN, TASK, tasksFor, normReg, isPlan, type TaskKey } from '../lib/schedule';
 import {
-  WASHERS, PHONE_TO_WASHER, DEMO_ROSTER, BOOK_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
+  WASHERS, PHONE_TO_WASHER, DEMO_ROSTER, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
   type Car, type Wash, type Req, type Job, type WasherDoc, type KitItem, type KitKind, type WasherInfo, type Photo,
 } from '../lib/data';
 import { setLang, t } from '../lib/i18n';
@@ -22,6 +22,7 @@ import { lateClips } from '../lib/hindiNumber';
 import { setupWashAlerts, alertsReady, scheduleWashAlerts, cancelWashAlerts, cancelAllWashAlerts, scheduleLateAlert, cancelLateAlert, scheduleMorningAlarm } from '../lib/washAlerts';
 import { ui } from '../ui/bus';
 import { registerPushToken, clearPushToken } from '../lib/pushToken';
+import { requestPinToken, PIN_MSG, isPin } from '../lib/pinLogin';
 
 const { db, auth } = backend;
 // a wash can only be closed once this many photos of the car are taken
@@ -81,6 +82,7 @@ export type AuthStep = 'loading' | 'phone' | 'otp' | 'join' | 'wait' | 'blocked'
 export const view = {
   authStep: 'loading' as AuthStep,
   otpPhone: '',
+  loginMode: 'pin' as 'pin' | 'otp',   // the sign-in card: phone + PIN (default) or the SMS OTP flow
   bookState: 'loading' as 'loading' | 'live' | 'cached' | 'empty' | 'demo',
   syncMode: 'connecting' as 'connecting' | 'live' | 'demo',
   readOnly: false,
@@ -647,7 +649,7 @@ export const act = {
     bookCars = null; R = {}; RT = {}; view.pendingPhotos = {}; view.jobAlert = null; view.readOnly = false;
     if (REAL) { NewCar.mine = []; Object.keys(ROSTER).forEach(k => delete ROSTER[k]) }
     if (REAL) await Promise.race([clearPushToken(), new Promise(r => setTimeout(r, 4000))]);   // needs the sign-in, so before signOut
-    await auth.signOut(); view.authStep = 'phone'; emit();
+    await auth.signOut(); view.authStep = 'phone'; view.loginMode = 'pin'; emit();
     return true;
   },
 
@@ -659,12 +661,26 @@ export const act = {
   // onOk runs once the code is accepted (the screen's success tick), before anything else changes
   async confirmOtp(code: string, onOk?: () => Promise<void>) {
     await auth.confirm(code);
-    if (onOk) await onOk().catch(() => {});
-    const next = REAL ? afterRealLogin
-      : async () => { S.session = { washerId: PHONE_TO_WASHER[view.otpPhone], at: isoIST() }; save(); enterApp() };
-    if (!isOnboarded()) { startOnboarding(next); return }
-    await next();
+    await afterSignIn(onOk);
   },
+  // Phone + PIN (no SMS): n8n checks the PIN and sends a sign-in token for this number's Firebase user; from there
+  // it is the same path as an accepted OTP. The demo takes PIN 1234 for the demo washers.
+  async pinLogin(p10: string, pin: string, onOk?: () => Promise<void>) {
+    const no = (code: keyof typeof PIN_MSG) => Object.assign(new Error(PIN_MSG[code]), { code, hi: PIN_MSG[code] });
+    if (REAL) {
+      const r = await requestPinToken(PIN_URL, p10, pin);
+      if (!r.ok) throw no(r.code);
+      await auth.signInWithToken(r.token);
+    } else {
+      await new Promise(res => setTimeout(res, 400));
+      if (!PHONE_TO_WASHER[p10]) throw no('not_washer');
+      if (!isPin(pin) || pin !== '1234') throw Object.assign(new Error(''), { code: 'bad_pin', hi: 'PIN galat hai. Test mein 1234 daalo.' });
+      await auth.signInWithToken('demo:' + p10);
+    }
+    view.otpPhone = p10;
+    await afterSignIn(onOk);
+  },
+  setLoginMode(m: 'pin' | 'otp') { if (view.loginMode !== m) { view.loginMode = m; emit() } },
   async join(name: string, area: string, ref: string) {
     const phone = auth.phone()!; const doc: Data = { phone, name, area, status: 'pending', created_at: isoIST(), updated_at: isoIST() };
     // the code rides along when the rules accept it; sign-up still goes through without it
@@ -676,6 +692,15 @@ export const act = {
   // remember how many cars were done on a day (the Paisa week bars read this)
   noteHist(day: string, n: number) { S.hist = S.hist || {}; if (S.hist[day] !== n) { S.hist[day] = n; save(); emit() } },
 };
+
+// after an accepted OTP or PIN: onboarding once per number, then washers/{+91number} decides join/wait/in
+async function afterSignIn(onOk?: () => Promise<void>) {
+  if (onOk) await onOk().catch(() => {});
+  const next = REAL ? afterRealLogin
+    : async () => { S.session = { washerId: PHONE_TO_WASHER[view.otpPhone], at: isoIST() }; save(); enterApp() };
+  if (!isOnboarded()) { startOnboarding(next); return }
+  await next();
+}
 
 /* ---------- first-run onboarding: once per phone number, between the OTP and join/wait/in ---------- */
 let afterOnboard: (() => Promise<void>) | null = null;

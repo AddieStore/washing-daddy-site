@@ -1,4 +1,4 @@
-// Sign-in: the poster, the card (phone, OTP, join, waiting) and the "washed cars" slideshow.
+// Sign-in: the poster, the card (phone + PIN by default, or phone + SMS OTP; join, waiting) and the "washed cars" slideshow.
 // Port of renderAuth + #auth in the web washer app. 2026 look: violet brand header (logo, poster, photos) on top,
 // then the form on a white DashCard over the light lavender page; ticker and slideshow keep the brand colours.
 import React, { useEffect, useRef, useState } from 'react';
@@ -119,18 +119,153 @@ const errOf = (e: any) => e?.hi ? t(e.hi) : e?.message || t('Nahi gaya. Internet
 const Input = Field;
 
 /* ---------------- phone ---------------- */
-function PhoneStep() {
+// the +91 phone box (PIN and OTP sign-in both start with it)
+function PhoneField({ value, onChange, onSubmit }: { value: string; onChange: (v: string) => void; onSubmit: () => void }) {
+  const { c } = useTheme();
+  const [focus, setFocus] = useState(false);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 0, paddingLeft: 14, paddingRight: 8, backgroundColor: c.inputBg, borderWidth: 1, borderColor: focus ? c.accent : c.line, marginBottom: 12 }}>
+      <Text style={{ fontFamily: F.bold, fontSize: 16, color: c.fg3 }}>+91</Text>
+      <TextInput
+        value={value}
+        onChangeText={x => onChange(x.replace(/\D/g, '').slice(0, 10))}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
+        onSubmitEditing={onSubmit}
+        keyboardType="number-pad"
+        inputMode="numeric"
+        autoComplete="tel-national"
+        textContentType="telephoneNumber"
+        maxLength={10}
+        placeholder="98xxxxxxxx"
+        placeholderTextColor={c.fg3}
+        accessibilityLabel="Phone number"
+        style={[{ flex: 1, minWidth: 0, fontFamily: F.medium, fontSize: 16, letterSpacing: 0.5, paddingVertical: 11, color: c.fg }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
+      />
+    </View>
+  );
+}
+// 10 digits starting 6-9, or the Hinglish reason it is not
+const phoneErr = (v: string) => (v.length !== 10 ? t('10 number ka phone daalo') : !/^[6-9]/.test(v) ? t('Number sahi nahi lag raha.') : '');
+
+// test version only: tap a demo washer instead of typing his number
+function DemoWashers({ onPick }: { onPick: (phone: string) => void }) {
   const { c, dark } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
+      {Object.values(WASHERS).map(w => (
+        <Pressy
+          key={w.id}
+          scaleTo={0.96}
+          accessibilityLabel={w.name}
+          onPress={() => { ui.haptic(6); onPick(w.phone) }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 16, backgroundColor: dark ? 'rgba(139,92,246,0.24)' : 'rgba(84,9,218,0.12)', minHeight: 56, minWidth: 140 }}
+        >
+          {w.img
+            ? <Image source={IMG[w.img]} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: c.tile2 }} resizeMode="cover" />
+            : <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: F.hero, fontSize: 20, color: '#fff' }}>{w.name[0]}</Text></View>}
+          <View>
+            <Text style={{ fontFamily: F.bold, fontSize: 15, color: c.fg }}>{w.name}</Text>
+            <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{fmtPhone(w.phone)}</Text>
+          </View>
+        </Pressy>
+      ))}
+    </View>
+  );
+}
+
+/* ---------------- phone + PIN (the default sign-in, no SMS) ---------------- */
+function PinStep() {
+  const { c } = useTheme();
+  const [ph, setPh] = useState('');
+  const [pin, setPin] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [ok, setOk] = useState(false);
+  const [focus, setFocus] = useState(false);
+  const pinRef = useRef<React.ComponentRef<typeof TextInput>>(null);
+  const busyRef = useRef(false);
+  const shake = useRef(new Animated.Value(0)).current;
+  const rm = useReducedMotion();
+
+  const tick = () => new Promise<void>(res => { Keyboard.dismiss(); setOk(true); ui.haptic([10, 30, 10]); setTimeout(res, rm ? 300 : 900) });
+  const go = async () => {
+    if (busyRef.current) return;
+    const v = ph.replace(/\D/g, '');
+    const pe = phoneErr(v); if (pe) { setErr(pe); return }
+    if (!/^\d{4,6}$/.test(pin)) { setErr(t('4 se 6 number ka PIN daalo')); pinRef.current?.focus(); return }
+    busyRef.current = true; setBusy(true); setErr('');
+    try { await act.pinLogin(v, pin, tick) } catch (e: any) {
+      busyRef.current = false; setBusy(false); setOk(false);
+      setErr(errOf(e)); ui.haptic([30, 40, 30]);
+      shake.setValue(0);
+      Animated.sequence([6, -6, 4, -4, 0].map(x => Animated.timing(shake, { toValue: x, duration: 70, useNativeDriver: native }))).start();
+      setPin(''); if (e?.code !== 'locked') pinRef.current?.focus();
+    }
+  };
+  return (
+    <View>
+      <CardTitle>{t('Namaste! 👋')}</CardTitle>
+      <CardText>{t('Apna phone number aur PIN daalo. PIN manager deta hai.')}</CardText>
+      <PhoneField value={ph} onChange={setPh} onSubmit={() => pinRef.current?.focus()} />
+      <Animated.View style={{ transform: [{ translateX: shake }] }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingLeft: 14, paddingRight: 8, backgroundColor: c.inputBg, borderWidth: 1, borderColor: focus ? c.accent : c.line, marginBottom: 12 }}>
+          <Text style={{ fontFamily: F.bold, fontSize: 14, color: c.fg3 }}>PIN</Text>
+          <TextInput
+            ref={pinRef}
+            value={pin}
+            onChangeText={x => setPin(x.replace(/\D/g, '').slice(0, 6))}
+            onFocus={() => setFocus(true)}
+            onBlur={() => setFocus(false)}
+            onSubmitEditing={() => { void go() }}
+            secureTextEntry
+            keyboardType="number-pad"
+            inputMode="numeric"
+            autoComplete="off"
+            autoCorrect={false}
+            importantForAutofill="no"
+            textContentType="none"
+            maxLength={6}
+            editable={!ok}
+            placeholder={t('4-6 number')}
+            placeholderTextColor={c.fg3}
+            accessibilityLabel="PIN"
+            style={[{ flex: 1, minWidth: 0, fontFamily: pin ? F.bold : F.medium, fontSize: pin ? 18 : 16, letterSpacing: pin ? 4 : 0.5, paddingVertical: pin ? 10 : 11, color: c.fg }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
+          />
+        </View>
+      </Animated.View>
+      <Err msg={err} />
+      <Button label={busy ? t('Check ho raha hai…') : t('Andar chalo')} iconRight={busy ? undefined : 'arrow'} variant="violet" disabled={busy} onPress={() => { void go() }} />
+      <View style={{ alignItems: 'center' }}><LinkButton label={t('OTP se login karo')} color={c.fg2} onPress={() => act.setLoginMode('otp')} /></View>
+      {REAL ? (
+        <Hint style={{ marginTop: 2 }}>{t('Naye washer ho? OTP se login karo, naam bharo, manager approve karenge.')}</Hint>
+      ) : (
+        <>
+          <Hint style={{ marginTop: 2 }}>{t('Test version. Washer chuno, PIN 1234 daalo.')}</Hint>
+          <DemoWashers onPick={p => { setPh(p); setErr(''); setTimeout(() => pinRef.current?.focus(), 50) }} />
+        </>
+      )}
+      {ok ? (
+        <View accessibilityLiveRegion="polite" style={{ position: 'absolute', left: -6, right: -6, top: -6, bottom: -6, borderRadius: 16, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+          <SuccessTick size={84} />
+          <Text style={{ fontFamily: F.black, fontSize: 22, color: c.fg }}>{t('PIN sahi hai!')}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/* ---------------- phone for the SMS OTP (secondary) ---------------- */
+function PhoneStep() {
+  const { c } = useTheme();
   const [ph, setPh] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  const [focus, setFocus] = useState(false);
 
   const go = async (raw: string) => {
     if (busy) return;
     const v = raw.replace(/\D/g, '');
-    if (v.length !== 10) { setErr(t('10 number ka phone daalo')); return }
-    if (!/^[6-9]/.test(v)) { setErr(t('Number sahi nahi lag raha.')); return }
+    const pe = phoneErr(v); if (pe) { setErr(pe); return }
     setErr(''); setBusy(true);
     try { await act.sendOtp(v) } catch (e: any) { setBusy(false); setErr(errOf(e)) }
   };
@@ -138,51 +273,16 @@ function PhoneStep() {
     <View>
       <CardTitle>{t('Namaste! 👋')}</CardTitle>
       <CardText>{t('Apna phone number daalo. OTP aayega.')}</CardText>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingVertical: 0, paddingLeft: 14, paddingRight: 8, backgroundColor: c.inputBg, borderWidth: 1, borderColor: focus ? c.accent : c.line, marginBottom: 12 }}>
-        <Text style={{ fontFamily: F.bold, fontSize: 16, color: c.fg3 }}>+91</Text>
-        <TextInput
-          value={ph}
-          onChangeText={x => setPh(x.replace(/\D/g, '').slice(0, 10))}
-          onFocus={() => setFocus(true)}
-          onBlur={() => setFocus(false)}
-          onSubmitEditing={() => go(ph)}
-          keyboardType="number-pad"
-          inputMode="numeric"
-          autoComplete="tel-national"
-          textContentType="telephoneNumber"
-          maxLength={10}
-          placeholder="98xxxxxxxx"
-          placeholderTextColor={c.fg3}
-          accessibilityLabel="Phone number"
-          style={[{ flex: 1, minWidth: 0, fontFamily: F.medium, fontSize: 16, letterSpacing: 0.5, paddingVertical: 11, color: c.fg }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
-        />
-      </View>
+      <PhoneField value={ph} onChange={setPh} onSubmit={() => go(ph)} />
       <Err msg={err} />
       <Button label={busy ? t('Bhej raha hoon…') : t('OTP bhejo')} iconRight={busy ? undefined : 'arrow'} variant="violet" disabled={busy} onPress={() => go(ph)} />
+      <View style={{ alignItems: 'center' }}><LinkButton label={t('PIN se login karo')} color={c.fg2} onPress={() => act.setLoginMode('pin')} /></View>
       {REAL ? (
-        <Hint>{t('Naye washer ho? Apna number daalo. OTP ke baad naam bharo, manager approve karenge.')}</Hint>
+        <Hint style={{ marginTop: 2 }}>{t('Naye washer ho? Apna number daalo. OTP ke baad naam bharo, manager approve karenge.')}</Hint>
       ) : (
         <>
-          <Hint>{t('Test version. Washer chuno:')}</Hint>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
-            {Object.values(WASHERS).map(w => (
-              <Pressy
-                key={w.id}
-                scaleTo={0.96}
-                accessibilityLabel={w.name}
-                onPress={() => { setPh(w.phone); ui.haptic(6); void go(w.phone) }}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 16, backgroundColor: dark ? 'rgba(139,92,246,0.24)' : 'rgba(84,9,218,0.12)', minHeight: 56, minWidth: 140 }}
-              >
-                {w.img
-                  ? <Image source={IMG[w.img]} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: c.tile2 }} resizeMode="cover" />
-                  : <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: F.hero, fontSize: 20, color: '#fff' }}>{w.name[0]}</Text></View>}
-                <View>
-                  <Text style={{ fontFamily: F.bold, fontSize: 15, color: c.fg }}>{w.name}</Text>
-                  <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{fmtPhone(w.phone)}</Text>
-                </View>
-              </Pressy>
-            ))}
-          </View>
+          <Hint style={{ marginTop: 2 }}>{t('Test version. Washer chuno:')}</Hint>
+          <DemoWashers onPick={p => { setPh(p); void go(p) }} />
         </>
       )}
     </View>
@@ -478,8 +578,8 @@ export default function Auth() {
             </View>
             <Rise delay={270} style={{ marginHorizontal: 16, marginTop: -30 }}>
               <DashCard style={{ paddingTop: 22, paddingHorizontal: 18, paddingBottom: 16 }}>
-                <Rise key={step + view.otpPhone} distance={12} duration={380}>
-                  {step === 'phone' ? <PhoneStep />
+                <Rise key={step + view.otpPhone + (step === 'phone' ? view.loginMode : '')} distance={12} duration={380}>
+                  {step === 'phone' ? (view.loginMode === 'pin' ? <PinStep /> : <PhoneStep />)
                     : step === 'otp' ? <OtpStep key={'otp' + view.otpPhone} />
                     : step === 'join' ? <JoinStep />
                     : <WaitStep key={step} step={step} />}

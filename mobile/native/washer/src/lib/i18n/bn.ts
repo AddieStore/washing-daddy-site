@@ -762,3 +762,23 @@ Object.assign(T, {
   "Pichhle mahine": "আগের মাস",
   "Customer feedback Manager ke paas jaata hai. Woh dekh ke theek karte hain.": "গ্রাহকের ফিডব্যাক ম্যানেজারের কাছে যায়। উনি দেখে ঠিক করেন।",
 });
+
+// phone + PIN login (Nov 2026)
+Object.assign(T, {
+  "Apna phone number aur PIN daalo. PIN manager deta hai.": "তোমার ফোন নম্বর আর PIN দাও। PIN ম্যানেজার দেন।",
+  "4 se 6 number ka PIN daalo": "৪ থেকে ৬ ডিজিটের PIN দাও",
+  "4-6 number": "৪-৬ ডিজিট",
+  "OTP se login karo": "OTP দিয়ে লগইন করো",
+  "PIN se login karo": "PIN দিয়ে লগইন করো",
+  "Naye washer ho? OTP se login karo, naam bharo, manager approve karenge.": "নতুন ওয়াশার? OTP দিয়ে লগইন করো, নাম লেখো, ম্যানেজার অনুমোদন করবেন।",
+  "Test version. Washer chuno, PIN 1234 daalo.": "টেস্ট ভার্সন। ওয়াশার বেছে নাও, PIN 1234 দাও।",
+  "PIN sahi hai!": "PIN ঠিক আছে!",
+  "PIN galat hai. Dobara daalo.": "PIN ভুল। আবার দাও।",
+  "Bahut baar galat PIN. 15 minute baad try karo.": "অনেকবার ভুল PIN। ১৫ মিনিট পরে চেষ্টা করো।",
+  "Aapka PIN abhi set nahi hai. Manager se PIN lo.": "তোমার PIN এখনও সেট হয়নি। ম্যানেজারের কাছ থেকে PIN নাও।",
+  "Yeh number washer list mein nahi hai. Manager se baat karo.": "এই নম্বর ওয়াশার লিস্টে নেই। ম্যানেজারের সাথে কথা বলো।",
+  "Abhi login nahi ho raha. Thodi der baad try karo.": "এখন লগইন হচ্ছে না। একটু পরে চেষ্টা করো।",
+  "Internet nahi hai. Net dekh ke dobara try karo.": "ইন্টারনেট নেই। নেট দেখে আবার চেষ্টা করো।",
+  "PIN galat hai. Test mein 1234 daalo.": "PIN ভুল। টেস্টে 1234 দাও।",
+  "Login nahi hua. Dobara try karo.": "লগইন হয়নি। আবার চেষ্টা করো।",
+});

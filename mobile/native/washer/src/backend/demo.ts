@@ -1,5 +1,5 @@
 // In-memory stand-in for Firestore and phone sign-in. The preview runs on this, so every tap behaves like
-// the real app (writes show up in listeners) without touching anyone's data. Test login: OTP 1234.
+// the real app (writes show up in listeners) without touching anyone's data. Test login: OTP 1234, or PIN 1234.
 import type { Auth, Backend, Data, Db, DocRef, DocSnap, Op, Query, QuerySnap } from './types';
 
 const test = (a: unknown, op: Op, b: unknown) =>
@@ -58,6 +58,12 @@ export function demoAuth(): Auth {
     async confirm(code) {
       if (code !== '1234') throw fail('wrong_code', 'OTP galat hai. Test mein 1234 daalo.');
       phone = pending; pending = null; subs.forEach(f => f(phone));
+    },
+    // the demo has no server: the store checks the demo PIN (1234) and hands over 'demo:<10 digits>'
+    async signInWithToken(token) {
+      const m = /^demo:([6-9]\d{9})$/.exec(token);
+      if (!m) throw fail('setup', 'Login nahi hua. Dobara try karo.');
+      phone = '+91' + m[1]; pending = null; subs.forEach(f => f(phone));
     },
     async signOut() { phone = null; subs.forEach(f => f(null)) },
     async idToken() { return null },

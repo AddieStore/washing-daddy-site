@@ -46,7 +46,9 @@ export const PHONE_TO_WASHER: Record<string, string> = Object.fromEntries(Object
 
 export const OWNER_PHONE = '+917701808924';
 export const OWNER_WA = '917701808924';
-export const BOOK_URL = 'https://n8n.washingdaddy.com/webhook/wd-washer-cars';
+const N8N_HOOKS = 'https://n8n.washingdaddy.com/webhook/';
+export const BOOK_URL = N8N_HOOKS + 'wd-washer-cars';
+export const PIN_URL = N8N_HOOKS + 'wd-washer-pin';   // phone + PIN login (n8n workflow 12)
 export const SHARE = 0.5;   // half of what a car pays is the washer's
 
 export const STATUS: Record<WashStatus, string> = { scheduled: 'Baaki', on_the_way: 'Raaste mein', arrived: 'Pahunch gaye', washing: 'Wash chal raha', done: 'Ho gaya', skipped: 'Skip' };

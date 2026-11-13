@@ -1,6 +1,8 @@
 rules_version = '2';
 // Washing Daddy: customer app, washer app and the approval page (/admin/). Shape: .notes/sync-contract.md.
 // Everyone signs in with their phone number (SMS OTP), so request.auth.token.phone_number is the person.
+// Washers can also sign in with phone + PIN (n8n workflow 12 mints a custom token for the SAME Firebase user, which
+// carries the same phone_number), so nothing below may depend on how the person signed in (sign_in_provider).
 //   admins     the numbers in ADMINS below: approve washers, activate customers, see everything
 //   washers    washers/{+91number}; a washer can do nothing until an admin sets status 'approved'
 //   customers  customers/{+91number}; sees live washes only for the cars on an account an admin activated
@@ -283,6 +285,14 @@ service cloud.firestore {
             && d().diff(resource.data).affectedKeys().hasOnly(['status', 'seen_at', 'updated_at'])
             && d().status == 'seen' && str(d().seen_at, 40) && nullOrStr(d(), 'updated_at', 40));
       allow delete: if isAdmin();
+    }
+
+    // Washer sign-in PINs (phone + PIN login, n8n workflow 12). One doc per washer: washerpins/{+91number} =
+    // {salt, hash (PBKDF2-SHA256, 150000 iterations), active, fails, locked_until, updated_at}. Never the PIN itself.
+    // Only an admin (the approvals page) reads or writes it; n8n checks PINs with a service account, which skips rules.
+    // Washers cannot read their own: the hash must never reach a phone.
+    match /washerpins/{id} {
+      allow read, write: if isAdmin();
     }
 
     match /{other=**} {
