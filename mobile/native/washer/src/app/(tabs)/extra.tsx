@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Image, Linking, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BigNumber, Button, DutyToggle, Footer, PullToRefresh, CallButton, DashCard, DemoNote, Empty, F, Icon, IconBubble, ListCard, Pressy, SectionTitle, brand, ui, useTheme } from '../../ui';
+import { DotBg, BigNumber, Button, DutyToggle, Footer, PullToRefresh, CallButton, DashCard, DemoNote, Empty, F, Icon, IconBubble, ListCard, Pressy, SectionTitle, brand, ui, useTheme } from '../../ui';
 import { Extra, Money, act, isOnline, useStore } from '../../state/store';
 import { mapsOf, telOf, type Job } from '../../lib/data';
 import { rupee } from '../../lib/time';
@@ -81,13 +81,13 @@ function JobCard({ j }: { j: Job }) {
         ? <Pressy onPress={() => open(maps)} scaleTo={0.99} accessibilityRole="link" accessibilityLabel={t('Google Maps mein kholo')}>{where}</Pressy>
         : where}
       {j.note ? <DemoNote>{j.note}</DemoNote> : null}
+      {j.photo ? <Image source={{ uri: j.photo }} accessibilityLabel={t('Kaam ki photo')} resizeMode="contain" style={{ width: '100%', height: 240, borderRadius: 16, marginVertical: 10, backgroundColor: c.tile2 }} /> : null}
       {maps || tel ? (
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 4, alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
           {maps ? <Button variant="ghost" icon="pin" label={t('Location / Raasta')} style={{ flex: 1 }} onPress={() => open(maps)} /> : null}
           {tel ? <CallButton small label={t('Call')} phone={tel.slice(4)} /> : null}
         </View>
       ) : null}
-      {j.photo ? <Image source={{ uri: j.photo }} accessibilityLabel={t('Kaam ki photo')} resizeMode="contain" style={{ width: '100%', height: 240, borderRadius: 16, marginVertical: 10, backgroundColor: c.tile2 }} /> : null}
       {action}
     </DashCard>
   );
@@ -101,6 +101,7 @@ export default function ExtraScreen() {
   const earned = done.reduce((a, j) => a + Money.share(j.price), 0);
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <DotBg />
       <PullToRefresh stickyHeaderIndices={[0]} contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
         <TopBar title={t('Extra kaam')} top={<View style={{ paddingHorizontal: 16, paddingTop: 6 }}><DutyToggle /></View>} />
         <View style={{ paddingHorizontal: 16 }}>

@@ -3,7 +3,7 @@
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { DashCard, Footer, Empty, F, SectionTitle, useTheme } from '../ui';
+import { DotBg, DashCard, Footer, Empty, F, SectionTitle, useTheme } from '../ui';
 import { DAY, act, useStore } from '../state/store';
 import { todayData } from '../lib/history';
 import { usePlaces, useMyPos } from '../lib/places';
@@ -22,6 +22,7 @@ export default function TodayScreen() {
   const { pos, ask } = useMyPos();
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <DotBg />
       <ScreenBar back title={t('Aaj ka round')} />
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
         <Text style={{ fontFamily: F.body, fontSize: 13, color: c.fg3, marginBottom: 10 }}>{dayLong(DAY, isHindi())}</Text>

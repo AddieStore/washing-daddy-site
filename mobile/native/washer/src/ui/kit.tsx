@@ -289,7 +289,7 @@ export function Row({
   const body = (
     <>
       {icon ? (
-        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.card, borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
           {typeof icon === 'string' ? <Icon name={icon as IconName} size={20} color={iconColor ?? c.fg} /> : icon}
         </View>
       ) : null}
@@ -548,7 +548,8 @@ export function DemoNote({ children, style }: { children?: React.ReactNode; styl
   return <Text style={[{ fontFamily: F.body, fontSize: 12, color: c.fg3, textAlign: 'center', marginTop: 10 }, style]}>{children}</Text>;
 }
 
-export function CallButton({ phone, small, label, style }: { phone: string; small?: boolean; label?: string; style?: S<ViewStyle> }) {
+/** Small round phone button (icon only; `label` is the accessibility label). `iconOnly` is the default look; `small` kept for old call sites. */
+export function CallButton({ phone, small, label, style }: { phone: string; small?: boolean; iconOnly?: boolean; label?: string; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   const call = useCallback(() => { void Linking.openURL('tel:' + String(phone).replace(/[^\d+]/g, '')).catch(() => {}); }, [phone]);
   return (
@@ -557,15 +558,11 @@ export function CallButton({ phone, small, label, style }: { phone: string; smal
       scaleTo={0.92}
       accessibilityLabel={label ?? 'Call'}
       style={[
-        small
-          ? { height: 40, borderRadius: 999, paddingHorizontal: 16, flexDirection: 'row', gap: 6 }
-          : { width: 44, height: 44, borderRadius: R.button },
-        { alignItems: 'center', justifyContent: 'center', backgroundColor: brand.ink },
+        { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card, borderWidth: 1, borderColor: c.line },
         style,
       ]}
     >
-      <Icon name="phone" size={small ? 16 : 22} color="#fff" />
-      {small ? <Text style={{ fontFamily: F.bold, fontSize: 13, color: '#fff' }}>{label ?? 'Call'}</Text> : null}
+      <Icon name="phone" size={17} color={c.primary} />
     </Pressy>
   );
 }

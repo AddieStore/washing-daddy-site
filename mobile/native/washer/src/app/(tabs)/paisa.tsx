@@ -2,7 +2,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { DutyToggle, F, Footer, PullToRefresh, brand, useTheme } from '../../ui';
+import { DotBg, DutyToggle, F, Footer, PullToRefresh, brand, useTheme } from '../../ui';
 import { BarChart, BigNumber, DashCard, Empty, HeroCard, ListCard, SectionTitle, Tile } from '../../ui';
 import { DAY, Extra, Hist, MODE, Money, RT, Route, S, Sync, W, act, carBy, ensureDay, route, useStore } from '../../state/store';
 import { addDaysStr, dayLong, dayNarrow, rupee, t12 } from '../../lib/time';
@@ -75,6 +75,7 @@ export default function Paisa() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <DotBg />
       <ScreenBar title={t('Hisaab')} />
       <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingTop: 8 }}><DutyToggle /></View>

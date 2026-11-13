@@ -4,7 +4,7 @@ import { Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  AppHeader, DutyToggle, Footer, LocationChip, PullToRefresh, Button, CallButton, CarArt, DashCard, DemoNote, Empty, Eyebrow, F, HeroCard, Icon, ListCard, OnViolet,
+  AppHeader, DotBg, DutyToggle, Footer, LocationChip, PullToRefresh, Button, CallButton, CarArt, DashCard, DemoNote, Empty, Eyebrow, F, HeroCard, Icon, ListCard, OnViolet,
   Plate, Pressy, SectionTitle, SlideToConfirm, StatCard, StatusPill, Tier, VerifiedBadge, WeekStrip, XChip, brand, useTheme,
   type WeekDay,
 } from '../../ui';
@@ -25,6 +25,7 @@ import { myTrust } from '../../screens/TrustData';
 import { SLOTS, slotRange } from '../../lib/slots';
 import { useDayMarks } from '../../lib/history';
 import { dayStripDays } from '../../lib/strip';
+import { CarPic } from '../../screens/CarPhoto';
 
 const VIOLET_INK = '#2A0478';
 const TRUST = require('../../../assets/img/trust.webp');
@@ -118,8 +119,10 @@ function NextUp({ started }: { started: boolean }) {
           <Eyebrow style={{ flexShrink: 1, color: c.fg3 }}>{t(wd.status === 'scheduled' ? 'Agli gaadi' : 'Abhi chal raha')} · {hm12(wd.eta)}</Eyebrow>
           <StatusPill status={wd.status} label={t(STATUS[wd.status])} />
         </View>
-        <View style={{ height: 120, alignItems: 'center', justifyContent: 'flex-end', marginTop: 6, marginBottom: 4 }}>
-          <CarArt car={car} width={300} height={116} />
+        <View style={{ marginTop: 6, marginBottom: 4 }}>
+          <CarPic reg={car.reg} h={120} size={34}>
+            <CarArt car={car} width={300} height={116} />
+          </CarPic>
         </View>
         <Text style={{ fontFamily: F.hero, fontSize: 29, lineHeight: 40, color: c.fg }}>{car.model}</Text>
         <View style={s.wrap6}>
@@ -131,19 +134,19 @@ function NextUp({ started }: { started: boolean }) {
           <View style={{ marginTop: 2 }}><Icon name="pin" size={18} color={c.primary} /></View>
           <Text style={[s.whereTxt, { color: c.fg2 }]}>{car.house} · {car.spot}</Text>
         </View>
-        {nav || tel ? (
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 10 }}>
-            {nav ? <Button variant="ghost" label={t('Raasta')} icon="pin" style={{ flex: 1 }} onPress={() => { void Linking.openURL(nav).catch(() => {}); }} /> : null}
-            {tel ? <CallButton small label={t('Call')} phone={tel.slice(4)} /> : null}
-          </View>
-        ) : null}
         {q ? (
           <View style={s.where}>
             <View style={{ marginTop: 2 }}><Icon name="note" size={18} color={c.primary} /></View>
             <Text style={[s.whereTxt, { color: c.primary }]}>{t(`${q} customer request${q > 1 ? 's' : ''}`)}</Text>
           </View>
         ) : null}
-        <Button variant="violet" label={t(wd.status === 'scheduled' ? 'Chalo' : 'Kholo')} iconRight="arrow" style={{ marginTop: 14 }}
+        {nav || tel ? (
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'flex-end', marginTop: 12 }}>
+            {nav ? <Button variant="ghost" label={t('Raasta')} icon="pin" style={{ flex: 1 }} onPress={() => { void Linking.openURL(nav).catch(() => {}); }} /> : null}
+            {tel ? <CallButton small label={t('Call')} phone={tel.slice(4)} /> : null}
+          </View>
+        ) : null}
+        <Button variant="violet" label={t(wd.status === 'scheduled' ? 'Chalo' : 'Kholo')} iconRight="arrow" style={{ marginTop: 8 }}
           onPress={() => { act.setCurrent(nr); router.push('/job'); }} />
       </DashCard>
     );
@@ -174,7 +177,7 @@ function SlotCar({ reg }: { reg: string }) {
   return (
     <DashCard onPress={() => { act.setCurrent(reg); router.push('/job'); }} accessibilityLabel={`${car.plate} ${car.model}`}
       style={[s.stop, late && { backgroundColor: dark ? 'rgba(232,56,79,0.18)' : '#FFC4BE', borderColor: c.fg }, { opacity: st === 'done' || st === 'skipped' ? 0.8 : 1 }]}>
-      <View style={{ width: 64, height: 32, alignItems: 'center', justifyContent: 'center' }}><CarArt car={car} width={64} height={27} /></View>
+      <CarPic reg={reg} w={64} h={44} size={24} radius={10}><CarArt car={car} width={64} height={27} /></CarPic>
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 14, lineHeight: 20, color: c.fg, flexShrink: 1 }}>{car.model}</Text>
@@ -270,6 +273,7 @@ export default function RoundScreen() {
   const avatar = photo?.url || null;
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <DotBg />
       <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <AppHeader
           top={<DutyToggle />}

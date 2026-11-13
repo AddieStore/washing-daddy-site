@@ -3,7 +3,7 @@
 // Third bonus (No Complaint): no customer complaint this month, or a 4.8+ average rating (lib/complaints.ts).
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { DashCard, Footer, DemoNote, F, HeroCard, Icon, ListCard, SectionTitle, Ring, brand, useTheme } from '../ui';
+import { DotBg, DashCard, Footer, DemoNote, F, HeroCard, Icon, ListCard, SectionTitle, Ring, brand, useTheme } from '../ui';
 import { DAY, attendLog, useStore, monthComplaints } from '../state/store';
 import { BEST, CLEAN_BONUS, EARLY_BONUS, EARLY_DAYS, MONTH_BONUS } from '../lib/rewards';
 import { unseen } from '../lib/complaints';
@@ -125,6 +125,7 @@ export default function Rewards() {
   const total = BEST, mine = monthComplaints(), newOnes = unseen(mine);
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <DotBg />
       <ScreenBar title={t('Bonus')} back />
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
         <HeroCard

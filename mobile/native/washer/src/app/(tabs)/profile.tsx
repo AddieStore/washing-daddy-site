@@ -4,7 +4,7 @@ import { Image, Linking, Platform, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  DashCard, DemoNote, DutyToggle, F, Footer, Icon, IconBubble, ListCard, PillButton, PullToRefresh, SectionTitle, Segmented, SyncDot, Tile, TrustRow, VerifiedBadge, brand, useTheme,
+  DashCard, DemoNote, DotBg, DutyToggle, F, Footer, Icon, IconBubble, ListCard, PillButton, PullToRefresh, SectionTitle, Segmented, SyncDot, Tile, TrustRow, VerifiedBadge, brand, useTheme,
 } from '../../ui';
 import { DOC_KINDS, Docs, Kit, REAL, Route, S, act, me, myPhoto, syncState, useStore } from '../../state/store';
 import { openPhotoChooser } from '../../screens/PortraitPhoto';
@@ -88,7 +88,9 @@ export default function Profile() {
   const kitCount = Kit.items.reduce((n, i) => n + (i.qty || 0), 0);
   const docsOk = DOC_KINDS.filter(k => Docs.items[k.kind]?.status === 'verified').length;
   return (
-    <PullToRefresh ref={scroll} style={{ flex: 1, backgroundColor: c.bg }} contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 16, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+    <DotBg />
+    <PullToRefresh ref={scroll} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 16, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
       <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
         <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 28, lineHeight: 36, color: c.fg }}>{t('Profile')}</Text>
         <View style={{ marginTop: 8 }}><DutyToggle /></View>
@@ -126,5 +128,6 @@ export default function Profile() {
       </View>
       <Footer bottomPad={120} />
     </PullToRefresh>
+    </View>
   );
 }

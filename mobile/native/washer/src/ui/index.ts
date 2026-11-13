@@ -11,3 +11,4 @@ export * from './trust';
 export * from './Refresh';
 export * from './Footer';
 export * from './TopBar';
+export * from './DotBg';

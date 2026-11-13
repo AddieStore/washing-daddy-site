@@ -3,6 +3,7 @@
 import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { cutout } from '../../modules/wd-cutout/src';
 
 export type PhotoErr = Error & { hi: string };
 const fail = (hi: string): PhotoErr => Object.assign(new Error(hi), { hi });
@@ -11,6 +12,20 @@ async function shrink(uri: string, max: number, q: number) {
   const format = Platform.OS === 'ios' ? SaveFormat.JPEG : SaveFormat.WEBP;
   const r = await manipulateAsync(uri, [{ resize: { width: max } }], { compress: q, format, base64: true });
   return `data:image/${format === SaveFormat.WEBP ? 'webp' : 'jpeg'};base64,${r.base64}`;
+}
+
+/** Car photo with the background removed (transparent, no colour). cut=false when it cannot be done (web, no module). */
+export async function takeCarPhoto(): Promise<{ url: string; cut: boolean } | null> {
+  const p = await takePhoto({ quality: 0.8 });
+  if (!p) return null;
+  try {
+    const c = Platform.OS === 'web' ? null : await cutout(p.preview);
+    if (c) {
+      const r = await manipulateAsync(c, [{ resize: { width: 420 } }], { compress: 0.7, format: SaveFormat.WEBP, base64: true });
+      return { url: `data:image/webp;base64,${r.base64}`, cut: true };
+    }
+  } catch {}
+  return { url: p.url, cut: false };
 }
 
 // null when the washer backs out of the camera

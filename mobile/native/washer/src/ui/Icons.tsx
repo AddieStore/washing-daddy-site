@@ -139,9 +139,9 @@ const ICONS: Record<IconName, (color: string, active: boolean) => React.ReactNod
   // Same glyphs as the Astryx preview (sun, bolt, rupee, person); "active" is shown by colour only.
   tabRound: () => (
     <>
-      <Path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
-      <Circle cx={12} cy={12} r={4.5} />
-      <Path d="m5.6 5.6 2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2" opacity={0.5} />
+      <Circle cx={6} cy={18} r={2.5} />
+      <Circle cx={18} cy={6} r={2.5} />
+      <Path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5" />
     </>
   ),
   tabExtra: () => <Path d="M13 3 5 13.5h6L10 21l9-11h-6z" />,

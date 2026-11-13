@@ -23,7 +23,7 @@ const LAV = '#FFBA08';   // brand gold: highlight accent on the violet blocks
 const native = Platform.OS !== 'web';
 const IMG = {
   logo: require('../../assets/img/logo.webp'),
-  washer: require('../../assets/img/washer.webp'),
+  washer: require('../../assets/img/login-man.webp'),
   photo: require('../../assets/img/auth-photo.webp'),
 };
 const SLIDES: { src: number; title: string; sub: string }[] = [
@@ -140,7 +140,7 @@ function PhoneField({ value, onChange, onSubmit }: { value: string; onChange: (v
         placeholder="98xxxxxxxx"
         placeholderTextColor={c.fg3}
         accessibilityLabel="Phone number"
-        style={[{ flex: 1, minWidth: 0, fontFamily: F.medium, fontSize: 16, letterSpacing: 0.5, paddingVertical: 11, color: c.fg }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
+        style={[{ flex: 1, minWidth: 0, height: 48, fontFamily: F.medium, fontSize: 16, letterSpacing: 0.5, paddingVertical: 0, textAlignVertical: 'center', includeFontPadding: false, color: c.fg }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
       />
     </View>
   );
@@ -236,7 +236,6 @@ function PinStep() {
       </Animated.View>
       <Err msg={err} />
       <Button label={busy ? t('Check ho raha hai…') : t('Andar chalo')} iconRight={busy ? undefined : 'arrow'} variant="violet" disabled={busy} onPress={() => { void go() }} />
-      <View style={{ alignItems: 'center' }}><LinkButton label={t('OTP se login karo')} color={c.fg2} onPress={() => act.setLoginMode('otp')} /></View>
       {REAL ? (
         <Hint style={{ marginTop: 2 }}>{t('Naye washer ho? OTP se login karo, naam bharo, manager approve karenge.')}</Hint>
       ) : (
@@ -274,9 +273,9 @@ function PhoneStep() {
       <CardTitle>{t('Namaste! 👋')}</CardTitle>
       <CardText>{t('Apna phone number daalo. OTP aayega.')}</CardText>
       <PhoneField value={ph} onChange={setPh} onSubmit={() => go(ph)} />
+      {busy ? <Hint style={{ marginTop: 0, marginBottom: 8 }}>{t("Google ek check khol sakta hai. 'I'm not a robot' par tap karo aur app mein wapas aao.")}</Hint> : null}
       <Err msg={err} />
       <Button label={busy ? t('Bhej raha hoon…') : t('OTP bhejo')} iconRight={busy ? undefined : 'arrow'} variant="violet" disabled={busy} onPress={() => go(ph)} />
-      <View style={{ alignItems: 'center' }}><LinkButton label={t('PIN se login karo')} color={c.fg2} onPress={() => act.setLoginMode('pin')} /></View>
       {REAL ? (
         <Hint style={{ marginTop: 2 }}>{t('Naye washer ho? Apna number daalo. OTP ke baad naam bharo, manager approve karenge.')}</Hint>
       ) : (
@@ -300,7 +299,7 @@ function OtpBox({ on, big, inputRef, ...rest }: React.ComponentProps<typeof Text
     Animated.spring(a, { toValue: on ? 1 : 0, speed: 26, bounciness: 10, useNativeDriver: native }).start();
   }, [on, rm, a]);
   return (
-    <Animated.View style={{ flex: 1, maxWidth: 72, aspectRatio: 1, transform: [
+    <Animated.View style={{ flex: 1, maxWidth: 72, height: big ? 64 : 56, transform: [
       { translateY: a.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) },
       { scale: a.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) },
     ] }}>
@@ -308,7 +307,7 @@ function OtpBox({ on, big, inputRef, ...rest }: React.ComponentProps<typeof Text
         ref={inputRef}
         {...rest}
         style={[{
-          flex: 1, textAlign: 'center', fontFamily: F.black, fontSize: big ? 30 : 24, color: c.fg, padding: 0,
+          height: '100%', width: '100%', textAlign: 'center', textAlignVertical: 'center', includeFontPadding: false, fontFamily: F.black, fontSize: big ? 26 : 22, color: c.fg, padding: 0, paddingVertical: 0,
           borderRadius: big ? 18 : 14, borderWidth: 1.5, borderColor: on ? c.accent : c.line, backgroundColor: c.inputBg,
         }, on ? { boxShadow: '0px 6px 14px rgba(84,9,218,0.22)' } : null, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
       />
@@ -471,9 +470,10 @@ function WaitStep({ step }: { step: string }) {
 /* ---------------- slideshow ---------------- */
 function Show({ width }: { width: number }) {
   const { c } = useTheme();
-  const slideW = Math.round(Math.min(300, width * 0.78));
-  const imgH = Math.round(slideW * 5 / 4);   // every photo is shown as a 4:5 window
-  const step = slideW + 12;
+  const slideW = Math.round(width * 0.86);    // large cards, the next one peeks in from the right
+  const imgH = Math.round(slideW * 1.15);
+  const pad = 10;                             // even padding inside the violet block (block is 12px in from the screen edge)
+  const step = slideW + 8;
   const ref = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const idx = useRef(0);
   const held = useRef(false);
@@ -492,7 +492,7 @@ function Show({ width }: { width: number }) {
   }, [step]);
   return (
     <View style={{ marginTop: 24 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: SHOUT, fontSize: 26, lineHeight: 26, letterSpacing: -0.5, textTransform: 'uppercase', color: '#fff', marginBottom: 12, paddingLeft: GUT }}>
+      <Text accessibilityRole="header" style={{ fontFamily: SHOUT, fontSize: 26, lineHeight: 26, letterSpacing: -0.5, textTransform: 'uppercase', color: '#fff', marginBottom: 12, paddingLeft: pad + 4 }}>
         {'Hamare '}<Text style={{ color: LAV }}>washed</Text>{' cars'}
       </Text>
       <ScrollView
@@ -507,16 +507,16 @@ function Show({ width }: { width: number }) {
         onScroll={onScroll}
         onScrollBeginDrag={() => { held.current = true }}
         onTouchStart={() => { held.current = true }}
-        contentContainerStyle={{ paddingHorizontal: GUT, paddingTop: 4, paddingBottom: 8, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: pad, paddingTop: 4, paddingBottom: 8, gap: 8 }}
       >
         {SLIDES.map(s => (
           <View key={s.title} style={{ width: slideW, borderRadius: 22, overflow: 'hidden', backgroundColor: '#fff' }}>
             <View style={{ width: slideW, height: imgH, overflow: 'hidden', backgroundColor: '#ECECEF' }}>
               <Image source={s.src} accessibilityLabel={s.title} resizeMode="cover" style={{ position: 'absolute', left: 0, top: 0, width: slideW, height: imgH }} />
             </View>
-            <View style={{ paddingTop: 9, paddingHorizontal: 12, paddingBottom: 11 }}>
-              <Text style={{ fontFamily: F.bold, fontSize: 13, lineHeight: 16, color: INK }}>{s.title}</Text>
-              <Text style={{ fontFamily: F.body, fontSize: 11.5, lineHeight: 14, color: 'rgba(17,17,20,0.6)' }}>{s.sub}</Text>
+            <View style={{ paddingTop: 9, paddingHorizontal: 12, paddingBottom: 12 }}>
+              <Text style={{ fontFamily: F.bold, fontSize: 14, lineHeight: 18, color: INK }}>{s.title}</Text>
+              <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: 'rgba(17,17,20,0.6)' }}>{s.sub}</Text>
             </View>
           </View>
         ))}

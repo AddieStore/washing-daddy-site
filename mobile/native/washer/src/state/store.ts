@@ -55,7 +55,7 @@ type State = {
   session: Session | null; online: boolean; theme: 'light' | 'dark' | 'auto'; lang: Lang;
   lang_pref?: LangPref; onboarded?: Record<string, string>;   // onboarded: 10-digit phone -> when the first-run onboarding was finished
   day: Day | null; outbox: Record<string, Wash>; rejected?: Record<string, Wash>; current: string | null;
-  selfie: Selfie | null; hist: Record<string, number>; attend?: Attend; rounds: Record<string, { at: string; cars: Data[] }>;
+  selfie: Selfie | null; hist: Record<string, number>; attend?: Attend; carPhotos?: Record<string, { url: string; at: string; cut?: boolean }>; rounds: Record<string, { at: string; cars: Data[] }>;
 };
 export let S: State = { session: null, online: true, theme: 'light', lang: 'hinglish', day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
 const KEY = 'wd-washer-v1';
@@ -82,7 +82,7 @@ export type AuthStep = 'loading' | 'phone' | 'otp' | 'join' | 'wait' | 'blocked'
 export const view = {
   authStep: 'loading' as AuthStep,
   otpPhone: '',
-  loginMode: 'pin' as 'pin' | 'otp',   // the sign-in card: phone + PIN (default) or the SMS OTP flow
+  loginMode: 'otp' as 'pin' | 'otp',   // the sign-in card: SMS OTP (default since 2026-11-13; PIN login kept dormant)
   bookState: 'loading' as 'loading' | 'live' | 'cached' | 'empty' | 'demo',
   syncMode: 'connecting' as 'connecting' | 'live' | 'demo',
   readOnly: false,
@@ -609,6 +609,13 @@ export const act = {
   alertAccept() { const j = view.jobAlert; if (j && !j.washer_id) Sync.extraSet(j.id, { washer_id: me().id }); view.jobAlert = null; emit() },
   // only decline an already-assigned job; an unassigned booking is just dismissed
   alertPass() { const j = view.jobAlert; if (j && j.washer_id) Sync.extraSet(j.id, { status: 'declined', declined_at: isoIST() }); view.jobAlert = null; emit() },
+  // the washer's own reminder photo of a car on his round (kept on this phone only, one per car, replaced on retake)
+  setCarPhoto(reg: string, url: string | null, cut = false) {
+    S.carPhotos = S.carPhotos || {};
+    if (url) S.carPhotos[reg] = { url, at: isoIST(), cut }; else delete S.carPhotos[reg];
+    save(); emit(); ui.haptic(url ? [10, 30, 10] : 8);
+    ui.toast(t(url ? 'Gaadi ki photo save ho gayi' : 'Photo hata di'));
+  },
   setSelfie(url: string) {
     S.selfie = { date: DAY, washer: me().id, url }; save();
     // show the face on every car still to come today
@@ -649,7 +656,7 @@ export const act = {
     bookCars = null; R = {}; RT = {}; view.pendingPhotos = {}; view.jobAlert = null; view.readOnly = false;
     if (REAL) { NewCar.mine = []; Object.keys(ROSTER).forEach(k => delete ROSTER[k]) }
     if (REAL) await Promise.race([clearPushToken(), new Promise(r => setTimeout(r, 4000))]);   // needs the sign-in, so before signOut
-    await auth.signOut(); view.authStep = 'phone'; view.loginMode = 'pin'; emit();
+    await auth.signOut(); view.authStep = 'phone'; view.loginMode = 'otp'; emit();
     return true;
   },
 
@@ -1006,3 +1013,6 @@ function demoComplaints(id: string) {
       .forEach((w, i) => db.doc('ratings/' + w.date + '_' + w.reg).set({ date: w.date, reg: w.reg, stars: stars[i % stars.length], at: w.date + 'T10:00:00+05:30' }));
   });
 }
+
+// the reminder photo of a car, if the washer took one
+export const carPhoto = (reg: string | null | undefined) => (reg && S.carPhotos?.[reg]) || null;

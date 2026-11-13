@@ -28,7 +28,7 @@ export function ScreenBar({ title, back }: { title: string; back?: boolean }) {
   return (
     <View style={{ paddingTop: insets.top + 12, paddingBottom: 8, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.bg }}>
       {back ? (
-        <Pressy onPress={goBack} accessibilityLabel={t('Round par wapas')} hitSlop={6} style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.tile2, ...cardShadow(c) }}>
+        <Pressy onPress={goBack} accessibilityLabel={t('Round par wapas')} hitSlop={6} style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card, borderWidth: 1, borderColor: c.line, ...cardShadow(c) }}>
           <Icon name="back" size={18} color={c.fg} />
         </Pressy>
       ) : null}
@@ -117,7 +117,7 @@ export function TaskRow({ k, done, doneAt, can, onPress }: { k: TaskKey; done: b
   return (
     <Pressy onPress={press} scaleTo={0.97} accessibilityLabel={m.hi} accessibilityState={{ checked: done, disabled: !can && !done }}
       style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 70, padding: 11 }, cardBox(c), cardShadow(c), { transform: [{ translateX: sh }] } as any]}>
-      <View style={{ width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? brand.mint : c.soft }}>
+      <View style={{ width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? brand.mint : c.card, borderWidth: done ? 0 : 1, borderColor: c.line }}>
         {done ? <Icon name="check" size={24} color="#fff" /> : <TaskIcon k={k} size={24} color={c.softInk} />}
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>

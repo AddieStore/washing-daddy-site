@@ -3,7 +3,7 @@
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { DashCard, Footer, DemoNote, Empty, F, SectionTitle, WeekStrip, useTheme } from '../ui';
+import { DotBg, DashCard, Footer, DemoNote, Empty, F, SectionTitle, WeekStrip, useTheme } from '../ui';
 import { DAY, MODE, useStore } from '../state/store';
 import { useDay, useDayMarks } from '../lib/history';
 import { dayStripDays } from '../lib/strip';
@@ -23,6 +23,7 @@ export default function DayScreen() {
   const done = data?.rows.filter((r) => r.status === 'done') || [], skipped = data?.rows.filter((r) => r.status === 'skipped') || [];
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <DotBg />
       <ScreenBar back title={t('Din ka hisaab')} />
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
         <WeekStrip scroll days={dayStripDays(marks)} selected={date} onSelect={go} jumpLabel={t('Aaj')} />

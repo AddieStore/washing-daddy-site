@@ -4,7 +4,7 @@
 // phone number or what the customer pays. Opens from the Rewards screen and the Profile tab.
 import React, { useEffect } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { DashCard, Footer, DemoNote, F, Icon, IconBubble, SectionTitle, brand, useTheme } from '../ui';
+import { DotBg, DashCard, Footer, DemoNote, F, Icon, IconBubble, SectionTitle, brand, useTheme } from '../ui';
 import { Complaints, DAY, act, carBy, monthComplaints, useStore } from '../state/store';
 import { type Complaint, type ComplaintKind, type ComplaintStatus } from '../lib/complaints';
 import { dayShort } from '../lib/time';
@@ -67,6 +67,7 @@ export default function ComplaintsScreen() {
   useEffect(() => { if (openIds) openIds.split(',').forEach(id => act.complaintSeen(id)) }, [openIds]);
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <DotBg />
       <ScreenBar title={t('Customer feedback')} back />
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
         <DashCard style={{ padding: 16, marginTop: 6 }}>

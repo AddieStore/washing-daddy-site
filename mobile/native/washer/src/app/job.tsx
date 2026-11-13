@@ -2,8 +2,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Image, Linking, StyleSheet, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { F, Footer, Icon, PullToRefresh, R, brand, cardBox, cardShadow, ui, useTheme } from '../ui';
+import { DotBg, F, Footer, Icon, PullToRefresh, R, brand, cardBox, cardShadow, ui, useTheme } from '../ui';
 import { DashCard, IconBubble } from '../ui/dash';
+import { CarPic } from '../screens/CarPhoto';
 import { Pressy, Button, CallButton, CarArt, DemoNote, Empty, Eyebrow, LinkButton, Plate, ProgressBar, SlideToConfirm, Stepper, Tier } from '../ui';
 import type { StepItem } from '../ui';
 import { Route, RT, W, act, photoSrc, carBy, ensureDay, openReqs, planName, route, skipAsk, S, useStore, DAY, view, MIN_PHOTOS, photoNeeds } from '../state/store';
@@ -90,7 +91,9 @@ function Stage({ reg, st }: { reg: string; st: string }) {
         <HChip>{chipA}</HChip>
         <HChip>{`${idx} / ${route().length}`}</HChip>
       </View>
-      <View pointerEvents="none" style={{ alignItems: 'center', marginTop: 14, marginBottom: 6 }}>
+      <View style={{ marginTop: 14, marginBottom: 6 }}>
+      <CarPic reg={reg} h={Math.round(carW * 0.42)} size={36} radius={16}>
+      <View pointerEvents="none" style={{ alignItems: 'center' }}>
         <Animated.View style={{ transform: [
           { translateX: enter.interpolate({ inputRange: [0, 1], outputRange: [0, 360] }) },
           { translateY: bob.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) },
@@ -98,6 +101,8 @@ function Stage({ reg, st }: { reg: string; st: string }) {
         ] }}>
           <CarArt car={c0} width={carW} />
         </Animated.View>
+      </View>
+      </CarPic>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
@@ -162,6 +167,7 @@ export default function JobScreen() {
   if (!reg || !car) {
     return (
       <View style={{ flex: 1, backgroundColor: th.bg }}>
+      <DotBg />
         <ScreenBar title={t('Abhi')} back />
         <View style={{ padding: 16 }}>
           {S.day?.started
@@ -306,6 +312,7 @@ export default function JobScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: th.bg }}>
+      <DotBg />
       <ScreenBar title={`${car.model} · ${car.house}`} back />
       <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
         <Stage reg={reg} st={st} />

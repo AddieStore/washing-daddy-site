@@ -50,8 +50,10 @@ export function SectionTitle({ title, action, onAction, style }: { title: string
 /** Round icon bubble used inside cards (icon on a soft tinted circle). */
 export function IconBubble({ icon, size = 40, tint, bg, children }: { icon?: IconName; size?: number; tint?: string; bg?: string; children?: React.ReactNode }) {
   const { c } = useTheme();
+  // Tinted/grey fills become a clean white disc with a hairline; only solid fills (violet, mint...) stay solid.
+  const solid = bg && !bg.startsWith('rgba') ? bg : null;
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg ?? c.soft, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: solid ?? c.card, borderWidth: solid ? 0 : 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
       {children ?? (icon ? <Icon name={icon} size={Math.round(size * 0.52)} color={tint ?? c.softInk} /> : null)}
     </View>
   );
@@ -331,7 +333,7 @@ export function WeekStrip({ days, selected, onSelect, title, onPrev, onNext, scr
           <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg }}>{head}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {away && jumpLabel ? (
-              <Pressy onPress={toSel} accessibilityLabel={jumpLabel} style={{ paddingVertical: 3, paddingHorizontal: 10, borderRadius: 999, backgroundColor: c.soft }}>
+              <Pressy onPress={toSel} accessibilityLabel={jumpLabel} style={{ paddingVertical: 3, paddingHorizontal: 10, borderRadius: 999, backgroundColor: c.card, borderWidth: 1, borderColor: c.line }}>
                 <Text style={{ fontFamily: F.semi, fontSize: 12, color: c.softInk }}>{jumpLabel}</Text>
               </Pressy>
             ) : null}
@@ -553,10 +555,10 @@ export type PillButtonProps = {
 /** Rounded-square (radius 12) icon button, 32px by default, with a 44px touch area. */
 export function PillButton({ icon, label, onPress, size = 32, tone = 'white', badge, flat, children, style }: PillButtonProps) {
   const { c } = useTheme();
-  const bg = flat ? c.soft : tone === 'violet' ? c.primary : tone === 'gold' ? c.primary : c.tile2;
+  const bg = flat ? c.card : tone === 'violet' ? c.primary : tone === 'gold' ? c.primary : c.card;
   const fg = flat ? c.softInk : tone === 'violet' ? '#fff' : tone === 'gold' ? '#fff' : c.fg;
   return (
-    <Pressy onPress={onPress} accessibilityLabel={label} scaleTo={0.92} hitSlop={size < 44 ? (44 - size) / 2 : 0} style={[{ width: size, height: size, borderRadius: size * 0.375, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }, flat ? null : cardShadow(c), style]}>
+    <Pressy onPress={onPress} accessibilityLabel={label} scaleTo={0.92} hitSlop={size < 44 ? (44 - size) / 2 : 0} style={[{ width: size, height: size, borderRadius: size * 0.375, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }, (tone === 'violet' || tone === 'gold') ? null : { borderWidth: 1, borderColor: c.line }, flat ? null : cardShadow(c), style]}>
       {children ?? (icon ? <Icon name={icon} size={Math.round(size * 0.5)} color={fg} /> : null)}
       {badge && badge > 0 ? (
         <View style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
@@ -596,7 +598,7 @@ export function AppHeader({ name, greeting, avatarUri, onAvatarPress, actions, t
   const av = avatarUri
     ? <Image source={{ uri: avatarUri }} style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.tile2 }} />
     : (
-      <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.tile2, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.card, borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ fontFamily: F.medium, fontSize: 19, color: c.fg }}>{initial}</Text>
       </View>
     );

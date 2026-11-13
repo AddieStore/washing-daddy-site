@@ -10,6 +10,7 @@ import { SLOTS, SLOT_COUNT, lists, place, slotRange } from '../lib/slots';
 import { hm12, short12, t12 } from '../lib/time';
 import { t } from '../lib/i18n';
 import { SheetTitle } from './sheets';
+import { CarPic } from './CarPhoto';
 import { openAttendance } from './AttendanceSheet';
 
 const CARD_H = 84, GAP = 8, ZHEAD = 42, ZPAD = 10, EMPTY_H = 54, ZGAP = 12, SIDE = 8, EDGE = 90;
@@ -187,6 +188,7 @@ function CarCard({ reg, target, zone, idx, count, locked, dragging, ctl }: {
           <View style={[st.dot, { backgroundColor: c.fg3 }]} /><View style={[st.dot, { backgroundColor: c.fg3 }]} /></View>)
           : <Text style={{ fontSize: 14 }}>🔒</Text>}
       </View>
+      <CarPic reg={reg} w={56} h={44} size={24} radius={10}><Text style={{ fontSize: 22 }}>🚗</Text></CarPic>
       <View style={{ flex: 1, minWidth: 0, gap: 3 }} pointerEvents="none">
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={st.plate}><Text numberOfLines={1} style={st.plateTxt}>{car.plate}</Text></View>

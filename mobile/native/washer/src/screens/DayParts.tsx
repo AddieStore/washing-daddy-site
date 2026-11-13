@@ -1,7 +1,9 @@
 // Pieces shared by the Today and Day screens: the summary tiles and one car row. Presentational; data comes in as DayData.
 import React from 'react';
 import { Text, View } from 'react-native';
-import { DashCard, F, Icon, Plate, StatCard, StatusPill, brand, useTheme } from '../ui';
+import { CarPic } from './CarPhoto';
+import { carBy } from '../state/store';
+import { CarArt, DashCard, F, Icon, Plate, StatCard, StatusPill, brand, useTheme } from '../ui';
 import { STATUS } from '../lib/data';
 import { SLOTS } from '../lib/slots';
 import { hm12, rupee, short12, t12 } from '../lib/time';
@@ -47,18 +49,21 @@ function Meta({ k, v }: { k: string; v: string }) {
 export function DayRowCard({ r, onPress }: { r: DayRow; onPress?: () => void }) {
   const { c } = useTheme();
   const slot = r.slot != null && SLOTS[r.slot] ? `${short12(hm12(SLOTS[r.slot].from))} – ${short12(hm12(SLOTS[r.slot].to))}` : '';
-  const skip = r.status === 'skipped';
+  const skip = r.status === 'skipped', car = carBy(r.reg);
   return (
     <DashCard onPress={onPress} accessibilityLabel={`${r.plate} ${r.model}`} style={{ padding: 14, gap: 10, opacity: skip ? 0.85 : 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <Plate reg={r.plate} />
         <StatusPill status={r.status} label={t(STATUS[r.status])} />
       </View>
-      <View>
-        <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 16, color: c.fg }}>{r.model}</Text>
-        <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3 }}>
-          {[r.customer, slot].filter(Boolean).join(' · ')}
-        </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <CarPic reg={r.reg} w={64} h={44} size={24} radius={10}>{car ? <CarArt car={car} width={64} height={27} /> : <Text style={{ fontSize: 22 }}>🚗</Text>}</CarPic>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 16, color: c.fg }}>{r.model}</Text>
+          <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3 }}>
+            {[r.customer, slot].filter(Boolean).join(' · ')}
+          </Text>
+        </View>
       </View>
       {skip ? (
         r.skipReason ? <Text style={{ fontFamily: F.semi, fontSize: 13, color: brand.red }}>{t(r.skipReason)}</Text> : null
