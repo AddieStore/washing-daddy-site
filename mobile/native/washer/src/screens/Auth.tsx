@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Animated, Easing, Image, Keyboard, KeyboardAvoidingView, Linking, NativeScrollEvent, NativeSyntheticEvent, Platform,
-  ScrollView, Text, TextInput, View, useWindowDimensions,
+  ScrollView, StatusBar, Text, TextInput, View, useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, DashCard, F, Field, Float, LinkButton, Pressy, Rise, SuccessTick, brand, ui, useReducedMotion, useTheme } from '../ui';
@@ -18,7 +18,8 @@ import { referralKey } from './Onboarding';
 const GUT = 20;
 const INK = '#111114';
 const SHOUT = 'Poppins_800ExtraBold';   // Astryx display weight (Poppins 800, uppercase)
-const LAV = '#C9B6FF';   // Astryx login accent on the near-black header
+const VIOLET = '#5409DA';   // brand violet: header + slideshow background
+const LAV = '#FFBA08';   // brand gold: highlight accent on the violet blocks
 const native = Platform.OS !== 'web';
 const IMG = {
   logo: require('../../assets/img/logo.webp'),
@@ -370,7 +371,8 @@ function WaitStep({ step }: { step: string }) {
 /* ---------------- slideshow ---------------- */
 function Show({ width }: { width: number }) {
   const { c } = useTheme();
-  const slideW = Math.min(220, width * 0.56);
+  const slideW = Math.round(Math.min(300, width * 0.78));
+  const imgH = Math.round(slideW * 5 / 4);   // every photo is shown as a 4:5 window
   const step = slideW + 12;
   const ref = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const idx = useRef(0);
@@ -399,6 +401,7 @@ function Show({ width }: { width: number }) {
         showsHorizontalScrollIndicator={false}
         snapToInterval={step}
         snapToAlignment="start"
+        disableIntervalMomentum
         decelerationRate="fast"
         scrollEventThrottle={32}
         onScroll={onScroll}
@@ -408,7 +411,9 @@ function Show({ width }: { width: number }) {
       >
         {SLIDES.map(s => (
           <View key={s.title} style={{ width: slideW, borderRadius: 22, overflow: 'hidden', backgroundColor: '#fff' }}>
-            <Image source={s.src} accessibilityLabel={s.title} resizeMode="cover" style={{ width: '100%', aspectRatio: 4 / 5 }} />
+            <View style={{ width: slideW, height: imgH, overflow: 'hidden', backgroundColor: '#ECECEF' }}>
+              <Image source={s.src} accessibilityLabel={s.title} resizeMode="cover" style={{ position: 'absolute', left: 0, top: 0, width: slideW, height: imgH }} />
+            </View>
             <View style={{ paddingTop: 9, paddingHorizontal: 12, paddingBottom: 11 }}>
               <Text style={{ fontFamily: F.bold, fontSize: 13, lineHeight: 16, color: INK }}>{s.title}</Text>
               <Text style={{ fontFamily: F.body, fontSize: 11.5, lineHeight: 14, color: 'rgba(17,17,20,0.6)' }}>{s.sub}</Text>
@@ -427,6 +432,8 @@ function Show({ width }: { width: number }) {
 export default function Auth() {
   useStore();
   const insets = useSafeAreaInsets();
+  // Android edge-to-edge: the inset can come back 0 early, so fall back to the status bar height
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0);
   const { c } = useTheme();
   const { width: ww } = useWindowDimensions();
   const width = Math.min(440, ww);
@@ -464,7 +471,7 @@ export default function Auth() {
         >
           <View ref={content} collapsable={false} style={{ flexGrow: 1, paddingBottom: 26 + insets.bottom }}>
             {/* strong brand header: violet, rounded at the bottom; the form card overlaps its lower edge */}
-            <View style={{ backgroundColor: INK, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, paddingTop: insets.top, paddingBottom: 44 }}>
+            <View style={{ backgroundColor: VIOLET, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, paddingTop: topInset, paddingBottom: 44 }}>
               <Rise delay={0}><Header /></Rise>
               <Rise delay={90}><Poster width={width} /></Rise>
               <Rise delay={180}><PhotoStrip width={width} /></Rise>
@@ -479,7 +486,7 @@ export default function Auth() {
                 </Rise>
               </DashCard>
             </Rise>
-            <View style={{ backgroundColor: INK, borderRadius: 28, marginHorizontal: 12, marginTop: 24, paddingTop: 18, paddingBottom: 18 }}>
+            <View style={{ backgroundColor: VIOLET, borderRadius: 28, marginHorizontal: 12, marginTop: 24, paddingTop: 18, paddingBottom: 18 }}>
               <Show width={width} />
             </View>
           </View>
