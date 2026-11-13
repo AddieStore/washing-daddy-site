@@ -19,7 +19,8 @@ const RIGHT = TABS.slice(2);
 const MID = 76; // gap in the bar under the raised centre button
 type BottomTabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>['tabBar']>>[0];
 
-// One tab: a fully rounded violet pill fades + scales in behind the icon, the icon lifts, the label colour eases.
+// One tab. Selected: a big rounded violet-tint pill with the solid icon and label side by side (like Pronto).
+// Others: outline icon over a small label. The cell widens with a spring; tapping gives a press-down feedback.
 function TabCell({ tb, on, n, onPress }: { tb: (typeof TABS)[number]; on: boolean; n: number; onPress: () => void }) {
   const { c, dark } = useTheme();
   const rm = useReducedMotion();
@@ -27,36 +28,31 @@ function TabCell({ tb, on, n, onPress }: { tb: (typeof TABS)[number]; on: boolea
   const press = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (rm) { sel.setValue(on ? 1 : 0); return }
-    Animated.spring(sel, { toValue: on ? 1 : 0, speed: 16, bounciness: 9, useNativeDriver: false }).start();
+    Animated.spring(sel, { toValue: on ? 1 : 0, speed: 16, bounciness: 6, useNativeDriver: false }).start();
   }, [on, rm, sel]);
   const down = (v: number) => { if (rm) return; Animated.spring(press, { toValue: v, speed: 40, bounciness: 0, useNativeDriver: false }).start() };
-  const pill = dark ? 'rgba(139,92,246,0.26)' : 'rgba(84,9,218,0.12)';
-  const pillScale = sel.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
-  const iconScale = sel.interpolate({ inputRange: [0, 1], outputRange: [1, 1.1] });
-  const lift = sel.interpolate({ inputRange: [0, 1], outputRange: [0, -2] });
-  const col = sel.interpolate({ inputRange: [0, 1], outputRange: [c.fg3, c.primary] });
+  const flex = sel.interpolate({ inputRange: [0, 1], outputRange: [1, 1.45] });
   const scale = press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.92] });
   return (
-    <Pressable
-      onPress={onPress}
-      onPressIn={() => down(1)}
-      onPressOut={() => down(0)}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: on }}
-      accessibilityLabel={t(tb.label)}
-      style={s.tab}
-    >
-      <Animated.View style={{ alignItems: 'center', gap: 2, transform: [{ scale }] }}>
-        <View style={s.iconWrap}>
-          <Animated.View style={[s.pill, { backgroundColor: pill, opacity: sel, transform: [{ scale: pillScale }] }]} />
-          <Animated.View style={{ transform: [{ translateY: lift }, { scale: iconScale }] }}>
-            <Icon name={tb.icon} size={24} color={on ? c.primary : c.fg3} active={on} />
-          </Animated.View>
-          {n > 0 ? <View style={s.badge}><Text style={s.badgeTxt}>{n}</Text></View> : null}
-        </View>
-        <Animated.Text style={[s.lbl, { color: col, fontFamily: on ? F.bold : F.medium }]}>{t(tb.label)}</Animated.Text>
-      </Animated.View>
-    </Pressable>
+    <Animated.View style={{ flex, minHeight: 54, justifyContent: 'center' }}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => down(1)}
+        onPressOut={() => down(0)}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: on }}
+        accessibilityLabel={t(tb.label)}
+        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+      >
+        <Animated.View style={[on ? s.pillOn : s.pillOff, on && { backgroundColor: dark ? 'rgba(139,92,246,0.26)' : 'rgba(84,9,218,0.12)' }, { transform: [{ scale }] }]}>
+          <View>
+            <Icon name={tb.icon} size={on ? 26 : 25} color={on ? c.primary : c.fg3} active={on} />
+            {n > 0 ? <View style={s.badge}><Text style={s.badgeTxt}>{n}</Text></View> : null}
+          </View>
+          <Text numberOfLines={1} style={[on ? s.lblOn : s.lbl, { color: on ? c.primary : c.fg3, fontFamily: on ? F.bold : F.medium }]}>{t(tb.label)}</Text>
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -117,7 +113,9 @@ const s = StyleSheet.create({
   },
   tab: { flex: 1, alignItems: 'center', gap: 2, paddingTop: 6, paddingBottom: 0, minHeight: 54 },
   iconWrap: { width: 56, height: 32, alignItems: 'center', justifyContent: 'center' },
-  pill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: 16 },
+  pillOn: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 48, paddingHorizontal: 11, borderRadius: 24 },
+  pillOff: { alignItems: 'center', gap: 2, paddingTop: 2 },
+  lblOn: { fontSize: 12, lineHeight: 16 },
   lbl: { fontSize: 10, lineHeight: 14 },
   fab: {
     position: 'absolute', alignSelf: 'center', width: 64, height: 64, borderRadius: 32, borderWidth: 4, alignItems: 'center', justifyContent: 'center',
