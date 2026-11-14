@@ -1,177 +1,151 @@
-// Profile tab: avatar and stats, garage, look, refer, wash details, notifications, help. Ported from renderProfile.
-import React, { useEffect, useRef } from 'react';
+// Profile page (pushed): white header with avatar, plan row, 3 tiles, refer row, grouped list rows.
+import React from 'react';
 import { View, Image, Pressable, ScrollView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { C, InkContext, creamInk, SP, R as RAD, HIT } from '../theme';
-import { Page, Topbar, IconBtn, Txt, Card, Rows, Row, Pill, Toggle, Hard, CountUp, PAD, useTheme, useInk } from '../ui/kit';
-import { Pen, Pin, Clock, Key, WhatsApp, Warn, Drop, Logout, GhostCar } from '../ui/icons';
-import { inGroup } from '../data/dates';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import { C } from '../theme';
+import { Txt, Toggle, useInsets } from '../ui/kit';
+import { Bell, Pin, Clock, Key, WhatsApp, Warn, Drop, Logout, GhostCar, Chev, Cart, Help, Pen, Sun, Moon, Auto, Back, Info, Shield, Trash, Plan, Gift, Book, Plus } from '../ui/icons';
+import { planOf, A, car, carImg, maskPlate, planStatus, fmtPhone, act, go, closePage, openPage, S, REAL } from '../state';
 import { src } from '../img';
-import { A, car, carImg, planOf, maskPlate, totals, refCode, fmtPhone, act, S, REAL, useApp } from '../state';
 import { sheets } from '../sheets';
+import { Plate } from '../ui/Plate';
 
-function Head({ title, right }: { title: string; right?: string }) {
-  const T = useTheme(), ink = useInk();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: SP.l }}>
-      <Txt font="shout" size={30} upper style={[{ flexShrink: 1 }, T.day && { textShadowColor: C.violetInk, textShadowOffset: { width: 3, height: 3 }, textShadowRadius: 0 }]}>{title}</Txt>
-      {right ? <Txt size={13} color={ink.fg3}>{right}</Txt> : null}
+const INK = '#171717', GREY = '#525252', MUTED = '#737373', LINE = 'rgba(23,23,23,0.08)', RAISED = '#F4F4F5', RED = '#dc2626';
+const card = { backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: LINE } as const;
+const NUM = { fontVariant: ['tabular-nums'] } as const;
+const nav = (t: Parameters<typeof go>[0]) => () => { closePage(); go(t) };
+
+function Row({ icon, title, sub, right, onPress, last, danger }: { icon: React.ReactNode; title: string; sub?: string; right?: React.ReactNode; onPress?: () => void; last?: boolean; danger?: boolean }) {
+  const body = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingHorizontal: 16, gap: 12, borderBottomWidth: last ? 0 : 1, borderBottomColor: LINE }}>
+      <View style={{ width: 24, alignItems: 'center' }}>{icon}</View>
+      <View style={{ flex: 1, minWidth: 0, paddingVertical: 8 }}>
+        <Txt weight={400} size={15} color={danger ? RED : INK}>{title}</Txt>
+        {sub ? <Txt size={13} color={MUTED} numberOfLines={1} style={{ marginTop: 2 }}>{sub}</Txt> : null}
+      </View>
+      {right}
+      {onPress && !right ? <Chev size={18} color={MUTED} strokeWidth={1.5} /> : null}
     </View>
   );
+  return onPress ? <Pressable onPress={onPress} style={({ pressed }) => ({ backgroundColor: pressed ? RAISED : '#fff' })}>{body}</Pressable> : body;
 }
-const Sec = ({ children }: { children: React.ReactNode }) => <View style={{ marginTop: SP.section }}>{children}</View>;
-const rail = { marginHorizontal: -PAD } as const;
-const tint = (bg: string, icon: React.ReactNode) => ({ tile: bg, icon });
+const Group = ({ children, title }: { children: React.ReactNode; title?: string }) => (
+  <View style={{ marginTop: 32 }}>
+    {title ? <Txt weight={500} size={13} color={MUTED} style={{ marginBottom: 8 }}>{title}</Txt> : null}
+    <View style={[card, { overflow: 'hidden' }]}>{children}</View>
+  </View>
+);
 
-function Garage() {
-  const T = useTheme(), a = A();
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rail} contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: SP.s, paddingTop: SP.hair }}>
-      {a.cars.map((g, i) => {
-        const on = i === S.carIdx, im = carImg(g), ink = on ? T.block : T.card;
-        const body = (
-          <>
-            <View style={{ height: 84, alignItems: 'center', justifyContent: 'center' }}>
-              {im ? <Image source={src(im)!} resizeMode="contain" style={{ width: '100%', height: 84 }} /> : <GhostCar width={160} color={ink.fg3} />}
-            </View>
-            <Txt weight={700} style={{ marginTop: SP.s }}>{(g.make ? g.make + ' ' : '') + g.name}</Txt>
-            <Txt size={12} color={ink.fg3}>{maskPlate(g.plate)} · {planOf(g).name}{g.status === 'new' ? ' · starts tomorrow' : ''}</Txt>
-          </>
-        );
-        return on ? (
-          <Hard key={g.id} dx={6} dy={6} radius={RAD.card} style={{ width: 226, marginRight: SP.l }}>
-            <InkContext.Provider value={ink}>
-              <Pressable onPress={() => act.pickCar(i)} style={{ backgroundColor: T.day ? C.violetDeep : C.violet2, borderWidth: 3, borderColor: T.day ? C.gold : C.gold, borderRadius: RAD.card, padding: SP.l }}>{body}</Pressable>
-            </InkContext.Provider>
-          </Hard>
-        ) : <Card key={g.id} pad={SP.l} style={{ width: 226, marginRight: SP.l }} onPress={() => act.pickCar(i)}>{body}</Card>;
-      })}
-      <Pressable onPress={() => sheets.addCar()} style={{ width: 220, minHeight: 150, marginRight: SP.l, marginBottom: 6, borderRadius: RAD.card, borderWidth: 3, borderStyle: 'dashed', borderColor: T.page.dash, alignItems: 'center', justifyContent: 'center' }}>
-        <Txt size={30} color={T.page.fg2} style={{ lineHeight: 32 }}>＋</Txt>
-        <Txt weight={600} color={T.page.fg2} style={{ marginTop: SP.s }}>Add a car</Txt>
-        <Txt size={12} color={T.page.fg3}>Add a second car</Txt>
-      </Pressable>
-    </ScrollView>
-  );
-}
-
-function Look() {
-  const T = useTheme(), cur = S.theme;
-  const items: [typeof cur, string, React.ReactNode][] = [
-    ['light', 'Day', <View style={{ flex: 1, backgroundColor: '#5409DA' }} />],
-    ['dark', 'Night', <View style={{ flex: 1, backgroundColor: '#1A0A33' }} />],
-    ['system', 'Auto', <View style={{ flex: 1, flexDirection: 'row' }}><View style={{ flex: 1, backgroundColor: '#5409DA' }} /><View style={{ flex: 1, backgroundColor: '#1A0A33' }} /></View>],
-  ];
-  return (
-    <View style={{ flexDirection: 'row', gap: SP.m }}>
-      {items.map(([k, label, sw]) => {
-        const on = cur === k;
-        return (
-          <View key={k} style={{ flex: 1 }}>
-            <Hard dx={4} dy={4} radius={RAD.card} color={on && T.day ? C.ink : null} reserve={false}>
-              <Pressable onPress={() => act.setTheme(k)} style={{ padding: SP.m, borderRadius: RAD.card, borderWidth: 2.5, borderColor: on && !T.day ? C.gold : T.day ? C.ink : T.card.line, backgroundColor: T.day ? C.cream : T.card.tile, ...(on && T.day ? { outlineWidth: 3, outlineColor: C.gold } as object : null) }}>
-                <View style={{ height: 52, borderRadius: RAD.inner, overflow: 'hidden', marginBottom: SP.s }}>
-                  {sw}
-                  <View style={{ position: 'absolute', left: 10, right: 10, bottom: 8, height: 16, borderRadius: 6, backgroundColor: C.violet }} />
-                </View>
-                <Txt weight={700} size={12.5} style={{ textAlign: 'center' }} color={T.day ? C.ink : C.cream}>{label}</Txt>
-              </Pressable>
-            </Hard>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
+const Clip = ({ c = MUTED }: { c?: string }) => <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><Rect x="5" y="4" width="14" height="17" rx="3" /><Path d="M9 3h6v3H9zM9 12h6M9 16h4" /></Svg>;
 
 export default function Profile() {
-  const { tabNonce } = useApp(), T = useTheme(), ink = T.page;
-  const sc = useRef<any>(null), first = useRef(true);
-  useEffect(() => { if (first.current) { first.current = false; return } sc.current?.scrollTo({ y: 0, animated: true }); }, [tabNonce]);
-  const a = A(), c = car(), tt = totals(), open = a.requests.filter(r => r.open).length;
-  const initials = a.name.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
-  const stat = (n: number, l: string) => (
-    <Card key={l} pad={SP.m} style={{ flex: 1 }} inner={{ paddingVertical: SP.l }}>
-      <CountUp to={n} font="shout" size={28} format={v => inGroup(Math.round(v))} />
-      <Txt weight={600} size={11} color={T.card.fg3}>{l}</Txt>
-    </Card>
+  const ins = useInsets(), a = A(), c = car();
+  const days = planStatus(c);
+  const ic = (X: any, p: any = {}) => <X size={18} color={MUTED} strokeWidth={1.5} {...p} />;
+  const tile = (label: string, icon: React.ReactNode, f: () => void) => (
+    <Pressable key={label} onPress={f} style={({ pressed }) => [card, { flex: 1, height: 88, padding: 12, justifyContent: 'space-between', transform: [{ scale: pressed ? 0.98 : 1 }] }]}>
+      {icon}
+      <Txt weight={500} size={14} color={INK} style={{ lineHeight: 20 }}>{label}</Txt>
+    </Pressable>
   );
-  const det = [
-    ['parking', 'Where the car is parked', c.parking, 'rgba(46,139,255,.16)', <Pin size={18} color={C.sky} />],
-    ['window', 'Wash window', c.window, 'rgba(255,186,8,.2)', <Clock size={18} color="#C98A00" />],
-    ['keys', 'Interior cleaning access', c.keys, 'rgba(255,106,26,.16)', <Key size={18} color={C.orange} />],
-  ] as const;
+  const theme = S.theme;
+  const open = a.requests.filter(r => r.open).length;
+  const looks: [typeof theme, string, any][] = [['light', 'Day', Sun], ['dark', 'Night', Moon], ['system', 'Auto', Auto]];
   const prefs = [['photo', 'Photo when my car is done', 'On WhatsApp, every morning'], ['pay', 'Payment reminder', '3 days before my plan runs out'], ['drops', 'New store drops', 'Twice a month at most']] as const;
+  const det = [['parking', 'Saved parking', c.parking, Pin], ['window', 'Wash window', c.window, Clock], ['keys', 'Interior cleaning access', c.keys, Key]] as const;
   return (
-    <Page {...({ ref: sc } as any)} header={<Topbar right={<IconBtn label="Edit profile" onPress={() => sheets.editName()}><Pen size={22} /></IconBtn>} />}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.l, marginTop: SP.s }}>
-        <Hard dx={4} dy={4} radius={38} color={T.day ? C.ink : null} reserve={false}>
-          <LinearGradient colors={[C.gold, C.orange]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 76, height: 76, borderRadius: 38, borderWidth: T.day ? 3 : 0, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' }}>
-            <Txt font="hero" size={30} color={C.ink}>{initials}</Txt>
-          </LinearGradient>
-        </Hard>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Txt weight={700} size={22} style={{ letterSpacing: -0.4 }}>{a.name}</Txt>
-          <Txt size={13} color={ink.fg2}>{`+91 ${a.phone.slice(0, 2)}•••• •${a.phone.slice(-4)} · Member since ${a.since}`}</Txt>
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', gap: SP.l, marginTop: SP.xl }}>
-        {stat(tt.washes, 'Washes')}{stat(tt.litres, 'Litres saved*')}{stat(tt.streak, 'Day streak')}
-      </View>
-      <Txt size={13} color={ink.fg3} style={{ marginTop: SP.s }}>*Against a bucket wash. A pressure wash uses about 7 litres a car.</Txt>
-
-      <Sec><Head title="My garage" right="Tap to switch" /><Garage /></Sec>
-
-      {a.requests.length ? (
-        <Sec><Head title="Activity" />
-          <Rows><Row icon={<Txt weight={800} color={C.red}>↺</Txt>} tile="rgba(232,56,79,.14)" title="Re-wash requests" sub={`${open} open`} chev onPress={() => sheets.requests()} /></Rows>
-        </Sec>
-      ) : null}
-
-      <Sec><Head title="Look" /><Look /></Sec>
-
-      <Sec>
-        <Hard dx={8} dy={8} radius={RAD.card + 4} style={{ transform: [{ rotate: '-1deg' }] }}>
-          <InkContext.Provider value={creamInk}>
-            <View style={{ backgroundColor: C.gold, borderRadius: RAD.card + 4, borderWidth: T.day ? 3 : 0, borderColor: C.ink, padding: SP.card, overflow: 'hidden' }}>
-              <View style={{ position: 'absolute', right: -20, top: -20, width: 110, height: 110, borderRadius: 55, backgroundColor: C.orange, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '12deg' }] }}>
-                <Txt font="shout" size={30} color={C.cream} style={{ marginLeft: -14, marginTop: 14 }}>₹200</Txt>
-              </View>
-              <Txt font="shout" size={34} upper style={{ paddingRight: 84, marginBottom: SP.s }}>Get a neighbour off pocha</Txt>
-              <Txt size={13} style={{ marginBottom: a.credit && a.credit > 0 ? SP.s : SP.l }}>Share your link: you and your friend both get ₹200 off.</Txt>
-              {a.credit && a.credit > 0 ? <Txt weight={700} size={14} style={{ marginBottom: SP.s }}>{`Invite credit: ₹${a.credit} off your next payment`}</Txt> : null}
-              <Txt size={12} color={creamInk.fg2} style={{ marginBottom: SP.l, lineHeight: 18 }}>You earn ₹200 for each friend who joins, if you've paid for this month.</Txt>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingVertical: SP.s, paddingLeft: SP.l, paddingRight: SP.s, borderRadius: RAD.ctl, backgroundColor: C.ink }}>
-                <Txt font="shout" size={22} color={C.cream} style={{ letterSpacing: 2.6 }}>{refCode()}</Txt>
-                <Pill gold label="Share invite" onPress={() => act.copyRef()} />
-              </View>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={{ paddingTop: ins.top + 8, paddingHorizontal: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, height: 48 }}>
+            <Pressable accessibilityLabel="Back" onPress={closePage} hitSlop={12} style={{ width: 32, height: 48, justifyContent: 'center' }}><Back size={24} color={INK} strokeWidth={1.5} /></Pressable>
+            <Txt weight={500} size={18} color={INK}>Profile</Txt>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 16 }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: RAISED, overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end' }}>
+              <Svg width={64} height={64} viewBox="0 0 70 70"><Circle cx="35" cy="28" r="12" fill="#D4D4D8" /><Path d="M10 70c0-17 11-25 25-25s25 8 25 25z" fill="#D4D4D8" /></Svg>
             </View>
-          </InkContext.Provider>
-        </Hard>
-      </Sec>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Txt weight={500} size={22} color={INK} numberOfLines={1}>{a.name}</Txt>
+              <Txt size={14} color={GREY} style={NUM}>+91 {fmtPhone(a.phone)}</Txt>
+              <Pressable onPress={() => sheets.editName()} hitSlop={8} style={{ marginTop: 4 }}>
+                <Txt weight={500} size={14} color={C.violet}>Edit profile</Txt>
+              </Pressable>
+            </View>
+          </View>
+        </View>
 
-      <Sec><Head title="Wash details" right={`For your ${c.name}`} />
-        <Rows>{det.map(r => <Row key={r[0]} tile={r[3]} icon={r[4]} title={r[1]} sub={r[2]} chev onPress={() => sheets.editDetail(r[0])} />)}</Rows>
-      </Sec>
+        <View style={{ paddingHorizontal: 16, paddingTop: 24 }}>
+          <Pressable onPress={nav('plan')} style={[card, { minHeight: 64, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Txt size={13} color={MUTED}>Monthly plan</Txt>
+              <Txt weight={500} size={15} color={INK} numberOfLines={1} style={{ marginTop: 2 }}>{planOf(c).name}: {days[0]}</Txt>
+            </View>
+            <Chev size={18} color={MUTED} strokeWidth={1.5} />
+          </Pressable>
 
-      <Sec><Head title="Notifications" />
-        <Rows>{prefs.map(n => <Row key={n[0]} title={n[1]} sub={n[2]} right={<Toggle on={!!a.prefs[n[0]]} onChange={() => act.togglePref(n[0])} />} />)}</Rows>
-      </Sec>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+            {tile('My washes', <Drop size={18} color={MUTED} />, nav('live'))}
+            {tile('Monthly plan', <Plan size={18} color={MUTED} />, nav('plan'))}
+            {tile('Help and support', <Help size={18} color={MUTED} />, () => sheets.help())}
+          </View>
 
-      <Sec><Head title="Help" />
-        <Rows>
-          <Row {...tint('rgba(20,192,138,.15)', <WhatsApp size={18} color={C.mint} />)} title="WhatsApp Washing Daddy" sub="77018 08924 · 7 AM to 9 PM" chev onPress={() => sheets.help()} />
-          <Row {...tint('rgba(232,56,79,.14)', <Warn size={18} color={C.red} />)} title="Report a missed spot" sub="We re-wash it the same day" chev onPress={() => sheets.issue()} />
-          <Row {...tint('rgba(84,9,218,.14)', <Drop size={18} color={C.violet} />)} title="Washer app" sub={REAL ? 'For Washing Daddy staff' : 'For Washing Daddy staff · OTP 1234'} chev onPress={() => act.openUrl('https://washingdaddy.com/get/')} />
-          <Row {...tint('rgba(232,56,79,.14)', <Txt weight={800} color={C.red}>✕</Txt>)} title="Delete my account" sub="We remove your number and car details" chev onPress={() => sheets.deleteAccount()} />
-          <Row icon={<Logout size={18} />} title="Log out" sub={'Signed in as +91 ' + fmtPhone(a.phone)} onPress={() => sheets.logout()} />
-        </Rows>
-      </Sec>
+          <Group>
+            <Row icon={ic(Gift)} title="Refer and earn" right={<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Txt size={14} color={MUTED} style={NUM}>₹200</Txt><Chev size={18} color={MUTED} strokeWidth={1.5} /></View>} onPress={() => openPage({ k: 'refer' })} last />
+          </Group>
 
-      <View style={{ alignItems: 'center', marginTop: SP.section }}>
-        <Txt font="hero" size={26} color={T.day ? C.gold : ink.fg3} style={{ marginBottom: SP.s, opacity: T.day ? 1 : 0.6 }}>Washing Daddy!</Txt>
-        <Txt size={12} color={T.day ? ink.fg2 : ink.fg3} style={{ textAlign: 'center' }}>{'Washing Daddy Private Limited · New Delhi' + (REAL ? '' : '\nPrototype. Sign-in, payments and orders use test data.')}</Txt>
-      </View>
-    </Page>
+          <Group title="My cars">
+            {a.cars.map((g, i) => {
+              const on = i === S.carIdx, im = carImg(g);
+              return (
+                <Pressable key={g.id} onPress={() => act.pickCar(i)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: LINE }}>
+                  <View style={{ width: 64, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: RAISED, borderRadius: 8, overflow: 'hidden' }}>{im ? <Image source={src(im)!} resizeMode="contain" style={{ width: 64, height: 44 }} /> : <GhostCar width={52} color={MUTED} />}</View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Txt weight={500} size={15} color={INK} numberOfLines={1}>{(g.make ? g.make + ' ' : '') + g.name}</Txt>
+                    <Plate reg={maskPlate(g.plate)} width={88} style={{ marginTop: 4 }} />
+                    <Txt size={13} color={MUTED} numberOfLines={1} style={{ marginTop: 4 }}>{planOf(g).name}{g.status === 'new' ? ' · starts tomorrow' : ''}</Txt>
+                  </View>
+                  <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: on ? C.violet : '#D4D4D8', alignItems: 'center', justifyContent: 'center' }}>{on ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: C.violet }} /> : null}</View>
+                </Pressable>
+              );
+            })}
+            <Row icon={ic(Plus)} title="Add a car" sub="Add a second car" onPress={() => sheets.addCar()} last />
+          </Group>
+
+          <Group title={`Wash details · ${c.name}`}>
+            {det.map((r, i) => <Row key={r[0]} icon={ic(r[3])} title={r[1]} sub={r[2]} onPress={() => sheets.editDetail(r[0])} last={i === det.length - 1} />)}
+          </Group>
+
+          <Group title="Look">
+            <View style={{ flexDirection: 'row', padding: 4, gap: 4, backgroundColor: RAISED, borderRadius: 14 }}>
+              {looks.map(([k, label, I]) => { const on = theme === k; return (
+                <Pressable key={k} onPress={() => act.setTheme(k)} style={{ flex: 1, height: 40, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: on ? '#fff' : 'transparent', borderWidth: on ? 1 : 0, borderColor: LINE }}>
+                  <I size={18} color={on ? C.violet : MUTED} strokeWidth={1.5} /><Txt weight={on ? 600 : 400} size={14} color={on ? C.violet : GREY}>{label}</Txt>
+                </Pressable>); })}
+            </View>
+          </Group>
+
+          <Group title="Notifications">
+            {prefs.map((n, i) => <Row key={n[0]} icon={ic(Bell)} title={n[1]} sub={n[2]} last={i === prefs.length - 1} right={<Toggle on={!!a.prefs[n[0]]} onChange={() => act.togglePref(n[0])} />} />)}
+          </Group>
+
+          <Group>
+            {a.requests.length ? <Row icon={ic(Warn)} title="Re-wash requests" sub={`${open} open`} onPress={() => sheets.requests()} /> : null}
+            <Row icon={ic(Book)} title="One-time washes" onPress={() => sheets.bookings()} />
+            <Row icon={ic(Cart)} title="Orders" onPress={() => sheets.orders()} />
+            <Row icon={ic(WhatsApp)} title="WhatsApp Washing Daddy" sub="77018 08924 · 7 AM to 9 PM" onPress={() => sheets.help()} />
+            <Row icon={ic(Warn)} title="Report a missed spot" onPress={() => sheets.issue()} />
+            <Row icon={ic(Drop)} title="Washer app" sub={REAL ? 'For Washing Daddy staff' : 'For staff · OTP 1234'} onPress={() => act.openUrl('https://washingdaddy.com/get/')} />
+            <Row icon={ic(Info)} title="About us" onPress={() => act.openUrl('https://washingdaddy.com/')} />
+            <Row icon={<Clip />} title="Terms of service" onPress={() => act.openUrl('https://washingdaddy.com/terms.html')} />
+            <Row icon={ic(Shield)} title="Privacy policy" onPress={() => act.openUrl('https://washingdaddy.com/privacy.html')} />
+            <Row icon={<Clip c={RED} />} title="Request account deletion" onPress={() => sheets.deleteAccount()} danger />
+            <Row icon={ic(Logout)} title="Log out" onPress={() => sheets.logout()} last />
+          </Group>
+
+          <Txt size={12} color={MUTED} style={{ textAlign: 'center', marginTop: 32 }}>App version 1.0.0 (wd{REAL ? '' : ' proto'})</Txt>
+        </View>
+      </ScrollView>
+    </View>
   );
 }

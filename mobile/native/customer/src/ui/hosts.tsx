@@ -3,10 +3,11 @@
 import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { View, Animated, Easing, Pressable, ScrollView, KeyboardAvoidingView, BackHandler, PanResponder, StyleSheet, useWindowDimensions, Dimensions, AccessibilityInfo, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { C, InkContext, useTheme } from '../theme';
+import { C, InkContext, useTheme, SHADOW_FLOAT } from '../theme';
 import { Txt, Btn, useInsets } from './kit';
-import { Check } from './icons';
+import { SuccessTick } from './motion';
 
+const CURVE = Easing.bezier(0.22, 1, 0.36, 1);
 const chan = <T,>() => { const s = new Set<(v: T) => void>(); return { on: (f: (v: T) => void) => { s.add(f); return () => { s.delete(f); }; }, emit: (v: T) => s.forEach(f => f(v)) }; };
 
 export function haptic() { try { if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); } catch {} }
@@ -19,16 +20,16 @@ export function ToastHost() {
   useEffect(() => toasts.on(m => {
     setMsg(m); y.setValue(-140);
     Animated.sequence([
-      Animated.timing(y, { toValue: 0, duration: 260, easing: Easing.out(Easing.back(1.4)), useNativeDriver: true }),
-      Animated.delay(1920),
-      Animated.timing(y, { toValue: -140, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(y, { toValue: 0, duration: 300, easing: CURVE, useNativeDriver: true }),
+      Animated.delay(1900),
+      Animated.timing(y, { toValue: -140, duration: 220, easing: CURVE, useNativeDriver: true }),
     ]).start(({ finished }) => { if (finished) setMsg(null); });
   }), []);
   if (!msg) return null;
   return (
     <View pointerEvents="none" style={{ position: 'absolute', top: ins.top + 10, left: 16, right: 16, alignItems: 'center', zIndex: 2000, elevation: 2000 }}>
-      <Animated.View style={{ transform: [{ translateY: y }], backgroundColor: C.ink, borderRadius: 999, borderWidth: 2, borderColor: C.gold, paddingVertical: 12, paddingHorizontal: 20, maxWidth: 420 }}>
-        <Txt weight={600} size={14} color={C.cream} style={{ textAlign: 'center' }}>{msg}</Txt>
+      <Animated.View style={{ transform: [{ translateY: y }], backgroundColor: C.ink, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16, maxWidth: 420, ...SHADOW_FLOAT }}>
+        <Txt weight={500} size={14} color={C.white} style={{ textAlign: 'center' }}>{msg}</Txt>
       </Animated.View>
     </View>
   );
@@ -50,7 +51,7 @@ export function SheetHost() {
   const out = useRef(() => {
     const o = cur.current?.opts; isOpen = false;
     Animated.parallel([
-      Animated.timing(ty, { toValue: Dimensions.get('window').height, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(ty, { toValue: Dimensions.get('window').height, duration: 220, easing: CURVE, useNativeDriver: true }),
       Animated.timing(sc, { toValue: 0, duration: 220, useNativeDriver: true }),
     ]).start(({ finished }) => { if (finished) { setIt(null); o?.onClose?.(); } });
   }).current;
@@ -60,8 +61,8 @@ export function SheetHost() {
       if (!cur.current) ty.setValue(Dimensions.get('window').height);
       setIt(n);
       Animated.parallel([
-        Animated.timing(ty, { toValue: 0, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(sc, { toValue: 1, duration: 260, useNativeDriver: true }),
+        Animated.timing(ty, { toValue: 0, duration: 300, easing: CURVE, useNativeDriver: true }),
+        Animated.timing(sc, { toValue: 1, duration: 300, useNativeDriver: true }),
       ]).start();
     });
     return () => a();
@@ -75,23 +76,23 @@ export function SheetHost() {
   const pan = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true, onMoveShouldSetPanResponder: () => true,
     onPanResponderMove: (_, g) => { if (g.dy > 0) ty.setValue(g.dy); },
-    onPanResponderRelease: (_, g) => { if (g.dy > 90 || g.vy > 0.9) dismiss(); else Animated.spring(ty, { toValue: 0, useNativeDriver: true }).start(); },
-    onPanResponderTerminate: () => { Animated.spring(ty, { toValue: 0, useNativeDriver: true }).start(); },
+    onPanResponderRelease: (_, g) => { if (g.dy > 90 || g.vy > 0.9) dismiss(); else Animated.timing(ty, { toValue: 0, duration: 200, easing: CURVE, useNativeDriver: true }).start(); },
+    onPanResponderTerminate: () => { Animated.timing(ty, { toValue: 0, duration: 200, easing: CURVE, useNativeDriver: true }).start(); },
   })).current;
   if (!it) return null;
-  const edge = T.day ? C.ink : 'rgba(255,246,233,.22)', bw = T.day ? 3 : 1;
+  const edge = T.day ? C.hair : 'rgba(237,237,237,.08)', bw = 1;
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 1000 }]} pointerEvents="box-none">
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(18,7,36,.6)', opacity: sc }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(23,23,23,.4)', opacity: sc }]}>
         <Pressable style={{ flex: 1 }} onPress={dismiss} accessibilityLabel="Close" />
       </Animated.View>
       <KeyboardAvoidingView behavior="padding" pointerEvents="box-none" style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Animated.View style={{ transform: [{ translateY: ty }], maxHeight: '92%', backgroundColor: T.sheetBg, borderTopLeftRadius: 30, borderTopRightRadius: 30, borderWidth: bw, borderBottomWidth: 0, borderColor: edge, overflow: 'hidden' }}>
+        <Animated.View style={{ transform: [{ translateY: ty }], maxHeight: '92%', backgroundColor: T.sheetBg, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: bw, borderBottomWidth: 0, borderColor: edge, overflow: 'hidden' }}>
           <View {...pan.panHandlers} style={{ paddingTop: 10, paddingBottom: 12, alignItems: 'center' }}>
-            <View style={{ width: 46, height: 5, borderRadius: 3, backgroundColor: T.card.fg3, opacity: 0.6 }} />
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: T.card.fg3, opacity: 0.4 }} />
           </View>
           <InkContext.Provider value={T.card}>
-            <ScrollView keyboardShouldPersistTaps="handled" bounces={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 + ins.bottom }}>
+            <ScrollView keyboardShouldPersistTaps="handled" bounces={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 + ins.bottom }}>
               {it.node}
             </ScrollView>
           </InkContext.Provider>
@@ -100,19 +101,17 @@ export function SheetHost() {
     </View>
   );
 }
-export const SheetTitle = ({ children }: { children: ReactNode }) => <Txt font="shout" size={34} upper style={{ marginBottom: 4 }}>{children}</Txt>;
-export const SheetSub = ({ children }: { children: ReactNode }) => <Txt size={14} color={useTheme().card.fg2} style={{ marginBottom: 14 }}>{children}</Txt>;
+export const SheetTitle = ({ children }: { children: ReactNode }) => <Txt weight={500} size={22} style={{ marginBottom: 4, lineHeight: 28 }}>{children}</Txt>;
+export const SheetSub = ({ children }: { children: ReactNode }) => <Txt size={14} color={useTheme().card.fg2} style={{ marginBottom: 16 }}>{children}</Txt>;
 
 export function Success({ title, sub }: { title: string; sub?: string }) {
-  const s = useRef(new Animated.Value(0)).current, fg2 = useTheme().card.fg2;
-  useEffect(() => { Animated.spring(s, { toValue: 1, friction: 4, tension: 90, useNativeDriver: true }).start(); confetti(); haptic(); }, []);
+  const fg2 = useTheme().card.fg2;
+  useEffect(() => { haptic(); }, []);
   return (
-    <View style={{ alignItems: 'center', paddingTop: 6 }}>
-      <Animated.View style={{ transform: [{ scale: s }], width: 84, height: 84, borderRadius: 42, backgroundColor: C.mint, borderWidth: 3, borderColor: C.ink, alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-        <Check size={40} color={C.white} />
-      </Animated.View>
-      <Txt font="shout" size={34} upper style={{ textAlign: 'center' }}>{title}</Txt>
-      {sub ? <Txt size={14} color={fg2} style={{ textAlign: 'center', maxWidth: 300, marginTop: 6, marginBottom: 18 }}>{sub}</Txt> : <View style={{ height: 18 }} />}
+    <View style={{ alignItems: 'center', paddingTop: 8 }}>
+      <SuccessTick size={64} />
+      <Txt weight={500} size={22} style={{ textAlign: 'center', marginTop: 16 }}>{title}</Txt>
+      {sub ? <Txt size={14} color={fg2} style={{ textAlign: 'center', maxWidth: 300, marginTop: 8, marginBottom: 24 }}>{sub}</Txt> : <View style={{ height: 24 }} />}
       <Btn label="Done" onPress={closeSheet} />
     </View>
   );
@@ -121,7 +120,7 @@ export function Success({ title, sub }: { title: string; sub?: string }) {
 /* ---------- confetti ---------- */
 const confs = chan<number>();
 export const confetti = () => { AccessibilityInfo.isReduceMotionEnabled().then(rm => { if (!rm) confs.emit(Date.now()); }, () => confs.emit(Date.now())); };
-const COLORS = ['#FFBA08', '#5409DA', '#FF6A1A', '#2E8BFF', '#2EE6A6', '#FFF6E9'];
+const COLORS = ['#171717', '#5409DA', '#737373', '#D4D4D8'];
 type Bit = { x: number; w: number; h: number; color: string; delay: number; dur: number; rot: number; sway: number; round: boolean };
 const mkBits = (): Bit[] => Array.from({ length: 80 }, () => ({
   x: Math.random(), w: 6 + Math.random() * 6, h: 8 + Math.random() * 8, color: COLORS[Math.floor(Math.random() * COLORS.length)], delay: Math.random() * 700,
