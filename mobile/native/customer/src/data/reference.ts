@@ -140,3 +140,125 @@ export const SLOTS = { Morning: ['7:00 am', '8:00 am', '9:00 am', '10:00 am', '1
 export const TRUST = { cars: '', carsLabel: 'Cars washed', rating: '', ratingLabel: 'Average rating' };
 // Ratings and counts on CAR_SERVICES are placeholders; SHOW_RATINGS=false hides them everywhere until they are real.
 export const SHOW_RATINGS = false;
+
+/* =====================================================================
+   PRONTO LAYER (2026-11-15). Display data only: every price, fee, coupon, wallet, pass and referral amount below is
+   re-computed by the server (n8n, see pronto-video-2026-11-15/BACKEND.md) before any money moves. PLACEHOLDERS until
+   Ravi confirms. Contract: pronto-video-2026-11-15/CONTRACT.md.
+   ===================================================================== */
+
+/* ---- cart modes ---- */
+export type CartMode = 'instant' | 'scheduled' | 'recurring';
+export const CART_MODES: { id: CartMode; label: string; sub: string }[] = [
+  { id: 'instant', label: 'Instant', sub: 'Washer in 45-60 min' },
+  { id: 'scheduled', label: 'Scheduled', sub: 'Pick a day and time' },
+  { id: 'recurring', label: 'Recurring', sub: 'Same slot every week, cheaper' },
+];
+
+/* ---- service variants (car size) and offer packs ---- */
+// Every a la carte service comes in three car sizes; price and minutes scale from the CarService base (hatchback).
+export type VariantId = 'hatch' | 'sedan' | 'suv';
+export type Variant = { id: VariantId; label: string; sub: string; mul: number; minsMul: number };
+export const VARIANTS: Variant[] = [
+  { id: 'hatch', label: 'Hatchback', sub: 'Swift, i20, Baleno', mul: 1, minsMul: 1 },
+  { id: 'sedan', label: 'Sedan', sub: 'City, Verna, Dzire', mul: 1.2, minsMul: 1.2 },
+  { id: 'suv', label: 'SUV', sub: 'Creta, Scorpio, XUV700', mul: 1.4, minsMul: 1.4 },
+];
+export const DEFAULT_VARIANT: VariantId = 'hatch';
+const r9 = (n: number) => Math.max(9, Math.round(n / 10) * 10 - 1);   // 149 * 1.2 = 178.8 -> 179
+export function variantPrice(base: { price: number; mrp: number; mins: number }, v: VariantId = DEFAULT_VARIANT) {
+  const x = VARIANTS.find(q => q.id === v) || VARIANTS[0];
+  return x.mul === 1 ? { price: base.price, mrp: base.mrp, mins: base.mins } : { price: r9(base.price * x.mul), mrp: r9(base.mrp * x.mul), mins: Math.round(base.mins * x.minsMul / 5) * 5 };
+}
+// The three combos n8n already prices (SERVICES above) as pack cards: NEW tag, price, MRP, minutes.
+export type PackInfo = { id: string; name: string; tag: string; img: string; mins: number; sub: string; price: number; mrp: number; isNew: boolean };
+export const PACK_MRP: Record<string, number> = { wash: 349, deep: 1299, exclusive: 3200 };
+export const packInfo = (id: string): PackInfo | null => {
+  const p = PACKS.find(x => x.id === id), s = SERVICES.find(x => x.id === id); if (!p || !s) return null;
+  return { id, name: s.name, tag: p.tag, img: p.img, mins: p.mins, sub: p.sub, price: s.price, mrp: PACK_MRP[id] || s.price, isNew: p.tag === 'NEW' };
+};
+
+/* ---- recurring plans (cart mode 'recurring') ---- */
+export type RecurId = 'weekly' | 'twice' | 'alt';
+export const RECURRING: { id: RecurId; label: string; sub: string; perMonth: number; off: number }[] = [
+  { id: 'weekly', label: 'Once a week', sub: '4 visits a month', perMonth: 4, off: 10 },
+  { id: 'twice', label: 'Twice a week', sub: '8 visits a month', perMonth: 8, off: 15 },
+  { id: 'alt', label: 'Alternate days', sub: '15 visits a month', perMonth: 15, off: 20 },
+];
+
+/* ---- fees and tax (display; server prices) ---- */
+export const FEES = { gstPct: 5, visitFee: 0, convenienceFee: 19, convenienceFreeAbove: 299, instantFee: 0 };
+
+/* ---- schedule slots ---- */
+export type DayPart = 'Morning' | 'Afternoon' | 'Evening';
+export const DAY_PARTS: { id: DayPart; from: string; to: string }[] = [
+  { id: 'Morning', from: '07:00', to: '11:30' }, { id: 'Afternoon', from: '12:00', to: '16:30' }, { id: 'Evening', from: '17:00', to: '20:00' },
+];
+export const SLOT_STEP_MIN = 30;
+export const SLOT_DAYS = 7;
+export const SLOT_CUTOFF_MIN = 90;       // a slot today must start at least this far from now
+export const ARRIVAL_WINDOW_MIN = 30;    // "Washers arrive within 30 minutes of the selected slot"
+// Peak slots cost a little more (shown as "+₹30" on the chip)
+export const SLOT_SURCHARGE: Record<string, number> = { '08:00': 30, '08:30': 30, '09:00': 30, '09:30': 30, '13:00': 50, '13:30': 50, '17:30': 30, '18:00': 30, '18:30': 30 };
+// Instant service hours (IST). Outside them Home shows "Back at 6AM".
+export const INSTANT_HOURS = { open: '06:00', close: '20:00' };
+export const SOLD_OUT_TEXT = 'More slots open between 7-11 AM on the same day. Instant slots become available throughout the day.';
+
+/* ---- coupons ---- */
+export type Coupon = {
+  code: string; title: string; sub: string; kind: 'flat' | 'pct'; v: number; max?: number; minOrder: number;
+  modes?: CartMode[]; firstOrder?: boolean; till: string; tnc: string[];
+};
+export const COUPONS: Coupon[] = [
+  { code: 'FIRSTWASH', title: '₹100 off your first booking', sub: 'On orders above ₹299', kind: 'flat', v: 100, minOrder: 299, firstOrder: true, till: '2026-12-31', tnc: ['Valid once per number', 'Not valid on WD Pass'] },
+  { code: 'SHINE20', title: '20% off up to ₹150', sub: 'On orders above ₹499', kind: 'pct', v: 20, max: 150, minOrder: 499, till: '2026-12-31', tnc: ['Valid on a la carte services and packs'] },
+  { code: 'WEEKLY50', title: '₹50 off recurring plans', sub: 'On your first recurring month', kind: 'flat', v: 50, minOrder: 199, modes: ['recurring'], till: '2026-12-31', tnc: ['Applies to the first month only'] },
+  { code: 'EARLYBIRD', title: '₹30 off morning slots', sub: 'Scheduled bookings only', kind: 'flat', v: 30, minOrder: 149, modes: ['scheduled'], till: '2026-12-31', tnc: ['Scheduled bookings only'] },
+];
+
+/* ---- wallet (WD Money) ---- */
+export const WALLET = {
+  name: 'WD Money',
+  cashbackPct: 5,
+  chips: [{ amt: 250, bonus: 12.5 }, { amt: 500, bonus: 25 }, { amt: 1000, bonus: 50 }],
+  minTopUp: 100, maxTopUp: 10000, maxBalance: 10000,
+  promoExpiryDays: 15, cashExpiryDays: 365,
+  rules: [
+    'Pay for any booking with the balance in your wallet.',
+    'Promotional rewards expire 15 days after being credited.',
+    'Cash balance expires 1 year from the date of credit.',
+    'Wallet balance cannot be withdrawn to a bank account.',
+  ],
+  benefits: [['Earn rewards', 'on every top-up'], ['Quick checkout', 'on every booking'], ['Works everywhere', 'on all bookings']] as [string, string][],
+};
+
+/* ---- WD Pass (prepaid visits) ---- */
+export type PassPlan = { id: string; name: string; title: string; visits: number; price: number; mrp: number; days: number; covers: string[]; maxMins: number; benefits: [string, string][]; faqs: [string, string][] };
+export const PASS_PLANS: PassPlan[] = [
+  { id: 'pass3', name: 'WD Pass', title: 'Exterior Wash', visits: 3, price: 349, mrp: 447, days: 30, covers: ['ext', 'foam', 'tyre', 'glass', 'wash'], maxMins: 35,
+    benefits: [['Save on every booking', 'Each wash costs less than a single booking'], ['Flexible bookings', 'Use a visit for any covered service, instant or scheduled'], ['30 days to use', 'Your visits stay valid for 30 days from purchase']],
+    faqs: [['Can I use my visits whenever I want?', 'Yes. Book instant or scheduled, any day within 30 days of buying the pass.'],
+      ['What services can I use my pass for?', 'Exterior pressure wash, foam wash, tyre and rim polish, glass care and the WD Wash pack.'],
+      ["What happens if I don't use all my visits?", 'Unused visits expire with the pass after 30 days. They are not refunded.'],
+      ['What if I cancel or reschedule a booking?', 'Cancel more than 2 hours before the slot and the visit comes back to your pass.']] },
+];
+
+/* ---- referral ---- */
+export const REFERRAL = {
+  friendGets: 40, bannerAmt: 100,
+  tiers: [{ id: 'champ', name: 'Champ', amt: 100, from: 1, to: 5 }, { id: 'star', name: 'Star', amt: 150, from: 6, to: 9 }, { id: 'legend', name: 'Legend', amt: 200, from: 10, to: Infinity }],
+  steps: ['Share the link with your friend', 'Your friend downloads the app with your link', 'They get ₹40 and you get ₹100 when they finish their first booking'],
+  tnc: ['Rewards are credited to WD Money after your friend’s first booking is completed.', 'Your reward grows with the number of completed referrals: Champ, Star, Legend.', 'Referral rewards are promotional and expire 15 days after credit.', 'Self-referrals and duplicate accounts are not rewarded.'],
+};
+
+/* ---- address labels ---- */
+export const ADDRESS_LABELS = ['Home', 'Work', 'Parents', 'Other'] as const;
+export type AddressLabel = (typeof ADDRESS_LABELS)[number];
+
+/* ---- account deletion ("Before you delete your account") ---- */
+export const DELETE_INFO: [string, string][] = [
+  ['Bookings', 'Upcoming bookings will be cancelled'],
+  ['Balances', 'Pass and wallet balances will be lost'],
+  ['History', 'Profile, addresses and history will no longer be available'],
+  ['Finance records', 'May be retained as required by law'],
+];

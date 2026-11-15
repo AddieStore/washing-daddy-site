@@ -19,6 +19,7 @@ export type Account = {
   prefs: { photo: boolean; pay: boolean; drops: boolean };
   cars: Car[]; payments: Payment[]; orders: Order[]; requests: Rewash[]; bookings: Booking[];
   credit?: number;   // Referral Credit in rupees from wd-pay-lookup, read-only
+  first?: string; last?: string; email?: string;   // Edit profile (Pronto); name stays the display name = first + ' ' + last
 };
 export type Session = { token: string; phone: string; real: boolean };
 
@@ -54,7 +55,7 @@ export function fromCustomerDoc(r: any, old: Account | null): Account {
       washes: 0, paused: null, note: null, rating: 0 }, o || {}, c, { id: o ? o.id : (c.id || 'c' + i), status: active ? (c.status || 'active') : 'new' });
   });
   return Object.assign({ prefs: { photo: true, pay: true, drops: true }, payments: [], orders: [], requests: [], bookings: [] }, prev || {},
-    { name: r.name || '', phone: String(r.phone).slice(-10), since: r.since || 'October 2026', area: r.area || '', status: r.status, cars });
+    { name: r.name || '', first: r.first_name || undefined, last: r.last_name || undefined, email: r.email || undefined, phone: String(r.phone).slice(-10), since: r.since || 'October 2026', area: r.area || '', status: r.status, cars });
 }
 
 /* ---------- schedule: weekly extras spread by a hash of the registration ---------- */
