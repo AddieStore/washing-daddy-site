@@ -123,8 +123,8 @@ function RescheduleBody({ id }: { id: string }) {
   const confirm = async () => {
     if (!slot || busy) return; setBusy(true);
     try {
-      const fn = (act as any).rescheduleJob;   // TODO(CORE): see requests-bookings.md; until it exists the request goes to support on WhatsApp
-      if (typeof fn === 'function') { await fn(id, { date, slot }); toast('Booking moved'); }
+      const fn = (act as any).rescheduleJob;   // act.rescheduleJob exists; the WhatsApp fallback below is only for older state builds
+      if (typeof fn === 'function') { await fn(id, { date, slot }); }
       else { act.whatsapp(`Please reschedule my booking ${id} (${jobTitle(j)}) to ${fmt(date, { weekday: 'short', day: 'numeric', month: 'short' })}, ${slots.find(s => s.t === slot)?.label || slot}.`); toast('Sent to our team on WhatsApp'); }
       closeSheet();
     } catch (e: any) { toast(e.message || 'Could not reschedule. Try again.'); setBusy(false); }
@@ -135,7 +135,7 @@ function RescheduleBody({ id }: { id: string }) {
       <SheetSub>{`Now: ${jobWhen(j)}. Free to change up to 6 hours before.`}</SheetSub>
       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
         {days.map(d => { const on = d.date === date; return (
-          <Tap key={d.date} disabled={d.soldOut} onPress={() => { setDate(d.date); setSlot(''); }} style={{ width: 76, minHeight: 60, borderRadius: 10, borderWidth: 1, borderColor: on ? C.violet : G.line, backgroundColor: on ? 'rgba(84,9,218,0.06)' : '#fff', alignItems: 'center', justifyContent: 'center', opacity: d.soldOut ? 0.4 : 1 }}>
+          <Tap key={d.date} disabled={d.soldOut} onPress={() => { setDate(d.date); setSlot(''); }} style={{ width: '22.8%', minHeight: 60, borderRadius: 10, borderWidth: 1, borderColor: on ? C.violet : G.line, backgroundColor: on ? 'rgba(84,9,218,0.06)' : '#fff', alignItems: 'center', justifyContent: 'center', opacity: d.soldOut ? 0.4 : 1 }}>
             <Txt size={12} color={on ? C.violet : G.mute}>{d.label === 'Today' || d.label === 'Tomorrow' ? d.label : d.short}</Txt>
             <Txt weight={500} size={16} color={on ? C.violet : G.ink} style={TNUM}>{d.d}</Txt>
             {d.soldOut ? <Txt size={10} color={G.mute}>Full</Txt> : null}
@@ -144,7 +144,7 @@ function RescheduleBody({ id }: { id: string }) {
       <Txt weight={500} size={14} style={{ marginTop: 16, marginBottom: 8 }}>Pick a time</Txt>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {slots.filter(s => s.ok).map(s => { const on = s.t === slot; return (
-          <Tap key={s.t} onPress={() => setSlot(s.t)} style={{ minHeight: 40, minWidth: 84, paddingHorizontal: 8, borderRadius: 10, borderWidth: 1, borderColor: on ? C.violet : G.line, backgroundColor: on ? C.violet : '#fff', alignItems: 'center', justifyContent: 'center' }}>
+          <Tap key={s.t} onPress={() => setSlot(s.t)} style={{ minHeight: 40, width: '31%', paddingHorizontal: 4, borderRadius: 10, borderWidth: 1, borderColor: on ? C.violet : G.line, backgroundColor: on ? C.violet : '#fff', alignItems: 'center', justifyContent: 'center' }}>
             <Txt weight={500} size={13} color={on ? '#fff' : G.ink} style={TNUM}>{s.label}</Txt>
           </Tap>); })}
         {!slots.some(s => s.ok) ? <Txt size={13} color={G.sub}>No slots left on this day.</Txt> : null}

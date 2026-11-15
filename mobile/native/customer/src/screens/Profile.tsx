@@ -60,7 +60,7 @@ export default function Profile() {
 
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
             {tile('My Bookings', ic(Plan), () => openPage({ k: 'bookings' }))}
-            {tile('Money', ic(Wallet), () => openPage({ k: 'money' }), inr(bal))}
+            {tile('Money', ic(Wallet), () => openPage({ k: 'money' }), '₹' + (Number.isInteger(bal) ? inr(bal).slice(1) : bal.toFixed(2)))}
             {tile('Help & Support', ic(Help), () => openPage({ k: 'help' }))}
           </View>
 

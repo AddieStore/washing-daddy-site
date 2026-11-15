@@ -31,7 +31,7 @@ export default function Refer() {
               </Pressable>
             ) : <Txt size={13} color={G.mute} style={{ marginTop: 16 }}>Your code appears once you sign in.</Txt>}
             <View style={{ flexDirection: 'row', alignSelf: 'stretch', marginTop: 20, borderTopWidth: 1, borderTopColor: G.line, paddingTop: 14 }}>
-              {[['Friends joined', String(v.completed)], ['Earned', rs(v.earned)], ['Pending', rs(v.pending)]].map(([a, b], i) => (
+              {[['Friends joined', String(v.completed)], ['Earned', rs(v.earned)], ['Pending', rs(v.ledger.filter(r => r.status === 'pending').reduce((a, r) => a + r.amt, 0))]].map(([a, b], i) => (
                 <View key={a} style={{ flex: 1, alignItems: 'center', borderLeftWidth: i ? 1 : 0, borderLeftColor: G.line }}><Txt weight={600} size={17} style={TNUM}>{b}</Txt><Txt size={12} color={G.mute} style={{ marginTop: 2 }}>{a}</Txt></View>
               ))}
             </View>

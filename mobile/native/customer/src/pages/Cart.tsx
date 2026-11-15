@@ -142,7 +142,7 @@ export default function Cart() {
                 ) : null}
                 {wal.balance > 0 ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56 }}>
-                    <View style={{ flex: 1 }}><Txt weight={500} size={14}>Pay with {WALLET.name}</Txt><Txt size={12} color={G.mute}>Balance {inr(wal.balance)}</Txt></View>
+                    <View style={{ flex: 1 }}><Txt weight={500} size={14}>Pay with {WALLET.name}</Txt><Txt size={12} color={G.mute}>Balance {Number.isInteger(wal.balance) ? inr(wal.balance) : '₹' + wal.balance.toFixed(2)}</Txt></View>
                     <Toggle on={S.useWallet} onChange={v => act.setUseWallet(v)} />
                   </View>
                 ) : null}
