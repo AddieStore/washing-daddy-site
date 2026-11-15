@@ -11,7 +11,8 @@ import { useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toas
 import { sheets } from '../sheets';
 import { inr, fmt, iso, TODAY } from '../data/dates';
 import { slotLabel } from '../state';
-import { G, card, Tap, TNUM } from './parts';
+import { G, card, Tap, TNUM, PAGE_BG } from './parts';
+import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, useReducedMotion } from 'react-native-reanimated';
 import { Stars, durText, washerImg, washerSub, STATUS_TEXT, dayLabel, openRateSheet } from '../sheets/bookings';
 
 const ND = Platform.OS !== 'web';
@@ -100,6 +101,23 @@ export function JobCard({ j, onPress }: { j: Job; onPress: () => void }) {
 }
 
 /* ---------- the list with its Upcoming / Previous switch ---------- */
+/* Upcoming / Previous switch: the violet thumb springs across */
+function SegSwitch({ value, onChange }: { value: 'up' | 'prev'; onChange: (v: 'up' | 'prev') => void }) {
+  const [w, setW] = useState(0), rm = useReducedMotion(), x = useSharedValue(value === 'up' ? 0 : 1);
+  useEffect(() => { x.value = rm ? (value === 'up' ? 0 : 1) : withSpring(value === 'up' ? 0 : 1, { damping: 17, stiffness: 220, mass: 0.8 }) }, [value, rm]);
+  const st = useAnimatedStyle(() => ({ transform: [{ translateX: x.value * (w / 2 - 4) }] }));
+  return (
+    <View onLayout={e => setW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', backgroundColor: '#fff', borderRadius: 999, padding: 4, height: 48, shadowColor: '#1A1033', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}>
+      {w ? <Reanimated.View style={[{ position: 'absolute', left: 4, top: 4, bottom: 4, width: w / 2 - 4, borderRadius: 999, backgroundColor: C.violet }, st]} /> : null}
+      {([['up', 'Upcoming'], ['prev', 'Previous']] as const).map(([k, l]) => (
+        <Pressable key={k} accessibilityRole="button" accessibilityState={{ selected: value === k }} accessibilityLabel={l} onPress={() => onChange(k)} style={{ flex: 1, borderRadius: 999, alignItems: 'center', justifyContent: 'center' }}>
+          <Txt weight={value === k ? 600 : 500} size={14} color={value === k ? '#fff' : G.sub}>{l}</Txt>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 export function BookingsBody({ tab: isTab }: { tab?: boolean }) {
   const ui = useApp(), ins = useInsets(), ref = useRef<any>(null), { upcoming, previous } = bookingsView();
   const [seg, setSeg] = useState<'up' | 'prev'>('up'), [loading, setLoading] = useState(true), [refreshing, setRefreshing] = useState(false);
@@ -108,27 +126,21 @@ export function BookingsBody({ tab: isTab }: { tab?: boolean }) {
   const list = seg === 'up' ? upcoming : previous;
   const refresh = async () => { setRefreshing(true); try { await act.refresh(); } catch (e: any) { toast(e.message || 'Could not refresh'); } setRefreshing(false); };
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
       <View style={{ paddingTop: isTab ? Math.max(ins.top, 24) : ins.top + 8, paddingBottom: 8, paddingHorizontal: isTab ? 16 : 8, flexDirection: 'row', alignItems: 'center', minHeight: 64 }}>
         {isTab ? null : <Tap label="Back" onPress={closePage} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}><Back size={18} color={G.ink} strokeWidth={1.5} /></Tap>}
-        <Txt weight={500} size={isTab ? 22 : 17} style={{ flex: 1 }}>My bookings</Txt>
+        <Txt weight={600} size={isTab ? 22 : 17} style={{ flex: 1 }}>My bookings</Txt>
         <Tap label="Help" onPress={() => openPage({ k: 'help' })} style={{ height: 40, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: G.line, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', marginRight: isTab ? 0 : 8 }}>
           <HelpIc size={18} color={G.mute} strokeWidth={1.5} /><Txt weight={500} size={14}>Help</Txt>
         </Tap>
       </View>
       <ScrollView ref={ref} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.violet} colors={[C.violet]} />} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: isTab ? 128 : 48 }}>
-        <View style={{ flexDirection: 'row', backgroundColor: G.raised, borderRadius: 999, padding: 4, height: 44 }}>
-          {([['up', 'Upcoming'], ['prev', 'Previous']] as const).map(([k, l]) => (
-            <Pressable key={k} accessibilityRole="button" accessibilityLabel={l} onPress={() => setSeg(k)} style={{ flex: 1, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: seg === k ? C.violet : 'transparent' }}>
-              <Txt weight={500} size={14} color={seg === k ? '#fff' : G.sub}>{l}</Txt>
-            </Pressable>
-          ))}
-        </View>
+        <SegSwitch value={seg} onChange={setSeg} />
         {loading ? <ListSkeleton /> : list.length ? (
           <View style={{ marginTop: 8 }}>
             <View pointerEvents="none" style={{ position: 'absolute', left: 7, top: 22, bottom: 24, borderLeftWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(23,23,23,0.18)' }} />
             {list.map((j, i) => (
-              <FadeUp key={seg + j.id} delay={Math.min(i, 5) * 50}>
+              <FadeUp key={seg + j.id} index={i}>
                 <View style={{ marginTop: 16, marginBottom: 8, marginLeft: 24 }}>
                   <View style={{ position: 'absolute', left: -24, top: 2, width: 15, height: 15, borderRadius: 8, backgroundColor: '#fff', borderWidth: 2, borderColor: j.status === 'cancelled' ? '#D4D4D8' : C.violet }} />
                   <Txt weight={500} size={13}>{dayLabel(j.date)}</Txt>

@@ -9,12 +9,15 @@ import { IMG, RATIO } from '../img';
 import { useApp, act, svcQty, svcOf, lineKey, closePage, openPage } from '../state';
 import { CAR_SERVICES, PACKS, SHOW_RATINGS, TRUST, VARIANTS, variantPrice, packInfo, type VariantId } from '../data/reference';
 import { Laurel } from '../ui/art2';
-import { CartBar, Shimmer, useSkeleton, FadeUp } from '../ui/motion';
+import { CartBar, Shimmer, useSkeleton, FadeUp, takeOrigin, flyFrom, AddButton } from '../ui/motion';
+import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming, useReducedMotion } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SvcArt } from './parts';
 import { G, card, imgOf, BackCircle, ShareCircle, Price, Tap, TNUM, AddBtn } from './parts';
 import { src } from '../img';
 
 const ND = Platform.OS !== 'web';
-const HERO_H = 300;
+const HERO_H = 380;
 const GALLERY = ['ext', 'wash', 'under'];   // pressure-wash services: show the before / after pair
 
 const FAQ_FOR = (name: string, pack: boolean): [string, string][] => [
@@ -40,6 +43,34 @@ function Skeleton() {
   );
 }
 
+/* hero art: flies up from the tapped card (shared-element feel), then settles with a spring */
+function HeroArt({ id, size, top, W, org, rm }: { id: string; size: number; top: number; W: number; org: ReturnType<typeof takeOrigin>; rm: boolean }) {
+  const cx = W / 2, cy = top + size / 2;
+  const from = org && !rm ? { x: org.x + org.w / 2 - cx, y: org.y + org.h / 2 - cy, s: Math.max(0.2, org.w / size) } : { x: 0, y: rm ? 0 : 24, s: rm ? 1 : 0.86 };
+  const p = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { if (!rm) p.value = withSpring(1, { damping: 17, stiffness: 150, mass: 0.9 }) }, []);
+  const st = useAnimatedStyle(() => ({ opacity: org || rm ? 1 : Math.min(1, p.value * 2), transform: [{ translateX: from.x * (1 - p.value) }, { translateY: from.y * (1 - p.value) }, { scale: from.s + (1 - from.s) * p.value }] }));
+  return (
+    <Reanimated.View style={[{ position: 'absolute', left: cx - size / 2, top, width: size, height: size, alignItems: 'center', justifyContent: 'center' }, st]}>
+      <View style={{ position: 'absolute', width: size * 0.92, height: size * 0.92, borderRadius: size, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+      <SvcArt id={id} size={size} />
+    </Reanimated.View>
+  );
+}
+function HeroTitle({ name, chip, rm, delay }: { name: string; chip: string; rm: boolean; delay: number }) {
+  const v = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { if (!rm) v.value = withDelay(delay + 80, withSpring(1, { damping: 16, stiffness: 140 })) }, []);
+  const st = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ translateY: (1 - v.value) * 18 }] }));
+  return (
+    <Reanimated.View style={[{ position: 'absolute', left: 16, right: 16, bottom: 40 }, st]}>
+      <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.45)', borderRadius: 999, paddingHorizontal: 10, height: 24, backgroundColor: 'rgba(255,255,255,0.10)' }}>
+        <Clock size={12} color="#fff" strokeWidth={1.8} /><Txt weight={600} size={11} color="#fff" style={{ letterSpacing: 0.6 }}>{chip.toUpperCase()}</Txt>
+      </View>
+      <Txt weight={800} size={28} color="#fff" numberOfLines={2} style={{ marginTop: 8, lineHeight: 34, letterSpacing: -0.5 }}>{name}</Txt>
+    </Reanimated.View>
+  );
+}
+
 function Faq({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false), rot = useRef(new Animated.Value(0)).current;
   useEffect(() => { Animated.timing(rot, { toValue: open ? 1 : 0, duration: 200, useNativeDriver: ND }).start() }, [open]);
@@ -55,16 +86,16 @@ function Faq({ q, a }: { q: string; a: string }) {
 }
 
 function Variant({ id, v, base, w }: { id: string; v: (typeof VARIANTS)[number]; base: { price: number; mrp: number; mins: number }; w: number }) {
-  const key = lineKey(id, v.id), q = svcQty(key), on = q > 0, p = variantPrice(base, v.id as VariantId);
+  const key = lineKey(id, v.id), q = svcQty(key), on = q > 0, p = variantPrice(base, v.id as VariantId), ref = useRef<any>(null);
   return (
-    <View style={{ width: w, borderRadius: 14, borderWidth: on ? 1.5 : 1, borderColor: on ? G.violet : G.line, backgroundColor: '#fff', padding: 10, alignItems: 'center', ...(on ? {} : {}) }}>
-      <Txt weight={500} size={14} numberOfLines={1}>{v.label}</Txt>
+    <View ref={ref} style={[card({ width: w, borderWidth: 2, borderColor: on ? G.violet : 'transparent', padding: 10, alignItems: 'center' }), on ? { backgroundColor: '#FBF9FF' } : null]}>
+      <Txt weight={600} size={14} numberOfLines={1}>{v.label}</Txt>
       <Txt size={11} color={G.mute} numberOfLines={1} style={{ lineHeight: 15 }}>{p.mins} mins</Txt>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 6, marginBottom: 10 }}>
         <Price v={p.price} size={14} />{p.mrp > p.price ? <Price v={p.mrp} size={11} weight={400} strike /> : null}
       </View>
       {on ? <AddBtn qty={q} onAdd={() => act.addLine(id, v.id as VariantId)} onSub={() => act.subLine(id, v.id as VariantId)} />
-        : <Tap label={'Add ' + v.label} onPress={() => act.addLine(id, v.id as VariantId)} style={{ height: 36, alignSelf: 'stretch', borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: G.raised }}><Txt weight={500} size={14} color={G.violet}>Add</Txt></Tap>}
+        : <Tap label={'Add ' + v.label} scaleTo={0.9} onPress={() => { flyFrom(ref, id); act.addLine(id, v.id as VariantId) }} style={{ height: 36, alignSelf: 'stretch', borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(84,9,218,0.08)', borderWidth: 1, borderColor: 'rgba(84,9,218,0.25)' }}><Txt weight={600} size={14} color={G.violet}>Add</Txt></Tap>}
       <Txt size={10} color={G.mute} numberOfLines={1} style={{ marginTop: 6, lineHeight: 14 }}>{v.sub.split(',')[0]}</Txt>
     </View>
   );
@@ -72,7 +103,8 @@ function Variant({ id, v, base, w }: { id: string; v: (typeof VARIANTS)[number];
 
 export default function Service({ id }: { id?: string }) {
   useApp();
-  const ins = useInsets(), { width } = useWindowDimensions(), W = Math.min(width, 520), skel = useSkeleton(380);
+  const ins = useInsets(), { width } = useWindowDimensions(), W = Math.min(width, 520);
+  const [org] = useState(() => takeOrigin(id || 'ext')), skel = useSkeleton(org ? 0 : 380), rm = useReducedMotion();
   const y = useRef(new Animated.Value(0)).current;
   const sid = id || 'ext', svc = svcOf(sid), pack = packInfo(sid);
   const name = svc ? svc.name : pack ? pack.name : 'Wash';
@@ -85,7 +117,7 @@ export default function Service({ id }: { id?: string }) {
   const share = () => { Share.share({ message: `${name} at your car park from Washing Daddy. https://washingdaddy.com/` }).catch(() => {}) };
   const together = CAR_SERVICES.filter(s => s.id !== sid && (!svc || s.cat !== svc.cat || true)).slice(0, 6);
   const gallery = GALLERY.includes(sid);
-  const vw = Math.floor((W - 32 - 16) / 3);
+  const vw = Math.floor((W - 32 - 16) / 3), ART_S = Math.min(Math.round(W * 0.5), 210);
   const gw = Math.floor((W - 32 - 12) / 2 * 0.62);   // small: about 60% of half the page width
 
   const heroY = y.interpolate({ inputRange: [-HERO_H, 0, HERO_H], outputRange: [-HERO_H / 2, 0, HERO_H * 0.45], extrapolate: 'clamp' });
@@ -101,16 +133,19 @@ export default function Service({ id }: { id?: string }) {
       <Animated.ScrollView showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={onScroll} contentContainerStyle={{ paddingBottom: 140 }}>
         {skel ? <Skeleton /> : (
           <>
-            <View style={{ height: HERO_H, overflow: 'hidden', backgroundColor: tint }}>
-              <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', transform: [{ translateY: heroY }, { scale: heroS }] }}>
-                <Image source={src(im) as any} resizeMode={r3d ? 'contain' : 'cover'} style={{ width: r3d ? W * 0.72 : '100%', height: r3d ? HERO_H * 0.82 : '100%', marginTop: r3d ? 24 : 0 }} />
+            <View style={{ height: HERO_H, overflow: 'hidden' }}>
+              <LinearGradient colors={['#6A1BF2', '#5409DA', '#33058F']} start={{ x: 0, y: 0 }} end={{ x: 0.8, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+              <View style={{ position: 'absolute', right: -60, top: -40, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,255,255,0.07)' }} />
+              <View style={{ position: 'absolute', left: -50, bottom: 30, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.05)' }} />
+              <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, transform: [{ translateY: heroY }, { scale: heroS }] }}>
+                <HeroArt id={sid} size={ART_S} top={ins.top + 52} W={W} org={org} rm={rm} />
+                <HeroTitle name={name} chip={svc ? svc.cat + ' · ' + svc.mins + ' mins' : 'Wash pack · ' + pack!.mins + ' mins'} rm={rm} delay={org ? 160 : 0} />
               </Animated.View>
             </View>
-            <View style={{ marginTop: -20, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 24, paddingHorizontal: 16 }}>
-              <Txt weight={500} size={24} style={{ lineHeight: 32 }}>{name}</Txt>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
+            <FadeUp delay={org ? 200 : 60} style={{ marginTop: -24, backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 20, paddingHorizontal: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                {svc ? <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}><Price v={svc.price} size={20} weight={600} />{svc.mrp > svc.price ? <Price v={svc.mrp} size={13} weight={400} strike /> : null}<View style={{ backgroundColor: 'rgba(22,163,74,0.12)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}><Txt weight={600} size={11} color={G.pos}>{Math.round((1 - svc.price / svc.mrp) * 100)}% off</Txt></View></View> : null}
                 {SHOW_RATINGS ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Txt weight={500} size={13} style={TNUM}>{'★ ' + rating.toFixed(1)}</Txt><Txt size={13} color={G.mute}>({count} ratings)</Txt></View> : null}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Clock size={14} color={G.mute} strokeWidth={1.5} /><Txt size={13} color={G.mute}>{svc ? svc.mins + ' mins' : pack!.mins + ' mins'}</Txt></View>
               </View>
               <Txt size={14} color={G.sub} style={{ marginTop: 10, lineHeight: 20 }}>{blurb}</Txt>
 
@@ -127,7 +162,7 @@ export default function Service({ id }: { id?: string }) {
                 </View>
               ) : null}
 
-              <Txt weight={500} size={13} color={G.mute} style={{ marginTop: 28 }}>{pack ? 'Wash packs' : 'Select your car size'}</Txt>
+              <Txt weight={600} size={16} style={{ marginTop: 28 }}>{pack ? 'Choose your pack' : 'Select your car size'}</Txt>
               {svc ? (
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
                   {VARIANTS.map(v => <Variant key={v.id} id={sid} v={v} base={svc} w={vw} />)}
@@ -150,17 +185,17 @@ export default function Service({ id }: { id?: string }) {
                   })}
                 </View>
               )}
-            </View>
+            </FadeUp>
 
-            <View style={{ paddingHorizontal: 16 }}><Txt weight={500} size={18} style={{ marginTop: 32 }}>Frequently added together</Txt></View>
+            <View style={{ paddingHorizontal: 16 }}><Txt weight={600} size={18} style={{ marginTop: 32 }}>Frequently added together</Txt></View>
             <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, gap: 12 }}>
               {together.map(s => (
-                <Pressable key={s.id} onPress={() => openPage({ k: 'svc', id: s.id })} style={{ width: 128 }}>
-                  <View pointerEvents="none" style={{ width: 128, height: 104, borderRadius: 14, backgroundColor: s.tint || G.raised, overflow: 'hidden' }}><Image source={src(s.img) as any} resizeMode="contain" style={{ width: '100%', height: '100%' }} /></View>
-                  <View style={{ position: 'absolute', right: 8, top: 104 - 17 }}><AddBtn qty={svcQty(s.id)} onAdd={() => act.addSvc(s.id)} onSub={() => act.subSvc(s.id)} /></View>
-                  <Txt weight={500} size={13} numberOfLines={2} style={{ marginTop: 26, lineHeight: 18 }}>{s.short}</Txt>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 2 }}><Price v={s.price} size={14} /><Price v={s.mrp} size={12} weight={400} strike /></View>
-                </Pressable>
+                <Tap key={s.id} label={s.name} onPress={() => openPage({ k: 'svc', id: s.id })} style={{ width: 128 }}>
+                  <View pointerEvents="none" style={{ width: 128, height: 104, borderRadius: 16, backgroundColor: s.tint || G.raised, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}><SvcArt id={s.id} size={96} /></View>
+                  <View style={{ position: 'absolute', right: 6, top: 104 - 40 }}><AddButton compact id={s.id} qty={svcQty(s.id)} onAdd={() => act.addSvc(s.id)} onSub={() => act.subSvc(s.id)} /></View>
+                  <Txt weight={500} size={13} numberOfLines={2} style={{ marginTop: 8, lineHeight: 18 }}>{s.short}</Txt>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 2 }}><Price v={s.price} size={14} weight={600} /><Price v={s.mrp} size={12} weight={400} strike /></View>
+                </Tap>
               ))}
             </Animated.ScrollView>
 

@@ -13,6 +13,7 @@ import { CAR_SERVICES, CART_MODES, RECURRING, WALLET, type CartMode } from '../d
 import { openAddressPicker } from '../sheets/address';
 import { openSlotSheet, openRecurSheet, openBillSheet } from '../sheets/slot';
 import { PageBar } from './Stub';
+import { CountUp } from '../ui/motion';
 import { G, card, Photo, AddBtn, PrimaryBtn, SuccessTick, Price, TNUM, SHADOW_F, PAGE_BG, inr, Tap } from './parts';
 
 const ND = Platform.OS !== 'web';
@@ -20,13 +21,13 @@ const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function Modes({ mode }: { mode: CartMode }) {
   const [w, setW] = useState(0), i = CART_MODES.findIndex(m => m.id === mode), x = useRef(new Animated.Value(i)).current, seg = w ? (w - 8) / 3 : 0;
-  useEffect(() => { Animated.timing(x, { toValue: i, duration: 240, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: ND }).start() }, [i]);
+  useEffect(() => { Animated.spring(x, { toValue: i, speed: 16, bounciness: 7, useNativeDriver: ND }).start() }, [i]);
   return (
-    <View onLayout={e => setW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', backgroundColor: '#fff', borderRadius: 26, padding: 4, borderWidth: 1, borderColor: G.line }}>
+    <View onLayout={e => setW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', backgroundColor: '#fff', borderRadius: 26, padding: 4, shadowColor: '#1A1033', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}>
       {seg ? <Animated.View style={{ position: 'absolute', left: 4, top: 4, bottom: 4, width: seg, borderRadius: 22, backgroundColor: G.violet, transform: [{ translateX: x.interpolate({ inputRange: [0, 1, 2], outputRange: [0, seg, seg * 2] }) }] }} /> : null}
       {CART_MODES.map(m => { const on = m.id === mode; return (
         <Pressable key={m.id} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => { try { act.setCartMode(m.id) } catch (e: any) { toast(e?.message || 'Could not switch') } }} style={{ flex: 1, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-          <Txt weight={on ? 500 : 400} size={14} color={on ? '#fff' : G.ink}>{m.label}</Txt>
+          <Txt weight={on ? 600 : 500} size={14} color={on ? '#fff' : G.sub}>{m.label}</Txt>
         </Pressable>) })}
     </View>
   );
@@ -153,8 +154,8 @@ export default function Cart() {
             <View style={card({ overflow: 'hidden' })}>
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(o => !o)} style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}><Txt weight={500} size={16}>To pay</Txt><Price v={b.toPay} size={16} /></View>
-                  {b.saved > 0 ? <Txt weight={500} size={13} color={G.violet} style={{ marginTop: 2 }}>{inr(b.saved)} saved on the total!</Txt> : null}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}><Txt weight={600} size={16}>To pay</Txt><CountUp to={inr(b.toPay)} duration={500} style={[TNUM, { fontFamily: 'Poppins_700Bold', fontSize: 17, color: G.ink }]} /></View>
+                  {b.saved > 0 ? <View style={{ alignSelf: 'flex-start', marginTop: 6, backgroundColor: 'rgba(22,163,74,0.10)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, flexDirection: 'row' }}><CountUp to={inr(b.saved)} duration={500} style={[TNUM, { fontFamily: 'Poppins_600SemiBold', fontSize: 13, color: G.pos }]} /><Txt weight={600} size={13} color={G.pos}> saved on the total!</Txt></View> : null}
                 </View>
                 <View style={{ transform: [{ rotate: open ? '-90deg' : '90deg' }] }}><Chev size={16} color={G.mute} strokeWidth={1.5} /></View>
               </Pressable>
@@ -191,7 +192,7 @@ export default function Cart() {
               </>
             ) : null}
             {mode === 'instant' ? (
-              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginTop: 20, backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: G.line }}>
+              <View style={[card({ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginTop: 20, padding: 16 })]}>
                 <View style={{ marginTop: 2 }}><Info size={18} color={G.mute} strokeWidth={1.5} /></View>
                 <View style={{ flex: 1 }}><Txt weight={500} size={14}>Cancel for free before the washer leaves</Txt><Txt size={13} color={G.sub} style={{ marginTop: 2, lineHeight: 20 }}>Cancel from the Washes tab. Refunds go to WD Money.</Txt></View>
               </View>

@@ -30,7 +30,7 @@ export function useSkeleton(ms = 450) {
 }
 /** white rounded section card */
 export function Sec({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[{ backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: G.line }, style]}>{children}</View>;
+  return <View style={[{ backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#1A1033', shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 3 }, style]}>{children}</View>;
 }
 export function Diamond() { return <View style={{ width: 7, height: 7, backgroundColor: V, transform: [{ rotate: '45deg' }], marginTop: 7 }} /> }
 export function Bullets({ items }: { items: string[] }) {

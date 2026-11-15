@@ -1,7 +1,11 @@
-// The signed-in shell: the current tab's screen above the tab bar, plus full-screen pages pushed over it
-// (service page, cart, schedule, refer, profile) that slide in from the right (220ms, the one curve).
+// The signed-in shell: the current tab's screen above the tab bar, plus full-screen pages pushed over it.
+// r5 transitions (reanimated layout animations): the service page fades in while its hero art flies up from the tapped card
+// (shared-element feel, see Service), the cart rises from the bottom like a sheet, every other page slides in from the right.
+// Whatever is underneath recedes (slides 28% left or shrinks to .94 and dims) and comes back on a spring when the page closes.
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Animated, Easing, BackHandler, AccessibilityInfo, useWindowDimensions } from 'react-native';
+import { View, Animated, Easing, BackHandler, AccessibilityInfo, useWindowDimensions, StyleSheet } from 'react-native';
+import Reanimated, { FadeIn, FadeOut, SlideInRight, SlideOutRight, SlideInDown, SlideOutDown, useSharedValue, useAnimatedStyle, withSpring, withTiming, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
+import { FlyHost } from '../ui/motion';
 import { useTheme } from '../theme';
 import { useApp, closePage, Page, Tab } from '../state';
 import Home from './Home';
@@ -72,13 +76,32 @@ function PageView({ p }: { p: NonNullable<Page> }): React.ReactElement {
   }
 }
 
-function Pushed({ p, depth }: { p: NonNullable<Page>; depth: number }) {
-  const { width } = useWindowDimensions(), rm = useReduceMotion(), x = useRef(new Animated.Value(rm ? 0 : width)).current;
-  useEffect(() => { if (!rm) Animated.timing(x, { toValue: 0, duration: 220, easing: CURVE, useNativeDriver: true }).start() }, []);
+const CUR = REasing.bezier(0.22, 1, 0.36, 1);
+const enterOf = (k: string) => k === 'svc' ? FadeIn.duration(200) : k === 'cart' ? SlideInDown.duration(380).easing(CUR) : SlideInRight.duration(320).easing(CUR);
+const exitOf = (k: string) => k === 'svc' ? FadeOut.duration(180) : k === 'cart' ? SlideOutDown.duration(260).easing(CUR) : SlideOutRight.duration(240).easing(CUR);
+type Cover = null | 'slide' | 'zoom';
+const coverOf = (k?: string): Cover => !k ? null : k === 'svc' || k === 'cart' ? 'zoom' : 'slide';
+
+/** recede when something is pushed on top; spring back when it goes */
+function useCover(cover: Cover) {
+  const { width } = useWindowDimensions(), rm = useReducedMotion(), v = useSharedValue(0), mode = useSharedValue(1);
+  useEffect(() => { if (cover) mode.value = cover === 'slide' ? 1 : 2; v.value = rm ? (cover ? 1 : 0) : cover ? withTiming(1, { duration: 320, easing: CUR }) : withSpring(0, { damping: 24, stiffness: 220, overshootClamping: true }) }, [cover, rm]);
+  const st = useAnimatedStyle(() => mode.value === 1
+    ? { transform: [{ translateX: -width * 0.28 * v.value }] }
+    : { transform: [{ scale: 1 - 0.06 * v.value }], borderRadius: 18 * v.value, overflow: 'hidden' as const });
+  const dim = useAnimatedStyle(() => ({ opacity: 0.28 * v.value }));
+  return { st, dim };
+}
+
+function Pushed({ p, depth, cover }: { p: NonNullable<Page>; depth: number; cover: Cover }) {
+  const rm = useReduceMotion(), c = useCover(cover);
   return (
-    <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 10 + depth, backgroundColor: '#FFFFFF', transform: [{ translateX: x }] }}>
-      <PageView p={p} />
-    </Animated.View>
+    <Reanimated.View entering={rm ? undefined : enterOf(p.k)} exiting={rm ? undefined : exitOf(p.k)} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 10 + depth, backgroundColor: '#000' }}>
+      <Reanimated.View style={[{ flex: 1, backgroundColor: '#FFFFFF' }, c.st]}>
+        <PageView p={p} />
+      </Reanimated.View>
+      <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#0B0614' }, c.dim]} />
+    </Reanimated.View>
   );
 }
 
@@ -94,11 +117,16 @@ export default function Main() {
     return () => s.remove();
   }, [ui.pages.length]);
   const key = ui.tab === 'home' || ui.tab === 'live' ? ui.tab : ui.tab + ':' + ui.tabNonce;
+  const tabCover = useCover(coverOf(ui.pages[0]?.k));
   return (
-    <View style={{ flex: 1, backgroundColor: T.bg }}>
-      <Animated.View key={key} style={{ flex: 1, opacity: fade }}><Screen /></Animated.View>
-      <TabBar />
-      {ui.pages.map((p, i) => p && <Pushed key={i + ':' + p.k + ('id' in p && p.id ? p.id : '')} p={p} depth={i} />)}
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <Reanimated.View style={[{ flex: 1, backgroundColor: T.bg }, tabCover.st]}>
+        <Animated.View key={key} style={{ flex: 1, opacity: fade }}><Screen /></Animated.View>
+        <TabBar />
+      </Reanimated.View>
+      <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#0B0614' }, tabCover.dim]} />
+      {ui.pages.map((p, i) => p && <Pushed key={i + ':' + p.k + ('id' in p && p.id ? p.id : '')} p={p} depth={i} cover={coverOf(ui.pages[i + 1]?.k)} />)}
+      <FlyHost />
     </View>
   );
 }

@@ -6,7 +6,9 @@ import { Txt, useInsets } from '../ui/kit';
 import { Info, Gift, Chev, Zap, Check, Wallet as WalletIc, Receipt } from '../ui/icons';
 import { useApp, wallet, act, topUpBonus, topUpCheck, openPage, toast, confetti } from '../state';
 import { WALLET } from '../data/reference';
-import { G, Tap, PrimaryBtn, TNUM } from './parts';
+import { G, Tap, PrimaryBtn, TNUM, PAGE_BG, card } from './parts';
+import { CountUp, FadeUp } from '../ui/motion';
+import { LinearGradient } from 'expo-linear-gradient';
 import { PageBar } from './Stub';
 import { TAB_H } from '../screens/TabBar';
 import { openGiftCard, openWalletInfo, Skel, useSkeleton, Sec, Bullets, V, V_SOFT, V_LINE, rs } from '../sheets/money';
@@ -43,24 +45,25 @@ export default function Money({ tab }: { tab?: boolean }) {
   const refresh = async () => { setRef(true); try { await act.refresh() } catch {} setRef(false) };
   const rows = all ? w.ledger : w.ledger.slice(0, 6);
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      {tab ? <View style={{ paddingTop: ins.top + 16, paddingHorizontal: 16, paddingBottom: 8 }}><Txt weight={500} size={22}>{WALLET.name}</Txt></View> : <PageBar title={WALLET.name} />}
+    <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
+      {tab ? <View style={{ paddingTop: ins.top + 16, paddingHorizontal: 16, paddingBottom: 8 }}><Txt weight={600} size={22}>{WALLET.name}</Txt></View> : <PageBar title={WALLET.name} />}
       {load ? <Loading /> : (
         <ScrollView refreshControl={<RefreshControl refreshing={ref} onRefresh={refresh} tintColor={V} colors={[V]} />} contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: (tab ? TAB_H : 0) + ins.bottom + 32 }} showsVerticalScrollIndicator={false}>
           {/* balance */}
-          <View style={{ backgroundColor: V, borderRadius: 20, padding: 20, overflow: 'hidden' }}>
+          <FadeUp index={0}><View style={{ borderRadius: 22, padding: 20, overflow: 'hidden', shadowColor: V, shadowOpacity: 0.3, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 }}>
+            <LinearGradient colors={['#6A1BF2', '#5409DA', '#36058F']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
             <View style={{ position: 'absolute', right: -40, top: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.08)' }} />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Txt size={14} color="rgba(255,255,255,0.8)">{WALLET.name} balance</Txt>
               <Tap label="About your balance" onPress={openWalletInfo} hitSlop={10} style={{ padding: 2 }}><Info size={16} color="rgba(255,255,255,0.85)" strokeWidth={1.5} /></Tap>
             </View>
-            <Txt weight={600} size={36} color="#fff" style={[TNUM, { marginTop: 4 }]}>{rs(w.balance)}</Txt>
+            <CountUp to={rs(w.balance)} style={[TNUM, { marginTop: 4, fontFamily: 'Poppins_700Bold', fontSize: 38, lineHeight: 46, letterSpacing: -0.5, color: '#fff' }]} />
             <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
               <Txt size={13} color="rgba(255,255,255,0.8)">Cash {rs(w.cash)}</Txt>
               <Txt size={13} color="rgba(255,255,255,0.8)">Rewards {rs(w.promo)}</Txt>
             </View>
             {w.expiringSoon > 0 ? <View style={{ alignSelf: 'flex-start', marginTop: 12, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}><Txt size={12} color="#fff">{rs(w.expiringSoon)} in rewards expires within 7 days</Txt></View> : null}
-          </View>
+          </View></FadeUp>
 
           {/* top-up */}
           <Sec>
@@ -70,8 +73,8 @@ export default function Money({ tab }: { tab?: boolean }) {
               {WALLET.chips.map(c => {
                 const on = sel === c.amt;
                 return (
-                  <Tap key={c.amt} label={`Add ${c.amt}`} onPress={() => { setSel(c.amt); setCustom('') }} style={{ flex: 1, borderRadius: 14, borderWidth: on ? 2 : 1, borderColor: on ? V : G.line, backgroundColor: on ? V_SOFT : '#fff', alignItems: 'center', paddingTop: 16, paddingBottom: 28 }}>
-                    <Txt weight={500} size={17} color={on ? V : G.ink} style={TNUM}>₹{c.amt}</Txt>
+                  <Tap key={c.amt} label={`Add ${c.amt}`} onPress={() => { setSel(c.amt); setCustom('') }} style={{ flex: 1, borderRadius: 14, borderWidth: on ? 2 : 1, borderColor: on ? V : G.line, backgroundColor: on ? V_SOFT : '#fff', alignItems: 'center', paddingTop: 16, paddingBottom: 28, overflow: 'hidden' }}>
+                    <Txt weight={700} size={17} color={on ? V : G.ink} style={TNUM}>₹{c.amt}</Txt>
                     <View style={{ position: 'absolute', left: 0, right: 0, bottom: -1, backgroundColor: on ? V : '#EFEAFB', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, height: 24, alignItems: 'center', justifyContent: 'center' }}>
                       <Txt weight={500} size={12} color={on ? '#fff' : V} style={TNUM}>+₹{c.bonus}</Txt>
                     </View>
@@ -90,7 +93,7 @@ export default function Money({ tab }: { tab?: boolean }) {
           </Sec>
 
           {/* gift card */}
-          <Tap label="Claim a gift card" onPress={openGiftCard} style={{ backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: G.line, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Tap label="Claim a gift card" onPress={openGiftCard} style={card({ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
             <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: V_SOFT, alignItems: 'center', justifyContent: 'center' }}><Gift size={22} color={V} strokeWidth={1.5} /></View>
             <View style={{ flex: 1 }}><Txt weight={500} size={15}>Claim a gift card</Txt><Txt size={13} color={G.mute} style={{ marginTop: 2 }}>Enter gift card details to claim</Txt></View>
             <Chev size={18} color={G.mute} strokeWidth={1.5} />

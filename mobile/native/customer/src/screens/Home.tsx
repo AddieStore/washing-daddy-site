@@ -13,14 +13,20 @@ import {
   useApp, A, car, doc, act, go, openPage, openSheet, toast, svcQty, svcLines, liveHead, activeStage, chipText,
   homeConfig, instantStatus, selectedAddress, addrName, wallet, activePass,
 } from '../state';
-import { Pressable3 as P3, FadeUp, AddButton, CartBar, Shimmer, useSkeleton, loaderPending } from '../ui/motion';
+import { Pressable3 as P3, FadeUp, AddButton, CartBar, Shimmer, useSkeleton, loaderPending, setOrigin, SPRING, TAB_BAR_H } from '../ui/motion';
+import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, withRepeat, withSequence, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient as SvgLG, Stop } from 'react-native-svg';
+import { SvcArt } from '../pages/parts';
+import { artFor, ArtBoundary } from '../art';
+import { onGridJump } from './TabBar';
 import { Skyline, Laurel } from '../ui/art2';
 import { SheetTitle } from '../ui/hosts';
 import { openAddressPicker } from '../sheets/address';
 import { openPassPromo } from '../sheets/money';
 
 // label -> accessibilityLabel, press scale 0.98
-const Pressable3 = ({ label, ...p }: React.ComponentProps<typeof P3> & { label?: string }) => <P3 scaleTo={0.98} accessibilityRole="button" accessibilityLabel={label} {...p} />;
+const Pressable3 = ({ label, ...p }: React.ComponentProps<typeof P3> & { label?: string }) => <P3 scaleTo={0.96} accessibilityRole="button" accessibilityLabel={label} {...p} />;
 
 /* ---------- local tokens ---------- */
 const L = { bg: '#FFFFFF', ink: '#171717', sec: '#525252', mut: '#737373', line: 'rgba(23,23,23,0.08)', raised: '#F4F4F5', accent: '#5409DA', pos: '#16a34a', tint: 'rgba(84,9,218,0.08)' };
@@ -29,12 +35,12 @@ const EASE = Easing.bezier(0.22, 1, 0.36, 1);
 const ND = Platform.OS !== 'web';
 const TNUM = { fontVariant: ['tabular-nums' as const] };
 const inr = (n: number) => '₹' + n.toLocaleString('en-IN');
-const shadow = { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 } as const;
-const HERO: Record<string, { bg: string; accent: string }> = {
-  default: { bg: '#5409DA', accent: '#E3D3FF' },
-  festive: { bg: '#4A07C2', accent: '#FFD166' },
-  monsoon: { bg: '#3B1CA8', accent: '#9AD7FF' },
-  winter: { bg: '#4B14B8', accent: '#D6E0FF' },
+const shadow = { shadowColor: '#1A1033', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 3 } as const;
+const HERO: Record<string, { bg: [string, string, string]; accent: string }> = {
+  default: { bg: ['#6A1BF2', '#5409DA', '#3A06A0'], accent: '#E3D3FF' },
+  festive: { bg: ['#5E12EA', '#4A07C2', '#2A0577'], accent: '#FFD166' },
+  monsoon: { bg: ['#4B2BC4', '#3B1CA8', '#24106E'], accent: '#9AD7FF' },
+  winter: { bg: ['#5A22CC', '#4B14B8', '#2C0A78'], accent: '#D6E0FF' },
 };
 
 // kept across tab switches (Home is rebuilt when you come back from another tab) so the list opens where you left it
@@ -88,7 +94,7 @@ function Title({ title, sub }: { title: string; sub?: string }) {
     <View style={{ alignItems: 'center', paddingHorizontal: SIDE }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Text style={{ color: L.accent, fontSize: 10 }}>◆</Text>
-        <Txt weight={500} size={18} color={L.ink} style={{ lineHeight: 24 }}>{title}</Txt>
+        <Txt weight={600} size={18} color={L.ink} style={{ lineHeight: 24 }}>{title}</Txt>
         <Text style={{ color: L.accent, fontSize: 10 }}>◆</Text>
       </View>
       {sub ? <Txt size={13} color={L.mut} style={{ lineHeight: 18, marginTop: 2, textAlign: 'center' }}>{sub}</Txt> : null}
@@ -141,100 +147,116 @@ function Header({ y }: { y: Animated.Value }) {
   );
 }
 
-/* ---------- hero: seasonal banner with animated headline (remote config) ---------- */
+/* ---------- hero: seasonal banner, word-by-word spring reveal (loops every ~6s), floating art, scalloped bottom edge ---------- */
+function Word({ w, i, on, color }: { w: string; i: number; on: boolean; color: string }) {
+  const rm = useReducedMotion(), v = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { v.value = rm ? 1 : on ? withDelay(i * 90, withSpring(1, { damping: 14, stiffness: 140 })) : withDelay(i * 40, withTiming(0, { duration: 260 })) }, [on, rm]);
+  const st = useAnimatedStyle(() => ({ opacity: Math.min(1, v.value * 1.4), transform: [{ translateY: (1 - v.value) * 22 }, { rotate: `${(1 - v.value) * 4}deg` }] }));
+  return <Reanimated.Text style={[{ fontFamily: 'Poppins_800ExtraBold', fontSize: 29, lineHeight: 35, letterSpacing: -0.6, marginRight: 7, color }, st]}>{w}</Reanimated.Text>;
+}
 function HeroText({ title, sub, accent }: { title: string; sub: string; accent: string }) {
-  const rm = useReduceMotion(), words = title.split(' ').filter(Boolean);
-  const vals = useRef<Animated.Value[]>([]).current;
-  while (vals.length < words.length) vals.push(new Animated.Value(rm ? 1 : 0));
-  const subV = useRef(new Animated.Value(rm ? 1 : 0)).current, shine = useRef(new Animated.Value(0)).current;
+  const rm = useReducedMotion(), words = title.split(' ').filter(Boolean), [on, setOn] = useState(true);
   useEffect(() => {
-    if (rm) { vals.forEach(v => v.setValue(1)); subV.setValue(1); return; }
-    const reveal = Animated.parallel([
-      Animated.stagger(110, vals.slice(0, words.length).map(v => Animated.timing(v, { toValue: 1, duration: 520, easing: EASE, useNativeDriver: ND }))),
-      Animated.timing(subV, { toValue: 1, duration: 520, delay: words.length * 110, easing: EASE, useNativeDriver: ND }),
-    ]);
-    const out = Animated.parallel([...vals.slice(0, words.length).map(v => Animated.timing(v, { toValue: 0, duration: 420, easing: EASE, useNativeDriver: ND })), Animated.timing(subV, { toValue: 0, duration: 420, easing: EASE, useNativeDriver: ND })]);
-    const loop = Animated.loop(Animated.sequence([reveal, Animated.delay(5200), out, Animated.delay(250)]));
-    loop.start();
-    const sh = Animated.loop(Animated.sequence([Animated.timing(shine, { toValue: 1, duration: 1400, useNativeDriver: false }), Animated.timing(shine, { toValue: 0, duration: 1400, useNativeDriver: false })]));
-    sh.start();
-    return () => { loop.stop(); sh.stop() };
+    if (rm) return;
+    let t: any; const cycle = (show: boolean) => { t = setTimeout(() => { setOn(show); cycle(!show) }, show ? 500 : 6200) };
+    cycle(false); return () => clearTimeout(t);
   }, [rm, title]);
+  const sv = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { sv.value = rm ? 1 : on ? withDelay(words.length * 90 + 120, withTiming(1, { duration: 420, easing: REasing.bezier(0.22, 1, 0.36, 1) })) : withTiming(0, { duration: 220 }) }, [on, rm]);
+  const subSt = useAnimatedStyle(() => ({ opacity: sv.value, transform: [{ translateY: (1 - sv.value) * 8 }] }));
   const last = words.length - 1;
   return (
-    <View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {words.map((w, i) => (
-          <Animated.Text key={i} style={{ fontFamily: 'Poppins_500Medium', fontSize: 30, lineHeight: 38, marginRight: 8, color: i === last ? accent : '#fff', opacity: vals[i], transform: [{ translateY: vals[i].interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }}>{w}</Animated.Text>
-        ))}
-      </View>
-      <Animated.Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,.85)', marginTop: 8, opacity: subV, transform: [{ translateY: subV.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }}>{sub}</Animated.Text>
+    <View accessible accessibilityRole="header" accessibilityLabel={title + '. ' + sub}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{words.map((w, i) => <Word key={i + w} w={w} i={i} on={on} color={i === last ? accent : '#fff'} />)}</View>
+      <Reanimated.Text style={[{ fontFamily: 'Poppins_500Medium', fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,.86)', marginTop: 8 }, subSt]}>{sub}</Reanimated.Text>
     </View>
   );
 }
+function Float({ children, style }: { children: ReactNode; style?: any }) {
+  const rm = useReducedMotion(), v = useSharedValue(0), e = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { if (rm) return; e.value = withDelay(250, withSpring(1, { damping: 12, stiffness: 90 })); v.value = withRepeat(withTiming(1, { duration: 2600, easing: REasing.inOut(REasing.sin) }), -1, true) }, [rm]);
+  const st = useAnimatedStyle(() => ({ opacity: e.value, transform: [{ translateY: -8 * v.value + (1 - e.value) * 40 }, { rotate: `${-2 + 4 * v.value}deg` }, { scale: 0.8 + 0.2 * e.value }] }));
+  return <Reanimated.View pointerEvents="none" style={[style, st]}>{children}</Reanimated.View>;
+}
+function Scallop({ W, color = '#fff' }: { W: number; color?: string }) {
+  const n = Math.round(W / 22), r = W / n / 2;
+  let d = `M0 14 `; for (let i = 0; i < n; i++) d += `A${r} ${r * 0.62} 0 0 1 ${(i + 1) * 2 * r} 14 `; d += `L${W} 20 L0 20 Z`;
+  return <Svg width={W} height={20} style={{ position: 'absolute', left: 0, bottom: -1 }}><Path d={d} fill={color} /></Svg>;
+}
 function Hero({ W }: { W: number }) {
   const ins = useInsets(), cfg = homeConfig(), th = HERO[cfg.heroTheme] || HERO.default, top = Math.max(ins.top, 24) + 56;
-  const dots = [[0.62, 40, 90, 0.10], [0.82, 130, 60, 0.12], [0.5, 190, 40, 0.08], [0.7, 215, 24, 0.12], [0.08, 215, 56, 0.07]];
+  const dots = [[0.62, 40, 90, 0.10], [0.86, 130, 60, 0.12], [0.5, 190, 40, 0.08], [0.74, 215, 24, 0.12], [0.08, 215, 56, 0.07]];
   return (
-    <View style={{ backgroundColor: th.bg, paddingTop: top + 4, paddingBottom: 76, paddingHorizontal: SIDE, overflow: 'hidden' }}>
-      {dots.map(([x, yy, s, o], i) => <View key={i} style={{ position: 'absolute', left: (x as number) * W - (s as number) / 2, top: top + (yy as number) - 40, width: s as number, height: s as number, borderRadius: (s as number) / 2, backgroundColor: '#fff', opacity: o as number }} />)}
-      <Image source={IMG['r3d-pack-exclusive']} resizeMode="contain" style={{ position: 'absolute', right: -6, bottom: 40, width: 150, height: 150, opacity: 0.98 }} />
-      <View style={{ maxWidth: Math.min(W * 0.62, 280), minHeight: 112 }}>
+    <View style={{ paddingTop: top + 8, paddingBottom: 92, paddingHorizontal: SIDE, overflow: 'hidden' }}>
+      <LinearGradient colors={th.bg} start={{ x: 0, y: 0 }} end={{ x: 0.9, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+      {dots.map(([x, yy, sz, o], i) => <View key={i} style={{ position: 'absolute', left: (x as number) * W - (sz as number) / 2, top: top + (yy as number) - 40, width: sz as number, height: sz as number, borderRadius: (sz as number) / 2, backgroundColor: '#fff', opacity: o as number }} />)}
+      <Float style={{ position: 'absolute', right: -8, bottom: 52, width: 158, height: 158 }}>{artFor('pack-exclusive') ? <SvcArt id="exclusive" size={158} /> : <Image source={IMG['r3d-pack-exclusive']} resizeMode="contain" style={{ width: 158, height: 158 }} />}</Float>
+      <View style={{ maxWidth: Math.min(W * 0.68, 300), minHeight: 112 }}>
         <HeroText title={cfg.heroTitle} sub={cfg.heroSub} accent={th.accent} />
       </View>
+      <Scallop W={W} />
     </View>
   );
 }
 
-/* ---------- Instant / Schedule cards ---------- */
+/* ---------- Instant / Schedule cards: overlap the hero, big glyph bottom-right (Pronto) ---------- */
+function Glyph({ kind, idle }: { kind: 'zap' | 'cal'; idle?: boolean }) {
+  const a = idle ? '#C9C9D1' : '#7C3AED', b = idle ? '#A3A3AD' : '#4C0BC4', id = 'g' + kind + (idle ? 'i' : '');
+  return (
+    <Svg width={56} height={56} viewBox="0 0 56 56">
+      <Defs><SvgLG id={id} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor={a} /><Stop offset="1" stopColor={b} /></SvgLG></Defs>
+      <SvgCircle cx={30} cy={30} r={24} fill={idle ? '#F1F1F4' : '#EFE7FF'} />
+      {kind === 'zap'
+        ? <Path d="M31 9 L15 32 h12 l-3 16 l17-24 h-12 z" fill={`url(#${id})`} stroke="#fff" strokeWidth={2} strokeLinejoin="round" />
+        : <><Path d="M14 18 a4 4 0 0 1 4-4 h22 a4 4 0 0 1 4 4 v24 a4 4 0 0 1-4 4 H18 a4 4 0 0 1-4-4z" fill={`url(#${id})`} /><Path d="M14 23 h30" stroke="#fff" strokeWidth={2} /><Path d="M21 11 v6 M37 11 v6" stroke={b} strokeWidth={3} strokeLinecap="round" />
+          <Path d="M22 34 l5 5 l9-10" stroke="#fff" strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" /></>}
+    </Svg>
+  );
+}
 function Entry({ onInstant }: { onInstant: () => void }) {
   const st = instantStatus(), idle = !st.open;
+  const box = { height: 120, borderRadius: 18, backgroundColor: '#fff', padding: 14, overflow: 'hidden' as const, ...shadow, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } };
   return (
-    <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: -56 }}>
-      <View style={{ flex: 1 }}>
-        <Pressable3 label={'Get instant service. ' + st.label} onPress={() => { if (st.open) onInstant(); else toast(st.reason === 'busy' ? st.label : 'Instant service is closed. ' + st.label + ' or schedule for later') }}
-          style={{ height: 112, borderRadius: 16, backgroundColor: idle ? '#FAFAFB' : '#fff', borderWidth: 1, borderColor: L.line, padding: 14, justifyContent: 'space-between', ...shadow }}>
-          <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: idle ? L.raised : L.tint, alignItems: 'center', justifyContent: 'center' }}><Zap size={20} color={idle ? '#A3A3A3' : L.accent} strokeWidth={1.6} /></View>
-          <View>
-            <Txt weight={500} size={15} color={idle ? L.mut : L.ink} style={{ lineHeight: 20 }}>Get Instant Service</Txt>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              {st.open ? <Pulse color={L.pos} size={6} /> : null}
-              <Txt size={12} color={st.open ? L.pos : L.mut} numberOfLines={idle && st.reason === 'busy' ? 2 : 1} style={{ lineHeight: 16, flexShrink: 1 }}>{st.label}</Txt>
-            </View>
+    <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: -72 }}>
+      <FadeUp index={0} style={{ flex: 1 }}>
+        <Pressable3 label={'Get instant service. ' + st.label} onPress={() => { if (st.open) onInstant(); else toast(st.reason === 'busy' ? st.label : 'Instant service is closed. ' + st.label + ' or schedule for later') }} style={box}>
+          <Txt weight={600} size={15} color={idle ? L.mut : L.ink} style={{ lineHeight: 20, width: '78%' }}>Get Instant Service</Txt>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            {st.open ? <Pulse color={L.pos} size={6} /> : null}
+            <Txt size={12} color={st.open ? L.pos : L.mut} numberOfLines={2} style={{ lineHeight: 16, flexShrink: 1, width: '62%' }}>{st.label}</Txt>
           </View>
+          <View style={{ position: 'absolute', right: 4, bottom: 4 }}><Glyph kind="zap" idle={idle} /></View>
         </Pressable3>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Pressable3 label="Schedule for later. Pick a slot" onPress={() => openPage({ k: 'schedule' })} style={{ height: 112, borderRadius: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: L.line, padding: 14, justifyContent: 'space-between', ...shadow }}>
-          <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: L.tint, alignItems: 'center', justifyContent: 'center' }}><Calendar size={20} color={L.accent} strokeWidth={1.6} /></View>
-          <View>
-            <Txt weight={500} size={15} color={L.ink} style={{ lineHeight: 20 }}>Schedule for Later</Txt>
-            <View style={{ alignSelf: 'flex-start', marginTop: 2, backgroundColor: L.tint, borderRadius: 6, paddingHorizontal: 8, height: 20, justifyContent: 'center' }}><Txt weight={500} size={11} color={L.accent} style={{ lineHeight: 14 }}>Pick a slot</Txt></View>
-          </View>
+      </FadeUp>
+      <FadeUp index={1} style={{ flex: 1 }}>
+        <Pressable3 label="Schedule for later. Pick a slot" onPress={() => openPage({ k: 'schedule' })} style={box}>
+          <Txt weight={600} size={15} color={L.ink} style={{ lineHeight: 20, width: '78%' }}>Schedule for Later</Txt>
+          <View style={{ alignSelf: 'flex-start', marginTop: 8, borderWidth: 1, borderColor: 'rgba(84,9,218,0.35)', backgroundColor: L.tint, borderRadius: 8, paddingHorizontal: 8, height: 24, justifyContent: 'center' }}><Txt weight={600} size={11} color={L.accent} style={{ lineHeight: 14 }}>Pick a slot</Txt></View>
+          <View style={{ position: 'absolute', right: 4, bottom: 4 }}><Glyph kind="cal" /></View>
         </Pressable3>
-      </View>
+      </FadeUp>
     </View>
   );
 }
 
 /* ---------- offer packs ---------- */
 function PackCard({ id }: { id: string }) {
-  const p = packInfo(id)!, q = svcQty(id), isNew = p.isNew;
+  const p = packInfo(id)!, q = svcQty(id), isNew = p.isNew, ref = useRef<any>(null);
   return (
     <View style={{ width: 168 }}>
-      <Pressable3 label={p.name} onPress={() => openPage({ k: 'svc', id })}>
-        <View style={{ width: 168, height: 124, borderRadius: 14, overflow: 'hidden', backgroundColor: '#F3EEFD' }}>
-          <Image source={(IMG as any)[p.img]} resizeMode="contain" style={{ width: '100%', height: '100%' }} />
+      <Pressable3 label={p.name} onPress={() => setOrigin(id, ref, () => openPage({ k: 'svc', id }))}>
+        <View ref={ref} style={{ width: 168, height: 128, borderRadius: 18, overflow: 'hidden', backgroundColor: '#F1EBFD', alignItems: 'center', justifyContent: 'center' }}>
+          <SvcArt id={id} size={120} />
         </View>
-        <View style={{ position: 'absolute', left: 0, top: 8, backgroundColor: isNew ? '#E5484D' : L.accent, borderTopRightRadius: 6, borderBottomRightRadius: 6, paddingHorizontal: 8, height: 20, justifyContent: 'center' }}><Txt weight={500} size={10} color="#fff" style={{ lineHeight: 14, letterSpacing: 0.6 }}>{isNew ? 'NEW' : p.tag}</Txt></View>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 20 }}>
-          <Txt weight={500} size={16} color={L.ink} style={TNUM}>{inr(p.price)}</Txt>
+        <View style={{ position: 'absolute', left: 0, top: 10, backgroundColor: isNew ? '#E5484D' : L.accent, borderTopRightRadius: 8, borderBottomRightRadius: 8, paddingHorizontal: 8, height: 20, justifyContent: 'center' }}><Txt weight={600} size={10} color="#fff" style={{ lineHeight: 14, letterSpacing: 0.6 }}>{isNew ? 'NEW' : p.tag}</Txt></View>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 24 }}>
+          <Txt weight={700} size={16} color={L.ink} style={TNUM}>{inr(p.price)}</Txt>
           {p.mrp > p.price ? <Txt size={12} color={L.mut} style={{ textDecorationLine: 'line-through', ...TNUM }}>{inr(p.mrp)}</Txt> : null}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}><Clock size={12} color={L.mut} strokeWidth={1.5} /><Txt size={12} color={L.mut} style={{ lineHeight: 16 }}>{p.mins >= 60 ? (p.mins / 60) + (p.mins === 60 ? ' hour' : ' hours') : p.mins + ' mins'}</Txt></View>
         <Txt weight={500} size={14} color={L.ink} numberOfLines={1} style={{ marginTop: 4, lineHeight: 20 }}>{p.name}</Txt>
       </Pressable3>
-      <View style={{ position: 'absolute', right: 8, top: 124 - 17 }}><AddButton variant="add" qty={q} onAdd={() => act.addSvc(id)} onSub={() => act.subSvc(id)} /></View>
+      <View style={{ position: 'absolute', right: 8, top: 128 - 17 }}><AddButton variant="add" id={id} qty={q} onAdd={() => act.addSvc(id)} onSub={() => act.subSvc(id)} /></View>
     </View>
   );
 }
@@ -242,9 +264,9 @@ function Packs({ skel }: { skel: boolean }) {
   return (
     <View style={{ marginTop: 32 }}>
       <Title title="Wash packs" sub="Pressure wash, foam and more at your parking spot" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }} contentContainerStyle={{ paddingHorizontal: SIDE, gap: GAP, paddingBottom: 4 }}>
-        {skel ? PACKS.map(p => <View key={p.id} style={{ width: 168 }}><Shimmer width={168} height={124} radius={14} /><Shimmer width={90} height={16} style={{ marginTop: 20 }} /><Shimmer width={120} height={14} style={{ marginTop: 8 }} /></View>)
-          : PACKS.map((p, i) => <FadeUp key={p.id} delay={Math.min(i, 5) * 50} distance={8} duration={300}><PackCard id={p.id} /></FadeUp>)}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }} contentContainerStyle={{ paddingHorizontal: SIDE, gap: GAP, paddingBottom: 8 }}>
+        {skel ? PACKS.map(p => <View key={p.id} style={{ width: 168 }}><Shimmer width={168} height={128} radius={18} /><Shimmer width={90} height={16} style={{ marginTop: 24 }} /><Shimmer width={120} height={14} style={{ marginTop: 8 }} /></View>)
+          : PACKS.map((p, i) => <FadeUp key={p.id} index={i + 2}><PackCard id={p.id} /></FadeUp>)}
       </ScrollView>
     </View>
   );
@@ -271,57 +293,59 @@ function Refer() {
 }
 function More() {
   const row = (icon: ReactNode, title: string, sub: string, onPress: () => void) => (
-    <View style={{ flex: 1, minWidth: 0 }}><Pressable3 label={title} onPress={onPress} style={{ minHeight: 72, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: L.line, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, ...shadow }}>
-      <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: L.raised, alignItems: 'center', justifyContent: 'center' }}>{icon}</View>
-      <View style={{ flex: 1, minWidth: 0 }}><Txt weight={500} size={14} color={L.ink} numberOfLines={1} style={{ lineHeight: 20 }}>{title}</Txt><Txt size={12} color={L.mut} numberOfLines={1} style={{ lineHeight: 16 }}>{sub}</Txt></View>
+    <View style={{ flex: 1, minWidth: 0 }}><Pressable3 label={title} onPress={onPress} style={{ minHeight: 72, borderRadius: 16, backgroundColor: '#fff', padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8, ...shadow }}>
+      <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: L.tint, alignItems: 'center', justifyContent: 'center' }}>{icon}</View>
+      <View style={{ flex: 1, minWidth: 0 }}><Txt weight={600} size={13} color={L.ink} numberOfLines={1} style={{ lineHeight: 18 }}>{title}</Txt><Txt size={12} color={L.mut} numberOfLines={1} style={{ lineHeight: 16 }}>{sub}</Txt></View>
     </Pressable3></View>
   );
   return (
     <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: 12 }}>
-      {row(<PlanIc size={18} color={L.sec} strokeWidth={1.5} />, 'Monthly plans', 'Daily wash', () => go('plan'))}
-      {row(<StoreIc size={18} color={L.sec} strokeWidth={1.5} />, 'Car store', 'Care and gadgets', () => go('store'))}
+      {row(<PlanIc size={17} color={L.accent} strokeWidth={1.6} />, 'Monthly plans', 'Daily wash', () => go('plan'))}
+      {row(<StoreIc size={17} color={L.accent} strokeWidth={1.6} />, 'Car store', 'Care, gadgets', () => go('store'))}
     </View>
   );
 }
 
-/* ---------- service grid ---------- */
+/* ---------- service grid: exactly three per row, equal gutters, centred; every tile the same height ---------- */
 const CATS = ['All', 'Exterior', 'Interior', 'Care'] as const;
-function SvcTile({ s, w }: { s: (typeof CAR_SERVICES)[number]; w: number }) {
-  const q = svcQty(s.id), iw = w - 2 - 16, off = s.mrp > s.price ? Math.round((1 - s.price / s.mrp) * 100) : 0;
+const NAME_H = 36, PRICE_H = 18;
+export const tileH = (w: number) => w + 8 + NAME_H + 2 + PRICE_H;
+function SvcTile({ s: sv, w }: { s: (typeof CAR_SERVICES)[number]; w: number }) {
+  const q = svcQty(sv.id), ref = useRef<any>(null);
   return (
-    <View style={{ width: w }}>
-      <Pressable3 label={s.name} onPress={() => openPage({ k: 'svc', id: s.id })} style={{ minHeight: 188, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: L.line, padding: 8, overflow: 'hidden' }}>
-        <View style={{ width: iw, height: iw, borderRadius: 8, overflow: 'hidden', backgroundColor: s.tint || L.raised }}>
-          <Image source={(IMG as any)[s.img]} resizeMode={String(s.img).startsWith('r3d') ? 'contain' : 'cover'} style={{ width: '100%', height: '100%' }} />
+    <View style={{ width: w, height: tileH(w) }}>
+      <Pressable3 label={`${sv.name}, ${inr(sv.price)}`} onPress={() => setOrigin(sv.id, ref, () => openPage({ k: 'svc', id: sv.id }))}>
+        <View ref={ref} style={{ width: w, height: w, borderRadius: 16, overflow: 'hidden', backgroundColor: sv.tint || L.raised, alignItems: 'center', justifyContent: 'center' }}>
+          <SvcArt id={sv.id} size={Math.round(w * 0.9)} />
           {SHOW_RATINGS ? (
-            <View style={{ position: 'absolute', top: 4, right: 4, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 4, height: 20 }}>
-              <Star size={12} color={L.mut} strokeWidth={1.5} /><Txt size={12} color={L.sec} style={{ lineHeight: 16 }}>{s.rating.toFixed(1) + ' (' + s.count + ')'}</Txt>
+            <View style={{ position: 'absolute', top: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,.92)', borderRadius: 8, paddingHorizontal: 5, height: 18 }}>
+              <Star size={10} color="#F5A524" strokeWidth={1.5} /><Txt size={10} color={L.sec} style={{ lineHeight: 14 }}>{sv.rating.toFixed(1)}</Txt>
             </View>
-          ) : off ? <View style={{ position: 'absolute', top: 0, left: 0, backgroundColor: L.accent, borderBottomRightRadius: 8, paddingHorizontal: 6, height: 18, justifyContent: 'center' }}><Txt weight={500} size={10} color="#fff" style={{ lineHeight: 14 }}>{off}% OFF</Txt></View> : null}
+          ) : null}
         </View>
-        <Txt size={13} color={L.ink} numberOfLines={2} style={{ lineHeight: 18, height: 36, marginTop: 8 }}>{s.short}</Txt>
-        <Text style={{ marginTop: 2 }}><Txt weight={500} size={13} color={L.ink} style={TNUM}>{inr(s.price)}</Txt><Txt size={12} color={L.mut} style={{ textDecorationLine: 'line-through', ...TNUM }}>{'  ' + inr(s.mrp)}</Txt></Text>
-        <Txt size={11} color={L.mut} style={{ lineHeight: 15 }}>{s.mins} mins</Txt>
+        <Txt weight={500} size={13} color={L.ink} numberOfLines={2} style={{ lineHeight: 18, height: NAME_H, marginTop: 8 }}>{sv.short}</Txt>
+        <Text numberOfLines={1} style={{ marginTop: 2, height: PRICE_H }}><Txt weight={700} size={13} color={L.ink} style={TNUM}>{inr(sv.price)}</Txt><Txt size={11} color={L.mut} style={{ textDecorationLine: 'line-through', ...TNUM }}>{' ' + inr(sv.mrp)}</Txt></Text>
       </Pressable3>
-      <View style={{ position: 'absolute', right: 12, top: 8 + iw - 30 }}><AddButton qty={q} onAdd={() => act.addSvc(s.id)} onSub={() => act.subSvc(s.id)} /></View>
+      <View style={{ position: 'absolute', right: 6, top: w - 36 }}><AddButton compact id={sv.id} qty={q} onAdd={() => act.addSvc(sv.id)} onSub={() => act.subSvc(sv.id)} /></View>
     </View>
   );
 }
 function Grid({ W, skel, onLayoutY }: { W: number; skel: boolean; onLayoutY: (y: number) => void }) {
-  const w = Math.floor((W - SIDE * 2 - GAP * 2) / 3), [cat, setCat] = useState<(typeof CATS)[number]>('All');
+  // (W - 2*pad - 2*gap) / 3, floored; the remainder goes to the side padding so the three columns stay centred with equal gutters
+  const w = Math.floor((W - SIDE * 2 - GAP * 2) / 3), side = (W - w * 3 - GAP * 2) / 2, [cat, setCat] = useState<(typeof CATS)[number]>('All');
   const list = CAR_SERVICES.filter(s => cat === 'All' || s.cat === cat);
   return (
     <View style={{ marginTop: 32 }} onLayout={e => onLayoutY(e.nativeEvent.layout.y)}>
       <View style={{ paddingHorizontal: SIDE }}><Head title="All car wash services" sub="Schedule & book for later" style={{ marginBottom: 0 }} /></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }} contentContainerStyle={{ paddingHorizontal: SIDE, gap: 8 }}>
         {CATS.map(c => { const on = c === cat; return (
-          <Pressable3 key={c} label={c} haptics={false} onPress={() => setCat(c)} style={{ height: 32, paddingHorizontal: 14, borderRadius: 16, backgroundColor: on ? L.accent : L.raised, justifyContent: 'center' }}>
-            <Txt weight={on ? 500 : 400} size={13} color={on ? '#fff' : L.sec} style={{ lineHeight: 18 }}>{c}</Txt>
+          <Pressable3 key={c} label={c} haptics={false} onPress={() => setCat(c)} style={{ height: 36, paddingHorizontal: 16, borderRadius: 18, backgroundColor: on ? L.accent : '#fff', borderWidth: 1, borderColor: on ? L.accent : 'rgba(23,23,23,0.10)', justifyContent: 'center' }}>
+            <Txt weight={on ? 600 : 500} size={13} color={on ? '#fff' : L.sec} style={{ lineHeight: 18 }}>{c}</Txt>
           </Pressable3>) })}
       </ScrollView>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SIDE, marginTop: 16, columnGap: GAP, rowGap: GAP }}>
-        {skel ? CAR_SERVICES.slice(0, 6).map(s => <View key={s.id} style={{ width: w }}><Shimmer width={w} height={w} radius={12} /><Shimmer width={w - 20} height={12} style={{ marginTop: 10 }} /><Shimmer width={50} height={12} style={{ marginTop: 8 }} /></View>)
-          : list.map(s => <SvcTile key={s.id} s={s} w={w} />)}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: side, marginTop: 16, columnGap: GAP, rowGap: 20 }}>
+        {skel ? CAR_SERVICES.slice(0, 6).map(s => <View key={s.id} style={{ width: w, height: tileH(w) }}><Shimmer width={w} height={w} radius={16} /><Shimmer width={w - 20} height={12} style={{ marginTop: 10 }} /><Shimmer width={50} height={12} style={{ marginTop: 8 }} /></View>)
+          : list.map((s, i) => <FadeUp key={cat + s.id} index={i}><SvcTile s={s} w={w} /></FadeUp>)}
       </View>
     </View>
   );
@@ -362,7 +386,7 @@ function Trust({ W }: { W: number }) {
 }
 
 /* ---------- floating "washer assigned" mini card (only when the cart is empty) ---------- */
-function Assigned({ bottom }: { bottom: number }) {
+function Assigned() {
   let c: any, d: any, a: any, live = false, h: any;
   try { c = car(); d = doc(c); a = A(); live = !!activeStage(d); h = liveHead(c) } catch (e) { return null }
   const up = a.bookings.filter((b: any) => b.carId === c.id).slice(-1)[0], planned = !live && !up && d.status !== 'skipped', fin = d.status === 'done';
@@ -371,17 +395,17 @@ function Assigned({ bottom }: { bottom: number }) {
   const title = live || fin ? (fin ? `${w} washed your ${c.name}` : h.big) : up ? `${w} is assigned to your booking` : `${w} is assigned to your wash`;
   const subTxt = live ? chipText(c, d) : fin ? h.big + ' · WD Wash' : up ? `${up.slot} · ${up.type}` : d.notStarted ? h.big : `Today, ${ampm(d.eta) || '6:30 am'} · WD Wash`;
   return (
-    <Pressable3 label={title} onPress={() => go('live')} style={{ position: 'absolute', left: 12, right: 12, bottom, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, paddingRight: 12, borderRadius: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: L.line, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 6 }, elevation: 8 }}>
-      <View style={{ width: 44, height: 44, borderRadius: 10, overflow: 'hidden', backgroundColor: L.raised }}><Image source={IMG.washer} resizeMode="cover" style={{ width: 52, height: 53, marginLeft: -4 }} /></View>
+    <FadeUp index={2} style={{ marginHorizontal: SIDE, marginTop: 16 }}><Pressable3 label={title} onPress={() => go('live')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, paddingRight: 12, borderRadius: 18, backgroundColor: '#fff', ...shadow }}>
+      <View style={{ width: 48, height: 48, borderRadius: 12, overflow: 'hidden', backgroundColor: L.raised }}><Image source={IMG.washer} resizeMode="cover" style={{ width: 52, height: 53, marginLeft: -4 }} /></View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Txt weight={500} size={14} color={L.ink} numberOfLines={1} style={{ lineHeight: 20 }}>{title}</Txt>
+        <Txt weight={600} size={14} color={L.ink} numberOfLines={1} style={{ lineHeight: 20 }}>{title}</Txt>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {live ? <Pulse color={L.pos} size={8} /> : null}
           <Txt size={13} color={L.sec} numberOfLines={1} style={{ flex: 1, lineHeight: 18 }}>{subTxt}</Txt>
         </View>
       </View>
       <Chev size={18} color={L.mut} strokeWidth={1.5} />
-    </Pressable3>
+    </Pressable3></FadeUp>
   );
 }
 
@@ -400,15 +424,17 @@ export default function Home() {
     return () => { on = false; clearTimeout(t) };
   }, []);
   const onScroll = Animated.event([{ nativeEvent: { contentOffset: { y } } }], { useNativeDriver: false, listener: (e: any) => { homeY = e.nativeEvent.contentOffset.y } });
-  const barB = 56 + Math.max(ins.bottom, 0);
+  const barB = TAB_BAR_H + Math.max(ins.bottom, 0);
+  useEffect(() => { onGridJump(() => ref.current?.scrollTo({ y: Math.max(0, gridY.current - 90), animated: true })); return () => onGridJump(null) }, []);
   const refresh = async () => { setRefreshing(true); try { await act.refresh() } catch (e: any) { toast(e?.message || 'Could not refresh') } setRefreshing(false) };
   return (
-    <View style={{ flex: 1, backgroundColor: L.bg }}>
-      <Animated.ScrollView ref={ref} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={onScroll} bounces
+    <View style={{ flex: 1, backgroundColor: L.bg, alignItems: 'center' }}>
+      <Animated.ScrollView style={{ width: '100%', maxWidth: 520 }} ref={ref} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={onScroll} bounces
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={'#fff'} colors={[L.accent]} progressViewOffset={Math.max(ins.top, 24) + 56} />}
-        contentContainerStyle={{ paddingBottom: barB + 112 }}>
+        contentContainerStyle={{ paddingBottom: barB + (cart ? 100 : 40) }}>
         <Hero W={W} />
         <Entry onInstant={() => { try { act.setCartMode('instant') } catch (e) {} ref.current?.scrollTo({ y: Math.max(0, gridY.current - 90), animated: true }) }} />
+        <Assigned />
         <Packs skel={skel} />
         <Refer />
         <More />
@@ -416,7 +442,7 @@ export default function Home() {
         <Trust W={W} />
       </Animated.ScrollView>
       <Header y={y} />
-      {cart ? <CartBar aboveTabs /> : <Assigned bottom={barB + 12} />}
+      {cart ? <CartBar aboveTabs /> : null}
     </View>
   );
 }

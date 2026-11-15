@@ -1,135 +1,231 @@
-// Motion kit on RN Animated. One curve, bezier(0.22, 1, 0.36, 1): press scale .98 in 120ms, entrances 300ms fade + 8px rise (stagger 50ms),
-// no springs, no overshoot, no loops except the live status Pulse.
+// Motion kit (r5) on react-native-reanimated 4: UI-thread springs. Every piece checks reduced motion and jumps to its end state.
+// Press: spring to .96 and back with a little overshoot. Entrances: 16px rise + fade on a spring, staggered 35ms (cap 12).
+// Add to cart: the stepper springs open, a dot carrying the service art flies on an arc into the mini-cart, the bar bounces.
+// Count-up for money figures; a gradient sweep for skeletons. Pulse / SuccessTick / LocationLoader stay on RN Animated (loops).
 import React, { ReactNode, useEffect, useRef, useState } from 'react';
-import { View, Text, Animated, Easing, Pressable, Platform, StyleSheet, ViewStyle, StyleProp, PressableProps } from 'react-native';
+import { View, Text, Animated, Easing, Pressable, Platform, StyleSheet, ViewStyle, StyleProp, PressableProps, Dimensions } from 'react-native';
+import Reanimated, {
+  useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, withSequence, withRepeat, cancelAnimation,
+  useReducedMotion, Easing as REasing, interpolate, Extrapolation, runOnJS,
+} from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { C, F } from '../theme';
 import { haptic } from './hosts';
 import { useApp, svcLines, openPage } from '../state';
 import { useInsets } from './kit';
-import { Photo } from '../pages/parts';
+import { Photo, SvcArt } from '../pages/parts';
 
 const ND = Platform.OS !== 'web';
-export const EASE_OUT = Easing.bezier(0.22, 1, 0.36, 1);      // the one curve (entrances, sheets, presses)
+export const EASE_OUT = Easing.bezier(0.22, 1, 0.36, 1);      // RN Animated curve (loops, loader)
 export const EASE_STD = EASE_OUT;
 const A = Animated.Value;
+export const R_EASE = REasing.bezier(0.22, 1, 0.36, 1);
 
-/* ---------- Pressable3: press = scale .98 over 120ms, light haptic ---------- */
-export function Pressable3({ children, style, onPress, scaleTo = 0.98, haptics = true, disabled, ...rest }:
+/** spring presets (damping / stiffness / mass) */
+export const SPRING = {
+  press: { damping: 18, stiffness: 420, mass: 0.6 },       // finger down
+  release: { damping: 11, stiffness: 320, mass: 0.6 },     // finger up: small overshoot
+  enter: { damping: 18, stiffness: 160, mass: 0.9 },       // list entrance
+  pop: { damping: 9, stiffness: 300, mass: 0.6 },          // bounce (cart bar, count)
+  page: { damping: 26, stiffness: 240, mass: 0.9, overshootClamping: true },
+} as const;
+export const useRM = () => useReducedMotion();
+
+/* ---------- Pressable3: spring press scale on every tappable card, light haptic ---------- */
+export function Pressable3({ children, style, onPress, scaleTo = 0.96, haptics = true, disabled, ...rest }:
   Omit<PressableProps, 'style' | 'children'> & { children?: ReactNode; style?: StyleProp<ViewStyle>; scaleTo?: number; haptics?: boolean }) {
-  const s = useRef(new A(1)).current;
-  const to = (v: number, down: boolean) => Animated.timing(s, { toValue: v, duration: 120, easing: EASE_OUT, useNativeDriver: ND }).start();
-  const opacity = s.interpolate({ inputRange: [scaleTo, 1], outputRange: [1, 1], extrapolate: 'clamp' });
+  const rm = useReducedMotion(), s = useSharedValue(1);
+  const st = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   return (
-    <Pressable {...rest} disabled={disabled} onPressIn={e => { to(scaleTo, true); rest.onPressIn?.(e); }} onPressOut={e => { to(1, false); rest.onPressOut?.(e); }}
+    <Pressable {...rest} disabled={disabled}
+      onPressIn={e => { if (!rm) s.value = withSpring(scaleTo, SPRING.press); rest.onPressIn?.(e); }}
+      onPressOut={e => { s.value = rm ? 1 : withSpring(1, SPRING.release); rest.onPressOut?.(e); }}
       onPress={e => { if (haptics) haptic(); onPress?.(e); }}>
-      <Animated.View style={[style, { transform: [{ scale: s }], opacity }]}>{children}</Animated.View>
+      <Reanimated.View style={[style, st]}>{children}</Reanimated.View>
     </Pressable>
   );
 }
 
-/* ---------- FadeUp: translateY 8 -> 0 + opacity, 300ms, caller staggers with delay (50ms per item, max 6) ---------- */
-export function FadeUp({ delay = 0, children, style, distance = 8, duration = 300 }: { delay?: number; children?: ReactNode; style?: StyleProp<ViewStyle>; distance?: number; duration?: number }) {
-  const v = useRef(new A(0)).current;
-  useEffect(() => { const a = Animated.timing(v, { toValue: 1, duration, delay, easing: EASE_OUT, useNativeDriver: ND }); a.start(); return () => a.stop(); }, []);
-  return <Animated.View style={[style, { opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [distance, 0] }) }] }]}>{children}</Animated.View>;
+/* ---------- FadeUp: spring rise + fade; callers stagger with `delay` (or use `index`) ---------- */
+export function FadeUp({ delay = 0, index, children, style, distance = 16, duration = 320 }: { delay?: number; index?: number; children?: ReactNode; style?: StyleProp<ViewStyle>; distance?: number; duration?: number }) {
+  const rm = useReducedMotion(), v = useSharedValue(rm ? 1 : 0);
+  const d = index != null ? Math.min(index, 12) * 35 : delay;
+  useEffect(() => { if (rm) { v.value = 1; return } v.value = withDelay(d, withSpring(1, SPRING.enter)); }, []);
+  const o = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { o.value = rm ? 1 : withDelay(d, withTiming(1, { duration, easing: R_EASE })); }, []);
+  const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateY: (1 - v.value) * distance }, { scale: 0.97 + 0.03 * v.value }] }));
+  return <Reanimated.View style={[style, st]}>{children}</Reanimated.View>;
 }
 
-/* ---------- AddButton: white square "+" / "Add" that swaps to a "- n +" stepper (no bounce) ---------- */
-export function AddButton({ qty, onAdd, onSub, variant = 'plus', style }: { qty: number; onAdd: () => void; onSub: () => void; variant?: 'plus' | 'add'; style?: StyleProp<ViewStyle> }) {
-  // Measured: Pronto swaps the white square for a wider white pill in <=2 frames, growing leftwards (right edge fixed).
-  const open = qty > 0, H = 34, W0 = variant === 'add' ? 64 : 34, W1 = 92;
-  const w = useRef(new A(open ? 1 : 0)).current, bump = useRef(new A(1)).current, first = useRef(true);
-  useEffect(() => { Animated.timing(w, { toValue: open ? 1 : 0, duration: 110, easing: EASE_OUT, useNativeDriver: false }).start(); }, [open]);
+/* ---------- fly-to-cart: a dot with the service art arcs from the Add button into the mini-cart thumbnail ---------- */
+type Fly = { key: number; id: string; x: number; y: number };
+let flyers: Fly[] = [], flyKey = 0, cartTarget: { x: number; y: number } | null = null;
+const flySubs = new Set<() => void>();
+const flyEmit = () => flySubs.forEach(f => f());
+/** start a flight from a window point (centre of the button that was pressed) */
+export function flyToCart(id: string, x: number, y: number) {
+  flyers = [...flyers, { key: ++flyKey, id, x, y }].slice(-4); flyEmit();
+}
+/** call with a view ref: measures it and launches the flight from its centre */
+export function flyFrom(ref: React.RefObject<any>, id: string) {
+  const n: any = ref.current; if (!n || !n.measureInWindow) return;
+  try { n.measureInWindow((x: number, y: number, w: number, h: number) => { if (w || h) flyToCart(id, x + w / 2, y + h / 2) }) } catch (e) {}
+}
+function Flyer({ f, onDone }: { f: Fly; onDone: () => void }) {
+  const p = useSharedValue(0), { width: W, height: H } = Dimensions.get('window');
+  const to = cartTarget || { x: 12 + 8 + 22, y: H - 120 };
+  useEffect(() => { p.value = withTiming(1, { duration: 560, easing: REasing.bezier(0.45, 0, 0.25, 1) }, fin => { if (fin) runOnJS(onDone)() }); }, []);
+  const st = useAnimatedStyle(() => {
+    const t = p.value, arc = -Math.min(140, Math.abs(f.y - to.y) * 0.35 + 60) * Math.sin(Math.PI * t);
+    return {
+      opacity: interpolate(t, [0, 0.08, 0.85, 1], [0, 1, 1, 0], Extrapolation.CLAMP),
+      transform: [
+        { translateX: f.x + (to.x - f.x) * t - 22 }, { translateY: f.y + (to.y - f.y) * t + arc - 22 },
+        { scale: interpolate(t, [0, 0.2, 1], [0.6, 1.05, 0.55], Extrapolation.CLAMP) },
+      ],
+    };
+  });
+  return (
+    <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0, width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', borderWidth: 2, borderColor: C.violet, alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+      shadowColor: C.violet, shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 12 }, st]}>
+      <SvcArt id={f.id} size={34} />
+    </Reanimated.View>
+  );
+}
+/** mount once, above every page (Main) */
+export function FlyHost() {
+  const rm = useReducedMotion(), [, setN] = useState(0);
+  useEffect(() => { const f = () => setN(n => n + 1); flySubs.add(f); return () => { flySubs.delete(f) } }, []);
+  if (rm || !flyers.length) return null;
+  return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 999, elevation: 999 }]}>{flyers.map(f => <Flyer key={f.key} f={f} onDone={() => { flyers = flyers.filter(x => x.key !== f.key); flyEmit() }} />)}</View>;
+}
+
+/* ---------- AddButton: white "+" square (or "Add") that springs open into a "- n +" stepper; the count pops ---------- */
+export function AddButton({ qty, onAdd, onSub, variant = 'plus', style, id, compact }: { qty: number; onAdd: () => void; onSub: () => void; variant?: 'plus' | 'add'; style?: StyleProp<ViewStyle>; id?: string; compact?: boolean }) {
+  const rm = useReducedMotion(), open = qty > 0, H = compact ? 30 : 34, W0 = variant === 'add' ? 64 : H, W1 = compact ? 78 : 92;
+  const w = useSharedValue(open ? 1 : 0), bump = useSharedValue(1), first = useRef(true), ref = useRef<any>(null);
+  useEffect(() => { w.value = rm ? (open ? 1 : 0) : withSpring(open ? 1 : 0, { damping: 16, stiffness: 260, mass: 0.7 }); }, [open]);
   useEffect(() => {
     if (first.current) { first.current = false; return; }
-    bump.setValue(1);
+    if (!rm) bump.value = withSequence(withTiming(1.35, { duration: 90 }), withSpring(1, SPRING.pop));
   }, [qty]);
-  const width = w.interpolate({ inputRange: [0, 1], outputRange: [W0, W1] });
-  const fOut = w.interpolate({ inputRange: [0, 0.5], outputRange: [1, 0], extrapolate: 'clamp' });
-  const fIn = w.interpolate({ inputRange: [0.4, 1], outputRange: [0, 1], extrapolate: 'clamp' });
+  const box = useAnimatedStyle(() => ({ width: W0 + (W1 - W0) * w.value }));
+  const fOut = useAnimatedStyle(() => ({ opacity: interpolate(w.value, [0, 0.45], [1, 0], Extrapolation.CLAMP) }));
+  const fIn = useAnimatedStyle(() => ({ opacity: interpolate(w.value, [0.35, 1], [0, 1], Extrapolation.CLAMP) }));
+  const num = useAnimatedStyle(() => ({ transform: [{ scale: bump.value }] }));
+  const add = () => { if (id) flyFrom(ref, id); onAdd(); };
   return (
-    <View style={[{ width: W1, height: H, alignItems: 'flex-end' }, style]} pointerEvents="box-none">
-      <Animated.View style={{ width, height: H, borderRadius: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: C.hair, overflow: 'hidden',
-        shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}>
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: fOut }]} pointerEvents={open ? 'none' : 'auto'}>
-          <Pressable3 onPress={onAdd} style={s.fill} accessibilityRole="button" accessibilityLabel="Add">
-            {variant === 'add' ? <Text style={s.add}>Add</Text> : <Text style={s.plus}>+</Text>}
+    <View ref={ref} style={[{ width: W1, height: H, alignItems: 'flex-end' }, style]} pointerEvents="box-none">
+      <Reanimated.View style={[{ height: H, borderRadius: compact ? 9 : 10, backgroundColor: '#fff', overflow: 'hidden',
+        shadowColor: '#1A1033', shadowOpacity: 0.14, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 }, box]}>
+        <Reanimated.View style={[StyleSheet.absoluteFill, fOut]} pointerEvents={open ? 'none' : 'auto'}>
+          <Pressable3 onPress={add} style={s.fill} accessibilityRole="button" accessibilityLabel="Add" scaleTo={0.88}>
+            {variant === 'add' ? <Text style={s.add}>Add</Text> : <Text style={[s.plus, compact && { fontSize: 20, lineHeight: 24 }]}>+</Text>}
           </Pressable3>
-        </Animated.View>
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: fIn, flexDirection: 'row', alignItems: 'center' }]} pointerEvents={open ? 'auto' : 'none'}>
-          <Pressable onPress={() => { haptic(); onSub(); }} hitSlop={6} style={s.step} accessibilityLabel="Remove one"><Text style={s.stepT}>−</Text></Pressable>
-          <Animated.Text style={[s.num, { transform: [{ scale: bump }] }]}>{qty}</Animated.Text>
-          <Pressable onPress={() => { haptic(); onAdd(); }} hitSlop={6} style={s.step} accessibilityLabel="Add one more"><Text style={s.stepT}>+</Text></Pressable>
-        </Animated.View>
-      </Animated.View>
+        </Reanimated.View>
+        <Reanimated.View style={[StyleSheet.absoluteFill, { flexDirection: 'row', alignItems: 'center', backgroundColor: C.violet }, fIn]} pointerEvents={open ? 'auto' : 'none'}>
+          <Pressable onPress={() => { haptic(); onSub(); }} hitSlop={6} style={[s.step, { height: H, width: compact ? 24 : 28 }]} accessibilityLabel="Remove one"><Text style={s.stepT}>−</Text></Pressable>
+          <Reanimated.Text style={[s.num, num]}>{qty}</Reanimated.Text>
+          <Pressable onPress={() => { haptic(); add(); }} hitSlop={6} style={[s.step, { height: H, width: compact ? 24 : 28 }]} accessibilityLabel="Add one more"><Text style={s.stepT}>+</Text></Pressable>
+        </Reanimated.View>
+      </Reanimated.View>
     </View>
   );
 }
 const s = StyleSheet.create({
-  fill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  add: { fontFamily: F.b500, fontSize: 14, color: C.violet },
+  fill: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
+  add: { fontFamily: F.b600, fontSize: 14, color: C.violet },
   plus: { fontFamily: F.b500, fontSize: 22, lineHeight: 26, color: C.violet },
   step: { width: 28, height: 34, alignItems: 'center', justifyContent: 'center' },
-  stepT: { fontFamily: F.b500, fontSize: 18, lineHeight: 22, color: C.violet },
-  num: { flex: 1, textAlign: 'center', fontFamily: F.b500, fontSize: 14, color: C.ink, fontVariant: ['tabular-nums'] },
+  stepT: { fontFamily: F.b600, fontSize: 17, lineHeight: 22, color: '#fff' },
+  num: { flex: 1, textAlign: 'center', fontFamily: F.b600, fontSize: 14, color: '#fff', fontVariant: ['tabular-nums'] },
 });
 
-/* ---------- CartBar: white mini-cart bar (thumbnail, "N services ^", Go to cart); slides up 70px + fades 320ms ---------- */
+/* ---------- CartBar: white mini-cart (art thumb, "N services ^", Go to cart). Springs up; bounces when something lands in it ---------- */
 export function CartBar({ aboveTabs }: { aboveTabs?: boolean }) {
   useApp();
-  const L = svcLines(), n = L.count, ins = useInsets();
+  const L = svcLines(), n = L.count, ins = useInsets(), rm = useReducedMotion();
   const [mounted, setMounted] = useState(n > 0);
-  const v = useRef(new A(n > 0 ? 1 : 0)).current;
+  const v = useSharedValue(n > 0 ? 1 : 0), bounce = useSharedValue(1), thumb = useSharedValue(1), prevN = useRef(n), ref = useRef<any>(null);
   const last = useRef({ n, sub: L.sub, id: L.lines[0]?.id || '', name: L.lines[0]?.name || '' });
-  if (n > 0) last.current = { n, sub: L.sub, id: L.lines[0]?.id || '', name: L.lines[0]?.name || '' };
+  if (n > 0) last.current = { n, sub: L.sub, id: L.lines[L.lines.length - 1]?.id || L.lines[0]?.id || '', name: L.lines[0]?.name || '' };
   useEffect(() => {
-    if (n > 0) { setMounted(true); Animated.timing(v, { toValue: 1, duration: 320, easing: EASE_OUT, useNativeDriver: ND }).start(); }
-    else Animated.timing(v, { toValue: 0, duration: 220, easing: EASE_STD, useNativeDriver: ND }).start(({ finished }) => { if (finished) setMounted(false); });
+    if (n > 0) { setMounted(true); v.value = rm ? 1 : withSpring(1, { damping: 16, stiffness: 180 }); }
+    else v.value = rm ? 0 : withTiming(0, { duration: 200, easing: R_EASE }, fin => { if (fin) runOnJS(setMounted)(false) });
+    if (rm && n === 0) setMounted(false);
   }, [n > 0]);
+  useEffect(() => {
+    if (n > prevN.current && !rm) {
+      bounce.value = withDelay(prevN.current === 0 ? 260 : 470, withSequence(withTiming(1.06, { duration: 110 }), withSpring(1, SPRING.pop)));
+      thumb.value = withDelay(prevN.current === 0 ? 260 : 470, withSequence(withTiming(1.25, { duration: 110 }), withSpring(1, SPRING.pop)));
+    }
+    prevN.current = n;
+  }, [n]);
+  const wrap = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ translateY: (1 - v.value) * 90 }, { scale: bounce.value }] }));
+  const th = useAnimatedStyle(() => ({ transform: [{ scale: thumb.value }] }));
   if (!mounted) return null;
   const { n: cn, sub, id, name } = last.current;
-  const bottom = aboveTabs ? 56 + Math.max(ins.bottom, 0) + 8 : Math.max(ins.bottom, 12);
+  const bottom = aboveTabs ? TAB_BAR_H + Math.max(ins.bottom, 0) + 10 : Math.max(ins.bottom, 12);
+  const measure = () => { const r: any = ref.current; try { r?.measureInWindow?.((x: number, y: number, w: number, h: number) => { if (w) cartTarget = { x: x + w / 2, y: y + h / 2 } }) } catch (e) {} };
   return (
-    <Animated.View pointerEvents="box-none" style={{ position: 'absolute', left: 12, right: 12, bottom, opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [70, 0] }) }] }}>
+    <Reanimated.View pointerEvents="box-none" style={[{ position: 'absolute', left: 12, right: 12, bottom }, wrap]}>
       <Pressable3 onPress={() => openPage({ k: 'cart' })} style={cb.bar} haptics={false} accessibilityLabel={`${cn} ${cn === 1 ? 'service' : 'services'} in cart. Go to cart`}>
-        <View style={cb.thumb}>{id ? <Photo id={id} radius={8} pad={2} style={{ width: 40, height: 40 }} /> : null}</View>
+        <Reanimated.View ref={ref as any} onLayout={measure} style={[cb.thumb, th]}>{id ? <Photo id={id} radius={10} pad={2} style={{ width: 44, height: 44 }} /> : null}</Reanimated.View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={cb.l1}>{cn} {cn === 1 ? 'service' : 'services'}  <Text style={{ color: C.violet }}>{'\u2303'}</Text></Text>
+          <Text style={cb.l1}>{cn} {cn === 1 ? 'service' : 'services'}  <Text style={{ color: C.violet }}>{'⌃'}</Text></Text>
           <Text numberOfLines={1} style={cb.l2}>{cn === 1 ? name : '₹' + Number(sub).toLocaleString('en-IN')}</Text>
         </View>
         <View style={cb.cta}><Text style={cb.ctaT}>Go to cart</Text></View>
       </Pressable3>
-    </Animated.View>
+    </Reanimated.View>
   );
 }
+/** bar height without inset (kept in sync with screens/TabBar) */
+export const TAB_BAR_H = 64;
 const cb = StyleSheet.create({
-  bar: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 8, paddingLeft: 10, borderWidth: 1, borderColor: C.hair,
-    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 6 }, elevation: 10 },
-  thumb: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  l1: { fontFamily: F.b500, fontSize: 14, color: C.ink },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 18, padding: 8, paddingLeft: 8,
+    shadowColor: '#1A1033', shadowOpacity: 0.16, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 12 },
+  thumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#F3F0FA', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  l1: { fontFamily: F.b600, fontSize: 14, color: C.ink },
   l2: { fontFamily: F.body, fontSize: 12, color: '#737373', fontVariant: ['tabular-nums'] },
-  cta: { backgroundColor: C.violet, borderRadius: 10, paddingHorizontal: 18, height: 44, alignItems: 'center', justifyContent: 'center' },
-  ctaT: { fontFamily: F.b500, fontSize: 14, color: '#fff' },
+  cta: { backgroundColor: C.violet, borderRadius: 12, paddingHorizontal: 18, height: 44, alignItems: 'center', justifyContent: 'center' },
+  ctaT: { fontFamily: F.b600, fontSize: 14, color: '#fff' },
 });
 
-/* ---------- CountUp: no count on load; shows the final figure (props kept so callers don't change) ---------- */
-export function CountUp({ to, style }: { to: number | string; duration?: number; style?: StyleProp<any>; delay?: number }) {
-  return <Text style={style}>{String(to)}</Text>;
+/* ---------- count-up: animates from the last shown value to the new one (650ms ease-out); instant with reduced motion ---------- */
+export function useCountUp(to: number, dur = 650, delay = 0) {
+  const rm = useReducedMotion(), [v, setV] = useState(rm ? to : 0), from = useRef(rm ? to : 0);
+  useEffect(() => {
+    if (rm || !isFinite(to)) { setV(to); from.current = to; return; }
+    let raf = 0, t0 = 0; const a = from.current, b = to;
+    const step = (t: number) => { if (!t0) t0 = t + delay; const k = Math.min(1, Math.max(0, (t - t0) / dur)), e = 1 - Math.pow(1 - k, 3); setV(a + (b - a) * e); from.current = a + (b - a) * e; if (k < 1) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [to]);
+  return v;
+}
+/** number or "₹1,234.50"-style string: the numeric part counts up, prefix/suffix stay */
+export function CountUp({ to, style, duration = 650, delay = 0 }: { to: number | string; duration?: number; style?: StyleProp<any>; delay?: number }) {
+  const str = String(to), m = str.match(/^(\D*)([\d,]+(?:\.\d+)?)(.*)$/);
+  const num = m ? Number(m[2].replace(/,/g, '')) : typeof to === 'number' ? to : NaN, dec = m && m[2].includes('.') ? m[2].split('.')[1].length : 0;
+  const v = useCountUp(isFinite(num) ? num : 0, duration, delay);
+  if (!isFinite(num)) return <Text style={style}>{str}</Text>;
+  const shown = dec ? v.toFixed(dec) : Math.round(v).toString();
+  const grouped = m && m[2].includes(',') ? Number(shown).toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : shown;
+  return <Text style={style}>{(m ? m[1] : '') + grouped + (m ? m[3] : '')}</Text>;
 }
 
-/* ---------- Shimmer: grey skeleton block with a soft light band sweeping across (1.2s loop) ---------- */
-const sweep = new A(0);
-let sweepOn = false;
-function startSweep() { if (sweepOn) return; sweepOn = true; Animated.loop(Animated.timing(sweep, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: false })).start(); }
+/* ---------- Shimmer: grey block with a soft light band sweeping across (1.1s loop) ---------- */
 export function Shimmer({ width, height = 16, radius = 8, style }: { width?: number | string; height?: number; radius?: number; style?: StyleProp<ViewStyle> }) {
-  const [w, setW] = useState(0);
-  useEffect(() => { startSweep() }, []);
+  const [w, setW] = useState(0), rm = useReducedMotion(), x = useSharedValue(0);
+  useEffect(() => { if (!rm) x.value = withRepeat(withTiming(1, { duration: 1100, easing: REasing.inOut(REasing.quad) }), -1, false); return () => cancelAnimation(x) }, [rm]);
+  const st = useAnimatedStyle(() => ({ transform: [{ translateX: -w * 0.8 + x.value * w * 1.8 }] }));
   return (
-    <View onLayout={e => setW(e.nativeEvent.layout.width)} style={[{ width: width as any, height, borderRadius: radius, backgroundColor: '#F1F1F3', overflow: 'hidden' }, style]}>
-      {w ? <Animated.View style={{ position: 'absolute', top: 0, bottom: 0, width: w * 0.7, alignItems: 'center', transform: [{ translateX: sweep.interpolate({ inputRange: [0, 1], outputRange: [-w * 0.7, w] }) }] }}>
-        {[0.22, 0.4, 0.55].map((o, i) => <View key={i} style={{ position: 'absolute', top: 0, bottom: 0, width: `${100 - i * 30}%`, backgroundColor: `rgba(255,255,255,${o * 0.5})` }} />)}
-      </Animated.View> : null}
+    <View onLayout={e => setW(e.nativeEvent.layout.width)} style={[{ width: width as any, height, borderRadius: radius, backgroundColor: '#EEEDF2', overflow: 'hidden' }, style]}>
+      {w && !rm ? <Reanimated.View style={[{ position: 'absolute', top: 0, bottom: 0, width: w * 0.8 }, st]}>
+        <LinearGradient colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.75)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flex: 1 }} />
+      </Reanimated.View> : null}
     </View>
   );
 }
@@ -140,7 +236,19 @@ export function useSkeleton(ms = 380) {
   return on;
 }
 
-/* ---------- useParallax: inert (no hero parallax / overscroll zoom); API kept so callers still compile ---------- */
+/* ---------- shared-element feel: the tapped card's art rect, read once by the page it opens ---------- */
+let origin: { id: string; x: number; y: number; w: number; h: number; t: number } | null = null;
+export function setOrigin(id: string, ref: React.RefObject<any>, then: () => void) {
+  const n: any = ref.current;
+  if (!n || !n.measureInWindow) { origin = null; then(); return; }
+  let done = false; const go = () => { if (!done) { done = true; then() } };
+  try { n.measureInWindow((x: number, y: number, w: number, h: number) => { origin = w ? { id, x, y, w, h, t: Date.now() } : null; go() }) } catch (e) { go() }
+  setTimeout(go, 60);
+}
+/** the origin rect for `id` if it was set in the last second (consumed) */
+export function takeOrigin(id: string) { const o = origin; origin = null; return o && o.id === id && Date.now() - o.t < 1000 ? o : null; }
+
+/* ---------- useParallax: inert; API kept so callers still compile ---------- */
 export function useParallax(_height = 330) {
   const y = useRef(new A(0)).current;
   return { scrollY: y, onScroll: undefined as any, scrollEventThrottle: 16, style: {} as any };

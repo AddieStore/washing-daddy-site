@@ -18,20 +18,23 @@ export const C = {
 // Layout tokens on a 4px grid. SP.page = side margin, SP.section = space between page sections, SP.card = padding inside a card,
 // SP.stack = gap between cards in a list, SP.tight = gap between a title and its sub line.
 export const SP = { hair: 4, tight: 4, s: 8, m: 12, l: 16, stack: 12, page: 16, card: 16, xl: 24, section: 32, xxl: 40 } as const;
-export const R = { card: 14, inner: 10, ctl: 10, chip: 8, sheet: 20, pill: 999 } as const;   // card, tile/row icon, button/field, chip, sheet/panel, pill
+export const R = { card: 16, inner: 12, ctl: 12, chip: 8, sheet: 24, pill: 999 } as const;   // card, tile/row icon, button/field, chip, sheet/panel, pill
 export const HIT = 44;   // minimum touch target (iOS HIG)
 export const SHADOW_SM = { shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 } as const;
+// r5: cards lose their hairline and float on a soft spread shadow over a grey page (Pronto)
+export const SHADOW_CARD = { shadowColor: '#1A1033', shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 3 } as const;
+export const PAGE_GREY = '#F5F5F8';
 export const SHADOW_FLOAT = { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 8 } as const;
 
-// Poppins, weights 400/500 (600 for rare emphasis). The legacy bold keys resolve to Medium so no 700/800 can render.
+// Poppins type scale (r5): 400 body, 500 labels, 600 titles (any 500 text >= 17px renders 600), 700 numbers, 800 hero headline.
 export const F = {
   shout: 'Poppins_500Medium',
   hero: 'Poppins_500Medium',
   body: 'Poppins_400Regular',
   b500: 'Poppins_500Medium',
   b600: 'Poppins_600SemiBold',
-  b700: 'Poppins_500Medium',
-  b800: 'Poppins_500Medium',
+  b700: 'Poppins_700Bold',
+  b800: 'Poppins_800ExtraBold',
 };
 
 export type Ink = {

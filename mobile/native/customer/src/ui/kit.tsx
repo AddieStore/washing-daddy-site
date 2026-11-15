@@ -17,15 +17,15 @@ const withFg = (T: Theme, fg: string): Ink => ({ ...T.card, fg, fg2: fg, fg3: fg
 type VS = StyleProp<ViewStyle>;
 
 /* ---------- text ---------- */
-const WF = { 400: F.body, 500: F.b500, 600: F.b600 } as const;
+const WF = { 400: F.body, 500: F.b500, 600: F.b600, 700: F.b700, 800: F.b800 } as const;
 export type TxtProps = TextProps & { weight?: 400 | 500 | 600 | 700 | 800; font?: 'body' | 'shout' | 'hero'; size?: number; color?: string; upper?: boolean };
-// font 'shout'/'hero' (old poster faces) render as Medium Poppins in sentence case. No 700/800 and no uppercase tracking anywhere:
-// weights 700/800 resolve to 500 (600 for text under 17), `upper` is ignored, letter-spacing is 0, figures are tabular.
+// r5 type scale: 400 body, 500 label, 600 title, 700 figure, 800 hero. Medium text at 17px+ is promoted to SemiBold so headings
+// carry weight (Pronto). font 'shout'/'hero' render as Bold Poppins in sentence case; `upper` is ignored; figures are tabular.
 export function Txt({ style, weight = 400, font = 'body', size = 14, color, upper: _upper, ...p }: TxtProps) {
   const ink = useInk();
   const head = font !== 'body';
-  const w = head ? 500 : weight >= 700 ? (size >= 17 ? 500 : 600) : weight;
-  return <Text {...p} style={[{ fontFamily: WF[w as 400 | 500 | 600], fontSize: size, color: color ?? ink.fg, fontVariant: ['tabular-nums'] }, head && { lineHeight: Math.round(size * 1.22) }, style, { letterSpacing: 0, textTransform: 'none' }]} />;
+  const w = head ? 700 : weight === 500 && size >= 17 ? 600 : weight;
+  return <Text {...p} style={[{ fontFamily: WF[w as 400 | 500 | 600 | 700 | 800], fontSize: size, color: color ?? ink.fg, fontVariant: ['tabular-nums'] }, head && { lineHeight: Math.round(size * 1.22) }, size >= 22 && w >= 600 ? { letterSpacing: -0.3 } : null, style, { textTransform: 'none' }]} />;
 }
 const tShadow = (_T: Theme, _c: string, _d: number): TextStyle => ({});
 
