@@ -3,9 +3,9 @@ import React, { ReactNode, useEffect, useRef } from 'react';
 import { View, Pressable, Image, Animated, Easing, Platform, Share, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
-import { Back, Check, Plus, Share as ShareIc, Chev } from '../ui/icons';
+import { Back, Check, Plus, Share as ShareIc } from '../ui/icons';
 import { src } from '../img';
-import { svcLines, svcOf, openPage, haptic } from '../state';
+import { svcOf, haptic } from '../state';
 import { PACKS } from '../data/reference';
 
 const ND = Platform.OS !== 'web';
@@ -14,6 +14,8 @@ export const G = { line: 'rgba(23,23,23,0.08)', ink: '#171717', sub: '#525252', 
 const SHADOW_S = { shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, shadowOffset: { width: 0, height: 1 } };
 const SHADOW_F = { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 8 } };
 export const card = (extra?: object): ViewStyle => ({ backgroundColor: '#fff', borderWidth: 1, borderColor: G.line, borderRadius: 14, ...SHADOW_S, elevation: 1, ...extra });
+/** soft grey page behind white cards (cart, schedule) */
+export const PAGE_BG = '#F6F6F8';
 export const TNUM: TextStyle = { fontVariant: ['tabular-nums'] };
 
 /** '₹1,800' with Indian digit grouping */
@@ -33,7 +35,7 @@ export function Tap({ children, style, onPress, disabled, hitSlop, label }: { ch
   const f = StyleSheet.flatten(style) || {}, outer: ViewStyle = { flex: f.flex, flexGrow: f.flexGrow, alignSelf: f.alignSelf, width: f.width };
   const { flex: _a, flexGrow: _b, flexShrink: _c, flexBasis: _d, width: _e, alignSelf: _f, ...inner } = f as any; if (f.width) inner.width = '100%';
   return (
-    <Pressable style={outer} accessibilityLabel={label} disabled={disabled} hitSlop={hitSlop} onPress={onPress} onPressIn={() => to(0.98)} onPressOut={() => to(1)}>
+    <Pressable style={outer} accessibilityRole="button" accessibilityLabel={label} disabled={disabled} hitSlop={hitSlop} onPress={onPress} onPressIn={() => to(0.98)} onPressOut={() => to(1)}>
       <Animated.View style={[inner, { transform: [{ scale: s }] }]}>{children}</Animated.View>
     </Pressable>
   );
@@ -82,25 +84,6 @@ export function PrimaryBtn({ label, onPress, disabled, busy, style, outline, sma
     <Tap disabled={off} onPress={onPress} style={[{ height: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, backgroundColor: quiet ? G.raised : G.violet, opacity: busy ? 0.7 : 1 }, style]}>
       <Txt weight={500} size={small ? 14 : 15} numberOfLines={1} color={disabled ? G.mute : outline ? G.ink : '#fff'}>{busy ? 'Please wait…' : label}</Txt>
     </Tap>
-  );
-}
-
-/** sticky "N services · Go to cart" bar (shown on the service page, which has no tab bar) */
-export function CartBar({ bottom }: { bottom?: number }) {
-  const ins = useInsets(), { lines, count } = svcLines(), y = useRef(new Animated.Value(count ? 0 : 120)).current;
-  useEffect(() => { Animated.timing(y, { toValue: count ? 0 : 120, duration: 300, easing: EASE, useNativeDriver: ND }).start() }, [count > 0]);
-  const first = lines[0];
-  return (
-    <Animated.View pointerEvents={count ? 'auto' : 'none'} style={{ position: 'absolute', zIndex: 20, left: 0, right: 0, bottom: bottom ?? 0, opacity: count ? 1 : 0, transform: [{ translateY: y }], backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: G.line, paddingTop: 12, paddingBottom: (bottom ? 12 : Math.max(ins.bottom, 12) + 4), paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', ...SHADOW_F }}>
-      <Pressable onPress={() => openPage({ k: 'cart' })} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minHeight: 48 }}>
-        {first ? <Photo id={first.id} radius={8} style={{ width: 32, height: 32 }} /> : null}
-        <Txt weight={500} size={15}>{count} {count === 1 ? 'service' : 'services'}</Txt>
-        <View style={{ transform: [{ rotate: '-90deg' }] }}><Chev size={18} color={G.mute} strokeWidth={1.5} /></View>
-      </Pressable>
-      <Tap onPress={() => openPage({ k: 'cart' })} style={{ height: 48, width: 160, borderRadius: 10, backgroundColor: G.violet, alignItems: 'center', justifyContent: 'center' }}>
-        <Txt weight={500} size={15} color="#fff">Go to cart</Txt>
-      </Tap>
-    </Animated.View>
   );
 }
 

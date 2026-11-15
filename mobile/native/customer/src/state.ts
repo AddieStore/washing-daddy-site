@@ -751,6 +751,16 @@ const PX_ACTS = {
     if (j.pay === 'paid') { demoLedger('refund', j.total, 'Refund · ' + jobTitle(j), 'cash'); px().refunds.unshift({ id: newId('RF'), at: nowIST(), amt: j.total, status: 'credited', to: 'wallet', what: jobTitle(j) + ' · cancelled', bookingId: j.id }); j.pay = 'refunded' }
     commit(); toast(j.pay === 'refunded' ? `Cancelled. ${fmtR(j.total)} is back in ${WALLET.name}.` : 'Cancelled.');
   },
+  /** move an upcoming booking to another slot (demo: edits the job; real: n8n wd-booking-reschedule, see BACKEND.md) */
+  async rescheduleJob(id: string, to: { date: string; slot: string }) {
+    const j = jobOf(id); if (!j || !UPCOMING.includes(j.status)) throw new Error('This booking cannot be rescheduled now.');
+    if (j.status === 'on_the_way' || j.status === 'in_progress') throw new Error('Your washer is already on the way.');
+    const s = slotsFor(to.date).find(x => x.t === to.slot);
+    if (!s || !s.ok) throw new Error('That slot is not available. Pick another.');
+    if (moneyLive()) { await server!.call('wd-booking-reschedule', { bookingId: id, date: to.date, slot: to.slot }) }
+    else await wait(500);
+    j.date = to.date; j.slot = to.slot; j.mode = j.mode === 'instant' ? 'scheduled' : j.mode; commit(); toast('Rescheduled to ' + whenText(to));
+  },
   /** stars 1-5 (+ optional text) for a finished booking: bookingratings/{bookingId} */
   async rateJob(id: string, stars: number, review = '') {
     const j = jobOf(id); if (!j || !canRate(j)) throw new Error('You can rate a booking once it is done.');

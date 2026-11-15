@@ -7,6 +7,7 @@ import { C, F } from '../theme';
 import { haptic } from './hosts';
 import { useApp, svcLines, openPage } from '../state';
 import { useInsets } from './kit';
+import { Photo } from '../pages/parts';
 
 const ND = Platform.OS !== 'web';
 export const EASE_OUT = Easing.bezier(0.22, 1, 0.36, 1);      // the one curve (entrances, sheets, presses)
@@ -74,28 +75,28 @@ const s = StyleSheet.create({
   num: { flex: 1, textAlign: 'center', fontFamily: F.b500, fontSize: 14, color: C.ink, fontVariant: ['tabular-nums'] },
 });
 
-/* ---------- CartBar: slides up 70px + fades 320ms when cart gains items, down on empty ---------- */
+/* ---------- CartBar: white mini-cart bar (thumbnail, "N services ^", Go to cart); slides up 70px + fades 320ms ---------- */
 export function CartBar({ aboveTabs }: { aboveTabs?: boolean }) {
   useApp();
   const L = svcLines(), n = L.count, ins = useInsets();
   const [mounted, setMounted] = useState(n > 0);
   const v = useRef(new A(n > 0 ? 1 : 0)).current;
-  const last = useRef({ n, sub: L.sub });
-  if (n > 0) last.current = { n, sub: L.sub };
+  const last = useRef({ n, sub: L.sub, id: L.lines[0]?.id || '', name: L.lines[0]?.name || '' });
+  if (n > 0) last.current = { n, sub: L.sub, id: L.lines[0]?.id || '', name: L.lines[0]?.name || '' };
   useEffect(() => {
     if (n > 0) { setMounted(true); Animated.timing(v, { toValue: 1, duration: 320, easing: EASE_OUT, useNativeDriver: ND }).start(); }
     else Animated.timing(v, { toValue: 0, duration: 220, easing: EASE_STD, useNativeDriver: ND }).start(({ finished }) => { if (finished) setMounted(false); });
   }, [n > 0]);
-  const pop = useRef(new A(1)).current;
   if (!mounted) return null;
-  const { n: cn, sub } = last.current;
-  const bottom = aboveTabs ? 64 + ins.bottom + 8 : Math.max(ins.bottom, 12);
+  const { n: cn, sub, id, name } = last.current;
+  const bottom = aboveTabs ? 56 + Math.max(ins.bottom, 0) + 8 : Math.max(ins.bottom, 12);
   return (
-    <Animated.View pointerEvents="box-none" style={{ position: 'absolute', left: 16, right: 16, bottom, opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [70, 0] }) }] }}>
-      <Pressable3 onPress={() => openPage({ k: 'cart' })} style={cb.bar} haptics={false}>
-        <View style={{ flex: 1 }}>
-          <Text style={cb.l1}>{cn} {cn === 1 ? 'service' : 'services'}</Text>
-          <Animated.Text style={[cb.l2, { transform: [{ scale: pop }] }]}>₹{Number(sub).toLocaleString('en-IN')}</Animated.Text>
+    <Animated.View pointerEvents="box-none" style={{ position: 'absolute', left: 12, right: 12, bottom, opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [70, 0] }) }] }}>
+      <Pressable3 onPress={() => openPage({ k: 'cart' })} style={cb.bar} haptics={false} accessibilityLabel={`${cn} ${cn === 1 ? 'service' : 'services'} in cart. Go to cart`}>
+        <View style={cb.thumb}>{id ? <Photo id={id} radius={8} pad={2} style={{ width: 40, height: 40 }} /> : null}</View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={cb.l1}>{cn} {cn === 1 ? 'service' : 'services'}  <Text style={{ color: C.violet }}>{'\u2303'}</Text></Text>
+          <Text numberOfLines={1} style={cb.l2}>{cn === 1 ? name : '₹' + Number(sub).toLocaleString('en-IN')}</Text>
         </View>
         <View style={cb.cta}><Text style={cb.ctaT}>Go to cart</Text></View>
       </Pressable3>
@@ -103,12 +104,13 @@ export function CartBar({ aboveTabs }: { aboveTabs?: boolean }) {
   );
 }
 const cb = StyleSheet.create({
-  bar: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.violet, borderRadius: 14, paddingVertical: 8, paddingLeft: 16, paddingRight: 8,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
-  l1: { fontFamily: F.b500, fontSize: 12, color: 'rgba(255,255,255,.85)' },
-  l2: { fontFamily: F.b500, fontSize: 17, color: '#fff', alignSelf: 'flex-start', fontVariant: ['tabular-nums'] },
-  cta: { backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 16, height: 40, alignItems: 'center', justifyContent: 'center' },
-  ctaT: { fontFamily: F.b500, fontSize: 14, color: C.violet },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 8, paddingLeft: 10, borderWidth: 1, borderColor: C.hair,
+    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 6 }, elevation: 10 },
+  thumb: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  l1: { fontFamily: F.b500, fontSize: 14, color: C.ink },
+  l2: { fontFamily: F.body, fontSize: 12, color: '#737373', fontVariant: ['tabular-nums'] },
+  cta: { backgroundColor: C.violet, borderRadius: 10, paddingHorizontal: 18, height: 44, alignItems: 'center', justifyContent: 'center' },
+  ctaT: { fontFamily: F.b500, fontSize: 14, color: '#fff' },
 });
 
 /* ---------- CountUp: no count on load; shows the final figure (props kept so callers don't change) ---------- */
@@ -116,9 +118,26 @@ export function CountUp({ to, style }: { to: number | string; duration?: number;
   return <Text style={style}>{String(to)}</Text>;
 }
 
-/* ---------- Shimmer: static skeleton block (no sweep) ---------- */
+/* ---------- Shimmer: grey skeleton block with a soft light band sweeping across (1.2s loop) ---------- */
+const sweep = new A(0);
+let sweepOn = false;
+function startSweep() { if (sweepOn) return; sweepOn = true; Animated.loop(Animated.timing(sweep, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: false })).start(); }
 export function Shimmer({ width, height = 16, radius = 8, style }: { width?: number | string; height?: number; radius?: number; style?: StyleProp<ViewStyle> }) {
-  return <View style={[{ width: width as any, height, borderRadius: radius, backgroundColor: '#F4F4F5' }, style]} />;
+  const [w, setW] = useState(0);
+  useEffect(() => { startSweep() }, []);
+  return (
+    <View onLayout={e => setW(e.nativeEvent.layout.width)} style={[{ width: width as any, height, borderRadius: radius, backgroundColor: '#F1F1F3', overflow: 'hidden' }, style]}>
+      {w ? <Animated.View style={{ position: 'absolute', top: 0, bottom: 0, width: w * 0.7, alignItems: 'center', transform: [{ translateX: sweep.interpolate({ inputRange: [0, 1], outputRange: [-w * 0.7, w] }) }] }}>
+        {[0.22, 0.4, 0.55].map((o, i) => <View key={i} style={{ position: 'absolute', top: 0, bottom: 0, width: `${100 - i * 30}%`, backgroundColor: `rgba(255,255,255,${o * 0.5})` }} />)}
+      </Animated.View> : null}
+    </View>
+  );
+}
+/** true for `ms` after mount: pages show skeletons for a beat while their data "loads" */
+export function useSkeleton(ms = 380) {
+  const [on, setOn] = useState(ms > 0);
+  useEffect(() => { if (!ms) return; const t = setTimeout(() => setOn(false), ms); return () => clearTimeout(t) }, []);
+  return on;
 }
 
 /* ---------- useParallax: inert (no hero parallax / overscroll zoom); API kept so callers still compile ---------- */
@@ -159,5 +178,60 @@ export function SuccessTick({ size = 96, color = C.green, tickColor = color, onD
           strokeDasharray={`${tl * size / 96 * 2}`} strokeDashoffset={tick.interpolate({ inputRange: [0, 1], outputRange: [tl * size / 96 * 2, 0] }) as any} />
       </Svg>
     </View>
+  );
+}
+
+/* ---------- Splash + location loader (Pronto f_004/f_005): wordmark on violet, cross-fade to a pulsing pin "Fetching location..." ---------- */
+let loaderShown = false;
+export const loaderPending = () => !loaderShown;
+export function Splash({ children }: { children?: ReactNode }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ fontFamily: F.b500, fontSize: 34, letterSpacing: 0.5, color: '#fff' }}>Washing Daddy</Text>
+      <Text style={{ fontFamily: F.body, fontSize: 13, color: 'rgba(255,255,255,.75)', marginTop: 6 }}>Car wash at your parking spot</Text>
+      {children}
+    </View>
+  );
+}
+function PinSvg({ size = 40 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size * 1.25} viewBox="0 0 32 40">
+      <Path d="M16 1C8.8 1 3 6.6 3 13.6 3 23 16 39 16 39s13-16 13-25.4C29 6.6 23.2 1 16 1z" fill={C.violet} />
+      <Circle cx={16} cy={14} r={5.5} fill="#fff" />
+    </Svg>
+  );
+}
+/** Full-screen overlay shown once per app start after sign-in; fades out by itself. Mount it last in the signed-in shell. */
+export function LocationLoader({ place }: { place?: string }) {
+  const [show, setShow] = useState(() => !loaderShown), [stage, setStage] = useState(0);
+  const o = useRef(new A(1)).current, x = useRef(new A(0)).current, ring = useRef(new A(0)).current, wm = useRef(new A(1)).current;
+  useEffect(() => {
+    if (!show) return;
+    loaderShown = true;
+    const loop = Animated.loop(Animated.timing(ring, { toValue: 1, duration: 1300, easing: Easing.out(Easing.quad), useNativeDriver: ND }));
+    loop.start();
+    const t1 = setTimeout(() => { setStage(1); Animated.timing(wm, { toValue: 0, duration: 350, easing: EASE_OUT, useNativeDriver: ND }).start(); Animated.timing(x, { toValue: 1, duration: 350, easing: EASE_OUT, useNativeDriver: ND }).start() }, 750);
+    const t2 = setTimeout(() => setStage(2), 1900);
+    const t3 = setTimeout(() => Animated.timing(o, { toValue: 0, duration: 320, easing: EASE_OUT, useNativeDriver: ND }).start(() => { loop.stop(); setShow(false) }), 2350);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); loop.stop() };
+  }, []);
+  if (!show) return null;
+  const rs = ring.interpolate({ inputRange: [0, 1], outputRange: [0.4, 2.6] }), ro = ring.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] });
+  return (
+    <Animated.View pointerEvents="auto" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 900, elevation: 900, opacity: o, backgroundColor: C.violet }}>
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: x, backgroundColor: '#F4F2FA', alignItems: 'center', justifyContent: 'center' }]}>
+        {/* faint street grid */}
+        {[0.18, 0.36, 0.62, 0.8].map(p => <View key={'h' + p} style={{ position: 'absolute', left: 0, right: 0, top: `${p * 100}%`, height: 10, backgroundColor: '#fff' }} />)}
+        {[0.12, 0.4, 0.58, 0.86].map(p => <View key={'v' + p} style={{ position: 'absolute', top: 0, bottom: 0, left: `${p * 100}%`, width: 10, backgroundColor: '#fff' }} />)}
+        <View style={{ width: 120, height: 120, alignItems: 'center', justifyContent: 'center' }}>
+          <Animated.View style={{ position: 'absolute', width: 60, height: 60, borderRadius: 30, backgroundColor: C.violet, opacity: ro, transform: [{ scale: rs }] }} />
+          <View style={{ marginTop: -14 }}><PinSvg /></View>
+        </View>
+        <View style={{ marginTop: 20, backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: C.hair }}>
+          <Text style={{ fontFamily: F.b500, fontSize: 14, color: C.ink }}>{stage < 2 ? 'Fetching location…' : place || 'Location found'}</Text>
+        </View>
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: wm }]}><Splash /></Animated.View>
+    </Animated.View>
   );
 }

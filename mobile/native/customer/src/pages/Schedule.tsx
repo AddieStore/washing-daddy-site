@@ -1,79 +1,67 @@
-// Schedule for later: date chips, info strip, duration, Morning/Afternoon/Evening, slots, confirm.
-import React, { useMemo, useState } from 'react';
-import { View, ScrollView, Pressable } from 'react-native';
+// Schedule for later (Pronto f_096..f_113): day chips, service duration packs, Morning / Afternoon / Evening, 30-minute slot grid with
+// surcharge, sold-out sign, 30-minute arrival note, sticky "Add to cart". The picker itself lives in sheets/slot.tsx (shared with the cart sheet).
+import React, { useState } from 'react';
+import { View, ScrollView, Pressable, useWindowDimensions } from 'react-native';
 import { Txt, useInsets } from '../ui/kit';
-import { Back, Info, Sun, Moon } from '../ui/icons';
-import { useApp, act, svcLines, closePage, go, toast } from '../state';
-import { SLOTS } from '../data/reference';
-import { TODAY, addDays, iso, istNow } from '../data/dates';
-import { G, card, PrimaryBtn, SuccessTick, Tap, Price, TNUM, SHADOW_F } from './parts';
+import { Info, Clock } from '../ui/icons';
+import { useApp, act, svcLines, svcQty, closePage, openPage, toast, when, instantStatus, slotDays, whenText } from '../state';
+import { PACKS, packInfo } from '../data/reference';
+import { PageBar } from './Stub';
+import { G, PrimaryBtn, Price, TNUM, SHADOW_F, PAGE_BG, inr } from './parts';
+import { SlotPicker } from '../sheets/slot';
 
-type Part = keyof typeof SLOTS;
-const PARTS: Part[] = ['Morning', 'Afternoon', 'Evening'];
-const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const hourOf = (s: string) => { const m = /(\d+):\d+ (am|pm)/.exec(s)!; return (+m[1] % 12) + (m[2] === 'pm' ? 12 : 0) };
+const dur = (m: number) => (m >= 60 ? `${+(m / 60).toFixed(1)} ${m === 60 ? 'hr' : 'hrs'}` : `${m} mins`);
 
 export default function Schedule() {
-  useApp();
-  const ins = useInsets(), { mins, sub, count } = svcLines();
-  const days = useMemo(() => [...Array(7)].map((_, i) => { const d = addDays(TODAY, i); return { d, key: iso(d), label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : DOW[d.getDay()] } }), []);
-  const [day, setDay] = useState(days[1].key), [slot, setSlot] = useState(''), [busy, setBusy] = useState(false), [ok, setOk] = useState(false);
-  const isToday = day === days[0].key, nowH = istNow().getUTCHours() + istNow().getUTCMinutes() / 60;
-  const avail = (p: Part) => SLOTS[p].filter(s => !isToday || hourOf(s) > nowH + 1);
-  const [part, setPart] = useState<Part>('Morning');
-  const cur = avail(part);
-  const confirm = async () => {
+  const ui = useApp();
+  const ins = useInsets(), { width } = useWindowDimensions(), W = Math.min(width, 520), { lines, sub, mins, count } = svcLines(), st = instantStatus();
+  const days = slotDays(), w0 = when(), first = days.find(d => !d.disabled && !d.soldOut) || days.find(d => !d.disabled) || days[0];
+  const [v, setV] = useState<{ date: string; slot: string }>(w0 ? { date: w0.date, slot: w0.slot } : { date: first.date, slot: '' }), [busy, setBusy] = useState(false);
+  const fromCart = ui.pages.length > 1 && ui.pages[ui.pages.length - 2]?.k === 'cart';
+  const packIds = PACKS.map(p => p.id as string), others = lines.filter(l => !packIds.includes(l.id));
+  const add = () => {
     setBusy(true);
-    try { await act.bookServices({ date: day, slot }); setOk(true) } catch (e: any) { toast(e?.message || 'Could not book. Try again.') }
+    try {
+      act.setWhen({ date: v.date, slot: v.slot });
+      closePage(); if (!fromCart) openPage({ k: 'cart' });
+      toast(whenText({ date: v.date, slot: v.slot }));
+    } catch (e: any) { toast(e?.message || 'That slot is not available. Pick another') }
     setBusy(false);
   };
-  const dur = mins >= 60 ? `${+(mins / 60).toFixed(1)} hr` : `${mins} mins`;
-  const chip = (on: boolean, extra: object) => ({ borderRadius: 8, borderWidth: on ? 1.5 : 0, borderColor: G.violet, backgroundColor: on ? '#fff' : G.raised, alignItems: 'center' as const, justifyContent: 'center' as const, ...extra });
+  const Tile = ({ on, title, price, mrp, onPress, label }: { on: boolean; title: string; price: number; mrp?: number; onPress?: () => void; label: string }) => (
+    <Pressable accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={label} onPress={onPress} style={{ width: 112, borderRadius: 12, borderWidth: on ? 1.5 : 1, borderColor: on ? G.violet : G.line, backgroundColor: on ? 'rgba(84,9,218,0.06)' : '#fff', padding: 12 }}>
+      <Txt weight={500} size={15} color={on ? G.violet : G.ink} style={TNUM}>{title}</Txt>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 2 }}><Price v={price} size={13} />{mrp && mrp > price ? <Price v={mrp} size={11} weight={400} strike /> : null}</View>
+    </Pressable>
+  );
+  const durCard = (
+    <View style={{ marginTop: 16, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: G.line, paddingVertical: 12 }}>
+      <Txt weight={500} size={13} color={G.mute} style={{ marginBottom: 10, marginHorizontal: 12 }}>Service duration</Txt>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}>
+        {others.length ? <Tile on label="Your cart" title={dur(mins)} price={sub} onPress={() => openPage({ k: 'cart' })} /> : null}
+        {PACKS.map(pk => { const p = packInfo(pk.id)!, q = svcQty(pk.id); return <Tile key={pk.id} on={q > 0} label={p.name} title={dur(p.mins)} price={p.price} mrp={p.mrp} onPress={() => (q ? act.subSvc(pk.id) : act.addSvc(pk.id))} /> })}
+      </ScrollView>
+      {!count ? <Txt size={12} color={G.mute} style={{ marginHorizontal: 12, marginTop: 10 }}>Pick a wash pack, or add services from Home</Txt> : null}
+    </View>
+  );
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <View style={{ backgroundColor: '#fff', paddingTop: ins.top + 8, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center' }}>
-        <Pressable accessibilityLabel="Back" onPress={closePage} hitSlop={8} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}><Back size={18} color={G.ink} strokeWidth={1.5} /></Pressable>
-        <Txt weight={500} size={17}>Schedule for later</Txt>
-      </View>
-      <View style={{ backgroundColor: '#fff', paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: G.line }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingTop: 8 }}>
-          {days.map(x => { const on = x.key === day; return (
-            <Tap key={x.key} onPress={() => { setDay(x.key); setSlot('') }} style={chip(on, { width: 80, height: 40 })}>
-              <Txt weight={on ? 500 : 400} size={13} color={on ? G.violet : G.ink}>{x.label}</Txt>
-            </Tap>) })}
-        </ScrollView>
-      </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 136 }}>
-        <View style={{ flexDirection: 'row', gap: 12, backgroundColor: G.raised, borderRadius: 14, padding: 16, alignItems: 'flex-start' }}>
-          <View style={{ marginTop: 1 }}><Info size={18} color={G.mute} strokeWidth={1.5} /></View><Txt size={13} color={G.sub} style={{ flex: 1, lineHeight: 20 }}>Pick a day and time that suits you. Your washer comes to your parking spot</Txt>
+    <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
+      <PageBar title="Schedule for later" />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 12, paddingBottom: 140 }}>
+        {!st.open ? (
+          <View style={{ marginHorizontal: 16, marginBottom: 12, flexDirection: 'row', gap: 12, backgroundColor: '#EEF0F6', borderRadius: 12, padding: 12, alignItems: 'flex-start' }}>
+            <View style={{ marginTop: 1 }}><Info size={18} color={G.mute} strokeWidth={1.5} /></View>
+            <Txt size={13} color={G.sub} style={{ flex: 1, lineHeight: 18 }}>{st.reason === 'busy' ? 'All our washers are busy right now. Please schedule this booking for later.' : 'Instant service is closed right now. ' + st.label + '. Schedule this booking for later.'}</Txt>
+          </View>
+        ) : null}
+        <View style={{ paddingHorizontal: 16 }}>
+          <SlotPicker value={v} onChange={setV} innerW={W - 32} chipsPad={0} between={durCard} />
         </View>
-        <View style={card({ marginTop: 12, padding: 16 })}>
-          <Txt size={13} color={G.mute}>Service duration</Txt>
-          <View style={{ marginTop: 12, borderRadius: 10, borderWidth: 1.5, borderColor: G.violet, backgroundColor: '#fff', paddingVertical: 12, paddingHorizontal: 16, alignSelf: 'flex-start', minWidth: 120 }}>
-            <Txt weight={500} size={15} style={TNUM}>{dur}</Txt>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 2 }}><Price v={sub} size={13} /><Txt size={12} color={G.mute}>{count} {count === 1 ? 'service' : 'services'}</Txt></View>
-          </View>
-          <Txt size={13} color={G.mute} style={{ marginTop: 24 }}>Service start time</Txt>
-          <View style={{ flexDirection: 'row', backgroundColor: G.raised, borderRadius: 10, padding: 4, marginTop: 12 }}>
-            {PARTS.map(p => { const on = p === part, Ic = p === 'Evening' ? Moon : Sun; return (
-              <Tap key={p} onPress={() => { setPart(p); setSlot('') }} style={{ flex: 1, height: 40, borderRadius: 8, backgroundColor: on ? G.violet : 'transparent', flexDirection: 'row', gap: 4, alignItems: 'center', justifyContent: 'center' }}>
-                <Ic size={18} color={on ? '#fff' : G.mute} strokeWidth={1.5} /><Txt weight={on ? 500 : 400} size={13} color={on ? '#fff' : G.ink}>{p}</Txt>
-              </Tap>) })}
-          </View>
-          <Txt size={13} color={G.mute} style={{ marginTop: 24 }}>Standard slots</Txt>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-            {cur.length ? cur.map(s => { const on = s === slot; return (
-              <Tap key={s} onPress={() => setSlot(s)} style={chip(on, { minWidth: 72, height: 40, paddingHorizontal: 12 })}>
-                <Txt weight={on ? 500 : 400} size={13} color={on ? G.violet : G.ink} style={TNUM}>{s}</Txt>
-              </Tap>) }) : <Txt size={14} color={G.sub}>No slots left for this time today. Try another time of day</Txt>}
-          </View>
-        </View>
-        <Txt size={13} color={G.mute} style={{ marginTop: 16 }}>Washers arrive within 30 minutes of the selected slot</Txt>
       </ScrollView>
       <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: G.line, padding: 16, paddingBottom: Math.max(ins.bottom, 12) + 4, ...SHADOW_F }}>
-        <PrimaryBtn label="Confirm slot" disabled={!slot} busy={busy} onPress={confirm} />
+        {v.slot && count ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}><Clock size={14} color={G.violet} strokeWidth={1.5} /><Txt size={13} color={G.sub}>{whenText({ date: v.date, slot: v.slot })} · {inr(sub)}</Txt></View> : null}
+        <PrimaryBtn label="Add to cart" disabled={!v.slot || !count} busy={busy} onPress={add} />
       </View>
-      {ok ? <SuccessTick title="Slot confirmed" sub={`${days.find(x => x.key === day)!.label} · ${slot}`} onDone={() => { closePage(); go('live') }} /> : null}
     </View>
   );
 }

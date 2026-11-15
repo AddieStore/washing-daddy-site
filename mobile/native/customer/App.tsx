@@ -12,6 +12,7 @@ import { boot, useApp, S } from './src/state';
 import { ToastHost, SheetHost, ConfettiHost } from './src/ui/hosts';
 import Main from './src/screens/Main';
 import Auth from './src/screens/Auth';
+import { Splash } from './src/ui/motion';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -22,7 +23,7 @@ export default function App() {
   useEffect(() => { boot().finally(() => setBooted(true)) }, []);
   const ready = fonts && booted && ui.ready;
   useEffect(() => { if (ready) SplashScreen.hideAsync().catch(() => {}) }, [ready]);
-  if (!ready) return <View style={{ flex: 1, backgroundColor: '#5409DA' }} />;
+  if (!ready) return <Splash />;
   const dark = S.theme === 'dark' || (S.theme === 'system' && scheme === 'dark');
   // the sign-in screen is always the violet poster
   const T = dark && ui.signedIn ? NIGHT : DAY;

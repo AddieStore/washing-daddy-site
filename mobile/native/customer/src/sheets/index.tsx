@@ -129,52 +129,24 @@ function Day({ date }: { date: string }) {
 }
 
 /* ---------- proof: before/after compare ---------- */
-function Compare() {
-  const [w, setW] = useState(0), [k, setK] = useState(0.5), drag = useRef(false), wr = useRef(0), x0 = useRef(0);
-  wr.current = w;
-  const set = (x: number) => setK(Math.min(0.97, Math.max(0.03, x / (wr.current || 1))));
-  const pan = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true, onMoveShouldSetPanResponder: () => true, onPanResponderTerminationRequest: () => false,
-    onPanResponderGrant: e => { drag.current = true; x0.current = e.nativeEvent.locationX; set(x0.current); },
-    onPanResponderMove: (_, g) => set(x0.current + g.dx),
-    onPanResponderRelease: () => { drag.current = false; }, onPanResponderTerminate: () => { drag.current = false; },
-  })).current;
-  useEffect(() => {   // one gentle wiggle so people see it can be dragged
-    let off = false, raf = 0;
-    AccessibilityInfo.isReduceMotionEnabled().then(rm => {
-      if (rm || off) return; const t0 = Date.now();
-      const step = () => { const t = (Date.now() - t0) / 1400; if (t > 1 || drag.current || off) return; setK(0.5 + 0.3 * Math.sin(t * Math.PI * 2)); raf = requestAnimationFrame(step); };
-      step();
-    });
-    return () => { off = true; cancelAnimationFrame(raf); };
-  }, []);
-  const h = w / RATIO.proof, lab = (txt: string, right?: boolean) => (
-    <View style={[{ position: 'absolute', top: 12, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: right ? '#FFFFFF' : 'rgba(23,23,23,.7)' }, right ? { right: 12 } : { left: 12 }]}>
-      <Txt weight={500} size={12} color={right ? P.ink : '#FFFFFF'}>{txt}</Txt>
+// two photos at a time, side by side and small (Ravi's fix): before on the left, after on the right
+function PhotoPair() {
+  const tile = (img: any, label: string) => (
+    <View style={{ flex: 1, maxWidth: 150 }}>
+      <View style={{ aspectRatio: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: P.line, backgroundColor: P.raised }}>
+        <Image source={img} resizeMode="cover" accessibilityLabel={label + ' photo'} style={{ width: '100%', height: '100%' }} />
+        <View style={{ position: 'absolute', left: 8, bottom: 8, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'rgba(23,23,23,.7)' }}><Txt weight={500} size={12} color="#FFFFFF">{label}</Txt></View>
+      </View>
     </View>);
-  return (
-    <View {...pan.panHandlers} onLayout={e => setW(e.nativeEvent.layout.width)} style={{ height: h || 200, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: P.line, backgroundColor: P.raised }}>
-      {w > 0 && <View pointerEvents="none" style={{ flex: 1 }}>
-        <Image source={IMG.proof} style={{ width: w, height: h }} />
-        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: k * w, overflow: 'hidden' }}>
-          <Image source={IMG.proof} style={{ width: w, height: h }} />
-          <View style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(70,42,8,.5)' }} />
-          <View style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(196,160,104,.28)' }} />
-        </View>
-        <View style={{ position: 'absolute', top: 0, bottom: 0, left: k * w - 1.5, width: 2, backgroundColor: '#FFFFFF' }} />
-        <View style={{ position: 'absolute', top: h / 2 - 17, left: k * w - 17, width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}><Txt weight={500} size={13} color={P.ink}>‹ ›</Txt></View>
-        {lab('Before')}{lab('After', true)}
-      </View>}
-    </View>
-  );
+  return <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>{tile(IMG.before, 'Before')}{tile(IMG.after, 'After')}</View>;
 }
 function Proof() {
   const c = car(), d = doc(c);
   return (
     <View>
       <SheetTitle>{'This morning, ' + (ampm(d.finished_at) || '6:40 AM')}</SheetTitle>
-      <SheetSub>Drag to compare with how Delhi dust leaves it by evening.</SheetSub>
-      <Compare />
+      <SheetSub>How it looked before and after the wash.</SheetSub>
+      <PhotoPair />
       <Gap h={SP.l} />
       <Rows>
         <Row title={'Washed by ' + c.washer} sub={c.parking} right={`${d.minutes || c.mins} min`} />
