@@ -1,177 +1,92 @@
-// Profile tab: avatar and stats, garage, look, refer, wash details, notifications, help. Ported from renderProfile.
-import React, { useEffect, useRef } from 'react';
-import { View, Image, Pressable, ScrollView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { C, InkContext, creamInk, SP, R as RAD, HIT } from '../theme';
-import { Page, Topbar, IconBtn, Txt, Card, Rows, Row, Pill, Toggle, Hard, CountUp, PAD, useTheme, useInk } from '../ui/kit';
-import { Pen, Pin, Clock, Key, WhatsApp, Warn, Drop, Logout, GhostCar } from '../ui/icons';
-import { inGroup } from '../data/dates';
-import { src } from '../img';
-import { A, car, carImg, planOf, maskPlate, totals, refCode, fmtPhone, act, S, REAL, useApp } from '../state';
+// Profile (Pronto layout): header, Pass banner, tiles (My Bookings / Money / Help), rows Refer, Addresses, About us, Legal & Privacy, Log out, version. OWNER: PROFILE worker.
+import React from 'react';
+import { View, ScrollView, Pressable } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
+import { C } from '../theme';
+import { Txt, useInsets } from '../ui/kit';
+import { Back, Chev, Plan, Wallet, Help, Gift, Pin, Info, Shield, Logout, Car, Cart } from '../ui/icons';
+import { useApp, profile, fmtPhone, openPage, closePage, go, wallet, passView } from '../state';
+import { REFERRAL } from '../data/reference';
 import { sheets } from '../sheets';
-
-function Head({ title, right }: { title: string; right?: string }) {
-  const T = useTheme(), ink = useInk();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: SP.l }}>
-      <Txt font="shout" size={30} upper style={[{ flexShrink: 1 }, T.day && { textShadowColor: C.violetInk, textShadowOffset: { width: 3, height: 3 }, textShadowRadius: 0 }]}>{title}</Txt>
-      {right ? <Txt size={13} color={ink.fg3}>{right}</Txt> : null}
-    </View>
-  );
-}
-const Sec = ({ children }: { children: React.ReactNode }) => <View style={{ marginTop: SP.section }}>{children}</View>;
-const rail = { marginHorizontal: -PAD } as const;
-const tint = (bg: string, icon: React.ReactNode) => ({ tile: bg, icon });
-
-function Garage() {
-  const T = useTheme(), a = A();
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rail} contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: SP.s, paddingTop: SP.hair }}>
-      {a.cars.map((g, i) => {
-        const on = i === S.carIdx, im = carImg(g), ink = on ? T.block : T.card;
-        const body = (
-          <>
-            <View style={{ height: 84, alignItems: 'center', justifyContent: 'center' }}>
-              {im ? <Image source={src(im)!} resizeMode="contain" style={{ width: '100%', height: 84 }} /> : <GhostCar width={160} color={ink.fg3} />}
-            </View>
-            <Txt weight={700} style={{ marginTop: SP.s }}>{(g.make ? g.make + ' ' : '') + g.name}</Txt>
-            <Txt size={12} color={ink.fg3}>{maskPlate(g.plate)} · {planOf(g).name}{g.status === 'new' ? ' · starts tomorrow' : ''}</Txt>
-          </>
-        );
-        return on ? (
-          <Hard key={g.id} dx={6} dy={6} radius={RAD.card} style={{ width: 226, marginRight: SP.l }}>
-            <InkContext.Provider value={ink}>
-              <Pressable onPress={() => act.pickCar(i)} style={{ backgroundColor: T.day ? C.violetDeep : C.violet2, borderWidth: 3, borderColor: T.day ? C.gold : C.gold, borderRadius: RAD.card, padding: SP.l }}>{body}</Pressable>
-            </InkContext.Provider>
-          </Hard>
-        ) : <Card key={g.id} pad={SP.l} style={{ width: 226, marginRight: SP.l }} onPress={() => act.pickCar(i)}>{body}</Card>;
-      })}
-      <Pressable onPress={() => sheets.addCar()} style={{ width: 220, minHeight: 150, marginRight: SP.l, marginBottom: 6, borderRadius: RAD.card, borderWidth: 3, borderStyle: 'dashed', borderColor: T.page.dash, alignItems: 'center', justifyContent: 'center' }}>
-        <Txt size={30} color={T.page.fg2} style={{ lineHeight: 32 }}>＋</Txt>
-        <Txt weight={600} color={T.page.fg2} style={{ marginTop: SP.s }}>Add a car</Txt>
-        <Txt size={12} color={T.page.fg3}>Add a second car</Txt>
-      </Pressable>
-    </ScrollView>
-  );
-}
-
-function Look() {
-  const T = useTheme(), cur = S.theme;
-  const items: [typeof cur, string, React.ReactNode][] = [
-    ['light', 'Day', <View style={{ flex: 1, backgroundColor: '#5409DA' }} />],
-    ['dark', 'Night', <View style={{ flex: 1, backgroundColor: '#1A0A33' }} />],
-    ['system', 'Auto', <View style={{ flex: 1, flexDirection: 'row' }}><View style={{ flex: 1, backgroundColor: '#5409DA' }} /><View style={{ flex: 1, backgroundColor: '#1A0A33' }} /></View>],
-  ];
-  return (
-    <View style={{ flexDirection: 'row', gap: SP.m }}>
-      {items.map(([k, label, sw]) => {
-        const on = cur === k;
-        return (
-          <View key={k} style={{ flex: 1 }}>
-            <Hard dx={4} dy={4} radius={RAD.card} color={on && T.day ? C.ink : null} reserve={false}>
-              <Pressable onPress={() => act.setTheme(k)} style={{ padding: SP.m, borderRadius: RAD.card, borderWidth: 2.5, borderColor: on && !T.day ? C.gold : T.day ? C.ink : T.card.line, backgroundColor: T.day ? C.cream : T.card.tile, ...(on && T.day ? { outlineWidth: 3, outlineColor: C.gold } as object : null) }}>
-                <View style={{ height: 52, borderRadius: RAD.inner, overflow: 'hidden', marginBottom: SP.s }}>
-                  {sw}
-                  <View style={{ position: 'absolute', left: 10, right: 10, bottom: 8, height: 16, borderRadius: 6, backgroundColor: C.violet }} />
-                </View>
-                <Txt weight={700} size={12.5} style={{ textAlign: 'center' }} color={T.day ? C.ink : C.cream}>{label}</Txt>
-              </Pressable>
-            </Hard>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
+import { G, card, Tap, inr, TNUM, PAGE_BG } from '../pages/parts';
+import { LinearGradient } from 'expo-linear-gradient';
+import { FadeUp } from '../ui/motion';
+import { artFor, ArtBoundary } from '../art';
+const PassArt = artFor('pass');
+import { ListRow } from '../pages/Help';
 
 export default function Profile() {
-  const { tabNonce } = useApp(), T = useTheme(), ink = T.page;
-  const sc = useRef<any>(null), first = useRef(true);
-  useEffect(() => { if (first.current) { first.current = false; return } sc.current?.scrollTo({ y: 0, animated: true }); }, [tabNonce]);
-  const a = A(), c = car(), tt = totals(), open = a.requests.filter(r => r.open).length;
-  const initials = a.name.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
-  const stat = (n: number, l: string) => (
-    <Card key={l} pad={SP.m} style={{ flex: 1 }} inner={{ paddingVertical: SP.l }}>
-      <CountUp to={n} font="shout" size={28} format={v => inGroup(Math.round(v))} />
-      <Txt weight={600} size={11} color={T.card.fg3}>{l}</Txt>
-    </Card>
+  const ui = useApp(), ins = useInsets(), p = profile(), pushed = ui.pages.length > 0, pv = passView(), plan = pv.plans[0], bal = wallet().balance;
+  const ic = (X: any) => <X size={18} color={G.mute} strokeWidth={1.5} />;
+  const tic = (X: any) => <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}><X size={19} color={C.violet} strokeWidth={1.7} /></View>;
+  const name = (p.first + ' ' + p.last).trim() || 'Your profile';
+  const tile = (label: string, icon: React.ReactNode, f: () => void, badge?: string) => (
+    <Tap key={label} label={label} onPress={f} style={card({ flex: 1, height: 96, padding: 12, justifyContent: 'space-between' })}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        {icon}
+        {badge ? <View style={{ backgroundColor: 'rgba(22,163,74,0.12)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}><Txt weight={500} size={11} color={G.pos} style={TNUM}>{badge}</Txt></View> : null}
+      </View>
+      <Txt weight={600} size={13} style={{ lineHeight: 18 }}>{label}</Txt>
+    </Tap>
   );
-  const det = [
-    ['parking', 'Where the car is parked', c.parking, 'rgba(46,139,255,.16)', <Pin size={18} color={C.sky} />],
-    ['window', 'Wash window', c.window, 'rgba(255,186,8,.2)', <Clock size={18} color="#C98A00" />],
-    ['keys', 'Interior cleaning access', c.keys, 'rgba(255,106,26,.16)', <Key size={18} color={C.orange} />],
-  ] as const;
-  const prefs = [['photo', 'Photo when my car is done', 'On WhatsApp, every morning'], ['pay', 'Payment reminder', '3 days before my plan runs out'], ['drops', 'New store drops', 'Twice a month at most']] as const;
   return (
-    <Page {...({ ref: sc } as any)} header={<Topbar right={<IconBtn label="Edit profile" onPress={() => sheets.editName()}><Pen size={22} /></IconBtn>} />}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: SP.l, marginTop: SP.s }}>
-        <Hard dx={4} dy={4} radius={38} color={T.day ? C.ink : null} reserve={false}>
-          <LinearGradient colors={[C.gold, C.orange]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 76, height: 76, borderRadius: 38, borderWidth: T.day ? 3 : 0, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' }}>
-            <Txt font="hero" size={30} color={C.ink}>{initials}</Txt>
-          </LinearGradient>
-        </Hard>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Txt weight={700} size={22} style={{ letterSpacing: -0.4 }}>{a.name}</Txt>
-          <Txt size={13} color={ink.fg2}>{`+91 ${a.phone.slice(0, 2)}•••• •${a.phone.slice(-4)} · Member since ${a.since}`}</Txt>
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', gap: SP.l, marginTop: SP.xl }}>
-        {stat(tt.washes, 'Washes')}{stat(tt.litres, 'Litres saved*')}{stat(tt.streak, 'Day streak')}
-      </View>
-      <Txt size={13} color={ink.fg3} style={{ marginTop: SP.s }}>*Against a bucket wash. A pressure wash uses about 7 litres a car.</Txt>
-
-      <Sec><Head title="My garage" right="Tap to switch" /><Garage /></Sec>
-
-      {a.requests.length ? (
-        <Sec><Head title="Activity" />
-          <Rows><Row icon={<Txt weight={800} color={C.red}>↺</Txt>} tile="rgba(232,56,79,.14)" title="Re-wash requests" sub={`${open} open`} chev onPress={() => sheets.requests()} /></Rows>
-        </Sec>
-      ) : null}
-
-      <Sec><Head title="Look" /><Look /></Sec>
-
-      <Sec>
-        <Hard dx={8} dy={8} radius={RAD.card + 4} style={{ transform: [{ rotate: '-1deg' }] }}>
-          <InkContext.Provider value={creamInk}>
-            <View style={{ backgroundColor: C.gold, borderRadius: RAD.card + 4, borderWidth: T.day ? 3 : 0, borderColor: C.ink, padding: SP.card, overflow: 'hidden' }}>
-              <View style={{ position: 'absolute', right: -20, top: -20, width: 110, height: 110, borderRadius: 55, backgroundColor: C.orange, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '12deg' }] }}>
-                <Txt font="shout" size={30} color={C.cream} style={{ marginLeft: -14, marginTop: 14 }}>₹200</Txt>
-              </View>
-              <Txt font="shout" size={34} upper style={{ paddingRight: 84, marginBottom: SP.s }}>Get a neighbour off pocha</Txt>
-              <Txt size={13} style={{ marginBottom: a.credit && a.credit > 0 ? SP.s : SP.l }}>Share your link: you and your friend both get ₹200 off.</Txt>
-              {a.credit && a.credit > 0 ? <Txt weight={700} size={14} style={{ marginBottom: SP.s }}>{`Invite credit: ₹${a.credit} off your next payment`}</Txt> : null}
-              <Txt size={12} color={creamInk.fg2} style={{ marginBottom: SP.l, lineHeight: 18 }}>You earn ₹200 for each friend who joins, if you've paid for this month.</Txt>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingVertical: SP.s, paddingLeft: SP.l, paddingRight: SP.s, borderRadius: RAD.ctl, backgroundColor: C.ink }}>
-                <Txt font="shout" size={22} color={C.cream} style={{ letterSpacing: 2.6 }}>{refCode()}</Txt>
-                <Pill gold label="Share invite" onPress={() => act.copyRef()} />
-              </View>
+    <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: pushed ? 40 : 110 }}>
+        <View style={{ paddingTop: ins.top + 8, paddingHorizontal: 16, paddingBottom: 56, overflow: 'hidden' }}>
+          <LinearGradient colors={['#6A1BF2', '#5409DA', '#36058F']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+          <View style={{ position: 'absolute', right: -50, top: -30, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.07)' }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, height: 48 }}>
+            {pushed ? <Pressable accessibilityLabel="Back" onPress={closePage} hitSlop={12} style={{ width: 32, height: 48, justifyContent: 'center' }}><Back size={24} color="#fff" strokeWidth={1.8} /></Pressable> : null}
+            <Txt weight={600} size={18} color="#fff">Profile</Txt>
+          </View>
+          <FadeUp index={0} style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 12 }}>
+            <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: '#EDE6FF', overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end', borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)' }}>
+              <Svg width={72} height={72} viewBox="0 0 70 70"><Circle cx="35" cy="28" r="12" fill="#B9A6EA" /><Path d="M10 70c0-17 11-25 25-25s25 8 25 25z" fill="#B9A6EA" /></Svg>
             </View>
-          </InkContext.Provider>
-        </Hard>
-      </Sec>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Txt weight={700} size={24} color="#fff" numberOfLines={1}>{name}</Txt>
+              <Txt size={14} color="rgba(255,255,255,0.82)" style={TNUM}>+91 {fmtPhone(p.phone)}</Txt>
+              <Pressable onPress={() => openPage({ k: 'profileEdit' })} hitSlop={8} style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <Txt weight={600} size={14} color="#FFD166">Edit profile</Txt><Chev size={14} color="#FFD166" strokeWidth={1.8} />
+              </Pressable>
+            </View>
+          </FadeUp>
+        </View>
 
-      <Sec><Head title="Wash details" right={`For your ${c.name}`} />
-        <Rows>{det.map(r => <Row key={r[0]} tile={r[3]} icon={r[4]} title={r[1]} sub={r[2]} chev onPress={() => sheets.editDetail(r[0])} />)}</Rows>
-      </Sec>
+        <View style={{ paddingHorizontal: 16, marginTop: -36 }}>
+          <FadeUp index={1}><Tap label="WD Pass" onPress={() => openPage({ k: 'pass' })} style={{ backgroundColor: '#1C0A47', borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', shadowColor: '#1A1033', shadowOpacity: 0.25, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Txt weight={600} size={11} color="#FFD166" style={{ letterSpacing: 1.2 }}>WD PASS</Txt>
+              <Txt weight={700} size={17} color="#fff" style={{ marginTop: 4, lineHeight: 24 }}>{pv.active ? `${pv.active.visitsLeft} ${pv.active.visitsLeft === 1 ? 'visit' : 'visits'} left` : `Get ${plan.visits} visits for ${inr(plan.price)} only`}</Txt>
+              <Txt size={12} color="rgba(255,255,255,0.8)" style={{ marginTop: 2 }}>{pv.active ? 'Tap to see your pass' : `Valid ${plan.days} days · save on every wash`}</Txt>
+            </View>
+            {PassArt ? <View style={{ width: 84, height: 64, alignItems: 'center', justifyContent: 'center' }}><ArtBoundary fallback={null}><PassArt size={84} /></ArtBoundary></View> : <View style={{ width: 76, height: 56, borderRadius: 10, backgroundColor: '#FFD166', alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-8deg' }], shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }}>
+              <Txt weight={800} size={13} color="#1C0A47">WD PASS</Txt>
+            </View>}
+          </Tap></FadeUp>
 
-      <Sec><Head title="Notifications" />
-        <Rows>{prefs.map(n => <Row key={n[0]} title={n[1]} sub={n[2]} right={<Toggle on={!!a.prefs[n[0]]} onChange={() => act.togglePref(n[0])} />} />)}</Rows>
-      </Sec>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+            {tile('My Bookings', tic(Plan), () => openPage({ k: 'bookings' }))}
+            {tile('Money', tic(Wallet), () => openPage({ k: 'money' }), inr(Math.floor(bal)))}
+            {tile('Help & Support', tic(Help), () => openPage({ k: 'help' }))}
+          </View>
 
-      <Sec><Head title="Help" />
-        <Rows>
-          <Row {...tint('rgba(20,192,138,.15)', <WhatsApp size={18} color={C.mint} />)} title="WhatsApp Washing Daddy" sub="77018 08924 · 7 AM to 9 PM" chev onPress={() => sheets.help()} />
-          <Row {...tint('rgba(232,56,79,.14)', <Warn size={18} color={C.red} />)} title="Report a missed spot" sub="We re-wash it the same day" chev onPress={() => sheets.issue()} />
-          <Row {...tint('rgba(84,9,218,.14)', <Drop size={18} color={C.violet} />)} title="Washer app" sub={REAL ? 'For Washing Daddy staff' : 'For Washing Daddy staff · OTP 1234'} chev onPress={() => act.openUrl('https://washingdaddy.com/get/')} />
-          <Row {...tint('rgba(232,56,79,.14)', <Txt weight={800} color={C.red}>✕</Txt>)} title="Delete my account" sub="We remove your number and car details" chev onPress={() => sheets.deleteAccount()} />
-          <Row icon={<Logout size={18} />} title="Log out" sub={'Signed in as +91 ' + fmtPhone(a.phone)} onPress={() => sheets.logout()} />
-        </Rows>
-      </Sec>
+          <View style={[card({ marginTop: 12, overflow: 'hidden' })]}>
+            <ListRow icon={ic(Gift)} title="Refer & earn" onPress={() => openPage({ k: 'refer' })} last right={<View style={{ backgroundColor: 'rgba(84,9,218,0.08)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}><Txt weight={500} size={12} color={C.violet} style={TNUM}>{inr(REFERRAL.bannerAmt)}</Txt></View>} />
+          </View>
 
-      <View style={{ alignItems: 'center', marginTop: SP.section }}>
-        <Txt font="hero" size={26} color={T.day ? C.gold : ink.fg3} style={{ marginBottom: SP.s, opacity: T.day ? 1 : 0.6 }}>Washing Daddy!</Txt>
-        <Txt size={12} color={T.day ? ink.fg2 : ink.fg3} style={{ textAlign: 'center' }}>{'Washing Daddy Private Limited · New Delhi' + (REAL ? '' : '\nPrototype. Sign-in, payments and orders use test data.')}</Txt>
-      </View>
-    </Page>
+          <View style={[card({ marginTop: 12, overflow: 'hidden' })]}>
+            <ListRow icon={ic(Pin)} title="Saved addresses" onPress={() => openPage({ k: 'addresses' })} />
+            <ListRow icon={ic(Car)} title="Monthly plan" onPress={() => { closePage(); go('plan') }} />
+            <ListRow icon={ic(Cart)} title="Store" onPress={() => { closePage(); go('store') }} />
+            <ListRow icon={ic(Info)} title="About us" onPress={() => openPage({ k: 'about' })} />
+            <ListRow icon={ic(Shield)} title="Legal & Privacy" onPress={() => openPage({ k: 'legal' })} />
+            <ListRow icon={ic(Logout)} title="Log out" onPress={() => sheets.logout()} last />
+          </View>
+
+          <Txt size={12} color={G.mute} style={{ textAlign: 'center', marginTop: 32, letterSpacing: 0.6 }}>APP VERSION: 2.0.0</Txt>
+        </View>
+      </ScrollView>
+    </View>
   );
 }

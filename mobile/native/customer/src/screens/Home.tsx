@@ -1,582 +1,448 @@
-// Home tab: ticker, topbar, hello, the car hero, quick actions, banners, today's ritual, proof, streak, week, washer,
-// photo wall, closer and the product rail. All data comes from state.ts.
+// Home tab (Pronto layout, Washing Daddy look): collapsing header over a violet hero with animated text, Instant / Schedule cards,
+// offer packs carousel, referral banner, "All car wash services" 3-column grid, trust block, sticky mini-cart bar.
+// Plan and Store are no longer tabs; two rows under the referral banner open them.
 import React, { ReactNode, useEffect, useRef, useState } from 'react';
-import { View, Image, Pressable, Animated, Easing, PanResponder, ScrollView, Text, AccessibilityInfo, StyleSheet, useWindowDimensions } from 'react-native';
-import Svg, { Defs, RadialGradient, Stop, Rect, Text as SText } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
-import { C, F, SP, R, HIT, InkContext, Theme, violetInk, useTheme } from '../theme';
-import { Txt, Em, Card, Block, Hard, Btn, Pill, IconBtn, Page, Topbar, Ticker, Ring, CountUp, Empty, Eyebrow, PAD } from '../ui/kit';
-import { Bell, Sun, Moon, Auto, Book, Pause, Note, Warn, Heart, Camera, Swipe, Plus, Check } from '../ui/icons';
-import { GhostCar, useUid } from '../ui/icons';
-import { Art } from '../ui/art';
-import { Plate } from '../ui/Plate';
-import { IMG, RATIO, src } from '../img';
-import { PRODUCTS, SLIDES, fromPrice } from '../data/reference';
-import { TODAY, fmt, ampm, addDays, parse, inr, iso } from '../data/dates';
-import { isPaused, extras } from '../data/model';
+import { View, Image, Pressable, Animated, Easing, ScrollView, Text, RefreshControl, AccessibilityInfo, Platform, useWindowDimensions } from 'react-native';
+import { C, SP, Theme, useTheme } from '../theme';
+import { Txt, useInsets } from '../ui/kit';
+import { Chev, User, Zap, Calendar, Wallet, Gift, Star, Plan as PlanIc, Store as StoreIc, Clock } from '../ui/icons';
+import { IMG, RATIO } from '../img';
+import { CAR_SERVICES, PACKS, TRUST, SHOW_RATINGS, REFERRAL, packInfo } from '../data/reference';
+import { ampm } from '../data/dates';
 import {
-  useApp, S, A, car, doc, act, go, planOf, carImg, maskPlate, chipText, banners, todaySteps, calendar, week, greeting, homeRail, realAcct, pName, startTxt,
+  useApp, A, car, doc, act, go, openPage, openSheet, toast, svcQty, svcLines, liveHead, activeStage, chipText,
+  homeConfig, instantStatus, selectedAddress, addrName, wallet, activePass,
 } from '../state';
-import { sheets } from '../sheets';
-import { CarStudio } from '../sheets/CarStudio';
+import { Pressable3 as P3, FadeUp, AddButton, CartBar, Shimmer, useSkeleton, loaderPending, setOrigin, SPRING, TAB_BAR_H } from '../ui/motion';
+import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, withRepeat, withSequence, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient as SvgLG, Stop } from 'react-native-svg';
+import { SvcArt } from '../pages/parts';
+import { artFor, ArtBoundary } from '../art';
+import { onGridJump } from './TabBar';
+import { Skyline, Laurel } from '../ui/art2';
+import { SheetTitle } from '../ui/hosts';
+import { openAddressPicker } from '../sheets/address';
+import { openPassPromo } from '../sheets/money';
 
-/* ---------- small shared helpers (Live and TabBar import these) ---------- */
+// label -> accessibilityLabel, press scale 0.98
+const Pressable3 = ({ label, ...p }: React.ComponentProps<typeof P3> & { label?: string }) => <P3 scaleTo={0.96} accessibilityRole="button" accessibilityLabel={label} {...p} />;
+
+/* ---------- local tokens ---------- */
+const L = { bg: '#FFFFFF', ink: '#171717', sec: '#525252', mut: '#737373', line: 'rgba(23,23,23,0.08)', raised: '#F4F4F5', accent: '#5409DA', pos: '#16a34a', tint: 'rgba(84,9,218,0.08)' };
+const SIDE = 16, GAP = 12;
+const EASE = Easing.bezier(0.22, 1, 0.36, 1);
+const ND = Platform.OS !== 'web';
+const TNUM = { fontVariant: ['tabular-nums' as const] };
+const inr = (n: number) => '₹' + n.toLocaleString('en-IN');
+const shadow = { shadowColor: '#1A1033', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 3 } as const;
+const HERO: Record<string, { bg: [string, string, string]; accent: string }> = {
+  default: { bg: ['#6A1BF2', '#5409DA', '#3A06A0'], accent: '#E3D3FF' },
+  festive: { bg: ['#5E12EA', '#4A07C2', '#2A0577'], accent: '#FFD166' },
+  monsoon: { bg: ['#4B2BC4', '#3B1CA8', '#24106E'], accent: '#9AD7FF' },
+  winter: { bg: ['#5A22CC', '#4B14B8', '#2C0A78'], accent: '#D6E0FF' },
+};
+
+// kept across tab switches (Home is rebuilt when you come back from another tab) so the list opens where you left it
+let homeY = 0, skeletonDone = false, promoShown = false;
+
+/* ---------- small shared helpers ---------- */
 export function useReduceMotion() {
   const [rm, setRm] = useState(false);
   useEffect(() => { let on = true; AccessibilityInfo.isReduceMotionEnabled().then(v => { if (on) setRm(v) }).catch(() => {}); return () => { on = false } }, []);
   return rm;
 }
-export const tsh = (T: Theme, c: string, d: number) => (T.day ? { textShadowColor: c, textShadowOffset: { width: d, height: d }, textShadowRadius: 0 } : {});
-export const edgeOf = (T: Theme) => (T.day ? C.ink : 'rgba(255,246,233,.22)');
-// a dot with a ring that grows and fades
+export const tsh = (_T: Theme, _c: string, _d: number) => ({});
+export const edgeOf = (T: Theme) => (T.day ? L.line : 'rgba(255,246,233,.22)');
+// a dot with a ring that grows and fades; use only for a genuinely live status
 export function Pulse({ color, size = 8, still }: { color: string; size?: number; still?: boolean }) {
   const rm = useReduceMotion(), v = useRef(new Animated.Value(0)).current, on = !rm && !still;
   useEffect(() => {
     if (!on) return;
-    const l = Animated.loop(Animated.timing(v, { toValue: 1, duration: 1800, easing: Easing.out(Easing.quad), useNativeDriver: true }));
+    const l = Animated.loop(Animated.timing(v, { toValue: 1, duration: 1800, easing: EASE, useNativeDriver: ND }));
     l.start(); return () => l.stop();
   }, [on]);
   return (
     <View style={{ width: size, height: size }}>
-      {on ? <Animated.View style={{ position: 'absolute', left: 0, top: 0, width: size, height: size, borderRadius: size, backgroundColor: color, opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.7, 0] }), transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 3] }) }] }} /> : null}
+      {on ? <Animated.View style={{ position: 'absolute', left: 0, top: 0, width: size, height: size, borderRadius: size, backgroundColor: color, opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }), transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 2.5] }) }] }} /> : null}
       <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color }} />
     </View>
   );
 }
-// section heading with something on the right (SecHead only takes a link)
-export function Head({ title, gold, right, center, style }: { title: string; gold?: string; right?: ReactNode; center?: boolean; style?: any }) {
-  const T = useTheme();
+// section heading: title, optional muted sub line, something on the right
+export function Head({ title, gold, sub, right, center, style }: { title: string; gold?: string; sub?: string; right?: ReactNode; center?: boolean; style?: any }) {
+  const T = useTheme(), col = T.day ? L.ink : T.page.fg;
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'baseline', justifyContent: center ? 'center' : 'space-between', gap: 12, marginBottom: SP.l }, style]}>
-      <Txt font="shout" size={center ? 40 : 30} upper style={[{ flexShrink: 1, textAlign: center ? 'center' : 'left' }, tsh(T, C.violetInk, 3)]}>
-        {title}{gold ? <Text style={{ color: C.gold }}>{title ? ' ' : ''}{gold}</Text> : null}
-      </Txt>
+    <View style={[{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: center ? 'center' : 'space-between', gap: 12, marginBottom: SP.m }, style]}>
+      <View style={{ flexShrink: 1 }}>
+        <Txt weight={500} size={center ? 24 : 18} color={col} style={{ textAlign: center ? 'center' : 'left', lineHeight: center ? 32 : 24 }}>
+          {title}{gold ? <Text style={{ color: L.accent }}>{title ? ' ' : ''}{gold}</Text> : null}
+        </Txt>
+        {sub ? <Txt size={13} color={T.day ? L.sec : T.page.fg3} style={{ marginTop: 4, lineHeight: 20 }}>{sub}</Txt> : null}
+      </View>
       {right}
     </View>
   );
 }
 export function LinkTxt({ label, onPress }: { label: string; onPress: () => void }) {
   const T = useTheme();
-  return <Pressable onPress={onPress} hitSlop={14}><Txt weight={700} size={14} color={T.day ? C.gold : T.page.accent}>{label}</Txt></Pressable>;
+  return <Pressable onPress={onPress} hitSlop={14}><Txt weight={500} size={14} color={T.day ? L.accent : T.page.accent}>{label}</Txt></Pressable>;
 }
-// pops in (scale from 0) after a delay
-function Pop({ delay = 0, children, style }: { delay?: number; children: ReactNode; style?: any }) {
-  const rm = useReduceMotion(), v = useRef(new Animated.Value(rm ? 1 : 0)).current;
-  useEffect(() => { if (rm) { v.setValue(1); return } Animated.spring(v, { toValue: 1, delay, friction: 5, tension: 140, useNativeDriver: true }).start() }, [rm]);
-  return <Animated.View style={[style, { transform: [{ scale: v }] }]}>{children}</Animated.View>;
-}
-
-/* ---------- hero marquee: outline text sliding left ---------- */
-const MARQ = 'NO POCHA ONLY PRESSURE WASH';
-function Marquee() {
-  const rm = useReduceMotion(), [w, setW] = useState(0), x = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!w || rm) return;
-    x.setValue(0);
-    const l = Animated.loop(Animated.timing(x, { toValue: -w, duration: 26000, easing: Easing.linear, useNativeDriver: true }));
-    l.start(); return () => l.stop();
-  }, [w, rm]);
-  const one = (k: number) => (
-    <Svg key={k} width={w} height={170}>
-      <SText x={0} y={128} fontFamily={F.shout} fontSize={150} fill="none" stroke="rgba(255,246,233,.2)" strokeWidth={1.5}>{MARQ}</SText>
-    </Svg>
-  );
+/** "◆ Title ◆" section title with the sub line under it (Pronto's Festive Packs heading) */
+function Title({ title, sub }: { title: string; sub?: string }) {
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 30, right: 0 }}>
-      <View style={{ position: 'absolute', left: 0, top: 0, width: 5000, opacity: 0 }}>
-        <View style={{ alignSelf: 'flex-start' }} onLayout={e => setW(Math.ceil(e.nativeEvent.layout.width))}>
-          <Txt font="shout" size={150} numberOfLines={1} style={{ paddingRight: 40 }}>{MARQ}</Txt>
-        </View>
+    <View style={{ alignItems: 'center', paddingHorizontal: SIDE }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={{ color: L.accent, fontSize: 10 }}>◆</Text>
+        <Txt weight={600} size={18} color={L.ink} style={{ lineHeight: 24 }}>{title}</Txt>
+        <Text style={{ color: L.accent, fontSize: 10 }}>◆</Text>
       </View>
-      {w ? <Animated.View style={{ flexDirection: 'row', width: w * 2, transform: [{ translateX: x }] }}>{one(0)}{one(1)}</Animated.View> : null}
+      {sub ? <Txt size={13} color={L.mut} style={{ lineHeight: 18, marginTop: 2, textAlign: 'center' }}>{sub}</Txt> : null}
     </View>
   );
 }
 
-/* ---------- the car hero ---------- */
-function Hero({ W }: { W: number }) {
-  const T = useTheme(), ui = useApp(), rm = useReduceMotion(), id = useUid(), [studio, setStudio] = useState(false);
-  const c = car(), d = doc(c), p = planOf(c), a = A(), carSrc = carImg(c), key = !c.photo && c.img ? c.img : null;
-  const innerW = W - PAD * 2 - (T.day ? 24 : 0), carW = Math.min(innerW * 1.04, 460);
-  const x = useRef(new Animated.Value(W * 1.1)).current, bob = useRef(new Animated.Value(0)).current, dir = useRef(1), busy = useRef(false);
-  // drive in on mount and whenever the car changes
+/* ---------- header: address switcher, wallet, gift chip, avatar. Transparent over the hero, white once you scroll ---------- */
+function HeaderContent({ dark }: { dark: boolean }) {
+  const a = selectedAddress(), bal = (() => { try { return wallet().balance } catch (e) { return 0 } })();
+  const fg = dark ? L.ink : '#fff', sub = dark ? L.mut : 'rgba(255,255,255,.78)', btnBg = dark ? L.raised : 'rgba(255,255,255,.16)';
+  const btn = { width: 40, height: 40, borderRadius: 20, backgroundColor: btnBg, alignItems: 'center' as const, justifyContent: 'center' as const };
+  const place = a ? (a.area || '').split(',')[0] || a.street : 'Add your parking address';
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: SIDE, height: 56 }}>
+      <Pressable style={{ flex: 1, minWidth: 0, paddingRight: 8 }} onPress={() => openAddressPicker()} accessibilityRole="button" accessibilityLabel="Change service location" hitSlop={6}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+          <Txt weight={500} size={18} color={fg} numberOfLines={1} style={{ lineHeight: 24, flexShrink: 1 }}>{a ? addrName(a) : 'Select location'}</Txt>
+          <View style={{ transform: [{ rotate: '90deg' }] }}><Chev size={16} color={fg} strokeWidth={1.8} /></View>
+        </View>
+        <Txt size={12} color={sub} numberOfLines={1} style={{ lineHeight: 16 }}>{place}</Txt>
+      </Pressable>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Pressable3 label={`WD Money, balance ${inr(bal)}`} onPress={() => go('money')}><View style={btn}><Wallet size={18} color={fg} strokeWidth={1.5} /></View></Pressable3>
+        <Pressable3 label={`Refer a friend and earn ${inr(homeConfig().referBanner)}`} onPress={() => openPage({ k: 'refer' })}>
+          <View style={{ height: 40, borderRadius: 20, backgroundColor: dark ? L.tint : '#fff', paddingLeft: 6, paddingRight: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFD166', alignItems: 'center', justifyContent: 'center' }}><Gift size={16} color="#5A3A00" strokeWidth={1.6} /></View>
+            <Txt weight={500} size={13} color={L.accent} style={TNUM}>{inr(homeConfig().referBanner)}</Txt>
+          </View>
+        </Pressable3>
+        <Pressable3 label="Your profile" onPress={() => openPage({ k: 'profile' })}><View style={btn}><User size={18} color={fg} strokeWidth={1.5} /></View></Pressable3>
+      </View>
+    </View>
+  );
+}
+function Header({ y }: { y: Animated.Value }) {
+  const ins = useInsets(), top = Math.max(ins.top, 24), [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    busy.current = false;
-    if (rm) { x.setValue(0); return }
-    x.setValue(dir.current > 0 ? innerW * 1.1 : -innerW * 1.1);
-    Animated.timing(x, { toValue: 0, duration: dir.current > 0 ? 1250 : 1000, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: true }).start();
-  }, [ui.carNonce, rm]);
+    const id = y.addListener(({ value }) => setScrolled(s => (s !== value > 70 ? value > 70 : s)));
+    return () => y.removeListener(id);
+  }, []);
+  const bg = y.interpolate({ inputRange: [20, 110], outputRange: [0, 1], extrapolate: 'clamp' });
+  const light = y.interpolate({ inputRange: [30, 90], outputRange: [1, 0], extrapolate: 'clamp' });
+  return (
+    <View style={{ position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30, paddingTop: top }}>
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#fff', opacity: bg, borderBottomWidth: 1, borderBottomColor: L.line }} />
+      <Animated.View pointerEvents={scrolled ? 'none' : 'auto'} style={{ opacity: light }}><HeaderContent dark={false} /></Animated.View>
+      <Animated.View pointerEvents={scrolled ? 'auto' : 'none'} style={{ position: 'absolute', left: 0, right: 0, top: top, opacity: bg }}><HeaderContent dark /></Animated.View>
+    </View>
+  );
+}
+
+/* ---------- hero: seasonal banner, word-by-word spring reveal (loops every ~6s), floating art, scalloped bottom edge ---------- */
+function Word({ w, i, on, color }: { w: string; i: number; on: boolean; color: string }) {
+  const rm = useReducedMotion(), v = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { v.value = rm ? 1 : on ? withDelay(i * 90, withSpring(1, { damping: 14, stiffness: 140 })) : withDelay(i * 40, withTiming(0, { duration: 260 })) }, [on, rm]);
+  const st = useAnimatedStyle(() => ({ opacity: Math.min(1, v.value * 1.4), transform: [{ translateY: (1 - v.value) * 22 }, { rotate: `${(1 - v.value) * 4}deg` }] }));
+  return <Reanimated.Text style={[{ fontFamily: 'Poppins_800ExtraBold', fontSize: 29, lineHeight: 35, letterSpacing: -0.6, marginRight: 7, color }, st]}>{w}</Reanimated.Text>;
+}
+function HeroText({ title, sub, accent }: { title: string; sub: string; accent: string }) {
+  const rm = useReducedMotion(), words = title.split(' ').filter(Boolean), [on, setOn] = useState(true);
   useEffect(() => {
     if (rm) return;
-    const l = Animated.loop(Animated.sequence([
-      Animated.timing(bob, { toValue: -5, duration: 2250, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(bob, { toValue: 0, duration: 2250, easing: Easing.inOut(Easing.sin), useNativeDriver: true })]));
-    l.start(); return () => l.stop();
-  }, [rm]);
-  const sw = (dr: number) => {
-    if (A().cars.length < 2 || busy.current) return;
-    busy.current = true; dir.current = dr;
-    if (rm) { act.switchCar(dr); return }
-    Animated.timing(x, { toValue: -dr * innerW * 1.2, duration: 400, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(() => act.switchCar(dr));
-  };
-  const swRef = useRef(sw); swRef.current = sw;
-  const pan = useRef(PanResponder.create({
-    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 14 && Math.abs(g.dx) > Math.abs(g.dy) * 1.6,
-    onPanResponderTerminationRequest: () => false,
-    onPanResponderRelease: (_, g) => { if (Math.abs(g.dx) > 50) swRef.current(g.dx < 0 ? 1 : -1) },
-  })).current;
-  const multi = a.cars.length > 1, live = d.status === 'done' || d.status === 'washing';
-  const glass = { backgroundColor: 'rgba(18,7,36,.45)', borderWidth: 1, borderColor: 'rgba(255,246,233,.16)' } as const;
+    let t: any; const cycle = (show: boolean) => { t = setTimeout(() => { setOn(show); cycle(!show) }, show ? 500 : 6200) };
+    cycle(false); return () => clearTimeout(t);
+  }, [rm, title]);
+  const sv = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { sv.value = rm ? 1 : on ? withDelay(words.length * 90 + 120, withTiming(1, { duration: 420, easing: REasing.bezier(0.22, 1, 0.36, 1) })) : withTiming(0, { duration: 220 }) }, [on, rm]);
+  const subSt = useAnimatedStyle(() => ({ opacity: sv.value, transform: [{ translateY: (1 - sv.value) * 8 }] }));
+  const last = words.length - 1;
   return (
-    <Hard dx={8} dy={8} radius={28} color={T.shadow} reserve={false} style={{ marginHorizontal: PAD, marginBottom: 8 }}>
-      <View {...pan.panHandlers} style={{ height: 400, borderRadius: 28, borderWidth: T.day ? 12 : 0, borderColor: C.gold, overflow: 'hidden', backgroundColor: C.violet }}>
-        <InkContext.Provider value={violetInk}>
-          <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-            <Defs><RadialGradient id={id} cx="50%" cy="0%" rx="120%" ry="80%"><Stop offset="0" stopColor="#7a2cff" /><Stop offset="0.4" stopColor={C.violet} /><Stop offset="1" stopColor={C.violet2} /></RadialGradient></Defs>
-            <Rect width="100%" height="100%" fill={`url(#${id})`} />
-          </Svg>
-          <Marquee />
-          <View pointerEvents="none" style={{ position: 'absolute', left: '-10%', right: '-10%', bottom: 86, height: 16, backgroundColor: C.gold, opacity: 0.95, transform: [{ rotate: '-3deg' }] }} />
-          <View pointerEvents="none" style={{ position: 'absolute', left: '10%', right: '10%', bottom: 80, height: 46, borderRadius: 999, backgroundColor: 'rgba(18,7,36,.3)' }} />
-          <View pointerEvents="box-none" style={{ position: 'absolute', left: (innerW - carW) / 2, width: carW, bottom: 96 }}>
-            <Animated.View pointerEvents="box-none" style={{ width: carW, transform: [{ translateX: x }] }}>
-              <Animated.View pointerEvents="box-none" style={{ transform: [{ translateY: bob }] }}>
-                {carSrc ? (
-                  <Pressable accessibilityRole="button" accessibilityLabel={`Open Car Studio for your ${c.make} ${c.name}`} onPress={() => setStudio(true)}>
-                    <Image source={src(carSrc)!} resizeMode="contain" style={key ? { width: carW, height: carW / RATIO[key] } : { width: carW, height: 230 }} />
-                  </Pressable>
-                ) : (
-                  <View style={{ alignItems: 'center' }}>
-                    <GhostCar width={carW} color="rgba(255,246,233,.55)" />
-                    <Pressable onPress={() => { void act.carPhoto() }} style={{ position: 'absolute', top: -70, alignItems: 'center', gap: 4, maxWidth: '90%' }}>
-                      <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: C.gold, alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}><Camera size={24} color={C.ink} /></View>
-                      <Txt weight={700} size={15} color={C.cream}>Add your car's photo</Txt>
-                      <Txt weight={500} size={12} color="rgba(255,246,233,.75)" style={{ textAlign: 'center' }}>Pick one from your gallery. We cut out the background.</Txt>
-                    </Pressable>
-                  </View>
-                )}
-              </Animated.View>
-            </Animated.View>
-          </View>
-          <View style={{ position: 'absolute', top: SP.m, left: SP.m, right: SP.m, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-            <View style={[glass, { flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingLeft: 10, paddingRight: 12, borderRadius: 999 }]}>
-              <Pulse color={live ? '#2EE6A6' : C.gold} still={!live} />
-              <Txt weight={600} size={12.5} color={C.cream} style={{ flexShrink: 1, lineHeight: 17 }}>{chipText(c, d)}</Txt>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {carSrc ? <Pressable accessibilityLabel="Change your car's photo" onPress={() => { void act.carPhoto() }} style={[glass, { width: HIT, height: HIT, borderRadius: HIT / 2, alignItems: 'center', justifyContent: 'center' }]}><Camera size={19} color={C.cream} /></Pressable> : null}
-              {multi ? (
-                <Pressable accessibilityLabel="Switch car" onPress={() => sw(1)} style={[glass, { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: HIT, paddingHorizontal: 14, borderRadius: 999 }]}>
-                  {a.cars.map((_, i) => <View key={i} style={{ height: 6, width: i === S.carIdx ? 18 : 6, borderRadius: 3, backgroundColor: i === S.carIdx ? C.gold : 'rgba(255,246,233,.45)' }} />)}
-                </Pressable>
-              ) : null}
-            </View>
-          </View>
-          <View pointerEvents="none" style={{ position: 'absolute', left: SP.card, right: SP.card, bottom: SP.card, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
-            <View style={{ flexShrink: 1 }}>
-              <Txt font="hero" size={34} color={C.cream} style={{ textShadowColor: C.ink, textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0 }}>{c.name}</Txt>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                <Plate reg={maskPlate(c.plate)} width={164} />
-                <View style={{ backgroundColor: C.gold, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 }}><Txt weight={700} size={12} color={C.ink}>{p.name}</Txt></View>
-              </View>
-            </View>
-            {multi ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Swipe size={16} color="rgba(255,246,233,.7)" /><Txt size={11} color="rgba(255,246,233,.7)">Swipe car</Txt></View> : null}
-          </View>
-        </InkContext.Provider>
+    <View accessible accessibilityRole="header" accessibilityLabel={title + '. ' + sub}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{words.map((w, i) => <Word key={i + w} w={w} i={i} on={on} color={i === last ? accent : '#fff'} />)}</View>
+      <Reanimated.Text style={[{ fontFamily: 'Poppins_500Medium', fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,.86)', marginTop: 8 }, subSt]}>{sub}</Reanimated.Text>
+    </View>
+  );
+}
+function Float({ children, style }: { children: ReactNode; style?: any }) {
+  const rm = useReducedMotion(), v = useSharedValue(0), e = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { if (rm) return; e.value = withDelay(250, withSpring(1, { damping: 12, stiffness: 90 })); v.value = withRepeat(withTiming(1, { duration: 2600, easing: REasing.inOut(REasing.sin) }), -1, true) }, [rm]);
+  const st = useAnimatedStyle(() => ({ opacity: e.value, transform: [{ translateY: -8 * v.value + (1 - e.value) * 40 }, { rotate: `${-2 + 4 * v.value}deg` }, { scale: 0.8 + 0.2 * e.value }] }));
+  return <Reanimated.View pointerEvents="none" style={[style, st]}>{children}</Reanimated.View>;
+}
+function Scallop({ W, color = '#fff' }: { W: number; color?: string }) {
+  const n = Math.round(W / 22), r = W / n / 2;
+  let d = `M0 14 `; for (let i = 0; i < n; i++) d += `A${r} ${r * 0.62} 0 0 1 ${(i + 1) * 2 * r} 14 `; d += `L${W} 20 L0 20 Z`;
+  return <Svg width={W} height={20} style={{ position: 'absolute', left: 0, bottom: -1 }}><Path d={d} fill={color} /></Svg>;
+}
+function Hero({ W }: { W: number }) {
+  const ins = useInsets(), cfg = homeConfig(), th = HERO[cfg.heroTheme] || HERO.default, top = Math.max(ins.top, 24) + 56;
+  const dots = [[0.62, 40, 90, 0.10], [0.86, 130, 60, 0.12], [0.5, 190, 40, 0.08], [0.74, 215, 24, 0.12], [0.08, 215, 56, 0.07]];
+  return (
+    <View style={{ paddingTop: top + 8, paddingBottom: 92, paddingHorizontal: SIDE, overflow: 'hidden' }}>
+      <LinearGradient colors={th.bg} start={{ x: 0, y: 0 }} end={{ x: 0.9, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+      {dots.map(([x, yy, sz, o], i) => <View key={i} style={{ position: 'absolute', left: (x as number) * W - (sz as number) / 2, top: top + (yy as number) - 40, width: sz as number, height: sz as number, borderRadius: (sz as number) / 2, backgroundColor: '#fff', opacity: o as number }} />)}
+      <Float style={{ position: 'absolute', right: -8, bottom: 52, width: 158, height: 158 }}>{artFor('pack-exclusive') ? <SvcArt id="exclusive" size={158} /> : <Image source={IMG['r3d-pack-exclusive']} resizeMode="contain" style={{ width: 158, height: 158 }} />}</Float>
+      <View style={{ maxWidth: Math.min(W * 0.68, 300), minHeight: 112 }}>
+        <HeroText title={cfg.heroTitle} sub={cfg.heroSub} accent={th.accent} />
       </View>
-      {studio ? <CarStudio car={c} onClose={() => setStudio(false)} /> : null}
-    </Hard>
-  );
-}
-
-/* ---------- quick actions ---------- */
-function Quick() {
-  const T = useTheme();
-  const items: [ReactNode, string, () => void][] = [
-    [<Book size={24} color={C.gold} />, 'Book a wash', () => sheets.book()],
-    [<Pause size={24} color={C.sky} />, 'Pause washes', () => sheets.pause()],
-    [<Note size={24} color={C.orange} />, 'Note for washer', () => sheets.note()],
-    [<Warn size={24} color={C.red} />, 'Missed a spot', () => sheets.issue()],
-  ];
-  return (
-    <View style={{ flexDirection: 'row', gap: SP.s, marginTop: SP.xl }}>
-      {items.map(([ic, label, fn]) => (
-        <Pressable key={label} onPress={fn} style={{ flex: 1, alignItems: 'center', gap: SP.s, minHeight: HIT }}>
-          {({ pressed }) => (
-            <>
-              <Hard dx={3} dy={3} radius={30} color={T.day ? C.ink : null} style={{ transform: [{ translateX: pressed ? 3 : 0 }, { translateY: pressed ? 3 : 0 }] }}>
-                <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: T.day ? C.cream : 'rgba(255,255,255,.1)', borderWidth: T.day ? 3 : 1, borderColor: edgeOf(T), alignItems: 'center', justifyContent: 'center' }}>{ic}</View>
-              </Hard>
-              <Txt weight={T.day ? 700 : 600} size={12} color={T.day ? C.cream : T.page.fg2} style={{ textAlign: 'center', lineHeight: 16 }}>{label}</Txt>
-            </>
-          )}
-        </Pressable>
-      ))}
+      <Scallop W={W} />
     </View>
   );
 }
 
-/* ---------- banners ---------- */
-function Banners() {
-  const T = useTheme(), list = banners();
-  if (!list.length) return null;
+/* ---------- Instant / Schedule cards: overlap the hero, big glyph bottom-right (Pronto) ---------- */
+function Glyph({ kind, idle }: { kind: 'zap' | 'cal'; idle?: boolean }) {
+  const a = idle ? '#C9C9D1' : '#7C3AED', b = idle ? '#A3A3AD' : '#4C0BC4', id = 'g' + kind + (idle ? 'i' : '');
   return (
-    <View style={{ gap: SP.m, marginTop: SP.xl }}>
-      {list.map((b, i) => (
-        <Card key={i} pad={SP.m} style={{ marginBottom: 0 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: b.tint, alignItems: 'center', justifyContent: 'center' }}><Txt size={16}>{b.icon}</Txt></View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Txt weight={700} size={13.5}>{b.title}</Txt>
-              <Txt size={12} color={T.card.fg3} numberOfLines={2}>{b.sub}</Txt>
-            </View>
-            <Pressable onPress={() => b.act()} style={{ backgroundColor: T.card.tile2, borderRadius: R.inner, minHeight: HIT, justifyContent: 'center', paddingHorizontal: 14 }}>
-              <Txt weight={700} size={12} color={T.card.accent}>{b.btn}</Txt>
-            </Pressable>
+    <Svg width={56} height={56} viewBox="0 0 56 56">
+      <Defs><SvgLG id={id} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor={a} /><Stop offset="1" stopColor={b} /></SvgLG></Defs>
+      <SvgCircle cx={30} cy={30} r={24} fill={idle ? '#F1F1F4' : '#EFE7FF'} />
+      {kind === 'zap'
+        ? <Path d="M31 9 L15 32 h12 l-3 16 l17-24 h-12 z" fill={`url(#${id})`} stroke="#fff" strokeWidth={2} strokeLinejoin="round" />
+        : <><Path d="M14 18 a4 4 0 0 1 4-4 h22 a4 4 0 0 1 4 4 v24 a4 4 0 0 1-4 4 H18 a4 4 0 0 1-4-4z" fill={`url(#${id})`} /><Path d="M14 23 h30" stroke="#fff" strokeWidth={2} /><Path d="M21 11 v6 M37 11 v6" stroke={b} strokeWidth={3} strokeLinecap="round" />
+          <Path d="M22 34 l5 5 l9-10" stroke="#fff" strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" /></>}
+    </Svg>
+  );
+}
+function Entry({ onInstant }: { onInstant: () => void }) {
+  const st = instantStatus(), idle = !st.open;
+  const box = { height: 120, borderRadius: 18, backgroundColor: '#fff', padding: 14, overflow: 'hidden' as const, ...shadow, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } };
+  return (
+    <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: -72 }}>
+      <FadeUp index={0} style={{ flex: 1 }}>
+        <Pressable3 label={'Get instant service. ' + st.label} onPress={() => { if (st.open) onInstant(); else toast(st.reason === 'busy' ? st.label : 'Instant service is closed. ' + st.label + ' or schedule for later') }} style={box}>
+          <Txt weight={600} size={15} color={idle ? L.mut : L.ink} style={{ lineHeight: 20, width: '78%' }}>Get Instant Service</Txt>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            {st.open ? <Pulse color={L.pos} size={6} /> : null}
+            <Txt size={12} color={st.open ? L.pos : L.mut} numberOfLines={2} style={{ lineHeight: 16, flexShrink: 1, width: '62%' }}>{st.label}</Txt>
           </View>
-        </Card>
-      ))}
+          <View style={{ position: 'absolute', right: 4, bottom: 4 }}><Glyph kind="zap" idle={idle} /></View>
+        </Pressable3>
+      </FadeUp>
+      <FadeUp index={1} style={{ flex: 1 }}>
+        <Pressable3 label="Schedule for later. Pick a slot" onPress={() => openPage({ k: 'schedule' })} style={box}>
+          <Txt weight={600} size={15} color={L.ink} style={{ lineHeight: 20, width: '78%' }}>Schedule for Later</Txt>
+          <View style={{ alignSelf: 'flex-start', marginTop: 8, borderWidth: 1, borderColor: 'rgba(84,9,218,0.35)', backgroundColor: L.tint, borderRadius: 8, paddingHorizontal: 8, height: 24, justifyContent: 'center' }}><Txt weight={600} size={11} color={L.accent} style={{ lineHeight: 14 }}>Pick a slot</Txt></View>
+          <View style={{ position: 'absolute', right: 4, bottom: 4 }}><Glyph kind="cal" /></View>
+        </Pressable3>
+      </FadeUp>
     </View>
   );
 }
 
-/* ---------- today's wash ritual ---------- */
-const Tick = ({ done, i, T }: { done: boolean; i: number; T: Theme }) => {
-  const box = { width: 28, height: 28, borderRadius: 14, alignItems: 'center' as const, justifyContent: 'center' as const };
-  return done
-    ? <Pop delay={i * 160 + 200}><View style={[box, { backgroundColor: '#2EE6A6' }]}><Check size={14} color={C.ink} /></View></Pop>
-    : <View style={[box, { borderWidth: 2, borderStyle: 'dashed', borderColor: T.block.fg3 }]} />;
-};
-function Ritual() {
-  const T = useTheme(), ink = T.block, c = car(), d = doc(c);
-  const Title = ({ children }: { children: string }) => <Txt weight={700} size={20} style={{ marginTop: 4 }}>{children}</Txt>;
-  const Sub = ({ children }: { children: string }) => <Txt size={13} color={ink.fg2} style={{ marginTop: 2 }}>{children}</Txt>;
-  const label = (big: ReactNode, small: string) => <View style={{ alignItems: 'center' }}>{big}<Txt size={9.5} upper color={ink.fg3} style={{ letterSpacing: 1, marginTop: 3 }}>{small}</Txt></View>;
-  const steps = (st: [string, string, string, string | null | undefined][]) => (
-    <View style={{ marginTop: 16 }}>
-      {st.map((s, i) => (
-        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }}>
-          <Tick done={s[2] === 'done'} i={i} T={T} />
-          <View style={{ flex: 1 }}><Txt weight={600} size={14}>{s[0]}</Txt><Txt size={12} color={ink.fg3}>{s[1]}</Txt></View>
-          {s[2] === 'done' && s[3] ? <Txt weight={600} size={12} color={ink.fg2}>{ampm(s[3]).replace(' AM', '')}</Txt> : null}
+/* ---------- offer packs ---------- */
+function PackCard({ id }: { id: string }) {
+  const p = packInfo(id)!, q = svcQty(id), isNew = p.isNew, ref = useRef<any>(null);
+  return (
+    <View style={{ width: 168 }}>
+      <Pressable3 label={p.name} onPress={() => setOrigin(id, ref, () => openPage({ k: 'svc', id }))}>
+        <View ref={ref} style={{ width: 168, height: 128, borderRadius: 18, overflow: 'hidden', backgroundColor: '#F1EBFD', alignItems: 'center', justifyContent: 'center' }}>
+          <SvcArt id={id} size={120} />
         </View>
-      ))}
+        <View style={{ position: 'absolute', left: 0, top: 10, backgroundColor: isNew ? '#E5484D' : L.accent, borderTopRightRadius: 8, borderBottomRightRadius: 8, paddingHorizontal: 8, height: 20, justifyContent: 'center' }}><Txt weight={600} size={10} color="#fff" style={{ lineHeight: 14, letterSpacing: 0.6 }}>{isNew ? 'NEW' : p.tag}</Txt></View>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 24 }}>
+          <Txt weight={700} size={16} color={L.ink} style={TNUM}>{inr(p.price)}</Txt>
+          {p.mrp > p.price ? <Txt size={12} color={L.mut} style={{ textDecorationLine: 'line-through', ...TNUM }}>{inr(p.mrp)}</Txt> : null}
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}><Clock size={12} color={L.mut} strokeWidth={1.5} /><Txt size={12} color={L.mut} style={{ lineHeight: 16 }}>{p.mins >= 60 ? (p.mins / 60) + (p.mins === 60 ? ' hour' : ' hours') : p.mins + ' mins'}</Txt></View>
+        <Txt weight={500} size={14} color={L.ink} numberOfLines={1} style={{ marginTop: 4, lineHeight: 20 }}>{p.name}</Txt>
+      </Pressable3>
+      <View style={{ position: 'absolute', right: 8, top: 128 - 17 }}><AddButton variant="add" id={id} qty={q} onAdd={() => act.addSvc(id)} onSub={() => act.subSvc(id)} /></View>
     </View>
   );
-  let body: ReactNode;
-  if (c.status === 'new') {
-    body = <>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-        <Ring frac={0.05} size={86} color={C.gold}>{label(<Txt font="shout" size={26}>1</Txt>, 'day to go')}</Ring>
-        <View style={{ flex: 1 }}><Eyebrow>Tomorrow</Eyebrow><Title>First wash, 6–7:30 AM</Title><Sub>{`${c.washer} will call before he comes and take your car's first photo.`}</Sub></View>
-      </View>
-      {steps([['Find your car', c.parking, 'later', null], ['Pressure wash and hand dry', 'About 12 minutes', 'later', null], ['Photo on WhatsApp', "So you know it's done", 'later', null]])}
-    </>;
-  } else if (isPaused(c, TODAY)) {
-    body = <><Eyebrow>Today</Eyebrow><Title>Paused. Enjoy the trip.</Title><Sub>{`Washes start again on ${fmt(addDays(parse(c.paused!.to), 1), { weekday: 'long', day: 'numeric', month: 'short' })}.`}</Sub></>;
-  } else if (d.notStarted) {
-    body = <><Eyebrow>Today's wash</Eyebrow><Title>{startTxt(c)}</Title><Sub>{`${c.washer} washes your car here. Each step ticks off as it happens.`}</Sub></>;
-  } else {
-    const st = todaySteps(c), done = st.filter(s => s[2] === 'done').length, frac = done / st.length, w = d.washer?.name || c.washer;
-    const head = d.status === 'done' ? ['Done before your chai.', `${w} finished at ${ampm(d.finished_at)} in ${d.minutes} minutes.`]
-      : d.status === 'washing' ? ['Washing right now.', `${w} started at ${ampm(d.started_at)}. Watch it live.`]
-      : d.status === 'skipped' ? ['No wash today.', d.skip_reason || ''] : [chipText(c, d) + '.', 'Each step ticks off here as it happens.'];
-    body = <>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-        <Ring frac={frac} size={86} color={C.gold}>{label(<CountUp to={Math.round(frac * 100)} dur={1400} format={n => Math.round(n) + '%'} font="shout" size={26} />, 'of today')}</Ring>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Eyebrow>{`Today's wash · ${fmt(TODAY, { weekday: 'short', day: 'numeric', month: 'short' })}`}</Eyebrow>
-          <Title>{head[0]}</Title><Sub>{head[1]}</Sub>
-        </View>
-      </View>
-      {steps(st)}
-      {d.status !== 'done' ? <Btn label="Watch live" onPress={() => go('live')} style={{ marginTop: 12 }} /> : (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12, paddingTop: 14, borderTopWidth: 1, borderTopColor: ink.line }}>
-          <Txt weight={600} size={13}>{c.rating ? 'Thanks for rating' : "How was today's wash?"}</Txt>
-          <View style={{ flexDirection: 'row', gap: 4 }}>
-            {[1, 2, 3, 4, 5].map(n => (
-              <Pressable key={n} accessibilityLabel={`${n} star${n > 1 ? 's' : ''}`} hitSlop={4} onPress={() => act.rate(n)}>
-                <Txt size={24} color={n <= c.rating ? C.gold : 'rgba(255,246,233,.3)'} style={{ lineHeight: 28 }}>{'★'}</Txt>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      )}
-    </>;
-  }
-  return <Block pad={20} style={{ marginTop: SP.section }}>{body}</Block>;
 }
-
-/* ---------- proof of shine ---------- */
-function Proof() {
-  const T = useTheme(), c = car(), d = doc(c), real = realAcct();
-  const ap = d.photos.find(p => p.kind === 'after');
-  const none = <><Head title="Proof of shine" /><Empty title="Every morning, a photo" sub={real ? `${c.washer} sends a photo of your car the moment it's done.` : `${c.washer} sends a photo of your car the moment it's done. The first one lands tomorrow.`} /></>;
-  let img: any = null, cover = false;
-  if (real) { if (ap) img = typeof ap.src === 'string' ? src(ap.src) : ap.src }
-  else if (c.status !== 'new' && c.img) { cover = c.img === 'scorpio'; img = cover ? IMG.proof : IMG[c.img] }
-  if (!img) return <View style={{ marginTop: SP.section }}>{none}</View>;
+function Packs({ skel }: { skel: boolean }) {
   return (
-    <View style={{ marginTop: SP.section }}>
-      <Head title="Proof of shine" right={!real ? <LinkTxt label="Before / after" onPress={() => sheets.proof()} /> : undefined} />
-      <Hard dx={10} dy={10} radius={22} color={T.day ? C.ink : null} style={{ transform: [{ rotate: '-1.5deg' }] }}>
-        <Pressable accessibilityLabel="Open this morning's photo" onPress={() => sheets.proof()} style={{ aspectRatio: 4 / 3, borderRadius: 22, borderWidth: T.day ? 10 : 0, borderColor: C.cream, overflow: 'hidden', backgroundColor: '#000' }}>
-          {!cover ? <LinearGradient colors={[C.violet, C.violetNight]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFill} /> : null}
-          <Image source={img} resizeMode={cover ? 'cover' : 'contain'} style={[StyleSheet.absoluteFill, !cover && { margin: 20 }]} />
-          <View style={{ position: 'absolute', top: 14, left: 14, backgroundColor: C.gold, borderRadius: 8, borderWidth: T.day ? 3 : 0, borderColor: C.ink, paddingVertical: 6, paddingHorizontal: 12, transform: [{ rotate: '-4deg' }] }}>
-            <Txt font="shout" size={15} upper color={C.ink} style={{ letterSpacing: 0.9 }}>No pocha · Pressure wash</Txt>
-          </View>
-          <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 30, paddingBottom: 14, paddingHorizontal: 18, backgroundColor: 'rgba(10,3,24,.78)' }}>
-            <Txt weight={700} size={15} color={C.cream}>{`Photo by ${c.washer} · ${ampm(d.finished_at)}`}</Txt>
-            <Txt size={12} color="rgba(255,246,233,.8)">{c.parking}</Txt>
-          </View>
-        </Pressable>
-      </Hard>
+    <View style={{ marginTop: 32 }}>
+      <Title title="Wash packs" sub="Pressure wash, foam and more at your parking spot" />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }} contentContainerStyle={{ paddingHorizontal: SIDE, gap: GAP, paddingBottom: 8 }}>
+        {skel ? PACKS.map(p => <View key={p.id} style={{ width: 168 }}><Shimmer width={168} height={128} radius={18} /><Shimmer width={90} height={16} style={{ marginTop: 24 }} /><Shimmer width={120} height={14} style={{ marginTop: 8 }} /></View>)
+          : PACKS.map((p, i) => <FadeUp key={p.id} index={i + 2}><PackCard id={p.id} /></FadeUp>)}
+      </ScrollView>
     </View>
   );
 }
 
-/* ---------- streak + calendar ---------- */
-function Streak() {
-  const T = useTheme(), ink = T.card, c = car(), cal = calendar(c);
-  const legend = (bg: string | undefined, label: string, dashed?: boolean) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-      <View style={{ width: 9, height: 9, borderRadius: 3, backgroundColor: bg, borderWidth: dashed ? 1 : 0, borderStyle: 'dashed', borderColor: ink.dash }} />
-      <Txt size={11} color={ink.fg3}>{label}</Txt>
-    </View>
-  );
+/* ---------- referral banner + more rows ---------- */
+function Refer() {
+  const amt = homeConfig().referBanner;
   return (
-    <Card pad={18} style={{ marginTop: SP.section }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10 }}>
+    <View style={{ marginHorizontal: SIDE, marginTop: 32 }}>
+      <Pressable3 label={`Refer a friend and earn ${amt} rupees`} onPress={() => openPage({ k: 'refer' })} style={{ minHeight: 84, borderRadius: 16, backgroundColor: L.accent, paddingLeft: 16, paddingRight: 12, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' }}>
+        <View style={{ position: 'absolute', right: -20, top: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,.10)' }} />
         <View style={{ flex: 1 }}>
-          <Eyebrow>{cal.month}</Eyebrow>
-          <Txt weight={700} size={15} style={{ marginTop: 4 }}>Mornings in a row</Txt>
-          <Txt size={12} color={ink.fg3}>Pauses don't break your streak. Tap any day.</Txt>
+          <Txt weight={500} size={16} color="#fff" style={{ lineHeight: 22 }}>Refer a friend and earn <Txt weight={500} size={16} color="#FFD166" style={TNUM}>{inr(amt)}</Txt></Txt>
+          <Txt size={12} color="rgba(255,255,255,.82)" style={{ lineHeight: 16, marginTop: 2 }}>They get {inr(REFERRAL.friendGets)} on their first wash</Txt>
         </View>
-        <CountUp to={c.streak} dur={1200} font="shout" size={54} color={ink.accent} style={{ lineHeight: 50 }} />
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 16, marginHorizontal: -3 }}>
-        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((l, i) => <View key={'h' + i} style={{ width: '14.2857%', paddingHorizontal: 3, paddingBottom: 6, alignItems: 'center' }}><Txt weight={600} size={10} color={ink.fg3}>{l}</Txt></View>)}
-        {cal.cells.map((x, i) => {
-          if (!x) return <View key={i} style={{ width: '14.2857%' }} />;
-          const bg = x.washed ? (x.extra ? C.gold : C.violet) : x.paused ? 'transparent' : ink.tile2, fg = x.washed ? (x.extra ? C.ink : C.cream) : ink.fg3;
-          const cell = (
-            <View style={{ aspectRatio: 1, borderRadius: 9, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', borderWidth: x.paused && !x.washed ? 1 : 0, borderStyle: 'dashed', borderColor: ink.dash }}>
-              <Txt weight={600} size={11} color={fg}>{String(x.d)}</Txt>
-              {x.today ? <View pointerEvents="none" style={{ position: 'absolute', left: -2, top: -2, right: -2, bottom: -2, borderRadius: 11, borderWidth: 2, borderColor: C.orange }} /> : null}
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFD166', alignItems: 'center', justifyContent: 'center' }}><Gift size={22} color="#5A3A00" strokeWidth={1.6} /></View>
+      </Pressable3>
+      <Pressable onPress={() => openSheet(<><SheetTitle>Refer and earn: T&amp;C</SheetTitle><View style={{ gap: 12, marginTop: 8 }}>{REFERRAL.tnc.map((t, i) => <View key={i} style={{ flexDirection: 'row', gap: 8 }}><Txt size={14} color={L.mut}>{i + 1}.</Txt><Txt size={14} color={L.sec} style={{ flex: 1, lineHeight: 20 }}>{t}</Txt></View>)}</View></>)} hitSlop={10} style={{ alignSelf: 'flex-end', marginTop: 8 }} accessibilityRole="button" accessibilityLabel="Referral terms and conditions">
+        <Txt size={12} color={L.mut} style={{ textDecorationLine: 'underline' }}>T&amp;C apply</Txt>
+      </Pressable>
+    </View>
+  );
+}
+function More() {
+  const row = (icon: ReactNode, title: string, sub: string, onPress: () => void) => (
+    <View style={{ flex: 1, minWidth: 0 }}><Pressable3 label={title} onPress={onPress} style={{ minHeight: 72, borderRadius: 16, backgroundColor: '#fff', padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8, ...shadow }}>
+      <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: L.tint, alignItems: 'center', justifyContent: 'center' }}>{icon}</View>
+      <View style={{ flex: 1, minWidth: 0 }}><Txt weight={600} size={13} color={L.ink} numberOfLines={1} style={{ lineHeight: 18 }}>{title}</Txt><Txt size={12} color={L.mut} numberOfLines={1} style={{ lineHeight: 16 }}>{sub}</Txt></View>
+    </Pressable3></View>
+  );
+  return (
+    <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: 12 }}>
+      {row(<PlanIc size={17} color={L.accent} strokeWidth={1.6} />, 'Monthly plans', 'Daily wash', () => go('plan'))}
+      {row(<StoreIc size={17} color={L.accent} strokeWidth={1.6} />, 'Car store', 'Care, gadgets', () => go('store'))}
+    </View>
+  );
+}
+
+/* ---------- service grid: exactly three per row, equal gutters, centred; every tile the same height ---------- */
+const CATS = ['All', 'Exterior', 'Interior', 'Care'] as const;
+const NAME_H = 36, PRICE_H = 18;
+export const tileH = (w: number) => w + 8 + NAME_H + 2 + PRICE_H;
+function SvcTile({ s: sv, w }: { s: (typeof CAR_SERVICES)[number]; w: number }) {
+  const q = svcQty(sv.id), ref = useRef<any>(null);
+  return (
+    <View style={{ width: w, height: tileH(w) }}>
+      <Pressable3 label={`${sv.name}, ${inr(sv.price)}`} onPress={() => setOrigin(sv.id, ref, () => openPage({ k: 'svc', id: sv.id }))}>
+        <View ref={ref} style={{ width: w, height: w, borderRadius: 16, overflow: 'hidden', backgroundColor: sv.tint || L.raised, alignItems: 'center', justifyContent: 'center' }}>
+          <SvcArt id={sv.id} size={Math.round(w * 0.9)} />
+          {SHOW_RATINGS ? (
+            <View style={{ position: 'absolute', top: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,.92)', borderRadius: 8, paddingHorizontal: 5, height: 18 }}>
+              <Star size={10} color="#F5A524" strokeWidth={1.5} /><Txt size={10} color={L.sec} style={{ lineHeight: 14 }}>{sv.rating.toFixed(1)}</Txt>
             </View>
-          );
-          const lbl = fmt(x.date, { day: 'numeric', month: 'long' }) + (x.washed ? ', washed' : x.paused ? ', paused' : x.today ? ', today' : '');
-          return (
-            <View key={i} style={{ width: '14.2857%', padding: 3 }}>
-              <Pressable accessibilityRole="button" accessibilityLabel={lbl} hitSlop={3} onPress={() => sheets.day(x.date)}
-                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.88 : 1 }] })}>{cell}</Pressable>
-            </View>
-          );
-        })}
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 12 }}>{legend(C.violet, 'Washed')}{legend(C.gold, 'Washed + extra')}{legend(undefined, 'Paused', true)}</View>
-    </Card>
-  );
-}
-
-/* ---------- this week ---------- */
-const KCOL: Record<string, string> = { foam: C.sky, int: C.orange, det: C.gold, tyre: C.mint };
-const WK_W = 64, WK_GAP = 8, WK_BACK = 7, WK_FWD = 7;   // tile width, gap, days shown before / after today
-// the strip runs from a week back to a week ahead (state's week() only gives Monday to Sunday)
-function weekStrip() {
-  const c = car();
-  return Array.from({ length: WK_BACK + 1 + WK_FWD }, (_, i) => {
-    const dt = addDays(TODAY, i - WK_BACK), p = isPaused(c, dt);
-    return { date: iso(dt), label: fmt(dt, { weekday: 'short' }).slice(0, 2), d: dt.getDate(), today: i === WK_BACK, paused: p, dots: p ? [] : extras(c, dt) };
-  });
-}
-function Week() {
-  const T = useTheme(), wk = weekStrip(), { width } = useWindowDimensions(), sv = useRef<any>(null);
-  const dot = (col: string, l: string) => <Text><Text style={{ color: col }}>{'● '}</Text>{l}{'  '}</Text>;
-  // open with today in view: two days of the past peek in on the left
-  useEffect(() => { const t = setTimeout(() => sv.current?.scrollTo({ x: (WK_BACK - 2) * (WK_W + WK_GAP), animated: false }), 0); return () => clearTimeout(t) }, []);
-  return (
-    <View style={{ marginTop: SP.section }}>
-      <Head title="This week" right={<Txt size={11} color={T.page.fg3} style={{ flexShrink: 1, textAlign: 'right' }}>{dot(C.sky, 'Foam')}{dot(C.orange, 'Interior')}{dot(C.mint, 'Tyre')}{dot(C.gold, 'Detail')}</Txt>} />
-      <ScrollView ref={sv} horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast" snapToInterval={WK_W + WK_GAP} snapToAlignment="start"
-        style={{ marginHorizontal: -PAD }} contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 6, paddingRight: PAD + 3, gap: WK_GAP }}>
-        {wk.map(w => {
-          const fg = w.today ? T.todayFg : T.card.fg, mute = w.today ? T.todayFg : T.card.fg3;
-          return (
-            <Pressable key={w.date} accessibilityRole="button" accessibilityLabel={fmt(w.date, { weekday: 'long', day: 'numeric', month: 'long' }) + (w.today ? ', today' : w.paused ? ', paused' : '')}
-              onPress={() => sheets.day(w.date)} style={({ pressed }) => ({ width: WK_W, minHeight: HIT, opacity: pressed ? 0.75 : 1, transform: [{ scale: pressed ? 0.94 : 1 }] })}>
-              <Hard dx={3} dy={3} radius={16} reserve={false} color={T.day ? (w.today ? C.ink : C.violetInk) : null} style={{ opacity: w.paused ? 0.45 : 1 }}>
-                <View style={{ borderRadius: 16, paddingVertical: 10, alignItems: 'center', gap: 4, backgroundColor: w.today ? T.todayBg : T.cardBg, borderWidth: T.day ? 2.5 : 1, borderColor: w.today && !T.day ? 'transparent' : T.cardBorder }}>
-                  <Txt weight={600} size={10} upper color={mute} style={w.today ? { opacity: 0.65 } : undefined}>{w.label}</Txt>
-                  <Txt weight={700} size={16} color={fg}>{String(w.d)}</Txt>
-                  <View style={{ flexDirection: 'row', gap: 3, height: 6 }}>{w.dots.map((k, j) => <View key={j} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: KCOL[k] }} />)}</View>
-                </View>
-              </Hard>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-}
-
-/* ---------- your washer ---------- */
-function Washer() {
-  const c = car(), T = useTheme(), ink = T.block;
-  return (
-    <View style={{ marginTop: SP.section }}>
-      <Head title="Your washer" />
-      <Block pad={0} inner={{ flexDirection: 'row', alignItems: 'flex-end', gap: SP.l, paddingRight: SP.card }}>
-        <View style={{ width: 96, height: 120, overflow: 'hidden' }}><Image source={IMG.washer} resizeMode="cover" style={{ width: 118, height: 120, marginLeft: -11 }} /></View>
-        <View style={{ flex: 1, paddingVertical: SP.card }}>
-          <Txt weight={700} size={18}>{c.washer}</Txt>
-          <Txt size={12} color={ink.fg2}>{c.status === 'new' ? '★ 4.9 · Starts with your car tomorrow' : `★ 4.9 · Has washed your ${c.name} ${c.washes} times`}</Txt>
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            <Pill gold label="Tip" icon={<Heart size={14} strokeWidth={2.4} />} onPress={() => sheets.tip()} style={{ marginRight: 3, marginBottom: 3 }} />
-            <Pill label="Leave a note" icon={<Note size={14} strokeWidth={2.2} />} onPress={() => sheets.note()} style={{ marginRight: 3, marginBottom: 3 }} />
-          </View>
+          ) : null}
         </View>
-      </Block>
+        <Txt weight={500} size={13} color={L.ink} numberOfLines={2} style={{ lineHeight: 18, height: NAME_H, marginTop: 8 }}>{sv.short}</Txt>
+        <Text numberOfLines={1} style={{ marginTop: 2, height: PRICE_H }}><Txt weight={700} size={13} color={L.ink} style={TNUM}>{inr(sv.price)}</Txt><Txt size={11} color={L.mut} style={{ textDecorationLine: 'line-through', ...TNUM }}>{' ' + inr(sv.mrp)}</Txt></Text>
+      </Pressable3>
+      <View style={{ position: 'absolute', right: 6, top: w - 36 }}><AddButton compact id={sv.id} qty={q} onAdd={() => act.addSvc(sv.id)} onSub={() => act.subSvc(sv.id)} /></View>
     </View>
   );
 }
-
-/* ---------- photo wall ---------- */
-function Wall({ W }: { W: number }) {
-  const T = useTheme(), pw = (W - PAD * 2 - 14) / 2;
+function Grid({ W, skel, onLayoutY }: { W: number; skel: boolean; onLayoutY: (y: number) => void }) {
+  // (W - 2*pad - 2*gap) / 3, floored; the remainder goes to the side padding so the three columns stay centred with equal gutters
+  const w = Math.floor((W - SIDE * 2 - GAP * 2) / 3), side = (W - w * 3 - GAP * 2) / 2, [cat, setCat] = useState<(typeof CATS)[number]>('All');
+  const list = CAR_SERVICES.filter(s => cat === 'All' || s.cat === cat);
   return (
-    <View style={{ marginTop: 34, paddingTop: 34, paddingBottom: 10, borderTopWidth: 12, borderTopColor: C.gold, backgroundColor: C.violet }}>
-      <View style={{ paddingHorizontal: PAD }}><Head center title="No pocha." gold="Only pressure wash." /></View>
-      <Txt weight={500} size={15} color={C.cream} style={{ textAlign: 'center', alignSelf: 'center', maxWidth: 270, opacity: 0.92, marginTop: -4 }}>Real mornings from our rounds in Paschim Vihar. Foam first, then pressure rinse, then a clean cloth to dry.</Txt>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 14, paddingHorizontal: PAD, paddingTop: 24, paddingBottom: 10 }}>
-        {SLIDES.slice(0, 6).map((s, i) => (
-          <View key={i} style={{ width: pw, transform: [{ rotate: i % 2 ? '1.6deg' : '-2deg' }] }}>
-            <Hard dx={6} dy={6} radius={16} color={C.violetInk}>
-              <View style={{ backgroundColor: C.cream, padding: 8, paddingBottom: 0, borderRadius: 16, borderWidth: 3, borderColor: C.ink }}>
-                <Image source={IMG[s.img]} resizeMode="cover" style={{ width: pw - 28, height: (pw - 28) / 0.8, borderRadius: 9 }} />
-                <View style={{ paddingTop: 8, paddingHorizontal: 3, paddingBottom: 10 }}>
-                  <Txt font="shout" size={18} upper color={C.ink} style={{ letterSpacing: 0.4, lineHeight: 19 }}>{s.t}</Txt>
-                  <Txt weight={600} size={12} color="#3B2C55" style={{ marginTop: 3 }}>{s.s}</Txt>
-                </View>
-              </View>
-            </Hard>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/* ---------- closer ---------- */
-// RN has one text shadow, so the layered shadow is stacked copies of the text
-function Layered({ size, children }: { size: number; children: (col?: string) => ReactNode }) {
-  const lay: [string, number][] = [[C.violetInk, 12], [C.sky, 8], [C.orange, 4]];
-  const st = { textAlign: 'center' as const, lineHeight: Math.round(size * 0.95) };
-  return (
-    <View>
-      {lay.map(([col, o]) => <View key={o} pointerEvents="none" style={{ position: 'absolute', left: o, top: o, right: -o }}><Txt font="shout" size={size} upper color={col} style={st}>{children(col)}</Txt></View>)}
-      <Txt font="shout" size={size} upper color={C.cream} style={st}>{children()}</Txt>
-    </View>
-  );
-}
-function Notch({ left }: { left: boolean }) {
-  return (
-    <View pointerEvents="none" style={[{ position: 'absolute', top: '50%', marginTop: -13, width: 14, height: 26, overflow: 'hidden' }, left ? { left: -3 } : { right: -3 }]}>
-      <View style={{ position: 'absolute', top: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: C.violet, borderWidth: 3, borderColor: C.ink, ...(left ? { left: -12 } : { right: -12 }) }} />
-    </View>
-  );
-}
-function Closer() {
-  return (
-    <View style={{ marginTop: 34, paddingTop: 40, paddingBottom: 12, paddingHorizontal: PAD, borderTopWidth: 12, borderTopColor: C.gold, alignItems: 'center' }}>
-      <View style={{ transform: [{ rotate: '-3deg' }], alignSelf: 'stretch' }}>
-        <Layered size={50}>{col => <>{'Still using pocha?\n'}<Text style={{ color: col ?? C.gold }}>Switch today.</Text></>}</Layered>
-      </View>
-      <Hard dx={8} dy={8} radius={22} color={C.violetInk} style={{ width: '100%', maxWidth: 300, marginTop: 38, marginBottom: 30, transform: [{ rotate: '3deg' }] }}>
-        <View style={{ backgroundColor: C.gold, borderWidth: 3, borderColor: C.ink, borderRadius: 22, paddingTop: 20, paddingHorizontal: 22, paddingBottom: 18 }}>
-          <Notch left /><Notch left={false} />
-          <Txt font="shout" size={17} upper color={C.violet} style={{ letterSpacing: 1 }}>Monthly plans from</Txt>
-          <Txt font="shout" size={64} color={C.ink} style={{ lineHeight: 64, marginTop: 2 }}>{inr(fromPrice())}<Txt weight={800} size={17} color={C.ink}>/month</Txt></Txt>
-          <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 3, borderStyle: 'dashed', borderTopColor: C.ink, gap: 6 }}>
-            {['Pressure wash every day', 'Same washer every morning', 'Car never leaves its spot'].map(t => (
-              <View key={t} style={{ flexDirection: 'row' }}><Txt weight={700} size={14.5} color={C.violet} style={{ marginRight: 8 }}>{'✔'}</Txt><Txt weight={700} size={14.5} color={C.ink} style={{ flex: 1 }}>{t}</Txt></View>
-            ))}
-          </View>
-        </View>
-      </Hard>
-      <Btn label="Invite a neighbour · ₹200 off" full={false} style={{ alignSelf: 'center' }} onPress={() => { void act.copyRef() }} />
-    </View>
-  );
-}
-
-/* ---------- product rail ---------- */
-function ProductCard({ p }: { p: (typeof PRODUCTS)[number] }) {
-  const T = useTheme(), ink = T.card, c = car();
-  return (
-    <Card pad={10} style={{ width: 158 }} inner={{ borderRadius: 22 }} onPress={() => sheets.product(p.id)}>
-      <View style={{ aspectRatio: 1, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
-        <LinearGradient colors={p.bg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-        {p.tag ? <View style={{ position: 'absolute', top: 8, left: 8, backgroundColor: C.ink, borderRadius: 7, paddingVertical: 4, paddingHorizontal: 7, zIndex: 1 }}><Txt weight={800} size={10} upper color={C.gold} style={{ letterSpacing: 0.6 }}>{p.tag}</Txt></View> : null}
-        <View style={{ zIndex: 1 }}><Art kind={p.art} c={p.c} size={100} /></View>
-      </View>
-      <Txt weight={600} size={13} style={{ marginTop: 10, lineHeight: 16, minHeight: 32 }} numberOfLines={2}>{pName(p)}</Txt>
-      {p.fit ? <Txt weight={700} size={10.5} color={ink.ok} style={{ marginTop: 4 }}>{`● Fits your ${c.name}`}</Txt> : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginTop: 6 }}>
-        <Text style={{ flexShrink: 1 }}><Txt weight={800} size={15}>{inr(p.price)}</Txt><Txt weight={500} size={11} color={ink.fg3} style={{ textDecorationLine: 'line-through' }}>{' ' + inr(p.mrp)}</Txt></Text>
-        <Pressable accessibilityLabel={`Add ${p.name} to cart`} onPress={() => act.addToCart(p.id)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: C.violet, borderWidth: T.day ? 2.5 : 0, borderColor: C.ink, alignItems: 'center', justifyContent: 'center' }}>
-          <Plus size={16} color={C.cream} />
-        </Pressable>
-      </View>
-    </Card>
-  );
-}
-function Rail() {
-  return (
-    <View style={{ marginTop: SP.section }}>
-      <View style={{ paddingHorizontal: PAD }}><Head title="Picked for your car" right={<LinkTxt label="Open store" onPress={() => go('store')} />} /></View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: PAD, paddingTop: 4, paddingBottom: 12, gap: 12, alignItems: 'flex-start' }}>
-        {homeRail().map(p => <ProductCard key={p.id} p={p} />)}
+    <View style={{ marginTop: 32 }} onLayout={e => onLayoutY(e.nativeEvent.layout.y)}>
+      <View style={{ paddingHorizontal: SIDE }}><Head title="All car wash services" sub="Schedule & book for later" style={{ marginBottom: 0 }} /></View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }} contentContainerStyle={{ paddingHorizontal: SIDE, gap: 8 }}>
+        {CATS.map(c => { const on = c === cat; return (
+          <Pressable3 key={c} label={c} haptics={false} onPress={() => setCat(c)} style={{ height: 36, paddingHorizontal: 16, borderRadius: 18, backgroundColor: on ? L.accent : '#fff', borderWidth: 1, borderColor: on ? L.accent : 'rgba(23,23,23,0.10)', justifyContent: 'center' }}>
+            <Txt weight={on ? 600 : 500} size={13} color={on ? '#fff' : L.sec} style={{ lineHeight: 18 }}>{c}</Txt>
+          </Pressable3>) })}
       </ScrollView>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: side, marginTop: 16, columnGap: GAP, rowGap: 20 }}>
+        {skel ? CAR_SERVICES.slice(0, 6).map(s => <View key={s.id} style={{ width: w, height: tileH(w) }}><Shimmer width={w} height={w} radius={16} /><Shimmer width={w - 20} height={12} style={{ marginTop: 10 }} /><Shimmer width={50} height={12} style={{ marginTop: 8 }} /></View>)
+          : list.map((s, i) => <FadeUp key={cat + s.id} index={i}><SvcTile s={s} w={w} /></FadeUp>)}
+      </View>
     </View>
+  );
+}
+
+/* ---------- trust block (figures stay hidden until TRUST has real values) ---------- */
+function Badge({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Laurel size={44} />
+      <View style={{ alignItems: 'center', minWidth: 76 }}>
+        <Txt weight={500} size={22} color={L.ink} style={{ lineHeight: 28, ...TNUM }}>{value}</Txt>
+        <Txt size={11} color={L.mut} style={{ lineHeight: 14, textAlign: 'center' }}>{label}</Txt>
+      </View>
+      <Laurel size={44} flip />
+    </View>
+  );
+}
+function Trust({ W }: { W: number }) {
+  const sw = Math.min(W, 520), cw = Math.min(250, W * 0.7), stats = !!(TRUST.cars || TRUST.rating);
+  return (
+    <View style={{ marginTop: 32, alignItems: 'center' }}>
+      <Txt weight={500} size={20} color={L.ink} style={{ textAlign: 'center', lineHeight: 28, width: 260 }}>Your car is in professional hands</Txt>
+      {stats ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 20 }}>
+          {TRUST.cars ? <Badge label={TRUST.carsLabel} value={String(TRUST.cars)} /> : null}
+          {TRUST.rating ? <Badge label={TRUST.ratingLabel} value={String(TRUST.rating)} /> : null}
+        </View>
+      ) : (
+        <Txt size={13} color={L.mut} style={{ marginTop: 8, textAlign: 'center', width: 260, lineHeight: 18 }}>Verified washers from your own society, with photo proof after every wash</Txt>
+      )}
+      <View style={{ width: sw, height: 300, marginTop: 16, alignItems: 'center', justifyContent: 'flex-end' }}>
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}><Skyline width={sw} height={240} /></View>
+        <Image source={IMG.washerCut} resizeMode="contain" style={{ width: cw, height: cw / RATIO.washerCut }} />
+      </View>
+    </View>
+  );
+}
+
+/* ---------- floating "washer assigned" mini card (only when the cart is empty) ---------- */
+function Assigned() {
+  let c: any, d: any, a: any, live = false, h: any;
+  try { c = car(); d = doc(c); a = A(); live = !!activeStage(d); h = liveHead(c) } catch (e) { return null }
+  const up = a.bookings.filter((b: any) => b.carId === c.id).slice(-1)[0], planned = !live && !up && d.status !== 'skipped', fin = d.status === 'done';
+  if (!live && !up && !planned) return null;
+  const w = h.washer;
+  const title = live || fin ? (fin ? `${w} washed your ${c.name}` : h.big) : up ? `${w} is assigned to your booking` : `${w} is assigned to your wash`;
+  const subTxt = live ? chipText(c, d) : fin ? h.big + ' · WD Wash' : up ? `${up.slot} · ${up.type}` : d.notStarted ? h.big : `Today, ${ampm(d.eta) || '6:30 am'} · WD Wash`;
+  return (
+    <FadeUp index={2} style={{ marginHorizontal: SIDE, marginTop: 16 }}><Pressable3 label={title} onPress={() => go('live')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, paddingRight: 12, borderRadius: 18, backgroundColor: '#fff', ...shadow }}>
+      <View style={{ width: 48, height: 48, borderRadius: 12, overflow: 'hidden', backgroundColor: L.raised }}><Image source={IMG.washer} resizeMode="cover" style={{ width: 52, height: 53, marginLeft: -4 }} /></View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Txt weight={600} size={14} color={L.ink} numberOfLines={1} style={{ lineHeight: 20 }}>{title}</Txt>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {live ? <Pulse color={L.pos} size={8} /> : null}
+          <Txt size={13} color={L.sec} numberOfLines={1} style={{ flex: 1, lineHeight: 18 }}>{subTxt}</Txt>
+        </View>
+      </View>
+      <Chev size={18} color={L.mut} strokeWidth={1.5} />
+    </Pressable3></FadeUp>
   );
 }
 
 /* ---------- the screen ---------- */
-const TICK = ['No more pocha', 'Only pressure wash', `Monthly from ${inr(fromPrice())}`, 'Car wash in 10 min', 'Paschim Vihar', 'Meera Bagh', 'Sundar Vihar'];
 export default function Home() {
-  const ui = useApp(), T = useTheme(), { width } = useWindowDimensions(), W = Math.min(width, 520);
-  const ref = useRef<any>(null), [stuck, setStuck] = useState(false), name = A().name.split(' ')[0], hi = greeting();
+  const ui = useApp(), { width } = useWindowDimensions(), W = Math.min(width, 520), ins = useInsets();
+  const ref = useRef<any>(null), y = useRef(new Animated.Value(homeY)).current, gridY = useRef(0), cart = svcLines().count > 0;
+  const [refreshing, setRefreshing] = useState(false), skel = useSkeleton(skeletonDone ? 0 : 450);
+  useEffect(() => { skeletonDone = true }, []);
   useEffect(() => { if (ui.tabNonce) ref.current?.scrollTo({ y: 0, animated: true }) }, [ui.tabNonce]);
-  const themeIco = S.theme === 'light' ? <Sun size={20} /> : S.theme === 'dark' ? <Moon size={20} /> : <Auto size={20} />;
+  useEffect(() => { if (homeY > 0) { const t = setTimeout(() => ref.current?.scrollTo({ y: homeY, animated: false }), 0); return () => clearTimeout(t) } }, []);
+  // WD Pass launch popup, once per app start, after the location loader has gone
+  useEffect(() => {
+    if (promoShown) return; promoShown = true;
+    let on = true; const t = setTimeout(() => { try { if (on && homeConfig().passPromo && !activePass()) openPassPromo() } catch (e) {} }, loaderPending() ? 3400 : 1200);
+    return () => { on = false; clearTimeout(t) };
+  }, []);
+  const onScroll = Animated.event([{ nativeEvent: { contentOffset: { y } } }], { useNativeDriver: false, listener: (e: any) => { homeY = e.nativeEvent.contentOffset.y } });
+  const barB = TAB_BAR_H + Math.max(ins.bottom, 0);
+  useEffect(() => { onGridJump(() => ref.current?.scrollTo({ y: Math.max(0, gridY.current - 90), animated: true })); return () => onGridJump(null) }, []);
+  const refresh = async () => { setRefreshing(true); try { await act.refresh() } catch (e: any) { toast(e?.message || 'Could not refresh') } setRefreshing(false) };
   return (
-    <Page {...({ ref } as any)} pad={0} top={0} bottom={120} stickyHeaderIndices={[1]} scrollEventThrottle={32}
-      onScroll={(e: any) => { const s = e.nativeEvent.contentOffset.y > 40; if (s !== stuck) setStuck(s) }}>
-      <Ticker items={TICK} />
-      <Topbar
-        left={<Image source={IMG.logo} resizeMode="contain" accessibilityLabel="Washing Daddy" style={{ width: 118, height: 118 * 157 / 260, transform: [{ rotate: '-4deg' }] }} />}
-        title={stuck ? 'Home' : undefined}
-        right={<>
-          <IconBtn label="Switch day or night look" onPress={act.cycleTheme}>{themeIco}</IconBtn>
-          <IconBtn label="Updates" dot={A().prefs.photo} onPress={() => sheets.notifs()}><Bell size={20} /></IconBtn>
-        </>} />
-      <View style={{ paddingTop: SP.xl, paddingBottom: SP.l + SP.s, paddingHorizontal: PAD }}>
-        <Txt weight={600} size={20} color={T.page.fg} style={{ marginBottom: SP.hair }}>{hi}</Txt>
-        <Txt font="shout" size={54} upper color={C.cream} style={[{ lineHeight: 50 }, tsh(T, C.violetInk, 4)]}>{name}, <Em>no more pocha!</Em></Txt>
-      </View>
-      <Hero W={W} />
-      <View style={{ paddingHorizontal: PAD, paddingBottom: SP.s }}>
-        <Quick />
-        <Banners />
-        <Ritual />
-        <Proof />
-        <Streak />
-        <Week />
-        <Washer />
-      </View>
-      {T.day ? <Wall W={W} /> : null}
-      {T.day ? <Closer /> : null}
-      <Rail />
-    </Page>
+    <View style={{ flex: 1, backgroundColor: L.bg, alignItems: 'center' }}>
+      <Animated.ScrollView style={{ width: '100%', maxWidth: 520 }} ref={ref} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={onScroll} bounces
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={'#fff'} colors={[L.accent]} progressViewOffset={Math.max(ins.top, 24) + 56} />}
+        contentContainerStyle={{ paddingBottom: barB + (cart ? 100 : 40) }}>
+        <Hero W={W} />
+        <Entry onInstant={() => { try { act.setCartMode('instant') } catch (e) {} ref.current?.scrollTo({ y: Math.max(0, gridY.current - 90), animated: true }) }} />
+        <Assigned />
+        <Packs skel={skel} />
+        <Refer />
+        <More />
+        <Grid W={W} skel={skel} onLayoutY={v => { gridY.current = v }} />
+        <Trust W={W} />
+      </Animated.ScrollView>
+      <Header y={y} />
+      {cart ? <CartBar aboveTabs /> : null}
+    </View>
   );
 }

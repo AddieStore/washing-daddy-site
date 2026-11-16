@@ -8,6 +8,7 @@ export type DocRef = {
   get(): Promise<Snap>;
   set(data: object): Promise<void>;
   update(patch: object): Promise<void>;
+  delete(): Promise<void>;
   onSnapshot(cb: (s: Snap) => void, err?: (e: any) => void): Unsub;
 };
 export type Query = {
@@ -27,6 +28,7 @@ export type Auth = {
   send(phone10: string): Promise<{ ok: true }>;
   confirm(code: string): Promise<{ uid: string }>;
   signOut(): Promise<void>;
+  idToken(): Promise<string | null>;   // Firebase ID token for n8n calls (Authorization: Bearer); n8n verifies it and takes the phone from it
   onChange(f: (signedIn: boolean) => void): Unsub;
 };
 export type Backend = { db: Db; auth: Auth };

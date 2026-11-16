@@ -1,4 +1,4 @@
-// Live tracking map: MapLibre + OpenFreeMap (no key), tilted 3-D buildings tinted violet, gold home pin, WD scooter, dashed route.
+// Live tracking map: MapLibre + OpenFreeMap (no key), tilted 3-D buildings neutral grey, accent home pin, WD scooter, dashed route.
 import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Map, Camera, Marker, GeoJSONSource, Layer, type CameraRef, type LngLat } from '@maplibre/maplibre-react-native';
@@ -35,14 +35,14 @@ export function TrackMap({ track }: { track: Track }) {
   const flip = !!target && bearing(target, home) > 180;
   const line: GeoJSON.Feature = { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pos ? [pos, home] : [] } };
   return (
-    <View style={{ flex: 1, backgroundColor: '#150830' }}>
+    <View style={{ flex: 1, backgroundColor: '#F4F4F5' }}>
       <Map style={{ flex: 1 }} mapStyle="https://tiles.openfreemap.org/styles/liberty" logo={false} attributionPosition={{ bottom: 6, right: 6 }}>
         <Camera ref={cam} initialViewState={{ center: home, zoom: 15, pitch: 55, bearing: 30 }} />
         <Layer id="wd-buildings-3d" type="fill-extrusion" source="openmaptiles" source-layer="building" minzoom={14}
-          style={{ fillExtrusionColor: ['interpolate', ['linear'], ['get', 'render_height'], 0, '#2d1260', 20, '#3e1a80', 50, '#5409DA', 100, '#7640ff'] as any,
+          style={{ fillExtrusionColor: ['interpolate', ['linear'], ['get', 'render_height'], 0, '#E4E4E7', 20, '#D4D4D8', 50, '#C4C4C8', 100, '#A1A1AA'] as any,
             fillExtrusionHeight: ['get', 'render_height'] as any, fillExtrusionBase: ['get', 'render_min_height'] as any, fillExtrusionOpacity: 0.82 }} />
         <GeoJSONSource id="wd-route" data={line}>
-          <Layer id="wd-route-line" type="line" style={{ lineColor: '#FFBA08', lineWidth: 3, lineDasharray: [2, 3], lineOpacity: 0.8, lineCap: 'round', lineJoin: 'round' }} />
+          <Layer id="wd-route-line" type="line" style={{ lineColor: '#5409DA', lineWidth: 3, lineDasharray: [2, 3], lineOpacity: 0.8, lineCap: 'round', lineJoin: 'round' }} />
         </GeoJSONSource>
         <Marker id="home" lngLat={home} anchor="bottom"><HomePin /></Marker>
         {pos ? <Marker id="washer" lngLat={pos} anchor="bottom"><Scooter flip={flip} /></Marker> : null}
