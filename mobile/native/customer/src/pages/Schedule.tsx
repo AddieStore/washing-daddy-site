@@ -39,7 +39,7 @@ export default function Schedule() {
       <Txt weight={500} size={13} color={G.mute} style={{ marginBottom: 10, marginHorizontal: 12 }}>Service duration</Txt>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}>
         {others.length ? <Tile on label="Your cart" title={dur(mins)} price={sub} onPress={() => openPage({ k: 'cart' })} /> : null}
-        {PACKS.map(pk => { const p = packInfo(pk.id)!, q = svcQty(pk.id); return <Tile key={pk.id} on={q > 0} label={p.name} title={dur(p.mins)} price={p.price} mrp={p.mrp} onPress={() => (q ? act.subSvc(pk.id) : act.addSvc(pk.id))} /> })}
+        {PACKS.filter(pk => pk.status !== 'paused').map(pk => { const p = packInfo(pk.id)!, q = svcQty(pk.id); return <Tile key={pk.id} on={q > 0} label={p.name} title={dur(p.mins)} price={p.price} mrp={p.mrp} onPress={() => (q ? act.subSvc(pk.id) : act.addSvc(pk.id))} /> })}
       </ScrollView>
       {!count ? <Txt size={12} color={G.mute} style={{ marginHorizontal: 12, marginTop: 10 }}>Pick a wash pack, or add services from Home</Txt> : null}
     </View>

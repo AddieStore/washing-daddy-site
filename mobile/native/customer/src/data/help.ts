@@ -1,6 +1,6 @@
 // Help & Support topics, FAQs and the About page. Content owned by the PROFILE/HELP worker (CONTRACT.md); shape fixed.
 // PLACEHOLDER copy until Ravi confirms. "Chat with us" is act.whatsapp().
-export type HelpTopic = { id: 'booking' | 'account' | 'payments' | 'quality' | 'safety'; title: string; sub: string; faqs: [string, string][] };
+export type HelpTopic = { id: string; title: string; sub: string; faqs: [string, string][]; icon?: string };
 export const HELP_TOPICS: HelpTopic[] = [
   { id: 'booking', title: 'Booking', sub: 'Scheduling, changes and cancellations', faqs: [
     ['How fast does an instant washer arrive?', 'Usually within 45-60 minutes during service hours (6 AM to 8 PM).'],

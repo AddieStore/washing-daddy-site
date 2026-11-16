@@ -4,7 +4,7 @@ import { View, ScrollView, TextInput, RefreshControl } from 'react-native';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Info, Gift, Chev, Zap, Check, Wallet as WalletIc, Receipt } from '../ui/icons';
-import { useApp, wallet, act, topUpBonus, topUpCheck, openPage, toast, confetti } from '../state';
+import { useApp, wallet, act, topUpBonus, topUpCheck, openPage, toast, confetti, feature } from '../state';
 import { WALLET } from '../data/reference';
 import { G, Tap, PrimaryBtn, TNUM, PAGE_BG, card } from './parts';
 import { CountUp, FadeUp } from '../ui/motion';
@@ -66,7 +66,7 @@ export default function Money({ tab }: { tab?: boolean }) {
           </View></FadeUp>
 
           {/* top-up */}
-          <Sec>
+          {feature('topup') ? <Sec>
             <Txt weight={500} size={17}>Add money</Txt>
             <Txt size={13} color={G.mute} style={{ marginTop: 2 }}>Get {WALLET.cashbackPct}% cashback as rewards on every top-up.</Txt>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
@@ -90,14 +90,14 @@ export default function Money({ tab }: { tab?: boolean }) {
             </View>
             {err ? <Txt size={13} color={C.red} style={{ marginTop: 6 }}>{err}</Txt> : bonus ? <Txt size={13} color={G.pos} style={{ marginTop: 6 }}>You get {rs(bonus)} as rewards.</Txt> : null}
             <PrimaryBtn label={amt ? `Add ${rs(amt)} to wallet` : 'Add to wallet'} busy={busy} disabled={!amt || !!err} onPress={add} style={{ marginTop: 14 }} />
-          </Sec>
+          </Sec> : null}
 
           {/* gift card */}
-          <Tap label="Claim a gift card" onPress={openGiftCard} style={card({ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
+          {feature('giftcard') ? <Tap label="Claim a gift card" onPress={openGiftCard} style={card({ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
             <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: V_SOFT, alignItems: 'center', justifyContent: 'center' }}><Gift size={22} color={V} strokeWidth={1.5} /></View>
             <View style={{ flex: 1 }}><Txt weight={500} size={15}>Claim a gift card</Txt><Txt size={13} color={G.mute} style={{ marginTop: 2 }}>Enter gift card details to claim</Txt></View>
             <Chev size={18} color={G.mute} strokeWidth={1.5} />
-          </Tap>
+          </Tap> : null}
 
           {/* benefits */}
           <View style={{ flexDirection: 'row' }}>

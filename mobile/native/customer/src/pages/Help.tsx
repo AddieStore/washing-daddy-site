@@ -4,8 +4,8 @@ import { View, ScrollView, Pressable } from 'react-native';
 import { Txt, useInsets } from '../ui/kit';
 import { Chev, Plus, WhatsApp } from '../ui/icons';
 import { C } from '../theme';
-import { act, useApp, openPage, refunds, toast } from '../state';
-import { HELP_TOPICS } from '../data/help';
+import { act, useApp, openPage, refunds, toast, helpTopics, feature } from '../state';
+import { Buttons } from '../screens/Home';
 import { PageBar } from './Stub';
 import { G, card, PrimaryBtn, Price, inr } from './parts';
 
@@ -45,11 +45,12 @@ export function Accordion({ items }: { items: [string, string][] }) {
 
 export default function Help() {
   useApp();
-  const ins = useInsets(), rf = refunds();
+  const ins = useInsets(), rf = refunds(), topics = helpTopics(), money = feature('wallet');
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <PageBar title="Help & support" />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+        {money ? <>
         <Txt weight={500} size={17}>My refunds</Txt>
         {rf.length ? (
           <Pressable onPress={() => openPage({ k: 'refunds' })} style={({ pressed }) => [card({ marginTop: 12, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pressed ? G.raised : '#fff' })]}>
@@ -58,12 +59,14 @@ export default function Help() {
           </Pressable>
         ) : <Txt size={14} color={G.sub} style={{ marginTop: 6 }}>You don't have any refunds</Txt>}
         {rf.length ? null : <Pressable onPress={() => openPage({ k: 'refunds' })} hitSlop={8} style={{ marginTop: 6 }}><Txt weight={500} size={14} color={C.violet}>View refunds</Txt></Pressable>}
+        </> : null}
+        <Buttons placement="help" side={0} top={money ? 24 : 0} />
 
-        <Txt weight={500} size={17} style={{ marginTop: 32, marginBottom: 12 }}>Browse all help topics</Txt>
+        {topics.length ? <Txt weight={500} size={17} style={{ marginTop: 32, marginBottom: 12 }}>Browse all help topics</Txt> : null}
         <View style={{ gap: 8 }}>
-          {HELP_TOPICS.map(t => (
+          {topics.map(t => (
             <Pressable key={t.id} onPress={() => openPage({ k: 'helpTopic', id: t.id })} style={({ pressed }) => [card({ borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pressed ? G.raised : '#fff', transform: [{ scale: pressed ? 0.99 : 1 }] })]}>
-              <View style={{ flex: 1 }}><Txt weight={500} size={15}>{t.title}</Txt><Txt size={13} color={G.mute} style={{ marginTop: 2 }}>{t.sub}</Txt></View>
+              <View style={{ flex: 1 }}><Txt weight={500} size={15}>{t.title}</Txt>{t.sub ? <Txt size={13} color={G.mute} style={{ marginTop: 2 }}>{t.sub}</Txt> : null}</View>
               <Chev size={18} color={G.mute} strokeWidth={1.5} />
             </Pressable>
           ))}

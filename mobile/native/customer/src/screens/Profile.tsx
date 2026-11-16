@@ -5,7 +5,8 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Back, Chev, Plan, Wallet, Help, Gift, Pin, Info, Shield, Logout, Car, Cart } from '../ui/icons';
-import { useApp, profile, fmtPhone, openPage, closePage, go, wallet, passView } from '../state';
+import { useApp, profile, fmtPhone, openPage, closePage, go, wallet, passView, feature } from '../state';
+import { Buttons } from './Home';
 import { REFERRAL } from '../data/reference';
 import { sheets } from '../sheets';
 import { G, card, Tap, inr, TNUM, PAGE_BG } from '../pages/parts';
@@ -16,7 +17,7 @@ const PassArt = artFor('pass');
 import { ListRow } from '../pages/Help';
 
 export default function Profile() {
-  const ui = useApp(), ins = useInsets(), p = profile(), pushed = ui.pages.length > 0, pv = passView(), plan = pv.plans[0], bal = wallet().balance;
+  const ui = useApp(), ins = useInsets(), p = profile(), pushed = ui.pages.length > 0, pv = passView(), plan = pv.plans[0], bal = wallet().balance, showPass = feature('pass') && (!!pv.active || !!plan);
   const ic = (X: any) => <X size={18} color={G.mute} strokeWidth={1.5} />;
   const tic = (X: any) => <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}><X size={19} color={C.violet} strokeWidth={1.7} /></View>;
   const name = (p.first + ' ' + p.last).trim() || 'Your profile';
@@ -54,31 +55,33 @@ export default function Profile() {
         </View>
 
         <View style={{ paddingHorizontal: 16, marginTop: -36 }}>
-          <FadeUp index={1}><Tap label="WD Pass" onPress={() => openPage({ k: 'pass' })} style={{ backgroundColor: '#1C0A47', borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', shadowColor: '#1A1033', shadowOpacity: 0.25, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 }}>
+          {showPass ? <FadeUp index={1}><Tap label="WD Pass" onPress={() => openPage({ k: 'pass' })} style={{ backgroundColor: '#1C0A47', borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', shadowColor: '#1A1033', shadowOpacity: 0.25, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 }}>
             <View style={{ flex: 1 }}>
               <Txt weight={600} size={11} color="#FFD166" style={{ letterSpacing: 1.2 }}>WD PASS</Txt>
-              <Txt weight={700} size={17} color="#fff" style={{ marginTop: 4, lineHeight: 24 }}>{pv.active ? `${pv.active.visitsLeft} ${pv.active.visitsLeft === 1 ? 'visit' : 'visits'} left` : `Get ${plan.visits} visits for ${inr(plan.price)} only`}</Txt>
-              <Txt size={12} color="rgba(255,255,255,0.8)" style={{ marginTop: 2 }}>{pv.active ? 'Tap to see your pass' : `Valid ${plan.days} days · save on every wash`}</Txt>
+              <Txt weight={700} size={17} color="#fff" style={{ marginTop: 4, lineHeight: 24 }}>{pv.active ? `${pv.active.visitsLeft} ${pv.active.visitsLeft === 1 ? 'visit' : 'visits'} left` : `Get ${plan!.visits} visits for ${inr(plan!.price)} only`}</Txt>
+              <Txt size={12} color="rgba(255,255,255,0.8)" style={{ marginTop: 2 }}>{pv.active ? 'Tap to see your pass' : `Valid ${plan!.days} days · save on every wash`}</Txt>
             </View>
             {PassArt ? <View style={{ width: 84, height: 64, alignItems: 'center', justifyContent: 'center' }}><ArtBoundary fallback={null}><PassArt size={84} /></ArtBoundary></View> : <View style={{ width: 76, height: 56, borderRadius: 10, backgroundColor: '#FFD166', alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-8deg' }], shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }}>
               <Txt weight={800} size={13} color="#1C0A47">WD PASS</Txt>
             </View>}
-          </Tap></FadeUp>
+          </Tap></FadeUp> : null}
 
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
             {tile('My Bookings', tic(Plan), () => openPage({ k: 'bookings' }))}
-            {tile('Money', tic(Wallet), () => openPage({ k: 'money' }), inr(Math.floor(bal)))}
+            {feature('wallet') ? tile('Money', tic(Wallet), () => openPage({ k: 'money' }), inr(Math.floor(bal))) : null}
             {tile('Help & Support', tic(Help), () => openPage({ k: 'help' }))}
           </View>
 
-          <View style={[card({ marginTop: 12, overflow: 'hidden' })]}>
+          <Buttons placement="profile" side={0} top={12} />
+
+          {feature('refer') ? <View style={[card({ marginTop: 12, overflow: 'hidden' })]}>
             <ListRow icon={ic(Gift)} title="Refer & earn" onPress={() => openPage({ k: 'refer' })} last right={<View style={{ backgroundColor: 'rgba(84,9,218,0.08)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}><Txt weight={500} size={12} color={C.violet} style={TNUM}>{inr(REFERRAL.bannerAmt)}</Txt></View>} />
-          </View>
+          </View> : null}
 
           <View style={[card({ marginTop: 12, overflow: 'hidden' })]}>
             <ListRow icon={ic(Pin)} title="Saved addresses" onPress={() => openPage({ k: 'addresses' })} />
-            <ListRow icon={ic(Car)} title="Monthly plan" onPress={() => { closePage(); go('plan') }} />
-            <ListRow icon={ic(Cart)} title="Store" onPress={() => { closePage(); go('store') }} />
+            {feature('plans') ? <ListRow icon={ic(Car)} title="Monthly plan" onPress={() => { closePage(); go('plan') }} /> : null}
+            {feature('store') ? <ListRow icon={ic(Cart)} title="Store" onPress={() => { closePage(); go('store') }} /> : null}
             <ListRow icon={ic(Info)} title="About us" onPress={() => openPage({ k: 'about' })} />
             <ListRow icon={ic(Shield)} title="Legal & Privacy" onPress={() => openPage({ k: 'legal' })} />
             <ListRow icon={ic(Logout)} title="Log out" onPress={() => sheets.logout()} last />

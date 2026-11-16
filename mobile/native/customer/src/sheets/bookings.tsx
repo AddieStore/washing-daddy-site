@@ -9,8 +9,8 @@ import { Chev, Phone, Clock, Close, WhatsApp, Help as HelpIc, Check } from '../u
 import { SheetTitle, SheetSub } from '../ui/hosts';
 import { IMG } from '../img';
 import { inr, fmt, iso, TODAY } from '../data/dates';
-import { SHOW_RATINGS } from '../data/reference';
-import { act, jobOf, jobTitle, jobWhen, canRate, UPCOMING, slotDays, slotsFor, openSheet, closeSheet, openPage, toast, Job } from '../state';
+import { SHOW_RATINGS, SUPPORT, showPhone } from '../data/reference';
+import { feature, act, jobOf, jobTitle, jobWhen, canRate, UPCOMING, slotDays, slotsFor, openSheet, closeSheet, openPage, toast, Job } from '../state';
 import { G, Tap, PrimaryBtn, TNUM } from '../pages/parts';
 
 /* ---------- shared bits ---------- */
@@ -172,9 +172,9 @@ function HelpBody({ id }: { id: string }) {
       <View style={{ borderWidth: 1, borderColor: G.line, borderRadius: 14, overflow: 'hidden' }}>
         {row(<WhatsApp size={18} color={G.mute} strokeWidth={1.5} />, 'Chat with us', 'WhatsApp, 7 AM to 9 PM', () => { closeSheet(); act.whatsapp(j ? `Hi, I need help with my Washing Daddy booking ${id} (${jobTitle(j)}, ${jobWhen(j)}).` : ''); })}
         {sep}
-        {row(<Phone size={18} color={G.mute} strokeWidth={1.5} />, 'Call us', '77018 08924', () => { closeSheet(); act.call(); })}
-        {up ? <>{sep}{row(<Clock size={18} color={G.mute} strokeWidth={1.5} />, 'Reschedule', 'Move to another day or time', () => { closeSheet(); setTimeout(() => openRescheduleSheet(id), 280); })}
-          {sep}{row(<Close size={18} color={G.mute} strokeWidth={1.5} />, 'Cancel booking', refundNote(j!), () => { closeSheet(); setTimeout(() => openCancelSheet(id), 280); })}</> : null}
+        {row(<Phone size={18} color={G.mute} strokeWidth={1.5} />, 'Call us', showPhone(SUPPORT.phone), () => { closeSheet(); act.call(); })}
+        {up && feature('reschedule') ? <>{sep}{row(<Clock size={18} color={G.mute} strokeWidth={1.5} />, 'Reschedule', 'Move to another day or time', () => { closeSheet(); setTimeout(() => openRescheduleSheet(id), 280); })}</> : null}
+        {up && feature('cancel') ? <>{sep}{row(<Close size={18} color={G.mute} strokeWidth={1.5} />, 'Cancel booking', refundNote(j!), () => { closeSheet(); setTimeout(() => openCancelSheet(id), 280); })}</> : null}
         {sep}
         {row(<HelpIc size={18} color={G.mute} strokeWidth={1.5} />, 'Help topics', 'Booking, payments, service quality', () => { closeSheet(); openPage({ k: 'help' }); })}
       </View>

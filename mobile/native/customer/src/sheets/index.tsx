@@ -8,7 +8,7 @@ import { P, NUM, Tap, PCard, PBtn, POutline, PChips, PSeg, PStepper, PRows, PRow
 import { Art } from '../ui/art';
 import { Plate } from '../ui/Plate';
 import { Check, Arrow, Pin, Clock, Bell, Cart as CartIcon, Wallet } from '../ui/icons';
-import { sellablePlans, DEFAULT_PLAN, AREAS, SERVICES, PRODUCTS, SUPPORT_PHONE_SHOW } from '../data/reference';
+import { sellablePlans, DEFAULT_PLAN, AREAS, SERVICES, PRODUCTS, SUPPORT, showPhone } from '../data/reference';
 import { PAUSE_MAX, canPause, pauseFits, pauseLeft } from '../data/model';
 import { TODAY, addDays, fmt, iso, inr, ampm, parse } from '../data/dates';
 import { IMG, RATIO, src, ImgKey } from '../img';
@@ -434,7 +434,8 @@ function Cart() {
   );
 }
 function Product({ id }: { id: string }) {
-  const p = PRODUCTS.find(x => x.id === id)!, c = car(), [q, setQ] = useState(1), ink = useInk();
+  const p = PRODUCTS.find(x => x.id === id), c = car(), [q, setQ] = useState(1), ink = useInk();
+  if (!p) return <Txt size={14}>This item is not available right now.</Txt>;
   return (
     <View>
       <View style={{ height: 200, borderRadius: 14, backgroundColor: P.raised, alignItems: 'center', justifyContent: 'center' }}><Art kind={p.art} c={p.c} size={160} /></View>
@@ -543,8 +544,8 @@ function HelpSheet() {
       <SheetTitle>Talk to Washing Daddy</SheetTitle>
       <SheetSub>WhatsApp or call, 7 AM to 9 PM.</SheetSub>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SP.l, borderRadius: 14, backgroundColor: P.raised, marginBottom: SP.m }}>
-        <Txt weight={500} size={20} style={NUM}>{SUPPORT_PHONE_SHOW}</Txt>
-        <Pressable onPress={() => act.copy('7701808924', 'Number copied')} hitSlop={8} style={{ backgroundColor: P.violet, borderRadius: 10, paddingHorizontal: 16, height: 40, justifyContent: 'center' }}><Txt weight={500} size={14} color="#FFFFFF">Copy</Txt></Pressable>
+        <Txt weight={500} size={20} style={NUM}>{showPhone(SUPPORT.phone)}</Txt>
+        <Pressable onPress={() => act.copy(SUPPORT.phone, 'Number copied')} hitSlop={8} style={{ backgroundColor: P.violet, borderRadius: 10, paddingHorizontal: 16, height: 40, justifyContent: 'center' }}><Txt weight={500} size={14} color="#FFFFFF">Copy</Txt></Pressable>
       </View>
       <View style={{ flexDirection: 'row', gap: SP.l, marginBottom: SP.xl }}>
         <Btn variant="violet" label="Call" onPress={act.call} style={{ flex: 1 }} />

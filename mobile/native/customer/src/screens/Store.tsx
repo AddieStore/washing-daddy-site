@@ -9,7 +9,8 @@ import { P, Light, PCard, PChips, PTop, PIconBtn } from '../ui/pr';
 import { PRODUCTS, CATS, Product } from '../data/reference';
 import { inr } from '../data/dates';
 import { src } from '../img';
-import { car, cartCount, pName, act, useApp } from '../state';
+import { car, cartCount, pName, act, useApp, unavailable } from '../state';
+import { PausedVeil } from '../pages/parts';
 import { sheets } from '../sheets';
 
 const NUM = { fontVariant: ['tabular-nums'] } as const;
@@ -31,14 +32,15 @@ function Banner() {
 }
 
 function Prod({ p, wide, cw }: { p: Product; wide: boolean; cw: number }) {
-  const cc = car(), w = wide ? Math.min(144, cw * 0.4) : (cw - 12) / 2 - 16;
+  const cc = car(), paused = unavailable(p.id), w = wide ? Math.min(144, cw * 0.4) : (cw - 12) / 2 - 16;
   const art = (
     <View style={{ width: wide ? w : undefined, aspectRatio: 1, borderRadius: 6, backgroundColor: P.raised, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       {w > 0 ? <Art kind={p.art} c={p.c} size={Math.max(60, w) * 0.78} /> : null}
-      <Pressable accessibilityLabel={`Add ${p.name} to cart`} onPress={() => act.addToCart(p.id)} hitSlop={6}
+      {paused ? <PausedVeil note={paused} /> : null}
+      {paused ? null : <Pressable accessibilityLabel={`Add ${p.name} to cart`} onPress={() => act.addToCart(p.id)} hitSlop={6}
         style={{ position: 'absolute', right: 8, bottom: 8, width: 40, height: 40, borderRadius: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: P.line, alignItems: 'center', justifyContent: 'center' }}>
         <Plus size={18} color={C.violet} strokeWidth={1.5} />
-      </Pressable>
+      </Pressable>}
     </View>
   );
   const info = (
@@ -63,7 +65,7 @@ export default function Store() {
   const { tabNonce } = useApp(), [cat, setCat] = useState('All'), [cw, setCw] = useState(0);
   const sc = useRef<any>(null), first = useRef(true), n = cartCount();
   useEffect(() => { if (first.current) { first.current = false; return } sc.current?.scrollTo({ y: 0, animated: true }); }, [tabNonce]);
-  const list = PRODUCTS.filter(p => cat === 'All' || p.cat === cat), rows: Product[][] = [];
+  const pick = CATS.includes(cat) ? cat : 'All', list = PRODUCTS.filter(p => pick === 'All' || p.cat === pick), rows: Product[][] = [];
   list.forEach(p => { const last = rows[rows.length - 1]; if (p.wide && cat === 'All') rows.push([p]); else if (last && last.length === 1 && !(last[0].wide && cat === 'All')) last.push(p); else rows.push([p]); });
   return (
     <Light>
@@ -79,7 +81,8 @@ export default function Store() {
             </View>
           </View>
         </PCard>
-        <View style={{ marginTop: 32 }}><PChips scroll items={CATS} value={cat} onChange={setCat} /></View>
+        {PRODUCTS.length ? <View style={{ marginTop: 32 }}><PChips scroll items={CATS} value={pick} onChange={setCat} /></View>
+          : <Txt size={14} color={P.muted} style={{ marginTop: 32, textAlign: 'center' }}>The store is being stocked. Check back soon.</Txt>}
         <View onLayout={e => setCw(e.nativeEvent.layout.width)}>
           {cw > 0 && rows.map(r => (
             <View key={r.map(p => p.id).join()} style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>

@@ -118,7 +118,7 @@ export function openPassPromo() { openSheet(<PromoBody />) }
 
 /** 'Total amount' dropdown on the Pass checkout bar: passQuote(id) price + GST = total. */
 function BreakupBody({ id }: { id?: string }) {
-  const q = passQuote(id), p = passPlan(id);
+  const q = passQuote(id), p = passPlan(id) || q.plan;
   const R = ({ a, b, bold, strike, pos }: { a: string; b: string; bold?: boolean; strike?: boolean; pos?: boolean }) => (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }}>
       <Txt weight={bold ? 500 : 400} size={bold ? 16 : 14} color={bold ? G.ink : G.sub}>{a}</Txt>

@@ -7,7 +7,7 @@ import { Txt, Toggle, useInsets } from '../ui/kit';
 import { Chev, Info, Pin, Phone, Gift, Clock, Calendar, Plus } from '../ui/icons';
 import {
   useApp, S, act, svcLines, svcQty, openPage, closePage, go, toast, cartMode, when, recur, bill, whenText, instantStatus,
-  selectedAddress, addrName, addrLine, receiverText, profile, fmtPhone, wallet, activePass,
+  selectedAddress, addrName, addrLine, receiverText, profile, fmtPhone, wallet, activePass, modeOn, feature, unavailable,
 } from '../state';
 import { CAR_SERVICES, CART_MODES, RECURRING, WALLET, type CartMode } from '../data/reference';
 import { openAddressPicker } from '../sheets/address';
@@ -20,12 +20,13 @@ const ND = Platform.OS !== 'web';
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function Modes({ mode }: { mode: CartMode }) {
-  const [w, setW] = useState(0), i = CART_MODES.findIndex(m => m.id === mode), x = useRef(new Animated.Value(i)).current, seg = w ? (w - 8) / 3 : 0;
+  const MODES = CART_MODES.filter(m => modeOn(m.id)), n = Math.max(1, MODES.length);
+  const [w, setW] = useState(0), i = Math.max(0, MODES.findIndex(m => m.id === mode)), x = useRef(new Animated.Value(i)).current, seg = w ? (w - 8) / n : 0;
   useEffect(() => { Animated.spring(x, { toValue: i, speed: 16, bounciness: 7, useNativeDriver: ND }).start() }, [i]);
   return (
     <View onLayout={e => setW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', backgroundColor: '#fff', borderRadius: 26, padding: 4, shadowColor: '#1A1033', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}>
       {seg ? <Animated.View style={{ position: 'absolute', left: 4, top: 4, bottom: 4, width: seg, borderRadius: 22, backgroundColor: G.violet, transform: [{ translateX: x.interpolate({ inputRange: [0, 1, 2], outputRange: [0, seg, seg * 2] }) }] }} /> : null}
-      {CART_MODES.map(m => { const on = m.id === mode; return (
+      {MODES.map(m => { const on = m.id === mode; return (
         <Pressable key={m.id} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => { try { act.setCartMode(m.id) } catch (e: any) { toast(e?.message || 'Could not switch') } }} style={{ flex: 1, height: 44, alignItems: 'center', justifyContent: 'center' }}>
           <Txt weight={on ? 600 : 500} size={14} color={on ? '#fff' : G.sub}>{m.label}</Txt>
         </Pressable>) })}
@@ -46,7 +47,7 @@ export default function Cart() {
   const ins = useInsets(), { lines, sub, count, mins } = svcLines(), mode = cartMode(), w = when(), rc = recur(), b = bill(), st = instantStatus();
   const [busy, setBusy] = useState(false), [ok, setOk] = useState<null | { paid: boolean; pending: boolean }>(null), [open, setOpen] = useState(false);
   const addr = selectedAddress(), pr = profile(), pass = activePass(), wal = wallet();
-  const together = CAR_SERVICES.filter(s => !svcQty(s.id) && !lines.some(l => l.id === s.id)).slice(0, 6);
+  const together = CAR_SERVICES.filter(s => !svcQty(s.id) && !lines.some(l => l.id === s.id) && !unavailable(s.id)).slice(0, 6);
   const needSlot = mode === 'scheduled' && !w, needRecur = mode === 'recurring' && !rc, instantShut = mode === 'instant' && !st.open;
   const contact = addr ? (addr.receiver.self ? `${pr.first || 'You'}${pr.last ? ' ' + pr.last : ''}, ${fmtPhone(pr.phone || '')}` : receiverText(addr.receiver)) : '';
   const cta = needSlot ? 'Select time slot' : needRecur ? 'Set repeat plan' : instantShut ? 'Instant is closed' : 'Pay ' + inr(b.toPay);
@@ -72,7 +73,7 @@ export default function Cart() {
       ) : (
         <>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 148 }}>
-            <Modes mode={mode} />
+            {CART_MODES.filter(m => modeOn(m.id)).length > 1 ? <Modes mode={mode} /> : null}
             <Txt size={12} color={G.mute} style={{ marginTop: 8, textAlign: 'center' }}>{CART_MODES.find(m => m.id === mode)?.sub}</Txt>
 
             {instantShut ? (
@@ -117,13 +118,13 @@ export default function Cart() {
               </View>
             ) : null}
 
-            <Pressable accessibilityRole="button" onPress={() => openPage({ k: 'coupons' })} style={card({ marginTop: 12, minHeight: 56, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
+            {feature('coupons') ? <Pressable accessibilityRole="button" onPress={() => openPage({ k: 'coupons' })} style={card({ marginTop: 12, minHeight: 56, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
               <Gift size={20} color={b.coupon ? G.violet : G.mute} strokeWidth={1.5} />
               <View style={{ flex: 1 }}>
                 {b.coupon ? <><Txt weight={500} size={14} color={G.violet}>{b.coupon.code} applied</Txt><Txt size={12} color={G.pos}>You save {inr(b.coupon.off)}</Txt></> : <Txt size={14} color={G.ink}>View all coupons</Txt>}
               </View>
               {b.coupon ? <Pressable hitSlop={10} onPress={() => act.removeCoupon()} accessibilityLabel="Remove coupon"><Txt weight={500} size={13} color={G.neg}>Remove</Txt></Pressable> : <Chev size={16} color={G.mute} strokeWidth={1.5} />}
-            </Pressable>
+            </Pressable> : null}
             {!b.coupon && S.coupon && b.couponError ? <Txt size={12} color={G.neg} style={{ marginTop: 6, marginLeft: 4 }}>{b.couponError}</Txt> : null}
 
             <Txt weight={500} size={17} style={{ marginTop: 24, marginBottom: 8 }}>Booking details</Txt>
@@ -133,15 +134,15 @@ export default function Cart() {
                 onPress={() => (addr ? openPage({ k: 'addressForm', id: addr.id }) : openAddressPicker())} />
             </View>
 
-            {(wal.balance > 0 || pass) ? (
+            {((wal.balance > 0 && feature('wallet')) || (pass && feature('pass'))) ? (
               <View style={card({ marginTop: 12, paddingHorizontal: 16 })}>
-                {pass && mode !== 'recurring' ? (
+                {pass && feature('pass') && mode !== 'recurring' ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, borderBottomWidth: wal.balance > 0 ? 1 : 0, borderBottomColor: G.line }}>
                     <View style={{ flex: 1 }}><Txt weight={500} size={14}>Use a WD Pass visit</Txt><Txt size={12} color={G.mute}>{pass.visitsLeft} left</Txt></View>
                     <Toggle on={S.usePass} onChange={v => act.setUsePass(v)} />
                   </View>
                 ) : null}
-                {wal.balance > 0 ? (
+                {wal.balance > 0 && feature('wallet') ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56 }}>
                     <View style={{ flex: 1 }}><Txt weight={500} size={14}>Pay with {WALLET.name}</Txt><Txt size={12} color={G.mute}>Balance {Number.isInteger(wal.balance) ? inr(wal.balance) : '₹' + wal.balance.toFixed(2)}</Txt></View>
                     <Toggle on={S.useWallet} onChange={v => act.setUseWallet(v)} />

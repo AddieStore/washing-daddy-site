@@ -6,8 +6,9 @@ import { View, Animated, Pressable, Share, Image, Platform, useWindowDimensions 
 import { Txt, useInsets } from '../ui/kit';
 import { Check, Close, Chev, Clock, Shield } from '../ui/icons';
 import { IMG, RATIO } from '../img';
-import { useApp, act, svcQty, svcOf, lineKey, closePage, openPage } from '../state';
-import { CAR_SERVICES, PACKS, SHOW_RATINGS, TRUST, VARIANTS, variantPrice, packInfo, type VariantId } from '../data/reference';
+import { useApp, act, svcQty, svcOf, lineKey, closePage, openPage, unavailable } from '../state';
+import { CAR_SERVICES, PACKS, SHOW_RATINGS, TRUST, VARIANTS, variantPrice, variantsFor, packInfo, type VariantId } from '../data/reference';
+import { PageBar } from './Stub';
 import { Laurel } from '../ui/art2';
 import { CartBar, Shimmer, useSkeleton, FadeUp, takeOrigin, flyFrom, AddButton } from '../ui/motion';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming, useReducedMotion } from 'react-native-reanimated';
@@ -106,16 +107,17 @@ export default function Service({ id }: { id?: string }) {
   const ins = useInsets(), { width } = useWindowDimensions(), W = Math.min(width, 520);
   const [org] = useState(() => takeOrigin(id || 'ext')), skel = useSkeleton(org ? 0 : 380), rm = useReducedMotion();
   const y = useRef(new Animated.Value(0)).current;
-  const sid = id || 'ext', svc = svcOf(sid), pack = packInfo(sid);
+  const sid = id || 'ext', svc = svcOf(sid), pack = packInfo(sid), paused = unavailable(sid), def = pack ? pack.def : null;
   const name = svc ? svc.name : pack ? pack.name : 'Wash';
   const rating = svc ? svc.rating : 4.9, count = svc ? svc.count : '24k';
   const blurb = svc ? svc.blurb : pack?.sub || '';
   const packDesc = (pack?.sub || '').split(/ \+ |, | and /).map(x => x.trim()).filter(Boolean);
-  const steps: [string, string][] = svc ? svc.steps : packDesc.map(x => [x.charAt(0).toUpperCase() + x.slice(1), 'Done by your washer at your parking spot']);
-  const included = svc ? svc.included : packDesc.map(x => x.charAt(0).toUpperCase() + x.slice(1));
-  const excluded = svc ? svc.excluded : sid === 'exclusive' ? ['Paint correction'] : ['Engine bay', 'Ceramic coating'];
+  const steps: [string, string][] = svc ? svc.steps : def && def.steps && def.steps.length ? def.steps : packDesc.map(x => [x.charAt(0).toUpperCase() + x.slice(1), 'Done by your washer at your parking spot']);
+  const included = svc ? svc.included : def && def.included && def.included.length ? def.included : packDesc.map(x => x.charAt(0).toUpperCase() + x.slice(1));
+  const excluded = svc ? svc.excluded : def && def.excluded && def.excluded.length ? def.excluded : sid === 'exclusive' ? ['Paint correction'] : ['Engine bay', 'Ceramic coating'];
   const share = () => { Share.share({ message: `${name} at your car park from Washing Daddy. https://washingdaddy.com/` }).catch(() => {}) };
-  const together = CAR_SERVICES.filter(s => s.id !== sid && (!svc || s.cat !== svc.cat || true)).slice(0, 6);
+  const together = CAR_SERVICES.filter(s => s.id !== sid && !unavailable(s.id)).slice(0, 6);
+  const faqs: [string, string][] = svc && svc.faqs && svc.faqs.length ? svc.faqs : def && def.faqs && def.faqs.length ? def.faqs : FAQ_FOR(name, !svc);
   const gallery = GALLERY.includes(sid);
   const vw = Math.floor((W - 32 - 16) / 3), ART_S = Math.min(Math.round(W * 0.5), 210);
   const gw = Math.floor((W - 32 - 12) / 2 * 0.62);   // small: about 60% of half the page width
@@ -127,6 +129,13 @@ export default function Service({ id }: { id?: string }) {
   const tint = svc?.tint || '#F3EEFD';
   const onScroll = Animated.event([{ nativeEvent: { contentOffset: { y } } }], { useNativeDriver: ND });
   const im = String(imgOf(sid)), r3d = im.startsWith('r3d');
+  // removed or hidden from the dashboard while the page was open (or an old link)
+  if (!svc && !pack) return (
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <PageBar title="Service" />
+      <Txt size={15} color={G.sub} style={{ padding: 16, lineHeight: 22 }}>This service is not available right now.</Txt>
+    </View>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -144,7 +153,7 @@ export default function Service({ id }: { id?: string }) {
             </View>
             <FadeUp delay={org ? 200 : 60} style={{ marginTop: -24, backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 20, paddingHorizontal: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                {svc ? <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}><Price v={svc.price} size={20} weight={600} />{svc.mrp > svc.price ? <Price v={svc.mrp} size={13} weight={400} strike /> : null}<View style={{ backgroundColor: 'rgba(22,163,74,0.12)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}><Txt weight={600} size={11} color={G.pos}>{Math.round((1 - svc.price / svc.mrp) * 100)}% off</Txt></View></View> : null}
+                {svc ? <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}><Price v={svc.price} size={20} weight={600} />{svc.mrp > svc.price ? <Price v={svc.mrp} size={13} weight={400} strike /> : null}{svc.mrp > svc.price ? <View style={{ backgroundColor: 'rgba(22,163,74,0.12)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}><Txt weight={600} size={11} color={G.pos}>{Math.round((1 - svc.price / svc.mrp) * 100)}% off</Txt></View> : null}</View> : null}
                 {SHOW_RATINGS ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Txt weight={500} size={13} style={TNUM}>{'★ ' + rating.toFixed(1)}</Txt><Txt size={13} color={G.mute}>({count} ratings)</Txt></View> : null}
               </View>
               <Txt size={14} color={G.sub} style={{ marginTop: 10, lineHeight: 20 }}>{blurb}</Txt>
@@ -162,14 +171,19 @@ export default function Service({ id }: { id?: string }) {
                 </View>
               ) : null}
 
-              <Txt weight={600} size={16} style={{ marginTop: 28 }}>{pack ? 'Choose your pack' : 'Select your car size'}</Txt>
-              {svc ? (
+              {paused ? (
+                <View style={card({ marginTop: 24, padding: 16, backgroundColor: G.raised, shadowOpacity: 0, elevation: 0 })}>
+                  <Txt weight={600} size={15}>Not available right now</Txt>
+                  {paused !== 'Not available right now' ? <Txt size={13} color={G.sub} style={{ marginTop: 4, lineHeight: 18 }}>{paused}</Txt> : null}
+                </View>
+              ) : <Txt weight={600} size={16} style={{ marginTop: 28 }}>{pack ? 'Choose your pack' : 'Select your car size'}</Txt>}
+              {paused ? null : svc ? (
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                  {VARIANTS.map(v => <Variant key={v.id} id={sid} v={v} base={svc} w={vw} />)}
+                  {variantsFor(svc).map(v => <Variant key={v.id} id={sid} v={v} base={svc} w={vw} />)}
                 </View>
               ) : (
                 <View style={{ gap: 12, marginTop: 12 }}>
-                  {PACKS.map(pk => {
+                  {PACKS.filter(pk => !unavailable(pk.id)).map(pk => {
                     const p = packInfo(pk.id)!, q = svcQty(pk.id), on = q > 0;
                     return (
                       <View key={pk.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, borderWidth: on ? 1.5 : 1, borderColor: on ? G.violet : G.line, padding: 12 }}>
@@ -222,7 +236,7 @@ export default function Service({ id }: { id?: string }) {
               </View>
 
               <Txt weight={500} size={18} style={{ marginTop: 32, marginBottom: 12 }}>Frequently asked questions</Txt>
-              {FAQ_FOR(name, !svc).map(([q, a]) => <Faq key={q} q={q} a={a} />)}
+              {faqs.map(([q, a]) => <Faq key={q} q={q} a={a} />)}
 
               <View style={{ marginTop: 32, alignItems: 'center' }}>
                 <Txt weight={500} size={18} style={{ textAlign: 'center', lineHeight: 26 }}>Relax, your car is in professional hands</Txt>

@@ -3,12 +3,13 @@ import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { View, Pressable, Image, Animated, Easing, Platform, Share, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, useReducedMotion } from 'react-native-reanimated';
 import { artFor, ArtBoundary } from '../art';
+import { GenericArt } from '../art/generic';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Back, Check, Plus, Share as ShareIc } from '../ui/icons';
 import { src } from '../img';
 import { svcOf, haptic } from '../state';
-import { PACKS } from '../data/reference';
+import { PACKS, type ArtSpec } from '../data/reference';
 
 const ND = Platform.OS !== 'web';
 export const EASE = Easing.bezier(0.22, 1, 0.36, 1);
@@ -51,20 +52,45 @@ export function imgOf(id: string): string {
   const p = PACKS.find(x => x.id === id); return p ? p.img : 'foam';
 }
 
-/** Service art at a fixed size: the src/art illustration when one exists for the id, else the 3D render / photo. */
+/** the live art spec of a service or pack (catalog art + photo), null for ids the catalogue does not know */
+function specOf(id: string): { art?: ArtSpec; photo?: string } | null {
+  const s = svcOf(id); if (s) return { art: s.art, photo: s.photo };
+  const p = PACKS.find(x => x.id === id); return p ? { art: p.art } : null;
+}
+/** Service art at a fixed size. Live catalogue: art.key = a built-in drawing; no key -> photo if given, else the generic
+ *  drawing (art/generic.tsx) from art.icon + art.accent in the same style, so dashboard-added services look like the rest.
+ *  Ids without a spec: the drawing for the id, else the 3D render / photo. */
 export function SvcArt({ id, size, cover }: { id: string; size: number; cover?: boolean }) {
+  const spec = specOf(id);
+  if (spec && spec.art && size > 0) {
+    const Key = spec.art.key ? artFor(spec.art.key) : null;
+    if (!Key && spec.photo) return <Image source={{ uri: spec.photo }} resizeMode="cover" style={{ width: size, height: size, borderRadius: 12 }} />;
+    if (!Key) return <GenericArt size={size} icon={spec.art.icon} accent={spec.art.accent} />;
+    if (Key !== artFor(id)) return <ArtBoundary fallback={<GenericArt size={size} icon={spec.art.icon} accent={spec.art.accent} />}><View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}><Key size={size} /></View></ArtBoundary>;
+  }
   const im = String(imgOf(id)), r3d = im.startsWith('r3d'), Art = artFor(id);
   const fallback = <Image source={src(im) as any} resizeMode={r3d && !cover ? 'contain' : 'cover'} style={{ width: size, height: size }} />;
   if (!Art || size <= 0) return fallback;
   return <ArtBoundary fallback={fallback}><View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}><Art size={size} /></View></ArtBoundary>;
 }
-/** true when the id has a drawn illustration */
-export const hasArt = (id: string) => !!artFor(id);
+/** true when the id has a drawn illustration (built-in or generic) */
+export const hasArt = (id: string) => !!artFor(id) || !!(specOf(id) && specOf(id)!.art);
+
+/** paused service / pack / product: a white veil over the card art and a "not available" chip with the admin's note */
+export function PausedVeil({ note, compact }: { note: string; compact?: boolean }) {
+  return (
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.55)', alignItems: 'center', justifyContent: 'flex-end', padding: compact ? 4 : 8 }]}>
+      <View style={{ backgroundColor: 'rgba(23,23,23,0.78)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, maxWidth: '100%' }}>
+        <Txt weight={600} size={compact ? 9 : 11} color="#fff" numberOfLines={2} style={{ lineHeight: compact ? 12 : 14, textAlign: 'center' }}>{note}</Txt>
+      </View>
+    </View>
+  );
+}
 
 export function Photo({ id, style, radius = 8, pad = 0 }: { id: string; style?: StyleProp<ViewStyle>; radius?: number; pad?: number }) {
   const f = StyleSheet.flatten(style) || {}, fixed = typeof f.width === 'number' && typeof f.height === 'number' ? Math.min(f.width as number, f.height as number) : 0;
   const [size, setSize] = useState(fixed);
-  const Art = artFor(id);
+  const Art = hasArt(id);
   if (!Art) {
     const im = String(imgOf(id)), r3d = im.startsWith('r3d');
     return <View pointerEvents="none" style={[{ backgroundColor: G.raised, borderRadius: radius, overflow: 'hidden', padding: pad }, style]}><Image source={src(im) as any} resizeMode={r3d ? 'contain' : 'cover'} style={{ width: '100%', height: '100%' }} /></View>;

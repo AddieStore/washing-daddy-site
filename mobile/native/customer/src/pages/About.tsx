@@ -4,14 +4,15 @@ import { View, ScrollView, Pressable } from 'react-native';
 import { Txt } from '../ui/kit';
 import { Chev } from '../ui/icons';
 import { C } from '../theme';
-import { act, openPage } from '../state';
+import { act, openPage, useApp, legalPages, appCfg } from '../state';
 import { ABOUT } from '../data/help';
-import { LEGAL_DOCS, LEGAL_ORDER } from '../data/legal';
 import { PageBar } from './Stub';
 import { G, card } from './parts';
 import { Accordion, ListRow } from './Help';
 
 export default function About() {
+  useApp();
+  const legal = legalPages('footer');
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <PageBar title="About us" />
@@ -32,12 +33,12 @@ export default function About() {
         <Txt weight={500} size={17} style={{ marginTop: 32, marginBottom: 12 }}>Questions</Txt>
         <Accordion items={ABOUT.faqs} />
 
-        <Txt weight={500} size={17} style={{ marginTop: 32, marginBottom: 12 }}>Legal</Txt>
-        <View style={[card({ overflow: 'hidden' })]}>
-          {LEGAL_ORDER.map((k, i) => <ListRow key={k} title={LEGAL_DOCS[k].title} onPress={() => openPage({ k: 'legalDoc', id: k })} last={i === LEGAL_ORDER.length - 1} />)}
-        </View>
+        {legal.length ? <Txt weight={500} size={17} style={{ marginTop: 32, marginBottom: 12 }}>Legal</Txt> : null}
+        {legal.length ? <View style={[card({ overflow: 'hidden' })]}>
+          {legal.map((d, i) => <ListRow key={d.id} title={d.title} onPress={() => openPage({ k: 'legalDoc', id: d.id })} last={i === legal.length - 1} />)}
+        </View> : null}
         <Pressable onPress={() => act.openUrl('https://washingdaddy.com/')} style={{ marginTop: 24, alignItems: 'center', padding: 8 }}><Txt weight={500} size={14} color={C.violet}>washingdaddy.com</Txt></Pressable>
-        <Txt size={12} color={G.mute} style={{ textAlign: 'center', marginTop: 4 }}>hello@washingdaddy.com</Txt>
+        <Txt size={12} color={G.mute} style={{ textAlign: 'center', marginTop: 4 }}>{appCfg().support.email}</Txt>
       </ScrollView>
     </View>
   );
