@@ -1,8 +1,14 @@
 // Reference data, copied from the web app (customer/index.html). Prices here are only for display:
 // the payment server (n8n workflow 8) prices every order itself.
+// LIVE: the tables below (catalogue, packs, store, plans, pass, coupons, fees, slots, referral amounts) are the BUILT-IN
+// content. data/config.ts replaces their contents in place with the admin dashboard's Firestore docs (appcfg, catalog, ...)
+// as they arrive, so every reader sees the live values; the built-in copy is kept in data/builtin.ts for the offline
+// fallback and the seed script. Treat them as read-only outside config.ts.
+export type LiveStatus = 'live' | 'paused' | 'hidden';
+export type ArtSpec = { key?: string; icon?: string; tint?: string; accent?: string };
 
 export type PlanId = 'legacy' | 'std' | 'pro' | 'exc' | 'res';
-export type Plan = { id: PlanId; name: string; price: number; old?: boolean; f: { int: number; tyre: number; foam: number; det: number }; rows: [string, string][] };
+export type Plan = { id: PlanId; name: string; price: number; old?: boolean; status?: LiveStatus; f: { int: number; tyre: number; foam: number; det: number }; rows: [string, string][] };
 
 export const PLANS: Plan[] = [
   { id: 'legacy', name: 'Legacy', price: 500, old: true, f: { int: 1, tyre: 0, foam: 0, det: 0 }, rows: [['Pressure wash', 'Daily'], ['Interior', '1× / week'], ['Tyre & trim', '—'], ['Foam wash', '—'], ['Detailing', '—']] },
@@ -35,6 +41,7 @@ export type ArtKind = 'perfume' | 'cloth' | 'bottle' | 'spray' | 'mount' | 'infl
 export type Product = {
   id: string; name: string; cat: string; price: number; mrp: number; art: ArtKind; c: [string, string];
   bg: [string, string]; tag?: string; wide?: boolean; fit?: boolean; desc: string; pts: string[];
+  status?: LiveStatus; pausedNote?: string;
 };
 export const PRODUCTS: Product[] = [
   { id: 'perfume', name: "Daddy's Own Car Perfume", cat: 'Fragrance', price: 499, mrp: 699, art: 'perfume', c: ['#FFBA08', '#FF6A1A'], bg: ['#FFD45C', '#FF6A1A'], tag: 'Drop 01', wide: true, desc: 'Oud and vetiver in a vent clip. Lasts about 45 days in Delhi heat.', pts: ['Clips to any AC vent', 'Refill pods ₹199', 'Free on WD Exclusive and Reserve'] },
@@ -48,10 +55,10 @@ export const PRODUCTS: Product[] = [
   { id: 'dashcam', name: '4K Dash Cam', cat: 'Gadgets', price: 5999, mrp: 7499, art: 'cam', c: ['#1A0A33', '#2E8BFF'], bg: ['#a9d0ff', '#2E8BFF'], desc: 'Front 4K with a parking guard that records bumps when parked.', pts: ['Wi-Fi to your phone', '128 GB card included', 'Hidden wiring done free'] },
   { id: 'detail', name: 'Full Detailing Session', cat: 'Services', price: 2100, mrp: 2600, art: 'sparkle', c: ['#FFBA08', '#5409DA'], bg: ['#FFBA08', '#5409DA'], tag: 'Service', desc: 'Two hours at your parking spot. Clay bar, polish, wax and a deep interior.', pts: ['Booked into your morning slot', 'Before and after photos', 'Included monthly on WD Pro'] },
 ];
-export const CATS = ['All', 'Care', 'Fragrance', 'Gadgets', 'Protection', 'Services'];
+export const CATS: string[] = ['All', 'Care', 'Fragrance', 'Gadgets', 'Protection', 'Services'];
 
 // On-demand washes (Book a wash), priced again server-side
-export const SERVICES = [
+export const SERVICES: { id: string; name: string; price: number; d: string }[] = [
   { id: 'wash', name: 'WD Wash', price: 199, d: 'Pressure wash, tyre & trim polish, interior cleaning' },
   { id: 'deep', name: 'WD Deep Cleaning', price: 800, d: 'Pressure wash, interior vacuum, tyre polish, foam, glass and wheels' },
   { id: 'exclusive', name: 'WD Exclusive', price: 2100, d: 'Foam, glass, interior vacuum, fender lining, engine bay, ceramic spray, glass coating' },
@@ -59,6 +66,9 @@ export const SERVICES = [
 
 export const SUPPORT_PHONE = '7701808924';
 export const SUPPORT_PHONE_SHOW = '77018 08924';
+/** live support numbers (appcfg/customer.support), written by config.ts */
+export const SUPPORT = { whatsapp: SUPPORT_PHONE, phone: SUPPORT_PHONE, email: 'hello@washingdaddy.com' };
+export const showPhone = (p: string) => p.replace(/^(\d{5})(\d{5})$/, '$1 $2');
 
 export const SLIDES = [
   { img: 'slide0', t: 'Foam first', s: 'Loosens the dust before anything touches the paint' },
@@ -75,8 +85,10 @@ export const SLIDES = [
 // by n8n, so only those are paid online; these book with pay-on-arrival (see act.bookServices).
 export type CarService = {
   id: string; name: string; short: string; price: number; mrp: number; mins: number; rating: number; count: string;
-  img: string; tint: string; cat: 'Exterior' | 'Interior' | 'Care'; blurb: string;
+  img: string; tint: string; cat: string; blurb: string;
   steps: [string, string][]; included: string[]; excluded: string[];
+  // live-config extras (catalog/{id}); absent on the built-in rows
+  status?: LiveStatus; pausedNote?: string; art?: ArtSpec; photo?: string; variants?: Partial<Record<VariantId, number>>; faqs?: [string, string][]; badge?: string;
 };
 export const CAR_SERVICES: CarService[] = [
   { id: 'ext', name: 'Exterior Pressure Wash', short: 'Exterior Wash', price: 149, mrp: 249, mins: 25, rating: 4.9, count: '12.4k', img: 'r3d-ext', tint: '#EEF0FF', cat: 'Exterior',
@@ -201,11 +213,12 @@ export const CAR_SERVICES: CarService[] = [
     included: ['Full body'], excluded: ['Paint correction'] },
 ];
 // "Wash Packs" carousel: the combos n8n already prices, so these can be paid online.
-export const PACKS = [
+export type PackDef = { id: string; tag: string; img: string; mins: number; sub: string; name?: string; price?: number; mrp?: number; status?: LiveStatus; pausedNote?: string; art?: ArtSpec; blurb?: string; steps?: [string, string][]; included?: string[]; excluded?: string[]; faqs?: [string, string][] };
+export const PACKS: PackDef[] = [
   { id: 'wash', tag: 'POPULAR', img: 'r3d-pack-wash', mins: 30, sub: 'Pressure wash + tyre polish + interior' },
   { id: 'deep', tag: 'NEW', img: 'r3d-pack-deep', mins: 60, sub: 'Foam, vacuum, glass and wheels' },
   { id: 'exclusive', tag: 'BEST', img: 'r3d-pack-exclusive', mins: 120, sub: 'Everything, plus engine bay and ceramic' },
-] as const;
+];
 export const SLOTS = { Morning: ['7:00 am', '8:00 am', '9:00 am', '10:00 am', '11:00 am'], Afternoon: ['12:00 pm', '1:00 pm', '2:00 pm', '3:00 pm', '4:00 pm'], Evening: ['5:00 pm', '6:00 pm', '7:00 pm', '8:00 pm'] } as const;
 // Home trust footer. PLACEHOLDER numbers until Ravi confirms.
 // Empty until Ravi confirms real numbers (unslop: no unverified claims). Screens hide the stats when a value is ''.
@@ -238,16 +251,21 @@ export const VARIANTS: Variant[] = [
 ];
 export const DEFAULT_VARIANT: VariantId = 'hatch';
 const r9 = (n: number) => Math.max(9, Math.round(n / 10) * 10 - 1);   // 149 * 1.2 = 178.8 -> 179
-export function variantPrice(base: { price: number; mrp: number; mins: number }, v: VariantId = DEFAULT_VARIANT) {
-  const x = VARIANTS.find(q => q.id === v) || VARIANTS[0];
+/** car sizes a service is offered in: its own `variants` map (live config) or all three */
+export const variantsFor = (s?: { variants?: Partial<Record<VariantId, number>> } | null): Variant[] =>
+  s && s.variants && Object.keys(s.variants).length ? VARIANTS.filter(v => s.variants![v.id] != null).map(v => ({ ...v, mul: +s.variants![v.id]! || v.mul, minsMul: +s.variants![v.id]! || v.minsMul })) : VARIANTS;
+export function variantPrice(base: { price: number; mrp: number; mins: number; variants?: Partial<Record<VariantId, number>> }, v: VariantId = DEFAULT_VARIANT) {
+  const x = variantsFor(base).find(q => q.id === v) || VARIANTS.find(q => q.id === v) || VARIANTS[0];
   return x.mul === 1 ? { price: base.price, mrp: base.mrp, mins: base.mins } : { price: r9(base.price * x.mul), mrp: r9(base.mrp * x.mul), mins: Math.round(base.mins * x.minsMul / 5) * 5 };
 }
 // The three combos n8n already prices (SERVICES above) as pack cards: NEW tag, price, MRP, minutes.
-export type PackInfo = { id: string; name: string; tag: string; img: string; mins: number; sub: string; price: number; mrp: number; isNew: boolean };
+export type PackInfo = { id: string; name: string; tag: string; img: string; mins: number; sub: string; price: number; mrp: number; isNew: boolean; status: LiveStatus; pausedNote: string; def: PackDef };
 export const PACK_MRP: Record<string, number> = { wash: 349, deep: 1299, exclusive: 3200 };
 export const packInfo = (id: string): PackInfo | null => {
-  const p = PACKS.find(x => x.id === id), s = SERVICES.find(x => x.id === id); if (!p || !s) return null;
-  return { id, name: s.name, tag: p.tag, img: p.img, mins: p.mins, sub: p.sub, price: s.price, mrp: PACK_MRP[id] || s.price, isNew: p.tag === 'NEW' };
+  const p = PACKS.find(x => x.id === id), s = SERVICES.find(x => x.id === id); if (!p || (!s && p.price == null)) return null;
+  const price = p.price ?? s!.price;
+  return { id, name: p.name || (s ? s.name : id), tag: p.tag, img: p.img, mins: p.mins, sub: p.sub, price, mrp: p.mrp ?? PACK_MRP[id] ?? price, isNew: String(p.tag).toUpperCase() === 'NEW',
+    status: p.status || 'live', pausedNote: p.pausedNote || '', def: p };
 };
 
 /* ---- recurring plans (cart mode 'recurring') ---- */
@@ -260,6 +278,8 @@ export const RECURRING: { id: RecurId; label: string; sub: string; perMonth: num
 
 /* ---- fees and tax (display; server prices) ---- */
 export const FEES = { gstPct: 5, visitFee: 0, convenienceFee: 19, convenienceFreeAbove: 299, instantFee: 0 };
+/** flat surcharge per day part (appcfg fees.surcharge), on top of SLOT_SURCHARGE */
+export const PART_SURCHARGE: Record<string, number> = { Morning: 0, Afternoon: 0, Evening: 0 };
 
 /* ---- schedule slots ---- */
 export type DayPart = 'Morning' | 'Afternoon' | 'Evening';
@@ -274,10 +294,13 @@ export const ARRIVAL_WINDOW_MIN = 30;    // "Washers arrive within 30 minutes of
 export const SLOT_SURCHARGE: Record<string, number> = { '08:00': 30, '08:30': 30, '09:00': 30, '09:30': 30, '13:00': 50, '13:30': 50, '17:30': 30, '18:00': 30, '18:30': 30 };
 // Instant service hours (IST). Outside them Home shows "Back at 6AM".
 export const INSTANT_HOURS = { open: '06:00', close: '20:00' };
+/** live slot grid (slots_cfg/default), written by config.ts */
+export const SLOT_CFG = { step: 30, days: 7, cutoff: 90, closed: [] as string[] };
 export const SOLD_OUT_TEXT = 'More slots open between 7-11 AM on the same day. Instant slots become available throughout the day.';
 
 /* ---- coupons ---- */
 export type Coupon = {
+  status?: LiveStatus; validFrom?: string;
   code: string; title: string; sub: string; kind: 'flat' | 'pct'; v: number; max?: number; minOrder: number;
   modes?: CartMode[]; firstOrder?: boolean; till: string; tnc: string[];
 };
@@ -305,7 +328,7 @@ export const WALLET = {
 };
 
 /* ---- WD Pass (prepaid visits) ---- */
-export type PassPlan = { id: string; name: string; title: string; visits: number; price: number; mrp: number; days: number; covers: string[]; maxMins: number; benefits: [string, string][]; faqs: [string, string][] };
+export type PassPlan = { id: string; name: string; title: string; visits: number; price: number; mrp: number; days: number; covers: string[]; maxMins: number; benefits: [string, string][]; faqs: [string, string][]; status?: LiveStatus };
 export const PASS_PLANS: PassPlan[] = [
   { id: 'pass3', name: 'WD Pass', title: 'Exterior Wash', visits: 3, price: 349, mrp: 447, days: 30, covers: ['ext', 'foam', 'tyre', 'glass', 'wash'], maxMins: 35,
     benefits: [['Save on every booking', 'Each wash costs less than a single booking'], ['Flexible bookings', 'Use a visit for any covered service, instant or scheduled'], ['30 days to use', 'Your visits stay valid for 30 days from purchase']],

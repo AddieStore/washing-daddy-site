@@ -8,7 +8,7 @@ import { Help, Info, Gift, Chev, Clock, Camera, Pause } from '../ui/icons';
 import { PLANS, sellablePlans } from '../data/reference';
 import { PAUSE_MAX, canPause, pauseLeft } from '../data/model';
 import { TODAY, fmt, iso, inr } from '../data/dates';
-import { A, car, daysLeft, planStatus, planOf, usage, act, toast, useApp, pendingRef, openPage } from '../state';
+import { A, car, daysLeft, planStatus, planOf, usage, act, toast, useApp, pendingRef, openPage, feature } from '../state';
 import { sheets } from '../sheets';
 
 const run = (f: () => Promise<unknown>) => f().catch((e: Error) => toast(e.message));
@@ -47,14 +47,14 @@ function Balance() {
           {left == null ? 'Your plan starts after the first wash. Pay once you have seen it.' : `Paid up till ${fmt(c.till!, { day: 'numeric', month: 'short', year: 'numeric' })}. Renew below to keep your mornings going.`}
         </Txt>
       </View>
-      <Pressable3 onPress={() => openPage({ k: 'refer' })} style={{ borderTopWidth: 1, borderTopColor: LINE, minHeight: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 12 }}>
+      {feature('refer') ? <Pressable3 onPress={() => openPage({ k: 'refer' })} style={{ borderTopWidth: 1, borderTopColor: LINE, minHeight: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 12 }}>
         <Gift size={18} color={MUTED} strokeWidth={1.5} />
         <View style={{ flex: 1 }}>
           <Txt weight={500} size={14} color={INK}>{ref ? 'Invite code applied' : 'Refer a friend, get ₹200'}</Txt>
           <Txt size={12} color={MUTED}>{ref ? '₹200 off your first month' : 'They get a wash, you get a credit'}</Txt>
         </View>
         <Chev size={18} color={MUTED} strokeWidth={1.5} />
-      </Pressable3>
+      </Pressable3> : null}
     </Card>
   );
 }
@@ -136,13 +136,13 @@ export default function Plan() {
         <View style={{ paddingHorizontal: 16, gap: 12 }}>
           <FadeUp duration={300} distance={8}><Balance /></FadeUp>
           <FadeUp delay={50} duration={300} distance={8}><Choose /></FadeUp>
-          <FadeUp delay={100} duration={300} distance={8}><Card>
+          {feature('refer') ? <FadeUp delay={100} duration={300} distance={8}><Card>
             <Pressable3 onPress={() => openPage({ k: 'refer' })} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, minHeight: 64, gap: 12 }}>
               <Gift size={18} color={MUTED} strokeWidth={1.5} />
               <View style={{ flex: 1 }}><Txt weight={500} size={14} color={INK}>Refer and earn ₹200</Txt><Txt size={12} color={MUTED}>Share your code, both of you save</Txt></View>
               <Chev size={18} color={MUTED} strokeWidth={1.5} />
             </Pressable3>
-          </Card></FadeUp>
+          </Card></FadeUp> : null}
         </View>
         <View style={{ flexDirection: 'row', marginHorizontal: 16, marginTop: 32 }}>
           {BENEFITS.map(([t, s, Ic], i) => (

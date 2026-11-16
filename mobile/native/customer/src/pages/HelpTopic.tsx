@@ -4,16 +4,14 @@ import { View, ScrollView, Pressable } from 'react-native';
 import { Txt } from '../ui/kit';
 import { Arrow, Help as HelpIc } from '../ui/icons';
 import { C } from '../theme';
-import { act } from '../state';
-import { HELP_TOPICS } from '../data/help';
-import type { HelpTopic as HT } from '../data/help';
+import { act, useApp, helpTopic, helpTopics } from '../state';
 import { PageBar } from './Stub';
 import { G } from './parts';
 import { Accordion } from './Help';
-type HelpTopicId = HT['id'];
 
-export default function HelpTopic({ id }: { id: HelpTopicId }) {
-  const t = HELP_TOPICS.find(x => x.id === id) || HELP_TOPICS[0];
+export default function HelpTopic({ id }: { id: string }) {
+  useApp();
+  const t = helpTopic(id) || helpTopics()[0] || { id, title: 'Help', sub: '', icon: 'help', order: 0, faqs: [] as [string, string][] };
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <PageBar title={t.title} />

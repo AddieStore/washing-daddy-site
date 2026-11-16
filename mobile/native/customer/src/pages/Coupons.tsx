@@ -32,6 +32,7 @@ export default function Coupons() {
           </View>
           {err ? <Txt size={13} color={C.red}>{err}</Txt> : null}
           <Txt weight={500} size={12} color={G.mute} style={{ letterSpacing: 1, marginTop: 4 }}>AVAILABLE COUPONS</Txt>
+          {list.length ? null : <Txt size={14} color={G.sub} style={{ paddingVertical: 16, textAlign: 'center' }}>No coupons right now. Check back soon.</Txt>}
           {list.map(c => {
             const ok = c.check.ok, off = c.check.ok ? c.check.off : 0, isOpen = open === c.code;
             return (

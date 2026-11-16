@@ -7,7 +7,9 @@ import { View, Animated, Easing, BackHandler, AccessibilityInfo, useWindowDimens
 import Reanimated, { FadeIn, FadeOut, SlideInRight, SlideOutRight, SlideInDown, SlideOutDown, useSharedValue, useAnimatedStyle, withSpring, withTiming, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
 import { FlyHost } from '../ui/motion';
 import { useTheme } from '../theme';
-import { useApp, closePage, Page, Tab } from '../state';
+import { useApp, closePage, Page, Tab, appCfg, feature, tabOn, act } from '../state';
+import { Txt } from '../ui/kit';
+import { GenericArt } from '../art/generic';
 import Home from './Home';
 import Live from './Live';
 import Plan from './Plan';
@@ -105,8 +107,22 @@ function Pushed({ p, depth, cover }: { p: NonNullable<Page>; depth: number; cove
   );
 }
 
+/** a tab the live config switched off falls back to Home */
+const tabAllowed = (t: Tab) => t === 'home' || (t === 'live' ? tabOn('washes') : t === 'money' ? tabOn('money') : t === 'profile' ? tabOn('profile') : t === 'store' ? feature('store') : t === 'plan' ? feature('plans') : true);
+/** appcfg maintenance.on: a full-screen notice instead of the app (WhatsApp still works) */
+function Maintenance({ message }: { message: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+      <GenericArt size={180} icon="clock" accent="#5409DA" />
+      <Txt weight={600} size={20} style={{ marginTop: 16, textAlign: 'center' }}>Back shortly</Txt>
+      <Txt size={14} color="#525252" style={{ marginTop: 8, textAlign: 'center', lineHeight: 20 }}>{message}</Txt>
+      <Txt weight={600} size={14} color="#5409DA" style={{ marginTop: 20 }} onPress={() => act.whatsapp('Hi Washing Daddy')}>Chat with us</Txt>
+    </View>
+  );
+}
+
 export default function Main() {
-  const ui = useApp(), T = useTheme(), rm = useReduceMotion(), fade = useRef(new Animated.Value(1)).current, Screen = SCREEN[ui.tab];
+  const ui = useApp(), T = useTheme(), rm = useReduceMotion(), fade = useRef(new Animated.Value(1)).current, tab: Tab = tabAllowed(ui.tab) ? ui.tab : 'home', Screen = SCREEN[tab];
   useEffect(() => {
     if (rm) return;
     fade.setValue(0);
@@ -116,8 +132,9 @@ export default function Main() {
     const s = BackHandler.addEventListener('hardwareBackPress', () => { if (ui.pages.length) { closePage(); return true } return false });
     return () => s.remove();
   }, [ui.pages.length]);
-  const key = ui.tab === 'home' || ui.tab === 'live' ? ui.tab : ui.tab + ':' + ui.tabNonce;
-  const tabCover = useCover(coverOf(ui.pages[0]?.k));
+  const key = tab === 'home' || tab === 'live' ? tab : tab + ':' + ui.tabNonce;
+  const tabCover = useCover(coverOf(ui.pages[0]?.k)), mt = appCfg().maintenance;
+  if (mt.on) return <Maintenance message={mt.message} />;
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <Reanimated.View style={[{ flex: 1, backgroundColor: T.bg }, tabCover.st]}>

@@ -7,7 +7,7 @@ import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Back, Help as HelpIc, Pin } from '../ui/icons';
 import { FadeUp } from '../ui/motion';
-import { useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
+import { feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
 import { sheets } from '../sheets';
 import { inr, fmt, iso, TODAY } from '../data/dates';
 import { slotLabel } from '../state';
@@ -82,7 +82,7 @@ export function JobCard({ j, onPress }: { j: Job; onPress: () => void }) {
               <Txt size={12} color={G.mute} style={{ marginTop: 2 }} numberOfLines={1}>{j.washer ? washerSub(j) : 'We assign one before your slot'}</Txt>
             </View>
           </View>
-          {done ? (
+          {done && feature('ratings') ? (
             <View style={{ borderTopWidth: 1, borderColor: G.line, marginTop: 8, paddingTop: 8, minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Txt size={13} color={G.sub}>Service rating</Txt>
               <Stars n={j.stars || 0} size={22} gap={6} onPick={n => (canRate(j) ? openRateSheet(j.id, n) : toast('You can rate once the wash is done'))} />

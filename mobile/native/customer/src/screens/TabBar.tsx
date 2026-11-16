@@ -9,7 +9,7 @@ import { C, useTheme } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Home, Live, Wallet, User, Plus, Zap, Calendar, Chev } from '../ui/icons';
 import { Pulse, LocationLoader, TAB_BAR_H, SPRING } from '../ui/motion';
-import { useApp, go, Tab, car, doc, activeStage, selectedAddress, addrName, openPage, openSheet, closeSheet, act, svcLines, instantStatus, toast } from '../state';
+import { useApp, go, Tab, car, doc, activeStage, selectedAddress, addrName, openPage, openSheet, closeSheet, act, svcLines, instantStatus, toast, feature, tabOn } from '../state';
 import { SheetTitle } from '../ui/hosts';
 
 type IC = (p: { size?: number; color?: string; strokeWidth?: number }) => React.ReactElement;
@@ -19,7 +19,8 @@ export const TAB_ITEMS: { tab: Tab; label: string; off: IC; on: IC }[] = [
   { tab: 'money', label: 'Money', off: Wallet as IC, on: Wallet as IC },
   { tab: 'profile', label: 'Profile', off: User as IC, on: User as IC },
 ];
-const LEFT = TAB_ITEMS.slice(0, 2), RIGHT = TAB_ITEMS.slice(2);
+/** tabs the live config keeps (appcfg tabs.* and features.wallet) */
+const shown = () => TAB_ITEMS.filter(x => x.tab === 'home' || (x.tab === 'live' ? tabOn('washes') : x.tab === 'money' ? tabOn('money') : tabOn('profile')));
 const MID = 76;   // gap in the bar under the raised centre button
 /** Height of the bar without the bottom inset; screens keep their scroll padding >= this + inset. */
 export const TAB_H = TAB_BAR_H;
@@ -72,12 +73,12 @@ function BookSheet() {
       <SheetTitle>Book a wash</SheetTitle>
       <Txt size={14} color="#525252" style={{ marginBottom: 16 }}>At your parking spot. Pay after you add services.</Txt>
       <View style={{ gap: 12 }}>
-        {opt(Zap as IC, 'Instant wash', st.open ? st.label : st.label + ' · not available now', () => {
+        {feature('instant') ? opt(Zap as IC, 'Instant wash', st.open ? st.label : st.label + ' · not available now', () => {
           if (!st.open) { toast(st.reason === 'busy' ? st.label : 'Instant service is closed. ' + st.label); return }
           closeSheet(); try { act.setCartMode('instant') } catch (e) {}
           if (n > 0) openPage({ k: 'cart' }); else { go('home'); setTimeout(() => gridJump?.(), 120) }
-        }, !st.open)}
-        {opt(Calendar as IC, 'Schedule for later', 'Pick a day and time slot', () => { closeSheet(); openPage({ k: 'schedule' }) })}
+        }, !st.open) : null}
+        {feature('scheduled') ? opt(Calendar as IC, 'Schedule for later', 'Pick a day and time slot', () => { closeSheet(); openPage({ k: 'schedule' }) }) : null}
       </View>
     </View>
   );
@@ -102,17 +103,17 @@ export default function TabBar() {
   let liveNow: any = null, place = '';
   try { liveNow = activeStage(doc(car())) } catch (e) {}
   try { const a = selectedAddress(); place = a ? addrName(a) + ' · ' + (a.area || '').split(',')[0] : '' } catch (e) {}
-  const pb = Math.max(ins.bottom, 0);
+  const pb = Math.max(ins.bottom, 0), items = shown(), half = Math.ceil(items.length / 2), LEFT = items.slice(0, half), RIGHT = items.slice(half), fab = feature('instant') || feature('scheduled');
   const cell = (x: (typeof TAB_ITEMS)[number]) => <TabCell key={x.tab} t={x.tab} label={x.label} Ic={x.off} on={x.tab === ui.tab} liveNow={!!liveNow} />;
   return (
     <>
       <View pointerEvents="box-none" style={s.outer}>
         <View style={[s.bar, { backgroundColor: T.tabBg, borderTopColor: T.page.line, height: TAB_H + pb, paddingBottom: 4 + pb, shadowOpacity: T.day ? 0.07 : 0 }]}>
           {LEFT.map(cell)}
-          <View style={{ width: MID }} />
+          {fab ? <View style={{ width: MID }} /> : null}
           {RIGHT.map(cell)}
         </View>
-        <CentreButton bottom={pb + 20} />
+        {fab ? <CentreButton bottom={pb + 20} /> : null}
       </View>
       <LocationLoader place={place} />
     </>

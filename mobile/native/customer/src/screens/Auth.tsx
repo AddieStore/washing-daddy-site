@@ -4,7 +4,8 @@ import { Animated, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView,
 import { C, F, SP, InkContext, creamInk } from '../theme';
 import { Chips, Field, Opt, Txt, useInsets, PAD } from '../ui/kit';
 import { Back, Check } from '../ui/icons';
-import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp } from '../state';
+import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp, legalPages } from '../state';
+import { openLegalSheet } from '../pages/LegalDoc';
 import { Plate } from '../ui/Plate';
 import { src, RATIO } from '../img';
 import { AREAS, sellablePlans, fromPrice, DEFAULT_PLAN, SLIDES, PlanId } from '../data/reference';
@@ -191,7 +192,11 @@ export default function Auth() {
         : <Link label="I have an invite code" onPress={() => { setShowInv(true); setTapped(true) }} style={{ alignSelf: 'flex-start', marginTop: SP.s }} />}
       {err ? <View style={{ marginTop: SP.m }}><Err text={err} /></View> : null}
       <Cta label="Continue" busy={busy ? 'Sending…' : false} disabled={!phoneOk} onPress={sendCode} style={{ marginTop: SP.l }} />
-      <Txt size={12} color={L.muted} style={{ textAlign: 'center', marginTop: SP.m, lineHeight: 16 }}>By continuing, you agree to our Terms of Service and Privacy Policy</Txt>
+      {legalPages('signup').length ? (
+        <Txt size={12} color={L.muted} style={{ textAlign: 'center', marginTop: SP.m, lineHeight: 16 }}>By continuing, you agree to our {legalPages('signup').map((d, i, l) => (
+          <Txt key={d.id} size={12} color={L.muted}>{i ? (i === l.length - 1 ? ' and ' : ', ') : ''}<Txt size={12} color={L.violet} style={{ textDecorationLine: 'underline' }} onPress={() => openLegalSheet(d.id)}>{d.title}</Txt></Txt>
+        ))}</Txt>
+      ) : null}
       {REAL ? <Hint>New here? Use your number and we'll set you up after the code</Hint>
         : <Hint><B>Test version.</B> 98765 04210 opens a sample customer with two cars. Any other number takes you through sign-up as a new customer</Hint>}
     </>

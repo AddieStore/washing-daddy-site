@@ -21,15 +21,17 @@ import { backend } from './backend/firebase';
 import { cashfreeCheckout, CASHFREE_AVAILABLE } from './backend/cashfree';
 import type { Db, Unsub } from './backend/types';
 import { TODAY, refreshToday, iso, parse, addDays, fmt, inr, nowIST, hm, ampm, t2m, m2t, wait, istNow } from './data/dates';
-import { PLANS, PRODUCTS, SERVICES, CAR_SERVICES, WASHER_FOR, AREA_COORDS, SUPPORT_PHONE, PlanId, HIDDEN_FROM_NEW, DEFAULT_PLAN,
-  CartMode, VariantId, VARIANTS, DEFAULT_VARIANT, variantPrice, packInfo, RecurId, RECURRING, FEES, DayPart, DAY_PARTS, SLOT_STEP_MIN, SLOT_DAYS,
-  SLOT_CUTOFF_MIN, SLOT_SURCHARGE, INSTANT_HOURS, Coupon, COUPONS, WALLET, PASS_PLANS, REFERRAL, AddressLabel } from './data/reference';
+import { PLANS, PRODUCTS, SERVICES, CAR_SERVICES, WASHER_FOR, AREA_COORDS, PlanId, HIDDEN_FROM_NEW, DEFAULT_PLAN,
+  CartMode, VariantId, VARIANTS, DEFAULT_VARIANT, variantPrice, packInfo, RecurId, RECURRING, FEES, DayPart, DAY_PARTS, SLOT_CFG, PART_SURCHARGE,
+  SLOT_SURCHARGE, INSTANT_HOURS, Coupon, COUPONS, WALLET, PASS_PLANS, REFERRAL, AddressLabel, SUPPORT, showPhone } from './data/reference';
+import { startConfig, onConfigChange, subscribeCoupons, overlayForPreview, appCfg, feature, unavailable, Features, UiButton } from './data/config';
+export { appCfg, feature, section, tabOn, legalPages, legalPage, helpTopics, helpTopic, uiButtons, serviceCats, unavailable, configLoading, mdBlocks } from './data/config';
+export type { UiButton, LegalPage, HelpCfg, MdBlock } from './data/config';
 import { PX, emptyPX, demoPX, Address, Receiver, LedgerRow, Refund, PassHold, Job, JobLine, JobStatus } from './data/pronto';
-import type { LegalId } from './data/legal';
-import type { HelpTopic } from './data/help';
 import { server } from './backend/server';
 export type { PX, Address, Receiver, LedgerRow, Refund, PassHold, Job, JobLine, JobStatus, Washer, Wallet, ReferralState } from './data/pronto';
 export type { CartMode, VariantId, DayPart, Coupon, RecurId, AddressLabel, PassPlan } from './data/reference';
+import type { PassPlan } from './data/reference';
 import {
   Account, Car, Session, WashDoc, DEMO_PHONE, sampleAccount, fromCustomerDoc, regOf, planOf, maskPlate, extras, weekPlan,
   LABEL, TASK_LABEL, TASK_SUB, isPaused, canPause, pauseLog, pauseFits, startOf, startTxt, makeDoc, fromContract, planTasks,
@@ -73,7 +75,7 @@ export type Page =
   | { k: 'svc'; id: string } | { k: 'cart' } | { k: 'schedule' }
   | { k: 'money' } | { k: 'refunds' } | { k: 'pass'; id?: string } | { k: 'coupons' } | { k: 'refer' }
   | { k: 'profile' } | { k: 'profileEdit' } | { k: 'addresses'; pick?: boolean } | { k: 'addressMap'; id?: string } | { k: 'addressForm'; id?: string; lat?: number; lng?: number; area?: string }
-  | { k: 'help' } | { k: 'helpTopic'; id: HelpTopic['id'] } | { k: 'legal' } | { k: 'legalDoc'; id: LegalId } | { k: 'deleteAccount' } | { k: 'about' }
+  | { k: 'help' } | { k: 'helpTopic'; id: string } | { k: 'legal' } | { k: 'legalDoc'; id: string } | { k: 'deleteAccount' } | { k: 'about' }
   | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string }
   | null;
 export type PageKind = NonNullable<Page>['k'];
@@ -85,7 +87,8 @@ export function commit() { save(); emit() }
 export function useApp() { return useSyncExternalStore(f => { subs.add(f); return () => { subs.delete(f) } }, () => ui, () => ui) }
 export function openPage(p: NonNullable<Page>) { haptic(); ui = { ...ui, pages: [...ui.pages, p], page: p }; emit() }
 export function closePage() { const pages = ui.pages.slice(0, -1); ui = { ...ui, pages, page: pages[pages.length - 1] || null }; emit() }
-export function go(t: Tab) { if (ui.pages.length) ui = { ...ui, pages: [], page: null }; if (t === ui.tab) { ui = { ...ui, tabNonce: ui.tabNonce + 1 }; emit(); return } haptic(); ui = { ...ui, tab: t }; emit() }
+export function go(t: Tab) {
+  if ((t === 'store' && !feature('store')) || (t === 'plan' && !feature('plans')) || (t === 'money' && !feature('wallet'))) t = 'home'; if (ui.pages.length) ui = { ...ui, pages: [], page: null }; if (t === ui.tab) { ui = { ...ui, tabNonce: ui.tabNonce + 1 }; emit(); return } haptic(); ui = { ...ui, tab: t }; emit() }
 
 /* ---------- getters ---------- */
 export const A = () => S.acct as Account;
@@ -379,12 +382,16 @@ function watchCarPhotos() {
     if (t && v) t.photoCut = v.startsWith('data:image/webp');   // only cut-outs are saved as WebP (firestore.rules allows no extra field)
     if (t && v && t.photo !== v) { t.photo = v; commit() } }, () => {})) });
 }
-function stopSync() { stop(unsubs); stop(photoUnsubs); stop(moneyUnsubs); subFor = null; if (acctUnsub) { try { acctUnsub() } catch (e) {} acctUnsub = null } REMOTE = {}; REQS = {}; DOCS = {}; lastStatus = {} }
+function stopSync() { stop(unsubs); stop(photoUnsubs); stop(moneyUnsubs); subscribeCoupons(null); subFor = null; if (acctUnsub) { try { acctUnsub() } catch (e) {} acctUnsub = null } REMOTE = {}; REQS = {}; DOCS = {}; lastStatus = {} }
 function renderAll() { if (!SIM) DOCS = {}; subscribeCar(); emit() }
 
 /* ---------- boot ---------- */
 export async function boot() {
   await load();
+  // live config: cached last-known first, then Firestore (real builds); built-in content in the preview
+  onConfigChange(() => { pruneCart(); emit() });
+  await startConfig(DB);
+  if (!REAL && isWeb && typeof window !== 'undefined' && /[?&]cfgdemo=1\b/.test(String(window.location && window.location.search))) previewOverlay();
   try { const v = await AsyncStorage.getItem(INVITE_KEY); if (v && CODE_RE.test(v)) pendingInvite = v } catch (e) {}
   try { inviteFromUrl(await ExpoLinking.getInitialURL()); ExpoLinking.addEventListener('url', e => inviteFromUrl(e.url)) } catch (e) {}
   // older saves showed masked plates; keep the full number and mask it only on screen
@@ -420,19 +427,41 @@ const fmtR = (n: number) => '₹' + (Number.isInteger(n) ? String(n) : n.toFixed
 const newId = (p: string) => p + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
 const nowMin = () => { const n = istNow(); return n.getUTCHours() * 60 + n.getUTCMinutes() };
 
-/* ---- remote config: Home hero and instant availability (config/home, admin-written) ---- */
+/* ---- remote config: Home hero and instant availability (appcfg/customer, admin dashboard; see data/config.ts) ---- */
 export type HomeConfig = { heroTitle: string; heroSub: string; heroTheme: 'default' | 'festive' | 'monsoon' | 'winter'; instantBusy: boolean; referBanner: number; passPromo: boolean };
-const HOME_DEFAULT: HomeConfig = { heroTitle: 'Let your car shine brighter', heroSub: 'Pressure wash at your parking spot', heroTheme: 'festive', instantBusy: false, referBanner: REFERRAL.bannerAmt, passPromo: true };
-let HOME_CFG: Partial<HomeConfig> = {};
-export const homeConfig = (): HomeConfig => ({ ...HOME_DEFAULT, ...HOME_CFG });
+export const homeConfig = (): HomeConfig => { const c = appCfg(); return { heroTitle: c.home.heroTitle, heroSub: c.home.heroSub, heroTheme: c.home.heroTheme as HomeConfig['heroTheme'], instantBusy: c.instant.busy, referBanner: c.home.referAmount, passPromo: c.sections.passPromo && c.features.pass && PASS_PLANS.length > 0 } };
+/** cart lines, store items and checkout choices that the live config no longer allows are dropped */
+function pruneCart() {
+  let ch = false;
+  Object.keys(S.svc || {}).forEach(k => { const id = parseKey(k).id; if ((!svcOf(id) && !packInfo(id)) || unavailable(id)) { delete S.svc[k]; ch = true } });
+  Object.keys(S.cart || {}).forEach(k => { if (!PRODUCTS.some(p => p.id === k) || unavailable(k)) { delete S.cart[k]; ch = true } });
+  if (S.coupon && (!feature('coupons') || !COUPONS.some(c => c.code === S.coupon))) { S.coupon = null; ch = true }
+  if (S.useWallet && !feature('wallet')) { S.useWallet = false; ch = true }
+  if (S.usePass && !feature('pass')) { S.usePass = false; ch = true }
+  if (!modeOn(S.cartMode || 'instant')) { const m = (['instant', 'scheduled', 'recurring'] as CartMode[]).find(modeOn); if (m && m !== S.cartMode) { S.cartMode = m; if (m === 'instant') S.when = null; ch = true } }
+  if (ch) save();
+}
+/** a cart mode the admin has not switched off */
+export const modeOn = (m: CartMode) => feature(m as keyof Features);
+/** 'Coupons are' -> 'Coupons are not available right now.' */
+const off = (what: string) => new Error(`${what} not available right now.`);
+/** web preview ?cfgdemo=1: what a dashboard edit looks like (a paused service, a new service with no built-in art, a custom button) */
+function previewOverlay() {
+  overlayForPreview({
+    catalog: { foam: { kind: 'service', name: 'Foam Wash', short: 'Foam Wash', cat: 'Exterior', price: 249, mrp: 399, mins: 35, blurb: 'Snow foam lifts grit off the paint.', steps: [{ t: 'Snow foam', d: 'Thick foam sits for 3 minutes' }], included: ['Full body foam'], excluded: [], art: { key: 'foam', tint: '#F3ECFF', accent: '#8B5CF6' }, order: 15, status: 'paused', pausedNote: 'Back on Monday' },
+      sunroof: { kind: 'service', name: 'Sunroof Detailing', short: 'Sunroof Detail', cat: 'Exterior', price: 349, mrp: 499, mins: 30, blurb: 'Glass, seals and drain channels of the sunroof cleaned and treated.', steps: [{ t: 'Glass', d: 'Inside and out' }, { t: 'Seals', d: 'Cleaned and conditioned' }], included: ['Sunroof glass', 'Seals'], excluded: ['Motor repair'], art: { icon: 'glass', tint: '#EAF3FF', accent: '#2F8FF0' }, badge: 'NEW', order: 5, status: 'live' } },
+    ui_buttons: { diwali: { placement: 'home_top', label: 'Diwali shine week', sub: 'Foam + wax at ₹699, this week only', icon: 'star', tint: '#5409DA', style: 'banner', action: { type: 'service', value: 'wax' }, order: 1, status: 'live' } },
+  });
+}
 
 /* ---- instant hours ---- */
 // "Get Instant Service" card: open, or closed with the reason line ("Back at 6AM" / all washers busy)
-export function instantStatus(): { open: boolean; label: string; reason: 'open' | 'closed' | 'busy' } {
+export function instantStatus(): { open: boolean; label: string; reason: 'open' | 'closed' | 'busy' | 'off' } {
+  if (!feature('instant')) return { open: false, label: 'Instant service is not available right now', reason: 'off' };
   const m = nowMin(), o = t2m(INSTANT_HOURS.open), c = t2m(INSTANT_HOURS.close);
   const back = 'Back at ' + ampm(INSTANT_HOURS.open).replace(':00', '').replace(' ', '');
   if (m < o || m >= c) return { open: false, label: back, reason: 'closed' };
-  if (homeConfig().instantBusy) return { open: false, label: 'All washers are busy. Schedule for later', reason: 'busy' };
+  if (homeConfig().instantBusy) return { open: false, label: appCfg().instant.busyMessage, reason: 'busy' };
   return { open: true, label: 'Washer in 45-60 min', reason: 'open' };
 }
 
@@ -458,23 +487,25 @@ export const slotLabel = (t: string) => ampm(t).toLowerCase();
 export function slotsFor(date: string, part?: DayPart): Slot[] {
   const out: Slot[] = [], today = date === iso(TODAY), live = SLOT_LIVE[date];
   DAY_PARTS.filter(p => !part || p.id === part).forEach(p => {
-    for (let m = t2m(p.from); m <= t2m(p.to); m += SLOT_STEP_MIN) {
-      const t = m2t(m), past = today && m < nowMin() + SLOT_CUTOFF_MIN;
-      const soldOut = moneyLive() ? !!(live && (live.closed || (live.sold || []).includes(t))) : soldOutDemo(date, t, p.id);
-      const surcharge = (live && live.surcharge && live.surcharge[t] != null ? live.surcharge[t] : SLOT_SURCHARGE[t]) || 0;
+    for (let m = t2m(p.from); m <= t2m(p.to); m += SLOT_CFG.step) {
+      const t = m2t(m), past = today && m < nowMin() + SLOT_CFG.cutoff, closed = SLOT_CFG.closed.includes(date);
+      const soldOut = closed || (moneyLive() ? !!(live && (live.closed || (live.sold || []).includes(t))) : REAL ? false : soldOutDemo(date, t, p.id));
+      const surcharge = slotSurcharge(date, t, p.id);
       out.push({ t, label: slotLabel(t), part: p.id, surcharge, soldOut, past, ok: !soldOut && !past });
     }
   });
   return out;
 }
 export const partsFor = (date: string) => DAY_PARTS.map(p => { const s = slotsFor(date, p.id); return { id: p.id, soldOut: !s.some(x => x.ok), count: s.filter(x => x.ok).length } });
-export function slotDays(n = SLOT_DAYS): SlotDay[] {
+export function slotDays(n = SLOT_CFG.days): SlotDay[] {
   return Array.from({ length: n }, (_, i) => {
     const d = addDays(TODAY, i), date = iso(d), ok = slotsFor(date).some(x => x.ok), anyFuture = slotsFor(date).some(x => !x.past);
     return { date, label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : DOW_L[d.getDay()], short: DOW_L[d.getDay()].slice(0, 3), d: d.getDate(), disabled: !anyFuture, soldOut: anyFuture && !ok };
   });
 }
-export const slotSurcharge = (date: string, t: string) => SLOT_LIVE[date]?.surcharge?.[t] ?? SLOT_SURCHARGE[t] ?? 0;
+const partOf = (t: string): DayPart => (DAY_PARTS.find(p => t2m(t) >= t2m(p.from) && t2m(t) <= t2m(p.to)) || DAY_PARTS[0]).id;
+// same as n8n workflow 13 (surchargeFor): slots/{date}.surcharge[t] if set, else fees.slotSurcharge[t]; plus the flat fees.surcharge of the day part
+export const slotSurcharge = (date: string, t: string, part: DayPart = partOf(t)) => (SLOT_LIVE[date]?.surcharge?.[t] ?? SLOT_SURCHARGE[t] ?? 0) + (PART_SURCHARGE[part] || 0);
 /** "Wed 18 Nov, 1:00 pm" for a When */
 export const whenText = (w: When = S.when) => (w ? `${fmt(w.date, { weekday: 'short', day: 'numeric', month: 'short' })}, ${/^\d\d:\d\d$/.test(w.slot) ? slotLabel(w.slot) : w.slot}` : 'Instant · 45-60 min');
 
@@ -500,8 +531,8 @@ export function profile() {
 }
 
 /* ---- coupons ---- */
-let COUPON_LIVE: Coupon[] | null = null;   // real: coupons where public == true (admin-written)
-export const couponList = (): Coupon[] => COUPON_LIVE || COUPONS;
+// COUPONS is the live list (coupons where public == true, data/config.ts); a real build shows none until the admin adds some
+export const couponList = (): Coupon[] => (feature('coupons') ? COUPONS : []);
 export const couponOf = (code: string) => couponList().find(c => c.code === code.trim().toUpperCase()) || null;
 export type CouponCheck = { ok: true; c: Coupon; off: number } | { ok: false; c: Coupon | null; why: string };
 /** validates a coupon against the current cart (display; n8n validates again and redeems it when the order is paid) */
@@ -509,6 +540,7 @@ export function couponCheck(code: string, base?: number, mode: CartMode = cartMo
   const c = couponOf(code); if (!c) return { ok: false, c: null, why: "That code isn't valid." };
   const amt = base ?? billBase(mode);
   if (c.till < iso(TODAY)) return { ok: false, c, why: 'This coupon has expired.' };
+  if (c.validFrom && c.validFrom > iso(TODAY)) return { ok: false, c, why: 'This coupon is not active yet.' };
   if (c.modes && !c.modes.includes(mode)) return { ok: false, c, why: `Only for ${c.modes.join(' or ')} bookings.` };
   if (amt < c.minOrder) return { ok: false, c, why: `Add ${fmtR(r2(c.minOrder - amt))} more to use this coupon.` };
   if (S.acct && px().usedCoupons.includes(c.code)) return { ok: false, c, why: "You've already used this coupon." };
@@ -527,6 +559,7 @@ export function wallet() {
 export const topUpBonus = (amt: number) => r2(amt * WALLET.cashbackPct / 100);
 export function topUpCheck(amt: number): string | null {
   if (!Number.isFinite(amt) || amt < WALLET.minTopUp) return `Add at least ₹${WALLET.minTopUp}.`;
+  if (!Number.isInteger(amt)) return 'Add a whole rupee amount.';
   if (amt > WALLET.maxTopUp) return `You can add up to ₹${WALLET.maxTopUp} at a time.`;
   if (wallet().balance + amt > WALLET.maxBalance) return `Your wallet can hold up to ₹${WALLET.maxBalance}.`;
   return null;
@@ -534,10 +567,13 @@ export function topUpCheck(amt: number): string | null {
 export const refunds = (): Refund[] => (S.acct ? [...px().refunds].sort((a, b) => b.at.localeCompare(a.at)) : []);
 
 /* ---- WD Pass ---- */
-export const passPlan = (id?: string) => PASS_PLANS.find(p => p.id === id) || PASS_PLANS[0];
+/** a pass plan by id (or the first one); null when the admin offers none */
+export const passPlan = (id?: string): PassPlan | null => PASS_PLANS.find(p => p.id === id) || PASS_PLANS[0] || null;
 export const activePass = (): PassHold | null => (S.acct ? px().passes.find(p => p.status === 'active' && p.visitsLeft > 0 && p.validTill >= iso(TODAY)) || null : null);
-export function passQuote(id?: string) { const p = passPlan(id), gst = r2(p.price * FEES.gstPct / 100); return { plan: p, price: p.price, mrp: p.mrp, gst, total: r2(p.price + gst), perVisit: Math.round(p.price / p.visits) } }
-export const passView = () => ({ active: activePass(), plans: PASS_PLANS, quote: passQuote() });
+const NO_PASS: PassPlan = { id: '', name: 'WD Pass', title: 'WD Pass', visits: 1, price: 0, mrp: 0, days: 30, covers: [], maxMins: 0, benefits: [], faqs: [] };
+/** price of a pass plan; `plan.id === ''` (check passView().plans.length) when there is none to sell */
+export function passQuote(id?: string) { const p = passPlan(id) || NO_PASS, gst = r2(p.price * FEES.gstPct / 100); return { plan: p, price: p.price, mrp: p.mrp, gst, total: r2(p.price + gst), perVisit: Math.round(p.price / p.visits) } }
+export const passView = () => ({ active: activePass(), plans: feature('pass') ? PASS_PLANS : [], quote: passQuote() });
 
 /* ---- referral ---- */
 export function referralView() {
@@ -556,7 +592,7 @@ export type Bill = {
   perMonth: { visits: number; total: number } | null;   // recurring: visits a month and the month's estimate
 };
 function passCoverFor(lines: CartLine[]) {
-  const p = activePass(); if (!p) return 0; const plan = passPlan(p.plan);
+  const p = activePass(); if (!p || !feature('pass')) return 0; const plan = PASS_PLANS.find(x => x.id === p.plan); if (!plan) return 0;
   const ok = lines.filter(l => plan.covers.includes(l.id) && l.mins <= plan.maxMins).sort((a, b) => b.price - a.price)[0];
   return ok ? ok.price : 0;   // one visit covers one unit of the dearest covered service
 }
@@ -612,7 +648,7 @@ export const jobOf = (id: string): Job | null => (S.acct ? px().jobs.find(j => j
 /** "Interior Cleaning and 2 more" */
 export const jobTitle = (j: Job) => (j.lines[0] ? j.lines[0].name : 'Car wash') + (j.lines.length > 1 ? ` and ${j.lines.length - 1} more` : '');
 export const jobWhen = (j: Job) => (j.slot ? whenText({ date: j.date, slot: j.slot }) : fmt(j.date, { weekday: 'short', day: 'numeric', month: 'short' }) + (j.mode === 'instant' ? ' · Instant' : ''));
-export const canRate = (j: Job) => j.status === 'done';
+export const canRate = (j: Job) => j.status === 'done' && feature('ratings');
 
 /* ---- account deletion ---- */
 /** what the "Before you delete your account" page warns about, for this account */
@@ -669,13 +705,12 @@ function watchMoney() {
   moneyUnsubs.push(q('addresses', 'phone').onSnapshot(ds => { P().addresses = ds.map(s => { const d = s.data(); return { id: s.id, label: d.label, other: d.other || undefined, flat: d.flat || '', street: d.street || '', area: d.area || '', lat: +d.lat, lng: +d.lng, receiver: d.receiver_self === false ? { self: false, name: d.receiver_name || '', phone: d.receiver_phone || '' } : { self: true } } }); if (P().addrId && !P().addresses.some(a => a.id === P().addrId)) P().addrId = null; commit() }, warn('addresses')));
   moneyUnsubs.push(q('bookingratings', 'phone').onSnapshot(ds => { RATINGS = {}; ds.forEach(s => { const d = s.data(); RATINGS[d.booking_id] = { stars: d.stars, review: d.review } }); P().jobs = P().jobs.map(j => RATINGS[j.id] ? { ...j, stars: RATINGS[j.id].stars, review: RATINGS[j.id].review } : j); emit() }, () => {}));
   moneyUnsubs.push(q('ondemand', 'customer_id').onSnapshot(ds => { P().jobs = ds.map(s => fromOndemand(s.id, s.data())); emit() }, warn('jobs')));
-  moneyUnsubs.push(DB.doc('config/home').onSnapshot(g => { HOME_CFG = g.exists ? g.data() : {}; emit() }, () => {}));
-  moneyUnsubs.push(DB.collection('coupons').where('public', '==', true).onSnapshot(ds => { const l = ds.map(s => s.data() as Coupon).filter(c => c && c.code); COUPON_LIVE = l.length ? l : null; emit() }, () => {}));
+  subscribeCoupons(DB);   // public coupons -> COUPONS (data/config.ts)
 }
 
 const PX_ACTS = {
   /* --- cart mode, schedule, recurring --- */
-  setCartMode(m: CartMode) { S.cartMode = m; if (m === 'instant') S.when = null; if (S.coupon && !couponCheck(S.coupon, undefined, m).ok) S.coupon = null; commit(); haptic() },
+  setCartMode(m: CartMode) { if (!modeOn(m)) throw off(m === 'instant' ? 'Instant service is' : m === 'scheduled' ? 'Scheduling is' : 'Recurring booking is'); S.cartMode = m; if (m === 'instant') S.when = null; if (S.coupon && !couponCheck(S.coupon, undefined, m).ok) S.coupon = null; commit(); haptic() },
   // date 'YYYY-MM-DD', slot 'HH:MM' from slotsFor(); null clears (instant)
   setWhen(w: When) {
     if (w) { const s = slotsFor(w.date).find(x => x.t === w.slot); if (!s) throw new Error('Pick a time slot.'); if (!s.ok) throw new Error(s.past ? 'That slot has passed. Pick another.' : 'That slot is fully booked. Pick another.') }
@@ -698,14 +733,14 @@ const PX_ACTS = {
 
   /* --- coupons --- */
   async applyCoupon(code: string) {
-    const c = code.trim().toUpperCase(); if (!c) throw new Error('Enter a coupon code.');
+    if (!feature('coupons')) throw off('Coupons are'); const c = code.trim().toUpperCase(); if (!c) throw new Error('Enter a coupon code.');
     const ch = couponCheck(c); if (!ch.ok) throw new Error(ch.why);
     if (moneyLive()) { const j = await server!.call('wd-coupon-validate', { code: c, mode: cartMode(), lines: svcLines().lines.map(l => ({ id: l.id, variant: l.variant || null, q: l.q })) }); if (!j.valid) throw new Error(j.message || "That code isn't valid.") }
     S.coupon = c; commit(); haptic(); toast(`${c} applied · you save ${fmtR(ch.off)}`); return ch.off;
   },
   removeCoupon() { S.coupon = null; commit() },
-  setUseWallet(on: boolean) { S.useWallet = on && wallet().balance > 0; commit(); haptic() },
-  setUsePass(on: boolean) { S.usePass = on && !!activePass(); commit(); haptic() },
+  setUseWallet(on: boolean) { S.useWallet = on && feature('wallet') && wallet().balance > 0; commit(); haptic() },
+  setUsePass(on: boolean) { S.usePass = on && feature('pass') && !!activePass(); commit(); haptic() },
 
   /** Books the cart in its mode (instant / scheduled / recurring). Real: n8n wd-booking-create prices it, applies
    *  coupon, wallet and pass server-side, writes ondemand/{id}, and returns a Cashfree session for what is left.
@@ -713,6 +748,8 @@ const PX_ACTS = {
   async placeOrder(via = 'UPI'): Promise<{ id: string; paid: boolean; pending: boolean }> {
     const mode = cartMode(), { lines } = svcLines(), b = bill(), a = selectedAddress();
     if (!lines.length) throw new Error('Add a service first.');
+    const gone = lines.find(l => unavailable(l.id) || (!svcOf(l.id) && !packInfo(l.id))); if (gone) throw new Error(`${gone.name}: ${unavailable(gone.id) || 'not available right now'}. Remove it to continue.`);
+    if (!modeOn(mode)) throw off(mode === 'instant' ? 'Instant service is' : mode === 'scheduled' ? 'Scheduling is' : 'Recurring booking is');
     if (mode === 'instant' && !instantStatus().open) throw new Error(instantStatus().label + '. Schedule it for later.');
     if (mode === 'scheduled' && !S.when) throw new Error('Pick a time slot.');
     if (mode === 'recurring' && !S.recur) throw new Error('Pick how often and a time slot.');
@@ -722,10 +759,15 @@ const PX_ACTS = {
       let j: any;
       try {
         j = await server!.call('wd-booking-create', { mode, lines: lines.map(l => ({ id: l.id, variant: l.variant || null, q: l.q })), when: mode === 'scheduled' ? S.when : null, recur: mode === 'recurring' ? S.recur : null,
-          coupon: S.coupon, useWallet: S.useWallet, usePass: S.usePass, addressId: a.id, car: (() => { try { const c = car(); return { name: c.name, reg: c.plate } } catch (e) { return null } })(), ref: pendingRef() || null, via, shownTotal: b.total });
+          coupon: S.coupon, useWallet: S.useWallet, usePass: S.usePass, addressId: a.id, name: A().name || '', car: (() => { try { const c = car(); return { name: c.name, reg: c.plate } } catch (e) { return null } })(), ref: pendingRef() || null, via, shownTotal: b.total });
       } catch (e: any) {
-        // until wd-booking-create is live, instant/scheduled carts still book through the old pay-on-arrival path
-        if (e && e.notReady && mode !== 'recurring') { const r = await act.bookServices(mode === 'scheduled' ? S.when : null, via); S.coupon = null; S.when = null; commit(); return { ...r, pending: false } }
+        // Until wd-booking-create is live, only what the old path can really book goes through it: ONE instant pack on an
+        // ACTIVE account (the rules refuse every other ondemand write from the phone). Never charge for anything else.
+        if (e && e.notReady) {
+          const one = lines.length === 1 && lines[0].pack && lines[0].q === 1 && mode === 'instant' && A().status === 'active';
+          if (!one) throw new Error(`Online booking opens soon. WhatsApp us on ${showPhone(SUPPORT.whatsapp)} to book.`);
+          const r = await act.bookServices(null, via); S.coupon = null; S.when = null; commit(); return { ...r, pending: false };
+        }
         throw e;
       }
       if (j.paymentSessionId) await openCheckout(j.paymentSessionId, j.orderId || '');
@@ -739,12 +781,13 @@ const PX_ACTS = {
     if (b.coupon) p.usedCoupons.push(b.coupon.code);
     p.jobs.unshift({ id, mode, status: 'upcoming', date: mode === 'scheduled' ? S.when!.date : mode === 'recurring' ? S.recur!.start : iso(TODAY), slot: mode === 'scheduled' ? S.when!.slot : mode === 'recurring' ? S.recur!.slot : '',
       recur: mode === 'recurring' ? S.recur!.freq : undefined, lines: lines.map(l => ({ key: l.key, id: l.id, name: l.name, q: l.q, price: l.price, mrp: l.mrp, mins: l.mins, variant: l.variant })),
-      total: b.total, saved: b.saved, mins: b.mins, addressId: a.id, pay: b.toPay === 0 && b.passCover ? 'pass' : 'paid', payVia: b.toPay === 0 ? (b.walletUse ? WALLET.name : 'WD Pass') : via, coupon: b.coupon ? b.coupon.code : null, washer: null, createdAt: nowIST() });
+      total: b.total, saved: b.saved, mins: b.mins, addressId: a.id, pay: b.toPay === 0 && b.passCover ? 'pass' : 'paid', payVia: b.toPay === 0 ? (b.walletUse ? WALLET.name : 'WD Pass is') : via, coupon: b.coupon ? b.coupon.code : null, washer: null, createdAt: nowIST() });
     S.svc = {}; S.coupon = null; S.when = null; S.useWallet = false; S.usePass = false; commit();
     return { id, paid: true, pending: false };
   },
   /** cancel an upcoming booking; refund goes to WD Money (demo) or per policy (n8n wd-booking-cancel) */
   async cancelJob(id: string) {
+    if (!feature('cancel')) throw new Error('To cancel this booking, chat with us.');
     const j = jobOf(id); if (!j || !UPCOMING.includes(j.status)) throw new Error('This booking cannot be cancelled now.');
     if (moneyLive()) { await server!.call('wd-booking-cancel', { bookingId: id }); toast('Cancelled. Your refund is on its way.'); return }
     await wait(600); j.status = 'cancelled';
@@ -753,6 +796,7 @@ const PX_ACTS = {
   },
   /** move an upcoming booking to another slot (demo: edits the job; real: n8n wd-booking-reschedule, see BACKEND.md) */
   async rescheduleJob(id: string, to: { date: string; slot: string }) {
+    if (!feature('reschedule')) throw new Error('To move this booking, chat with us.');
     const j = jobOf(id); if (!j || !UPCOMING.includes(j.status)) throw new Error('This booking cannot be rescheduled now.');
     if (j.status === 'on_the_way' || j.status === 'in_progress') throw new Error('Your washer is already on the way.');
     const s = slotsFor(to.date).find(x => x.t === to.slot);
@@ -763,6 +807,7 @@ const PX_ACTS = {
   },
   /** stars 1-5 (+ optional text) for a finished booking: bookingratings/{bookingId} */
   async rateJob(id: string, stars: number, review = '') {
+    if (!feature('ratings')) throw off('Rating is');
     const j = jobOf(id); if (!j || !canRate(j)) throw new Error('You can rate a booking once it is done.');
     const n = Math.max(1, Math.min(5, Math.round(stars))), txt = review.trim().slice(0, 300);
     j.stars = n; j.review = txt || undefined; commit(); haptic();
@@ -815,13 +860,15 @@ const PX_ACTS = {
   /* --- wallet --- */
   /** add money: Cashfree for amt, n8n credits amt (cash) + 5% cashback (promo) when the payment clears */
   async topUp(amt: number, via = 'UPI'): Promise<{ pending: boolean }> {
+    if (!feature('wallet') || !feature('topup')) throw off('Adding money is');
     const err = topUpCheck(amt); if (err) throw new Error(err);
-    if (moneyLive()) { const j = await server!.call('wd-wallet-topup', { amount: amt, via }); if (j.paymentSessionId) await openCheckout(j.paymentSessionId, j.orderId || ''); return { pending: true } }
+    if (moneyLive()) { const j = await server!.call('wd-wallet-topup', { amount: amt, via, name: S.acct ? A().name : '' }); if (j.paymentSessionId) await openCheckout(j.paymentSessionId, j.orderId || ''); return { pending: true } }
     await wait(1000); demoLedger('topup', amt, 'Added to wallet', 'cash'); const bonus = topUpBonus(amt); if (bonus) demoLedger('cashback', bonus, `${WALLET.cashbackPct}% cashback on top-up`, 'promo');
     commit(); haptic(); return { pending: false };
   },
   /** gift card: n8n checks the code, marks it used and credits WD Money. Demo: any 'WD' + 6-12 letters/digits = ₹100 */
   async claimGift(code: string): Promise<number> {
+    if (!feature('wallet') || !feature('giftcard')) throw off('Gift cards are');
     const c = code.trim().toUpperCase().replace(/\s|-/g, ''); if (!/^[A-Z0-9]{8,16}$/.test(c)) throw new Error('Enter the 8-16 character gift card code.');
     if (moneyLive()) { const j = await server!.call('wd-gift-claim', { code: c }); toast(`${fmtR(+j.amount || 0)} added to ${WALLET.name}`); return +j.amount || 0 }
     await wait(800); if (!c.startsWith('WD')) throw new Error("That gift card isn't valid.");
@@ -831,8 +878,8 @@ const PX_ACTS = {
 
   /* --- WD Pass --- */
   async buyPass(id?: string, via = 'UPI'): Promise<{ pending: boolean }> {
-    const q = passQuote(id); if (activePass()) throw new Error('You already have an active pass.');
-    if (moneyLive()) { const j = await server!.call('wd-pass-buy', { plan: q.plan.id, via, useWallet: S.useWallet }); if (j.paymentSessionId) await openCheckout(j.paymentSessionId, j.orderId || ''); return { pending: !!j.paymentSessionId } }
+    if (!feature('pass') || !passPlan(id)) throw off('WD Pass is'); const q = passQuote(id); if (activePass()) throw new Error('You already have an active pass.');
+    if (moneyLive()) { const j = await server!.call('wd-pass-buy', { plan: q.plan.id, via, useWallet: false, name: S.acct ? A().name : '' }); if (j.paymentSessionId) await openCheckout(j.paymentSessionId, j.orderId || ''); return { pending: !!j.paymentSessionId } }
     await wait(1000);
     px().passes.unshift({ id: newId('P'), plan: q.plan.id, visitsTotal: q.plan.visits, visitsLeft: q.plan.visits, boughtAt: nowIST(), validTill: iso(addDays(TODAY, q.plan.days)), status: 'active' });
     commit(); confetti(); return { pending: false };
@@ -840,6 +887,7 @@ const PX_ACTS = {
 
   /* --- referral --- */
   async shareReferral(): Promise<void> {
+    if (!feature('refer')) throw off('Referral is');
     const v = referralView(), text = `Get your car pressure-washed at your parking spot by Washing Daddy. Use my link and get ₹${v.friendGets} off your first booking: ${v.link}`;
     try { await Share.share(Platform.OS === 'ios' ? { message: text } : { message: text, title: 'Washing Daddy invite' }); return } catch (e) {}
     return act.copy(text, 'Invite copied. Paste it on WhatsApp.');
@@ -866,7 +914,7 @@ const jobTitlePlain = (lines: { name: string }[]) => (lines[0] ? lines[0].name :
 /* =====================================================================
    ACTIONS
    ===================================================================== */
-const failed = () => new Error("That didn't go through. Call or WhatsApp us on 77018 08924.");
+const failed = () => new Error(`That didn't go through. Call or WhatsApp us on ${showPhone(SUPPORT.phone)}.`);
 export const act = {
   ...PX_ACTS,
   /* --- sign-in --- */
@@ -1007,6 +1055,8 @@ export const act = {
   // On-demand wash: live accounts pay first (n8n prices it), then ondemand/{id} goes to the washers. -> doc id for tracking
   async book(serviceId: string, via = 'UPI'): Promise<{ id: string; paid: boolean }> {
     const c = car(), svc = SERVICES.find(s => s.id === serviceId)!; let paid = '';
+    // the rules let only an ACTIVE account write ondemand/: never take money for a booking that cannot be saved
+    if (payReal() && A().status !== 'active') throw new Error(`Online booking opens after your first wash. WhatsApp us on ${showPhone(SUPPORT.whatsapp)} to book.`);
     if (payReal()) { const r = await checkout('onetime', svc.price, `${svc.name} · ${c.name}`, via, { service: svc.id }); paid = r.ref || 'paid'; commit() }
     if (!DB || !AUTH || !realAcct()) { await wait(700); return { id: 'demo', paid: !!paid } }
     try {
@@ -1019,7 +1069,11 @@ export const act = {
   cancelBooking(id: string) { const a = A(), b = a.bookings.find(x => x.id === id); a.bookings = a.bookings.filter(x => x.id !== id); commit(); toast(`Cancelled. Refund on its way to your ${a.payments.find(p => b && p.what.includes(b.type))?.via || 'UPI'}.`) },
 
   /* --- service cart --- */
-  addSvc(id: string) { if (!S.svc) S.svc = {}; S.svc[id] = (S.svc[id] || 0) + 1; commit(); haptic() },
+  addSvc(id: string) {
+    const sid = parseKey(id).id, u = unavailable(sid);
+    if (u) { toast(u); haptic(); return }
+    if (!svcOf(sid) && !packInfo(sid)) { toast('Not available right now'); return }
+    if (!S.svc) S.svc = {}; S.svc[id] = (S.svc[id] || 0) + 1; commit(); haptic() },
   subSvc(id: string) { if (!S.svc) return; S.svc[id] = Math.max(0, (S.svc[id] || 0) - 1); if (!S.svc[id]) delete S.svc[id]; commit(); haptic() },
   clearSvc() { S.svc = {}; commit() },
   // Books the whole service cart as one ondemand doc. Pack-only carts pay first like act.book; everything else is
@@ -1046,7 +1100,7 @@ export const act = {
   },
 
   /* --- store --- */
-  addToCart(id: string, q = 1) { S.cart[id] = (S.cart[id] || 0) + q; commit(); haptic(); const p = PRODUCTS.find(x => x.id === id)!; toast(`${q > 1 ? q + ' × ' : ''}${pName(p)} added`) },
+  addToCart(id: string, q = 1) { if (!feature('store')) return; const u = unavailable(id); if (u) { toast(u); return } if (!PRODUCTS.some(x => x.id === id)) return; S.cart[id] = (S.cart[id] || 0) + q; commit(); haptic(); const p = PRODUCTS.find(x => x.id === id)!; toast(`${q > 1 ? q + ' × ' : ''}${pName(p)} added`) },
   setQty(id: string, delta: number) { S.cart[id] = Math.max(0, (S.cart[id] || 0) + delta); if (!S.cart[id]) delete S.cart[id]; commit() },
 
   /* --- profile --- */
@@ -1061,8 +1115,21 @@ export const act = {
     try { await Share.share(Platform.OS === 'ios' ? { message: text } : { message: text, title: 'Washing Daddy invite' }); return } catch (e) {}
     return act.copy(text, 'Invite copied. Paste it on WhatsApp.');
   },
-  whatsapp(text = '') { Linking.openURL(`https://wa.me/91${SUPPORT_PHONE}${text ? '?text=' + encodeURIComponent(text) : ''}`).catch(() => toast(`WhatsApp us on 77018 08924`)) },
-  call() { Linking.openURL(`tel:+91${SUPPORT_PHONE}`).catch(() => {}) },
+  whatsapp(text = '') { Linking.openURL(`https://wa.me/91${SUPPORT.whatsapp}${text ? '?text=' + encodeURIComponent(text) : ''}`).catch(() => toast(`WhatsApp us on ${showPhone(SUPPORT.whatsapp)}`)) },
+  call(num = '') { const n = String(num).replace(/\D/g, '').slice(-10) || SUPPORT.phone; Linking.openURL(`tel:+91${n}`).catch(() => {}) },
+  /** a custom button from the dashboard (ui_buttons): url / whatsapp / call / page / service / legal */
+  runButton(b: UiButton) {
+    if (b.paused) { toast('Not available right now'); return }
+    const v = b.action.value;
+    switch (b.action.type) {
+      case 'url': if (/^https?:\/\//.test(v)) act.openUrl(v); return;
+      case 'whatsapp': act.whatsapp(v); return;
+      case 'call': act.call(v); return;
+      case 'service': if (svcOf(v) || packInfo(v)) openPage({ k: 'svc', id: v }); else toast('Not available right now'); return;
+      case 'legal': openPage({ k: 'legalDoc', id: v }); return;
+      case 'page': openNamed(v); return;
+    }
+  },
   openUrl(u: string) { Linking.openURL(u).catch(() => {}) },
   // Stores require a way to delete the account. Only an admin can delete customers/{phone}, so the app
   // sends the request on WhatsApp with the number, then signs out.
@@ -1087,6 +1154,15 @@ export const act = {
     SIM.t = setTimeout(tick, 900);
   },
 };
+/** a page or tab by name (custom buttons); names that a feature switch turned off do nothing */
+export function openNamed(v: string) {
+  const need: Record<string, keyof Features> = { refer: 'refer', pass: 'pass', money: 'wallet', refunds: 'wallet', coupons: 'coupons', store: 'store', plan: 'plans', schedule: 'scheduled' };
+  if (need[v] && !feature(need[v])) { toast('Not available right now'); return }
+  if (v === 'store' || v === 'plan') { go(v); return }
+  const simple = ['refer', 'pass', 'money', 'coupons', 'bookings', 'help', 'about', 'legal', 'schedule', 'cart', 'refunds', 'profile'] as const;
+  if ((simple as readonly string[]).includes(v)) openPage({ k: v } as NonNullable<Page>);
+  else if (v === 'addresses') openPage({ k: 'addresses' });
+}
 let pendingSignup: { token: string; phone: string } | null = null;
 function enter(isNew: boolean) {
   ui = { ...ui, tab: 'home', carNonce: ui.carNonce + 1 }; save();

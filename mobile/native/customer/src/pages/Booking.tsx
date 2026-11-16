@@ -5,7 +5,7 @@ import { C } from '../theme';
 import { Txt } from '../ui/kit';
 import { Phone, Pin, Copy, Wallet, Receipt, Help as HelpIc, Chev, Check, Clock } from '../ui/icons';
 import { FadeUp } from '../ui/motion';
-import { useApp, act, jobOf, jobTitle, jobWhen, canRate, addressOf, addrName, addrLine, receiverText, trackWasher, openPage, closePage, toast, UPCOMING, Job, Track } from '../state';
+import { feature, useApp, act, jobOf, jobTitle, jobWhen, canRate, addressOf, addrName, addrLine, receiverText, trackWasher, openPage, closePage, toast, UPCOMING, Job, Track } from '../state';
 import { TrackMap } from '../sheets/TrackMap';
 import { sheets } from '../sheets';
 import { inr } from '../data/dates';
@@ -122,7 +122,7 @@ export default function Booking({ id }: { id: string }) {
             </View>
             {j.washer && up ? <Tap label="Call support" onPress={() => act.call()} style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center' }}><Phone size={18} color="#fff" strokeWidth={1.5} /></Tap> : null}
           </View>
-          {done ? (
+          {done && feature('ratings') ? (
             <View style={{ borderTopWidth: 1, borderColor: G.line, marginTop: 12, paddingTop: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Txt size={14} color={G.sub}>{j.stars ? `Your rating · ${STAR_WORDS[j.stars]}` : 'Rate your wash'}</Txt>
@@ -187,8 +187,9 @@ export default function Booking({ id }: { id: string }) {
                 <Txt weight={500} size={13} color={j.pay === 'paid' ? G.pos : G.sub} style={{ marginTop: 8, lineHeight: 19 }}>{refundNote(j)}</Txt>
               </View>
             </View>
-            <PrimaryBtn label="Reschedule" onPress={() => openRescheduleSheet(j.id)} style={{ marginTop: 16 }} />
-            <PrimaryBtn outline label="Cancel booking" onPress={() => openCancelSheet(j.id)} style={{ marginTop: 12 }} />
+            {feature('reschedule') ? <PrimaryBtn label="Reschedule" onPress={() => openRescheduleSheet(j.id)} style={{ marginTop: 16 }} /> : null}
+            {feature('cancel') ? <PrimaryBtn outline label="Cancel booking" onPress={() => openCancelSheet(j.id)} style={{ marginTop: 12 }} /> : null}
+            {!feature('reschedule') || !feature('cancel') ? <PrimaryBtn outline label="Chat with us" onPress={() => act.whatsapp(`Hi Washing Daddy, about my booking ${j.id}.`)} style={{ marginTop: 12 }} /> : null}
           </View>
         ) : (
           <View style={{ gap: 12 }}>

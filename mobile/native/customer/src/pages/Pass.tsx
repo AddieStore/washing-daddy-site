@@ -6,6 +6,7 @@ import { Chev, Check, Zap, Clock, Shield, Wallet as WalletIc, Back } from '../ui
 import { useApp, passView, passQuote, act, closePage, toast, confetti, haptic, openPage } from '../state';
 import { G, Tap, PrimaryBtn, TNUM, inr } from './parts';
 import { openPassBreakup, Skel, useSkeleton, V, V_SOFT, V_LINE, rs } from '../sheets/money';
+import { PageBar } from './Stub';
 
 const ICONS = [WalletIc, Zap, Clock];
 const day = (iso: string) => { const d = new Date(iso); return isNaN(+d) ? iso : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) };
@@ -15,6 +16,16 @@ export default function Pass({ id }: { id?: string }) {
   const ins = useInsets(), load = useSkeleton(500);
   const q = passQuote(id), p = q.plan, { active } = passView();
   const [busy, setBusy] = useState(false), [faq, setFaq] = useState(-1), [done, setDone] = useState(false);
+  // the admin sells no pass right now (passes_cfg empty, or features.pass off) and this account has none
+  if ((!p.id || !passView().plans.length) && !active) return (
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <PageBar title="WD Pass" />
+      <View style={{ padding: 24, alignItems: 'center' }}>
+        <Txt weight={600} size={18} style={{ textAlign: 'center' }}>WD Pass is not on sale right now</Txt>
+        <Txt size={14} color={G.sub} style={{ marginTop: 8, textAlign: 'center', lineHeight: 20 }}>Check back soon. You can still book any service from Home.</Txt>
+      </View>
+    </View>
+  );
   const pay = async () => {
     setBusy(true);
     try { const r = await act.buyPass(p.id); if (!r.pending) { confetti(); setDone(true); toast(`${p.name} is active`) } } catch (e: any) { toast(e.message) }
