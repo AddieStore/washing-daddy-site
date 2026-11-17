@@ -18,11 +18,12 @@ async function snap(reg: string) {
 }
 
 function PhotoBody({ reg, url, cut, close }: { reg: string; url: string; cut?: boolean; close: () => void }) {
+  const { c } = useTheme();
   return (
     <View>
       <SheetTitle title={t('Gaadi ki photo')} />
-      <Image source={{ uri: url }} accessibilityLabel={t('Gaadi ki photo')} resizeMode={cut ? 'contain' : 'cover'} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: cut ? 'transparent' : '#0002' }} />
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+      <Image source={{ uri: url }} accessibilityLabel={t('Gaadi ki photo')} resizeMode={cut ? 'contain' : 'cover'} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: cut ? 'transparent' : c.tile2 }} />
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
         <Button variant="violet" label={t('Dobara lo')} style={{ flex: 1 }} onPress={() => { close(); setTimeout(() => { void snap(reg) }, 250); }} />
         <Button variant="ghost" label={t('Hata do')} style={{ flex: 1 }} onPress={() => { act.setCarPhoto(reg, null); close(); }} />
       </View>
@@ -46,7 +47,7 @@ export function CarPic({ reg, w, h, size = 30, radius = 14, children }: { reg: s
       <View style={{ position: 'absolute', top: 0, right: 0, width: size, height: size }}>
         <Pressy onPress={onPress} accessibilityLabel={t(ph ? 'Gaadi ki photo' : 'Gaadi ki photo lo')} hitSlop={6}
           style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center',
-            backgroundColor: ph ? (dark ? brand.ink : '#fff') : c.card, borderWidth: 1, borderColor: c.line }}>
+            backgroundColor: ph ? (dark ? brand.ink : '#fff') : '#fff' }}>
           <Icon name="cam" size={Math.round(size * 0.55)} color={c.primary} />
         </Pressy>
       </View>

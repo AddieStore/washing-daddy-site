@@ -1,14 +1,14 @@
 // Extra tab: on-demand jobs (from Ravi, or customer bookings anyone can claim). Port of renderExtra / #s-extra.
 import React, { useState } from 'react';
 import { Image, Linking, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DotBg, BigNumber, Button, DutyToggle, Footer, PullToRefresh, CallButton, DashCard, DemoNote, Empty, F, Icon, IconBubble, ListCard, Pressy, SectionTitle, brand, ui, useTheme } from '../../ui';
+import { Button, DutyToggle, Footer, PullToRefresh, CallButton, DemoNote, F, Icon, Pressy, brand, ui, useTheme } from '../../ui';
 import { Extra, Money, act, isOnline, useStore } from '../../state/store';
 import { mapsOf, telOf, type Job } from '../../lib/data';
 import { rupee } from '../../lib/time';
 import { takePhoto } from '../../lib/photo';
 import { t } from '../../lib/i18n';
-import { TopBar } from '../../screens/TopBar';
+import { LiveSyncChip } from '../../screens/JobParts';
+import { FadeUp, IconTile, OnHeaderPill, PEmpty, PRow, PSection, RowsCard, TNUM, VHeader, WCard } from '../../screens/ProntoBits';
 
 const open = (url: string) => { void Linking.openURL(url).catch(() => {}); };
 
@@ -46,14 +46,14 @@ function JobCard({ j }: { j: Job }) {
     action = (
       <>
         <DemoNote style={{ marginBottom: 8, marginTop: 4 }}>{t('Customer ne book kiya — aapke area mein hai')}</DemoNote>
-        <Button variant="gold" label={t('Lo yeh kaam')} onPress={() => act.exClaim(j.id)} />
+        <Button variant="violet" label={t('Lo yeh kaam')} onPress={() => act.exClaim(j.id)} />
       </>
     );
   } else if (j.status === 'done') {
     action = <DemoNote>{t('Ho gaya')} {(j.finished_at || '').slice(11, 16)} · {t('aapke')} {share}</DemoNote>;
   } else if (j.status === 'doing') {
     action = shot
-      ? <Button variant="mint" label={t('Kaam khatam karo')} onPress={() => act.exDone(j.id)} />
+      ? <Button variant="violet" label={t('Kaam khatam karo')} onPress={() => act.exDone(j.id)} />
       : (
         <>
           <Button variant="violet" label={t('Kaam ki photo lo')} disabled={busy} onPress={snap} />
@@ -66,67 +66,78 @@ function JobCard({ j }: { j: Job }) {
   }
 
   return (
-    <DashCard style={{ padding: 15, marginBottom: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-        <IconBubble icon="plus" size={40} tint="#8A5B00" bg="rgba(255,186,8,0.22)" />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 17, color: c.fg }}>{j.service || t('Extra kaam')}</Text>
+    <WCard style={{ padding: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+        <IconTile icon="plus" tone={brand.gold} />
+        <View style={{ flex: 1, minWidth: 0, paddingTop: 6 }}>
+          <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 22, color: c.fg }}>{j.service || t('Extra kaam')}</Text>
         </View>
-        <View style={{ alignItems: 'flex-end', flexShrink: 0, maxWidth: '40%' }}>
-          <BigNumber value={share} size={29} style={{ color: c.ok }} />
-          <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{t('aapke')}</Text>
+        <View style={{ alignItems: 'flex-end', flexShrink: 0, maxWidth: '45%' }}>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[TNUM, { fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: c.ok }]}>{share}</Text>
+          <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3 }}>{t('aapke')}</Text>
         </View>
       </View>
       {maps
         ? <Pressy onPress={() => open(maps)} scaleTo={0.99} accessibilityRole="link" accessibilityLabel={t('Google Maps mein kholo')}>{where}</Pressy>
         : where}
       {j.note ? <DemoNote>{j.note}</DemoNote> : null}
-      {j.photo ? <Image source={{ uri: j.photo }} accessibilityLabel={t('Kaam ki photo')} resizeMode="contain" style={{ width: '100%', height: 240, borderRadius: 16, marginVertical: 10, backgroundColor: c.tile2 }} /> : null}
+      {j.photo ? <Image source={{ uri: j.photo }} accessibilityLabel={t('Kaam ki photo')} resizeMode="contain" style={{ width: '100%', height: 240, borderRadius: 12, marginVertical: 12, backgroundColor: c.tile2 }} /> : null}
       {maps || tel ? (
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, marginBottom: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
           {maps ? <Button variant="ghost" icon="pin" label={t('Location / Raasta')} style={{ flex: 1 }} onPress={() => open(maps)} /> : null}
           {tel ? <CallButton small label={t('Call')} phone={tel.slice(4)} /> : null}
         </View>
       ) : null}
       {action}
-    </DashCard>
+    </WCard>
   );
 }
 
 export default function ExtraScreen() {
   useStore();
   const { c } = useTheme();
-  const insets = useSafeAreaInsets();
   const list = Extra.shown(), done = Extra.jobs.filter((j) => j.status === 'done');
   const earned = done.reduce((a, j) => a + Money.share(j.price), 0);
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <DotBg />
-      <PullToRefresh stickyHeaderIndices={[0]} contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
-        <TopBar title={t('Extra kaam')} top={<View style={{ paddingHorizontal: 16, paddingTop: 6 }}><DutyToggle /></View>} />
-        <View style={{ paddingHorizontal: 16 }}>
-          <SectionTitle title={t('On-demand')} action={list.length ? t(`${list.length} kaam baaki`) : t('Sab ho gaya')} style={{ marginTop: 18 }} />
-          <View>
+      <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
+        <VHeader pad={56}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 40 }}>
+            <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, fontFamily: F.semi, fontSize: 22, lineHeight: 28, color: '#fff' }}>{t('Extra kaam')}</Text>
+            <LiveSyncChip />
+          </View>
+          <View style={{ marginTop: 8 }}><OnHeaderPill><DutyToggle /></OnHeaderPill></View>
+          <FadeUp index={0} style={{ marginTop: 16 }}>
+            <Text style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.8)' }}>{t('On-demand')}</Text>
+            <Text style={{ fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: '#fff' }}>{list.length ? t(`${list.length} kaam baaki`) : t('Sab ho gaya')}</Text>
+          </FadeUp>
+        </VHeader>
+        <View style={{ paddingHorizontal: 16, marginTop: -36 }}>
+          <View style={{ gap: 12 }}>
             {list.length
-              ? list.map((j) => <JobCard key={j.id} j={j} />)
+              ? list.map((j, i) => <FadeUp key={j.id} index={i + 1}><JobCard j={j} /></FadeUp>)
               : isOnline()
-                ? <Empty title={t('Abhi koi extra kaam nahi')} text={t('Customer ya Manager ka koi kaam aaya toh yahan dikhega.')} />
-                : <Empty title={t('Aap offline ho')} text={t('Naye customer kaam nahi dikhenge. Round tab pe online karo.')} />}
+                ? <PEmpty icon="tabExtra" title={t('Abhi koi extra kaam nahi')} text={t('Customer ya Manager ka koi kaam aaya toh yahan dikhega.')} />
+                : <PEmpty icon="tabExtra" title={t('Aap offline ho')} text={t('Naye customer kaam nahi dikhenge. Round tab pe online karo.')} />}
           </View>
-          <View style={{ marginTop: 14 }}>
-            <SectionTitle title={t('Ho gaye')} action={done.length ? `${rupee(earned)} ${t('ab tak')}` : undefined} />
-            {done.length ? done.slice(0, 20).map((j) => (
-              <ListCard
-                key={j.id}
-                style={{ marginBottom: 12 }}
-                title={j.service || t('Extra kaam')}
-                detail={`${j.car || j.reg || ''} · ${(j.finished_at || j.date || '').slice(0, 10)}`}
-                icon="check"
-                iconTone={brand.mint}
-                right={<BigNumber value={rupee(Money.share(j.price))} size={20} />}
-              />
-            )) : <Empty title={t('Abhi kuch nahi')} text={t('Jo extra kaam khatam karoge woh yahan jama hoga.')} />}
-          </View>
+          <PSection title={t('Ho gaye')} note={done.length ? `${rupee(earned)} ${t('ab tak')}` : undefined} />
+          {done.length ? (
+            <RowsCard>
+              {done.slice(0, 20).map((j, i, arr) => (
+                <PRow
+                  key={j.id}
+                  tile
+                  icon="check"
+                  tone={c.ok}
+                  last={i === arr.length - 1}
+                  title={j.service || t('Extra kaam')}
+                  sub={`${j.car || j.reg || ''} · ${(j.finished_at || j.date || '').slice(0, 10)}`}
+                  chevron={false}
+                  right={<Text style={[TNUM, { fontFamily: F.bold, fontSize: 20, lineHeight: 26, color: c.fg }]}>{rupee(Money.share(j.price))}</Text>}
+                />
+              ))}
+            </RowsCard>
+          ) : <PEmpty icon="check" title={t('Abhi kuch nahi')} text={t('Jo extra kaam khatam karoge woh yahan jama hoga.')} />}
         </View>
         <Footer bottomPad={128} />
       </PullToRefresh>
@@ -136,5 +147,5 @@ export default function ExtraScreen() {
 
 const s = StyleSheet.create({
   where: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 4 },
-  whereTxt: { flex: 1, fontFamily: F.semi, fontSize: 13.5, lineHeight: 20 },
+  whereTxt: { flex: 1, fontFamily: F.medium, fontSize: 14, lineHeight: 20 },
 });

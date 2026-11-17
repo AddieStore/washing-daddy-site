@@ -64,7 +64,7 @@ export function Sheet({
               },
             ]}
           >
-            <View style={[s.grab, { backgroundColor: c.line }]} />
+            <View style={[s.grab, { backgroundColor: c.fg3, opacity: 0.4 }]} />
             <ScrollView
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
@@ -81,21 +81,21 @@ export function Sheet({
 
 const s = StyleSheet.create({
   fill: { flex: 1 },
-  scrim: { ...StyleSheet.absoluteFill as object, backgroundColor: 'rgba(17,17,20,0.55)' },
+  scrim: { ...StyleSheet.absoluteFill as object, backgroundColor: 'rgba(23,23,23,0.4)' },
   bottom: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
   sheet: {
     width: '100%',
     maxWidth: 440,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    shadowColor: '#24065F',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    shadowColor: '#1A1033',
     shadowOpacity: 0.12,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: -6 },
     elevation: 12,
     paddingTop: 10,
-    },
-  grab: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 4, marginBottom: 14 },
+  },
+  grab: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 4, marginBottom: 12 },
 });
 
 /* ---------- imperative host ---------- */

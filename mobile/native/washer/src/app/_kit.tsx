@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppHeader, BarChart, HeroCard, ListCard, PillButton, Sparkline, StatCard, Tile, WeekStrip, SectionTitle, Ring, brand, F, useTheme } from '../ui';
+import { BarChart, Button, Card, Chip, ChipPicker, Empty, FadeUp, Field, HeroCard, ListCard, ListGroup, PillButton, PressScale, Segmented, Sparkline, StatCard, StatusPill, Tile, VioletHeader, WeekStrip, SectionTitle, Ring, AppHeader, brand, F, sheet, ui, useTheme } from '../ui';
 import { t } from '../lib/i18n';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -17,13 +17,16 @@ export default function Kit() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 60 + insets.bottom }}>
-        <AppHeader
-          safeTop={insets.top}
-          greeting={t('Subah bakhair')}
-          name="Chotte"
-          actions={[{ icon: 'help', label: t('Madad / SOS') }, { icon: 'plus', label: t('Nayi gaadi add karo'), badge: 3 }]}
-        />
-        <View style={{ paddingHorizontal: 16, gap: 12 }}>
+        <VioletHeader title="Profile" onBack={() => {}} safeTop={insets.top} bottomPad={56}>
+          <FadeUp index={0} style={{ marginTop: 12 }}>
+            <AppHeader
+              greeting={t('Subah bakhair')}
+              name="Chotte"
+              actions={[{ icon: 'help', label: t('Madad / SOS') }, { icon: 'plus', label: t('Nayi gaadi add karo'), badge: 3 }]}
+            />
+          </FadeUp>
+        </VioletHeader>
+        <View style={{ paddingHorizontal: 16, gap: 12, marginTop: -36 }}>
           <HeroCard eyebrow={t('Aaj ka round')} title={t('Hafte ka progress')} subtitle="6 / 8" ring={{ fraction: 0.75, value: 6, label: t('Gaadiyan') }} />
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <StatCard style={{ flex: 1 }} label={t('Gaadi ho gayi')} icon="check" tone={brand.mint} value={6} unit={t('Gaadiyan')} />
@@ -42,6 +45,24 @@ export default function Kit() {
             <Tile style={{ width: '47.5%', flexGrow: 1 }} label={t('Bonus')} icon="plus" value="₹200" />
             <Tile style={{ width: '47.5%', flexGrow: 1 }} label={t('Ghante')} icon="flag" tone={brand.sky} value="6" unit={t('Ghante')} />
           </View>
+          <SectionTitle title="Buttons and chips" />
+          <Button label="Continue" onPress={() => ui.toast('Toast like the customer app')} />
+          <Button label="Continue" disabled />
+          <Button label="Secondary" variant="ghost" />
+          <Button label="Open sheet" variant="ghost" onPress={() => sheet.open((close) => <View><Text style={{ fontFamily: F.semi, fontSize: 18, color: c.fg, marginBottom: 12 }}>Sheet title</Text><Button label="Close" onPress={close} /></View>)} />
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            <Chip>Violet</Chip><Chip tone="green">Green</Chip><Chip tone="grey">Grey</Chip><Chip tone="red">Red</Chip>
+            <StatusPill status="scheduled" label="Scheduled" /><StatusPill status="washing" label="Washing" /><StatusPill status="done" label="Done" /><StatusPill status="skipped" label="Skipped" />
+          </View>
+          <ChipPicker options={['Foam', 'Interior', 'Tyre']} value="Foam" onChange={() => {}} />
+          <Segmented options={[{ value: 'a', label: 'Day' }, { value: 'b', label: 'Week' }]} value="a" onChange={() => {}} />
+          <Field placeholder="Field" />
+          <ListGroup>
+            <ListCard plain title="MH 12 AB 1234" detail="Swift · Koregaon Park" icon="drop" chips={[{ label: '7:30' }, { label: '₹400', tone: brand.mint }]} />
+            <ListCard plain title="MH 14 XY 9087" detail="Creta · Baner" icon="pin" action="chevron" onPress={() => {}} />
+          </ListGroup>
+          <Empty title="No cars yet" text="Add a car to start your round." action={<Button label="Add car" />} />
+          <PressScale onPress={() => {}}><Card style={{ padding: 16 }}><Text style={{ fontFamily: F.medium, fontSize: 15, color: c.fg }}>PressScale card (tap me)</Text></Card></PressScale>
           <ListCard title="MH 12 AB 1234" detail="Swift · Koregaon Park" icon="drop" chips={[{ label: '7:30' }, { label: '₹400', tone: brand.mint }]} action="plus" />
           <ListCard title="MH 14 XY 9087" detail="Creta · Baner" icon="pin" action="chevron" onPress={() => {}} />
           <Sparkline data={[3, 5, 4, 8, 6, 9, 7]} height={44} />

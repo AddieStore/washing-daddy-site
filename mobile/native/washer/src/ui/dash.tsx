@@ -4,11 +4,11 @@
 // translated (call t() at the usage site). Preview of everything: the hidden /_kit route.
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Image, ScrollView, StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
-import Svg, { Circle, Defs, Line, Path, Pattern, Rect } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, LinearGradient, Path, Pattern, Rect, Stop } from 'react-native-svg';
 import { Icon, IconName } from './Icons';
 import { Pressy } from './kit';
 import { useReducedMotion } from './Hosts';
-import { F, R, brand, cardBox, cardShadow, useTheme } from './theme';
+import { F, OnViolet, R, brand, cardBox, cardShadow, useTheme } from './theme';
 
 type S<T> = StyleProp<T>;
 
@@ -26,35 +26,34 @@ function useGrow(key: unknown, duration = 900, delay = 0) {
   return v;
 }
 
-/** Astryx card: radius 16, 1px neutral border, very light shadow. Pass onPress to make it tappable. */
+/** Pronto card: white, radius 16, no border, soft spread shadow (dark mode: faint edge). Pass onPress to make it tappable (press spring 0.96). */
 export function DashCard({ children, style, onPress, accessibilityLabel }: {
   children?: React.ReactNode; style?: S<ViewStyle>; onPress?: () => void; accessibilityLabel?: string;
 }) {
   const { c } = useTheme();
   const st: S<ViewStyle> = [cardBox(c), cardShadow(c), style];
-  if (onPress) return <Pressy onPress={onPress} scaleTo={0.985} accessibilityLabel={accessibilityLabel} style={st}>{children}</Pressy>;
+  if (onPress) return <Pressy onPress={onPress} accessibilityLabel={accessibilityLabel} style={st}>{children}</Pressy>;
   return <View style={st}>{children}</View>;
 }
 
-/** Section heading, 17px semibold, with an optional small grey note on the right. */
+/** Section heading, 18px semibold, with an optional small note / link on the right. */
 export function SectionTitle({ title, action, onAction, style }: { title: string; action?: string; onAction?: () => void; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 12 }, style]}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 17, lineHeight: 24, color: c.fg }}>{title}</Text>
-      {action ? <Text onPress={onAction} style={{ fontFamily: F.body, fontSize: 12, color: onAction ? c.primary : c.fg3 }}>{action}</Text> : null}
+      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 18, lineHeight: 26, color: c.fg }}>{title}</Text>
+      {action ? <Text onPress={onAction} style={{ fontFamily: onAction ? F.semi : F.body, fontSize: 13, color: onAction ? c.primary : c.fg3 }}>{action}</Text> : null}
     </View>
   );
 }
 
-/** Round icon bubble used inside cards (icon on a soft tinted circle). */
-export function IconBubble({ icon, size = 40, tint, bg, children }: { icon?: IconName; size?: number; tint?: string; bg?: string; children?: React.ReactNode }) {
-  const { c } = useTheme();
-  // Tinted/grey fills become a clean white disc with a hairline; only solid fills (violet, mint...) stay solid.
-  const solid = bg && !bg.startsWith('rgba') ? bg : null;
+/** Icon tile: 36px, radius 12, violet 8% tint with a violet icon (pass `bg`/`tint` for another tone, or a solid `bg`). */
+export function IconBubble({ icon, size = 36, tint, bg, children }: { icon?: IconName; size?: number; tint?: string; bg?: string; children?: React.ReactNode }) {
+  const { c, dark, onViolet } = useTheme();
+  const fill = bg ?? (onViolet ? 'rgba(255,255,255,0.15)' : dark ? 'rgba(139,92,246,0.2)' : 'rgba(84,9,218,0.08)');
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: solid ?? c.card, borderWidth: solid ? 0 : 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
-      {children ?? (icon ? <Icon name={icon} size={Math.round(size * 0.52)} color={tint ?? c.softInk} /> : null)}
+    <View style={{ width: size, height: size, borderRadius: size <= 40 ? 12 : Math.round(size / 3), backgroundColor: fill, alignItems: 'center', justifyContent: 'center' }}>
+      {children ?? (icon ? <Icon name={icon} size={Math.round(size * 0.52)} color={tint ?? (onViolet ? '#fff' : c.primary)} /> : null)}
     </View>
   );
 }
@@ -67,7 +66,7 @@ export type RingProps = {
   fraction: number;
   size?: number;
   stroke?: number;
-  /** Progress colour. Default brand gold. */
+  /** Progress colour. Default violet (gold-white on the hero card). */
   color?: string;
   /** Track colour. Default the hero track. */
   track?: string;
@@ -79,12 +78,14 @@ export type RingProps = {
   children?: React.ReactNode;
   /** Text colour of the centre. Default heroInk. */
   ink?: string;
+  /** Colour of the small caption. Default the muted ink. */
+  labelColor?: string;
   /** Fill of the inner disc. Default a translucent white (right for the gold hero card; pass 'transparent' on plain cards). */
   disc?: string;
   style?: S<ViewStyle>;
 };
 /** Progress ring with an inner lighter disc and a centre number + label. Animates in. */
-export function Ring({ fraction, size = 86, stroke = 11.5, color, track, value, label, children, ink, disc, style }: RingProps) {
+export function Ring({ fraction, size = 86, stroke = 11.5, color, track, value, label, children, ink, labelColor, disc, style }: RingProps) {
   const { c } = useTheme();
   const f = Math.max(0, Math.min(1, fraction || 0));
   const g = useGrow(f);
@@ -105,11 +106,105 @@ export function Ring({ fraction, size = 86, stroke = 11.5, color, track, value, 
       <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
         {children ?? (
           <>
-            {value !== undefined ? <Text style={{ fontFamily: F.bold, fontSize: size * 0.34, lineHeight: size * 0.4, color: col }}>{value}</Text> : null}
-            {label ? <Text style={{ fontFamily: F.body, fontSize: Math.max(10, size * 0.116), color: c.fg3 }}>{label}</Text> : null}
+            {value !== undefined ? <Text style={{ fontFamily: F.black, fontSize: size * 0.34, lineHeight: size * 0.4, color: col, fontVariant: ['tabular-nums'] }}>{value}</Text> : null}
+            {label ? <Text style={{ fontFamily: F.body, fontSize: Math.max(10, size * 0.116), color: labelColor ?? c.fg3 }}>{label}</Text> : null}
           </>
         )}
       </View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Violet blocks: gradient + faint circle                              */
+/* ------------------------------------------------------------------ */
+const GRAD_LIGHT = ['#6A1BF2', '#5409DA', '#36058F'] as const;
+const GRAD_DARK = ['#4A12B8', '#3A06A0', '#24065F'] as const;
+
+/** Absolute-fill violet gradient (top-left to bottom-right) with a faint white circle top right. Put it first inside an overflow-hidden View. */
+export function VioletBg({ circle = true }: { circle?: boolean }) {
+  const { dark } = useTheme();
+  const id = 'vg' + useId().replace(/[^a-zA-Z0-9]/g, '');
+  const g = dark ? GRAD_DARK : GRAD_LIGHT;
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Svg width="100%" height="100%" preserveAspectRatio="none">
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={g[0]} />
+            <Stop offset="0.5" stopColor={g[1]} />
+            <Stop offset="1" stopColor={g[2]} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
+      </Svg>
+      {circle ? <View style={{ position: 'absolute', right: -50, top: -30, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.07)' }} /> : null}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* VioletHeader                                                        */
+/* ------------------------------------------------------------------ */
+export type VioletHeaderProps = {
+  /** Screen title in the top row (18 semibold white). */
+  title?: string;
+  /** Round back button before the title. */
+  onBack?: () => void;
+  backLabel?: string;
+  /** Node on the right of the title row (icon buttons...). */
+  right?: React.ReactNode;
+  /** Person block under the title row: round avatar (photo or initial) + name + sub line. */
+  name?: string;
+  sub?: string;
+  /** Extra node under the name/sub (an "Edit profile" link in gold, a duty switch...). */
+  subNode?: React.ReactNode;
+  avatarUri?: string | null;
+  onAvatarPress?: () => void;
+  /** Top safe-area inset (pass insets.top). */
+  safeTop?: number;
+  /** Bottom padding; default 56 so following content can overlap with marginTop -36. */
+  bottomPad?: number;
+  children?: React.ReactNode;
+  style?: S<ViewStyle>;
+};
+/**
+ * The customer Profile header: violet gradient block, faint circle top right, white text. Everything inside reads as "on violet"
+ * (white ink tokens, white-15% icon buttons, white buttons). The next block should use marginTop: -36 to overlap its bottom edge.
+ */
+export function VioletHeader({ title, onBack, backLabel = 'Back', right, name, sub, subNode, avatarUri, onAvatarPress, safeTop = 0, bottomPad = 56, children, style }: VioletHeaderProps) {
+  const initial = ((name ?? '').trim()[0] || '?').toUpperCase();
+  return (
+    <View style={[{ paddingTop: safeTop + 8, paddingHorizontal: 16, paddingBottom: bottomPad, overflow: 'hidden' }, style]}>
+      <VioletBg />
+      <OnViolet>
+        {title || onBack || right ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 }}>
+            {onBack ? <PillButton icon="back" label={backLabel} onPress={onBack} size={36} /> : null}
+            {title ? <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, minWidth: 0, fontFamily: F.semi, fontSize: 18, lineHeight: 26, color: '#fff' }}>{title}</Text> : <View style={{ flex: 1 }} />}
+            {right}
+          </View>
+        ) : null}
+        {name ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: title || onBack || right ? 12 : 8 }}>
+            <Pressy onPress={onAvatarPress} disabled={!onAvatarPress} accessibilityLabel={name} scaleTo={0.94}>
+              {avatarUri
+                ? <Image source={{ uri: avatarUri }} style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#EDE6FF', borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)' }} />
+                : (
+                  <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#EDE6FF', borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontFamily: F.bold, fontSize: 26, color: '#5409DA' }}>{initial}</Text>
+                  </View>
+                )}
+            </Pressy>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text accessibilityRole="header" numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 22, lineHeight: 30, color: '#fff' }}>{name}</Text>
+              {sub ? <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)' }}>{sub}</Text> : null}
+              {subNode}
+            </View>
+          </View>
+        ) : null}
+        {children}
+      </OnViolet>
     </View>
   );
 }
@@ -126,37 +221,38 @@ export type HeroCardProps = {
   subtitle?: string;
   /** Ring shown on the right. Omit for a text-only hero. */
   ring?: RingProps;
-  /** Anything extra under the text (chips, buttons). */
+  /** Anything extra under the text (chips, buttons). Drawn "on violet": white ink, white Buttons. */
   children?: React.ReactNode;
   onPress?: () => void;
   style?: S<ViewStyle>;
 };
-/** Hero card: neutral bordered surface, eyebrow, title, subtitle on the left, a Ring on the right. */
+/** Hero card: violet gradient block (radius 20) with a faint circle, white text, optional Ring (gold arc) on the right. */
 export function HeroCard({ eyebrow, eyebrowIcon = 'flag', title, subtitle, ring, children, onPress, style }: HeroCardProps) {
   const { c } = useTheme();
   const body = (
     <>
+      <VioletBg />
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View style={{ flex: 1 }}>
-          {heroEyebrow(eyebrow, eyebrowIcon, c.fg3)}
-          <Text style={{ fontFamily: F.bold, fontSize: 29, lineHeight: 40, color: c.heroInk, marginTop: eyebrow ? 2 : 0 }}>{title}</Text>
-          {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 18, color: c.fg3, marginTop: 4 }}>{subtitle}</Text> : null}
-          {children ? <View style={{ marginTop: 4 }}>{children}</View> : null}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          {heroEyebrow(eyebrow, eyebrowIcon, 'rgba(255,255,255,0.8)')}
+          <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={{ fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: '#fff', marginTop: eyebrow ? 4 : 0 }}>{title}</Text>
+          {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)', marginTop: 4 }}>{subtitle}</Text> : null}
         </View>
-        {ring ? <Ring size={86} {...ring} /> : null}
+        {ring ? <Ring size={86} color="#FFD166" track={c.heroTrack} ink="#fff" labelColor="rgba(255,255,255,0.8)" {...ring} /> : null}
       </View>
+      {children ? <OnViolet><View style={{ marginTop: 12 }}>{children}</View></OnViolet> : null}
     </>
   );
-  const st: S<ViewStyle> = [{ borderRadius: R.card, backgroundColor: c.hero, borderWidth: 1, borderColor: c.line, padding: 20 }, style];
-  if (onPress) return <Pressy onPress={onPress} scaleTo={0.985} accessibilityLabel={title} style={st}>{body}</Pressy>;
+  const st: S<ViewStyle> = [{ borderRadius: 20, padding: 20, overflow: 'hidden', backgroundColor: c.hero }, style];
+  if (onPress) return <Pressy onPress={onPress} accessibilityLabel={title} style={st}>{body}</Pressy>;
   return <View style={st}>{body}</View>;
 }
 function heroEyebrow(text: string | undefined, icon: IconName, ink: string) {
   if (!text) return null;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      {icon && icon !== 'flag' ? <Icon name={icon} size={13} color={ink} /> : null}
-      <Text style={{ fontFamily: F.bold, fontSize: 10, lineHeight: 14, letterSpacing: 0.8, textTransform: 'uppercase', color: ink }}>{text}</Text>
+      {icon && icon !== 'flag' ? <Icon name={icon} size={14} color={ink} /> : null}
+      <Text style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: ink }}>{text}</Text>
     </View>
   );
 }
@@ -183,12 +279,12 @@ export function StatCard({ label, value, unit, icon, tone, onPress, style }: Sta
   const { c, dark } = useTheme();
   const tint = toneInk(tone, dark, c.softInk);
   return (
-    <DashCard onPress={onPress} accessibilityLabel={`${label} ${value}${unit ? ' ' + unit : ''}`} style={[{ padding: 15, gap: 12, justifyContent: 'space-between' }, style]}>
+    <DashCard onPress={onPress} accessibilityLabel={`${label} ${value}${unit ? ' ' + unit : ''}`} style={[{ padding: 16, gap: 12, justifyContent: 'space-between' }, style]}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-        <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3, flex: 1, paddingTop: 10 }}>{label}</Text>
-        {icon ? <IconBubble icon={icon} tint={tint} bg={tone ? withAlpha(tone, 0.16) : undefined} /> : null}
+        <Text style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 20, color: c.fg3, flex: 1, paddingTop: 8 }}>{label}</Text>
+        {icon ? <IconBubble icon={icon} tint={tone ? tint : undefined} bg={tone ? withAlpha(tone, 0.1) : undefined} /> : null}
       </View>
-      <BigNumber value={value} unit={unit} size={35} />
+      <BigNumber value={value} unit={unit} size={30} />
     </DashCard>
   );
 }
@@ -197,9 +293,9 @@ export function StatCard({ label, value, unit, icon, tone, onPress, style }: Sta
 export function BigNumber({ value, unit, size = 28, style }: { value: string | number; unit?: string; size?: number; style?: S<TextStyle> }) {
   const { c } = useTheme();
   return (
-    <Text style={[{ fontFamily: F.bold, fontSize: size, lineHeight: size * 1.2, color: c.fg }, style]} numberOfLines={1} adjustsFontSizeToFit>
+    <Text style={[{ fontFamily: F.bold, fontSize: size, lineHeight: size * 1.2, color: c.fg, fontVariant: ['tabular-nums'] }, style]} numberOfLines={1} adjustsFontSizeToFit>
       {value}
-      {unit ? <Text style={{ fontFamily: F.body, fontSize: Math.min(14, Math.max(11, size * 0.4)), color: c.fg3 }}> {unit}</Text> : null}
+      {unit ? <Text style={{ fontFamily: F.medium, fontSize: Math.min(14, Math.max(11, size * 0.4)), color: c.fg3 }}> {unit}</Text> : null}
     </Text>
   );
 }
@@ -227,20 +323,20 @@ export function Tile({ label, value, unit, icon, tone, spark, sparkKind = 'line'
   const tint = toneInk(tone, dark, c.primary);
   if (compact) {
     return (
-      <DashCard onPress={onPress} accessibilityLabel={`${label} ${value}${unit ? ' ' + unit : ''}`} style={[{ padding: 11, gap: 8 }, style]}>
-        {icon ? <IconBubble icon={icon} size={32} tint={tint} bg={withAlpha(tone ?? c.primary, 0.14)} /> : null}
+      <DashCard onPress={onPress} accessibilityLabel={`${label} ${value}${unit ? ' ' + unit : ''}`} style={[{ padding: 12, gap: 8 }, style]}>
+        {icon ? <IconBubble icon={icon} size={36} tint={tone ? tint : undefined} bg={tone ? withAlpha(tone, 0.1) : undefined} /> : null}
         <View style={{ minWidth: 0 }}>
-          <Text style={{ fontFamily: F.bold, fontSize: 17, lineHeight: 24, color: c.fg }} numberOfLines={1} adjustsFontSizeToFit>{value}{unit ? <Text style={{ fontFamily: F.body, fontSize: 11, color: c.fg3 }}> {unit}</Text> : null}</Text>
+          <Text style={{ fontFamily: F.bold, fontSize: 18, lineHeight: 24, color: c.fg, fontVariant: ['tabular-nums'] }} numberOfLines={1} adjustsFontSizeToFit>{value}{unit ? <Text style={{ fontFamily: F.body, fontSize: 11, color: c.fg3 }}> {unit}</Text> : null}</Text>
           <Text style={{ fontFamily: F.body, fontSize: 11, lineHeight: 16, color: c.fg3 }} numberOfLines={2}>{label}</Text>
         </View>
       </DashCard>
     );
   }
   return (
-    <DashCard onPress={onPress} accessibilityLabel={`${label} ${value}${unit ? ' ' + unit : ''}`} style={[{ padding: 15, gap: 12 }, style]}>
+    <DashCard onPress={onPress} accessibilityLabel={`${label} ${value}${unit ? ' ' + unit : ''}`} style={[{ padding: 16, gap: 12 }, style]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3, flex: 1 }} numberOfLines={2}>{label}</Text>
-        {icon ? <IconBubble icon={icon} size={36} tint={tint} bg={withAlpha(tone ?? c.primary, 0.14)} /> : null}
+        <Text style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 20, color: c.fg3, flex: 1 }} numberOfLines={2}>{label}</Text>
+        {icon ? <IconBubble icon={icon} size={36} tint={tone ? tint : undefined} bg={tone ? withAlpha(tone, 0.1) : undefined} /> : null}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
         <BigNumber value={value} unit={unit} size={26} style={{ flexShrink: 1 }} />
@@ -296,7 +392,7 @@ export function WeekStrip({ days, selected, onSelect, title, onPrev, onNext, scr
     const inner = (
       <>
         <Text style={{ fontFamily: F.medium, fontSize: 11, lineHeight: 17, color: on ? '#fff' : c.fg, opacity: on ? 0.85 : 0.6 }} numberOfLines={1}>{d.label}</Text>
-        <Text style={{ fontFamily: F.bold, fontSize: 16, lineHeight: 24, color: on ? '#fff' : c.fg }}>{d.date}</Text>
+        <Text style={{ fontFamily: F.bold, fontSize: 16, lineHeight: 24, color: on ? '#fff' : c.fg, fontVariant: ['tabular-nums'] }}>{d.date}</Text>
         <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: d.dot ? (on ? '#FFFFFF' : c.primary) : 'transparent' }} />
       </>
     );
@@ -327,14 +423,14 @@ export function WeekStrip({ days, selected, onSelect, title, onPrev, onNext, scr
     ref.current?.scrollTo({ x, animated: !rm });
   };
   return (
-    <DashCard style={[{ padding: 7 }, style]}>
+    <DashCard style={[{ padding: 8 }, style]}>
       {head || onPrev || onNext ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 9, paddingTop: 5, paddingBottom: 6, minHeight: 28 }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg }}>{head}</Text>
+          <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg }}>{head}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {away && jumpLabel ? (
-              <Pressy onPress={toSel} accessibilityLabel={jumpLabel} style={{ paddingVertical: 3, paddingHorizontal: 10, borderRadius: 999, backgroundColor: c.card, borderWidth: 1, borderColor: c.line }}>
-                <Text style={{ fontFamily: F.semi, fontSize: 12, color: c.softInk }}>{jumpLabel}</Text>
+              <Pressy onPress={toSel} accessibilityLabel={jumpLabel} style={{ paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(84,9,218,0.08)' }}>
+                <Text style={{ fontFamily: F.semi, fontSize: 12, color: c.primary }}>{jumpLabel}</Text>
               </Pressy>
             ) : null}
             {onPrev ? <PillButton icon="back" label="‹" size={28} onPress={onPrev} flat /> : null}
@@ -405,10 +501,10 @@ export function BarChart({ data, highlight, height = 120, max, onSelect, style }
         const f = Math.max(0, Math.min(1, d.target ? d.value / d.target : d.value / top));
         const label = d.top ?? (d.target ? `${Math.round(f * 100)}%` : String(d.value));
         return (
-          <Pressy key={i} onPress={onSelect ? () => onSelect(i) : undefined} disabled={!onSelect} scaleTo={0.96} accessibilityLabel={`${d.label} ${label}`} style={{ flex: 1, alignItems: 'center', gap: 6 }}>
+          <Pressy key={i} onPress={onSelect ? () => onSelect(i) : undefined} disabled={!onSelect} accessibilityLabel={`${d.label} ${label}`} style={{ flex: 1, alignItems: 'center', gap: 6 }}>
             <Text style={{ fontFamily: on ? F.bold : F.medium, fontSize: 10.5, lineHeight: 16, color: on ? c.primary : c.fg3 }}>{label}</Text>
-            <View style={{ height, width: '100%', borderRadius: 10, backgroundColor: c.soft, overflow: 'hidden', justifyContent: 'flex-end' }}>
-              <Animated.View style={{ width: '100%', borderRadius: 10, backgroundColor: on ? c.primary : withAlpha(c.primary, 0.14), height: g.interpolate({ inputRange: [0, 1], outputRange: [6, Math.max(6, f * height)] }) }} />
+            <View style={{ height, width: '100%', borderRadius: 8, backgroundColor: c.soft, overflow: 'hidden', justifyContent: 'flex-end' }}>
+              <Animated.View style={{ width: '100%', borderRadius: 8, backgroundColor: on ? c.primary : withAlpha(c.primary, 0.14), height: g.interpolate({ inputRange: [0, 1], outputRange: [6, Math.max(6, f * height)] }) }} />
             </View>
             <Text style={{ fontFamily: on ? F.bold : F.medium, fontSize: 10.5, lineHeight: 16, color: on ? c.primary : c.fg3 }} numberOfLines={1}>{d.label}</Text>
           </Pressy>
@@ -494,30 +590,33 @@ export type ListCardProps = {
   onAction?: () => void;
   style?: S<ViewStyle>;
   children?: React.ReactNode;
+  /** No card surface: a bare row to put inside a ListGroup. */
+  plain?: boolean;
 };
 /** Row card: title + detail on the left, chips / thumbnails and a round "+" or chevron button on the right. */
-export function ListCard({ title, detail, icon, iconTone, leading, chips, right, action = 'none', onPress, onAction, style, children }: ListCardProps) {
+export function ListCard({ title, detail, icon, iconTone, leading, chips, right, action = 'none', onPress, onAction, style, children, plain }: ListCardProps) {
   const { c, dark } = useTheme();
   const hasAction = action !== 'none';
-  return (
-    <DashCard onPress={onPress} accessibilityLabel={detail ? `${title}, ${detail}` : title} style={[{ padding: 11 }, style]}>
+  const plainChevron = action === 'chevron' && !onAction;   // the whole row is the target: just draw the chevron (customer ListRow)
+  const inner = (
+    <>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        {leading ?? (icon ? <IconBubble icon={icon} size={40} tint={iconTone ? toneInk(iconTone, dark, c.softInk) : undefined} bg={iconTone ? withAlpha(iconTone, 0.16) : undefined} /> : null)}
+        {leading ?? (icon ? <IconBubble icon={icon} tint={iconTone ? toneInk(iconTone, dark, c.primary) : undefined} bg={iconTone ? withAlpha(iconTone, 0.1) : undefined} /> : null)}
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 14, lineHeight: 20, color: c.fg }} numberOfLines={1}>{title}</Text>
-          {detail ? <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 18, color: c.fg3 }} numberOfLines={2}>{detail}</Text> : null}
+          <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 22, color: c.fg }} numberOfLines={1}>{title}</Text>
+          {detail ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3 }} numberOfLines={2}>{detail}</Text> : null}
         </View>
         {chips?.length ? (
           <View style={{ flexDirection: 'row', gap: 4, flexShrink: 0 }}>
             {chips.map((ch, i) => (
-              <View key={i} style={{ height: 20, justifyContent: 'center', paddingHorizontal: 8, borderRadius: 99, backgroundColor: ch.tone ? withAlpha(ch.tone, 0.15) : c.soft }}>
-                <Text style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: ch.tone ?? c.softInk }}>{ch.label}</Text>
+              <View key={i} style={{ minHeight: 24, justifyContent: 'center', paddingHorizontal: 8, borderRadius: 8, backgroundColor: ch.tone ? withAlpha(ch.tone, 0.12) : c.tile2 }}>
+                <Text style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: ch.tone ? toneInk(ch.tone, dark, c.fg2) : c.fg2, fontVariant: ['tabular-nums'] }}>{ch.label}</Text>
               </View>
             ))}
           </View>
         ) : null}
         {right}
-        {hasAction ? (
+        {plainChevron ? <Icon name="chevron" size={18} color={c.fg3} /> : hasAction ? (
           <PillButton
             icon={action === 'plus' ? 'plus' : action === 'check' ? 'check' : action === 'chevron' ? 'chevron' : 'arrow'}
             label={title}
@@ -528,6 +627,33 @@ export function ListCard({ title, detail, icon, iconTone, leading, chips, right,
         ) : null}
       </View>
       {children ? <View style={{ marginTop: 12 }}>{children}</View> : null}
+    </>
+  );
+  const pad: ViewStyle = { paddingVertical: 12, paddingHorizontal: 16, minHeight: 64, justifyContent: 'center' };
+  // plain = a bare row (no card): put several in a <ListGroup> for the customer "one white card, hairlines between rows" look.
+  if (plain) {
+    if (onPress) return <Pressy onPress={onPress} scaleTo={0.985} accessibilityLabel={detail ? `${title}, ${detail}` : title} style={[pad, style]}>{inner}</Pressy>;
+    return <View style={[pad, style]}>{inner}</View>;
+  }
+  return (
+    <DashCard onPress={onPress} accessibilityLabel={detail ? `${title}, ${detail}` : title} style={[pad, style]}>
+      {inner}
+    </DashCard>
+  );
+}
+
+/** One white card holding several rows (ListCard plain / Row) with a hairline between them. */
+export function ListGroup({ children, style }: { children?: React.ReactNode; style?: S<ViewStyle> }) {
+  const { c } = useTheme();
+  const items = React.Children.toArray(children).filter(Boolean);
+  return (
+    <DashCard style={[{ overflow: 'hidden' }, style]}>
+      {items.map((ch, i) => (
+        <React.Fragment key={i}>
+          {i > 0 ? <View style={{ height: 1, backgroundColor: c.line, marginLeft: 16 }} /> : null}
+          {ch}
+        </React.Fragment>
+      ))}
     </DashCard>
   );
 }
@@ -540,29 +666,36 @@ export type PillButtonProps = {
   /** Accessibility label (required: the button has no text). */
   label: string;
   onPress?: () => void;
-  /** Diameter, default 44. */
+  /** Diameter, default 36. */
   size?: number;
-  /** 'white' card-coloured (default), 'violet' filled, 'gold' filled. */
+  /** 'white' card-coloured (default), 'violet' filled, 'gold' filled (same as violet now). */
   tone?: 'white' | 'violet' | 'gold';
   /** Count bubble in the corner. */
   badge?: number;
-  /** No shadow, light-violet fill (used inside cards). */
+  /** No shadow, violet 8% tint fill (used inside cards). */
   flat?: boolean;
+  /** Round white-15% button with a white icon, for use on a violet block (automatic inside VioletHeader / OnViolet). */
+  onViolet?: boolean;
   /** Custom glyph instead of an Icon. */
   children?: React.ReactNode;
   style?: S<ViewStyle>;
 };
-/** Rounded-square (radius 12) icon button, 32px by default, with a 44px touch area. */
-export function PillButton({ icon, label, onPress, size = 32, tone = 'white', badge, flat, children, style }: PillButtonProps) {
-  const { c } = useTheme();
-  const bg = flat ? c.card : tone === 'violet' ? c.primary : tone === 'gold' ? c.primary : c.card;
-  const fg = flat ? c.softInk : tone === 'violet' ? '#fff' : tone === 'gold' ? '#fff' : c.fg;
+/** Square icon button (radius 12) with a 44px touch area. On violet it turns into a round white-15% button. */
+export function PillButton({ icon, label, onPress, size = 36, tone = 'white', badge, flat, onViolet, children, style }: PillButtonProps) {
+  const { c, dark, onViolet: ctxViolet } = useTheme();
+  const ov = onViolet ?? ctxViolet;
+  const filled = tone === 'violet' || tone === 'gold';
+  const tint = dark ? 'rgba(139,92,246,0.2)' : 'rgba(84,9,218,0.08)';
+  const bg = ov && !filled ? 'rgba(255,255,255,0.15)' : flat ? tint : filled ? c.primary : c.card;
+  const fg = ov && !filled ? '#fff' : flat ? c.primary : filled ? '#fff' : c.fg;
+  const radius = ov && !filled ? size / 2 : 12;
   return (
-    <Pressy onPress={onPress} accessibilityLabel={label} scaleTo={0.92} hitSlop={size < 44 ? (44 - size) / 2 : 0} style={[{ width: size, height: size, borderRadius: size * 0.375, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }, (tone === 'violet' || tone === 'gold') ? null : { borderWidth: 1, borderColor: c.line }, flat ? null : cardShadow(c), style]}>
+    <Pressy onPress={onPress} accessibilityLabel={label} scaleTo={0.92} hitSlop={size < 44 ? (44 - size) / 2 : 0}
+      style={[{ width: size, height: size, borderRadius: radius, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }, (!ov && !flat && !filled) ? [cardShadow(c), c.shadow ? null : { borderWidth: 1, borderColor: c.line }] : null, style]}>
       {children ?? (icon ? <Icon name={icon} size={Math.round(size * 0.5)} color={fg} /> : null)}
       {badge && badge > 0 ? (
-        <View style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontFamily: F.bold, fontSize: 10, color: '#fff' }}>{badge}</Text>
+        <View style={{ position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: ov ? '#FFBA08' : c.primary, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontFamily: F.bold, fontSize: 10, color: ov ? '#24065F' : '#fff' }}>{badge}</Text>
         </View>
       ) : null}
     </Pressy>
@@ -589,33 +722,39 @@ export type AppHeaderProps = {
   sub?: React.ReactNode;
   /** Adds the top safe-area inset itself. Default true. */
   safeTop?: number;
+  /** Draw for a violet block (white text, white-15% round buttons). Automatic inside VioletHeader / OnViolet. */
+  onViolet?: boolean;
   style?: S<ViewStyle>;
 };
-/** Header for every tab: round avatar + greeting + name on the left, two 44px white round buttons on the right. */
-export function AppHeader({ name, greeting, avatarUri, onAvatarPress, actions, top, sub, safeTop = 0, style }: AppHeaderProps) {
-  const { c } = useTheme();
+/** Header for every tab: avatar + greeting + name on the left, up to two round buttons on the right.
+ *  `onViolet` (or being inside VioletHeader / OnViolet) draws it for the violet block: no background, white text, white-15% round buttons. */
+export function AppHeader({ name, greeting, avatarUri, onAvatarPress, actions, top, sub, safeTop = 0, onViolet, style }: AppHeaderProps) {
+  const { c, onViolet: ctx } = useTheme();
+  const ov = onViolet ?? ctx;
   const initial = (name.trim()[0] || '?').toUpperCase();
+  const ring = ov ? { borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)' } : null;
   const av = avatarUri
-    ? <Image source={{ uri: avatarUri }} style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.tile2 }} />
+    ? <Image source={{ uri: avatarUri }} style={[{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#EDE6FF' }, ring]} />
     : (
-      <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.card, borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontFamily: F.medium, fontSize: 19, color: c.fg }}>{initial}</Text>
+      <View style={[{ width: 48, height: 48, borderRadius: 24, backgroundColor: ov ? '#EDE6FF' : 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }, ring]}>
+        <Text style={{ fontFamily: F.bold, fontSize: 20, color: '#5409DA' }}>{initial}</Text>
       </View>
     );
-  return (
-    <View style={[{ paddingHorizontal: 16, paddingTop: safeTop + 16, paddingBottom: 12 }, style]}>
+  const body = (
+    <View style={[{ paddingHorizontal: ov ? 0 : 16, paddingTop: safeTop + (ov ? 0 : 16), paddingBottom: ov ? 0 : 12 }, style]}>
       {top ? <View style={{ marginBottom: 8 }}>{top}</View> : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Pressy onPress={onAvatarPress} disabled={!onAvatarPress} accessibilityLabel={name} scaleTo={0.94}>{av}</Pressy>
         <View style={{ flex: 1, minWidth: 0 }}>
-          {greeting ? <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3 }} numberOfLines={1}>{greeting}</Text> : null}
-          <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 20, lineHeight: 28, color: c.fg }} numberOfLines={1}>{name}</Text>
+          {greeting ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 20, color: ov ? 'rgba(255,255,255,0.82)' : c.fg3 }} numberOfLines={1}>{greeting}</Text> : null}
+          <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 22, lineHeight: 28, color: ov ? '#fff' : c.fg }} numberOfLines={1}>{name}</Text>
           {sub ? <View style={{ marginTop: 2 }}>{sub}</View> : null}
         </View>
-        {(actions ?? []).slice(0, 2).map((a, i) => <PillButton key={i} icon={a.icon} label={a.label} onPress={a.onPress} badge={a.badge} />)}
+        {(actions ?? []).slice(0, 2).map((a, i) => <PillButton key={i} icon={a.icon} label={a.label} onPress={a.onPress} badge={a.badge} onViolet={ov} size={ov ? 40 : 36} />)}
       </View>
     </View>
   );
+  return ov && !ctx ? <OnViolet>{body}</OnViolet> : body;
 }
 
 /** Icon colour for a tinted bubble (Astryx text-success / text-warning / accent); unknown tones pass through. */

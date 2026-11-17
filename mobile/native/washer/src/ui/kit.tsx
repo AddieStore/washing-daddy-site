@@ -19,7 +19,8 @@ import {
 import Svg, { Circle } from 'react-native-svg';
 import { Icon, IconName } from './Icons';
 import { ui } from './bus';
-import { F, R, brand, cardShadow, useTheme } from './theme';
+import { usePressSpring } from './motion';
+import { F, R, brand, cardBox, cardShadow, useTheme } from './theme';
 
 type S<T> = StyleProp<T>;
 const useNative = Platform.OS !== 'web';
@@ -32,7 +33,7 @@ export function Pressy({
   onLongPress,
   disabled,
   style,
-  scaleTo = 0.97,
+  scaleTo = 0.96,
   children,
   accessibilityLabel,
   accessibilityRole = 'button',
@@ -50,15 +51,15 @@ export function Pressy({
   accessibilityState?: { selected?: boolean; checked?: boolean; disabled?: boolean };
   hitSlop?: number;
 }) {
-  const v = useRef(new Animated.Value(1)).current;
-  const to = (x: number) => Animated.spring(v, { toValue: x, useNativeDriver: useNative, speed: 40, bounciness: 8 }).start();
+  // Pronto press: spring to 0.96 and back with a small overshoot (no scale with reduced motion)
+  const { scale: v, down, up } = usePressSpring(scaleTo);
   return (
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
       disabled={disabled}
-      onPressIn={() => to(scaleTo)}
-      onPressOut={() => to(1)}
+      onPressIn={down}
+      onPressOut={up}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !!disabled, ...accessibilityState }}
@@ -94,17 +95,24 @@ export function Button({
   /** stretch to the container width (default true) */
   full?: boolean;
 }) {
-  const { c } = useTheme();
-  const v: Record<ButtonVariant, { bg: string; fg: string; shadow?: string; inset?: number; border?: boolean }> = {
+  const { c, dark, onViolet } = useTheme();
+  // Pronto: primary = solid violet; secondary (ghost) = white with a hairline; disabled = flat grey with grey text.
+  const v: Record<ButtonVariant, { bg: string; fg: string; line?: string }> = {
     gold: { bg: c.primary, fg: '#fff' },
     violet: { bg: c.primary, fg: '#fff' },
-    ink: { bg: brand.ink, fg: '#fff' },
-    ghost: { bg: c.tile2, fg: c.fg },
+    ink: { bg: dark ? c.tile2 : '#171717', fg: '#fff' },
+    ghost: { bg: c.card, fg: c.fg, line: c.line },
     mint: { bg: brand.mint, fg: '#06281D' },
-    sos: { bg: brand.red, fg: '#fff' },
+    sos: { bg: '#dc2626', fg: '#fff' },
   };
+  if (onViolet) {   // on a violet block: white button with violet text; secondary = translucent white
+    v.gold = v.violet = v.ink = { bg: '#FFFFFF', fg: '#5409DA' };
+    v.ghost = { bg: 'rgba(255,255,255,0.18)', fg: '#FFFFFF' };
+  }
   const t = v[variant];
-  const ghost = variant === 'ghost';
+  const bg = disabled ? (onViolet ? 'rgba(255,255,255,0.14)' : dark ? 'rgba(255,255,255,0.08)' : '#E5E5E5') : t.bg;
+  const fg = disabled ? (onViolet ? 'rgba(255,255,255,0.5)' : dark ? 'rgba(255,255,255,0.4)' : '#A3A3A3') : t.fg;
+  const line = disabled ? undefined : t.line;
   return (
     <Pressy
       onPress={onPress}
@@ -113,26 +121,27 @@ export function Button({
       style={[
         b.btn,
         {
-          backgroundColor: t.bg,
-          minHeight: ghost ? 40 : 44,
+          backgroundColor: bg,
+          minHeight: 52,
           alignSelf: full ? 'stretch' : 'flex-start',
-          opacity: disabled ? 0.45 : 1,
           overflow: 'hidden',
+          borderWidth: line ? 1 : 0,
+          borderColor: line,
         },
         style,
       ]}
     >
-      {icon ? <Icon name={icon} size={18} color={t.fg} /> : null}
-      <Text style={[b.txt, { color: t.fg, fontSize: 14 }]} numberOfLines={2}>
+      {icon ? <Icon name={icon} size={18} color={fg} /> : null}
+      <Text style={[b.txt, { color: fg, fontSize: 16 }]} numberOfLines={2}>
         {label}
       </Text>
-      {iconRight ? <Icon name={iconRight} size={18} color={t.fg} /> : null}
+      {iconRight ? <Icon name={iconRight} size={18} color={fg} /> : null}
     </Pressy>
   );
 }
 
 const b = StyleSheet.create({
-  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 9, paddingHorizontal: 16, borderRadius: R.button },
+  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14 },
   txt: { fontFamily: F.semi, textAlign: 'center', flexShrink: 1 },
 });
 
@@ -152,7 +161,7 @@ export function LinkButton({
   const { c } = useTheme();
   return (
     <Pressy onPress={onPress} accessibilityLabel={label} accessibilityRole="link" scaleTo={0.95} style={[{ minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 }, style]}>
-      <Text style={[{ fontFamily: F.semi, fontSize: 14, color: color ?? c.fg2, textDecorationLine: 'underline' }, textStyle]}>{label}</Text>
+      <Text style={[{ fontFamily: F.semi, fontSize: 14, color: color ?? c.primary }, textStyle]}>{label}</Text>
     </Pressy>
   );
 }
@@ -162,7 +171,7 @@ export function LinkButton({
 /* ------------------------------------------------------------------ */
 export function Card({ children, style, onPress }: { children?: React.ReactNode; style?: S<ViewStyle>; onPress?: () => void }) {
   const { c } = useTheme();
-  const st: S<ViewStyle> = [{ borderRadius: R.card, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line }, cardShadow(c), style];
+  const st: S<ViewStyle> = [cardBox(c), cardShadow(c), style];
   if (onPress) return <Pressy onPress={onPress} style={st}>{children}</Pressy>;
   return <View style={st}>{children}</View>;
 }
@@ -172,8 +181,8 @@ export function Section({ title, meta, children, style }: { title?: string; meta
   return (
     <View style={[{ marginTop: 24 }, style]}>
       {title || meta ? (
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-          {title ? <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 17, color: c.fg, flexShrink: 1 }}>{title}</Text> : <View />}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+          {title ? <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 18, lineHeight: 26, color: c.fg, flexShrink: 1 }}>{title}</Text> : <View />}
           {meta ? <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{meta}</Text> : null}
         </View>
       ) : null}
@@ -184,29 +193,35 @@ export function Section({ title, meta, children, style }: { title?: string; meta
 
 export function Eyebrow({ children, style }: { children?: React.ReactNode; style?: S<TextStyle> }) {
   const { c } = useTheme();
-  return <Text style={[{ fontFamily: F.bold, fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', color: c.fg3 }, style]}>{children}</Text>;
+  return <Text style={[{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: c.fg3 }, style]}>{children}</Text>;
 }
 
 export function BigTitle({ children, em, size = 44, style }: { children?: React.ReactNode; em?: string; size?: number; style?: S<TextStyle> }) {
   const { c } = useTheme();
   return (
-    <Text accessibilityRole="header" style={[{ fontFamily: F.shout, fontSize: size, lineHeight: size * 0.98, textTransform: 'uppercase', color: c.fg, marginTop: 4 }, style]}>
+    <Text accessibilityRole="header" style={[{ fontFamily: F.black, fontSize: Math.min(size, 30), lineHeight: Math.min(size, 30) * 1.15, letterSpacing: -0.5, color: c.fg, marginTop: 4 }, style]}>
       {children}
       {em ? <Text style={{ color: c.em }}>{children ? ' ' : ''}{em}</Text> : null}
     </Text>
   );
 }
 
-export function Chip({ children, icon, style }: { children?: React.ReactNode; icon?: IconName; style?: S<ViewStyle> }) {
+export type ChipTone = 'violet' | 'green' | 'grey' | 'red' | 'dark';
+/** Pronto Pill: radius 8, 12 medium text on a quiet tint. */
+export function Chip({ children, icon, tone = 'violet', style }: { children?: React.ReactNode; icon?: IconName; tone?: ChipTone; style?: S<ViewStyle> }) {
+  const { c, dark } = useTheme();
+  const T: Record<ChipTone, [string, string]> = {
+    violet: [dark ? 'rgba(139,92,246,0.22)' : 'rgba(84,9,218,0.08)', dark ? '#CDB6FF' : '#5409DA'],
+    green: [dark ? 'rgba(92,230,181,0.14)' : '#F0FAF4', dark ? '#5CE6B5' : '#16a34a'],
+    grey: [dark ? c.tile2 : '#ECECF0', c.fg2],
+    red: [dark ? 'rgba(248,113,113,0.16)' : '#FEF2F2', dark ? '#FCA5A5' : '#dc2626'],
+    dark: [c.primary, '#fff'],
+  };
+  const [bg, fg] = T[tone];
   return (
-    <View
-      style={[
-        { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', paddingVertical: 8, paddingLeft: 10, paddingRight: 12, borderRadius: 999, backgroundColor: 'rgba(17,17,20,0.6)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
-        style,
-      ]}
-    >
-      {icon ? <Icon name={icon} size={16} color="#fff" /> : null}
-      <Text style={{ fontFamily: F.bold, fontSize: 13, color: '#fff' }}>{children}</Text>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 28, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, backgroundColor: bg }, style]}>
+      {icon ? <Icon name={icon} size={14} color={fg} /> : null}
+      <Text style={{ fontFamily: F.medium, fontSize: 12, color: fg }}>{children}</Text>
     </View>
   );
 }
@@ -215,18 +230,19 @@ export type StatusKey = 'scheduled' | 'on_the_way' | 'arrived' | 'washing' | 'do
 
 export function StatusPill({ status, label, style }: { status: StatusKey | string; label: string; style?: S<ViewStyle> }) {
   const { c, dark } = useTheme();
-  const map: Record<string, { bg: string; fg: string }> = {
-    scheduled: { bg: dark ? '#2E2E33' : '#E2E2E2', fg: dark ? '#E4E4E7' : '#1B1B1B' },
-    on_the_way: { bg: '#0074E2', fg: '#fff' },
-    arrived: { bg: '#0074E2', fg: '#fff' },
-    washing: { bg: '#0074E2', fg: '#fff' },
-    done: { bg: brand.mint, fg: '#06281D' },
-    skipped: { bg: brand.gold, fg: brand.ink },
+  const violet: [string, string] = [dark ? 'rgba(139,92,246,0.22)' : 'rgba(84,9,218,0.08)', dark ? '#CDB6FF' : '#5409DA'];
+  const map: Record<string, [string, string]> = {
+    scheduled: [dark ? c.tile2 : '#ECECF0', c.fg2],
+    on_the_way: violet,
+    arrived: violet,
+    washing: violet,
+    done: [dark ? 'rgba(92,230,181,0.14)' : '#F0FAF4', dark ? '#5CE6B5' : '#16a34a'],
+    skipped: [dark ? 'rgba(255,186,8,0.16)' : '#FFF6DB', dark ? '#FFD566' : '#8A5B00'],
   };
-  const t = map[status] ?? map.scheduled;
+  const [bg, fg] = map[status] ?? map.scheduled;
   return (
-    <View style={[{ alignSelf: 'flex-start', height: 20, justifyContent: 'center', paddingHorizontal: 8, borderRadius: 999, backgroundColor: t.bg }, style]}>
-      <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: t.fg }}>{label}</Text>
+    <View style={[{ alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center', paddingHorizontal: 8, borderRadius: 8, backgroundColor: bg }, style]}>
+      <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: fg }}>{label}</Text>
     </View>
   );
 }
@@ -240,9 +256,10 @@ export function Plate({ reg, style }: { reg: string; style?: S<ViewStyle> }) {
 }
 
 export function Tier({ label, style }: { label: string; style?: S<ViewStyle> }) {
+  const { c } = useTheme();
   return (
-    <View style={[{ alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: '#F3F4F6' }, style]}>
-      <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 12, color: '#111114' }}>{label}</Text>
+    <View style={[{ alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, backgroundColor: c.tile2 }, style]}>
+      <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 12, color: c.fg2 }}>{label}</Text>
     </View>
   );
 }
@@ -259,8 +276,8 @@ export function XChip({ kind, label, small, style }: { kind?: XKind | string; la
   };
   const t = (kind && map[kind]) || { bg: c.tile2, fg: c.fg };
   return (
-    <View style={[{ alignSelf: 'flex-start', paddingVertical: small ? 2 : 4, paddingHorizontal: small ? 7 : 9, borderRadius: 999, backgroundColor: t.bg }, style]}>
-      <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: small ? 11 : 12, color: t.fg }}>{label}</Text>
+    <View style={[{ alignSelf: 'flex-start', paddingVertical: small ? 2 : 4, paddingHorizontal: small ? 7 : 8, borderRadius: 8, backgroundColor: t.bg }, style]}>
+      <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: small ? 11 : 12, color: t.fg }}>{label}</Text>
     </View>
   );
 }
@@ -281,28 +298,30 @@ export function Row({
   subtitle?: string;
   right?: React.ReactNode;
   onPress?: () => void;
-  /** top hairline (use on 2nd+ rows) */
+  /** bottom hairline (use on all but the last row; put the rows in one white Card with overflow hidden) */
   divider?: boolean;
   style?: S<ViewStyle>;
 }) {
   const { c } = useTheme();
+  // Customer ListRow: 56px, 18px grey line icon, 15px title, chevron on tappable rows, hairline between rows.
   const body = (
     <>
       {icon ? (
-        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.card, borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
-          {typeof icon === 'string' ? <Icon name={icon as IconName} size={20} color={iconColor ?? c.fg} /> : icon}
+        <View style={{ width: 24, alignItems: 'center' }}>
+          {typeof icon === 'string' ? <Icon name={icon as IconName} size={18} color={iconColor ?? c.fg3} /> : icon}
         </View>
       ) : null}
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontFamily: F.semi, fontSize: 15, color: c.fg }}>{title}</Text>
-        {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{subtitle}</Text> : null}
+      <View style={{ flex: 1, minWidth: 0, paddingVertical: 10 }}>
+        <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 22, color: c.fg }}>{title}</Text>
+        {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3, marginTop: 2 }}>{subtitle}</Text> : null}
       </View>
       {right}
+      {onPress && !right ? <Icon name="chevron" size={18} color={c.fg3} /> : null}
     </>
   );
   const st: S<ViewStyle> = [
-    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16, minHeight: 60 },
-    divider && { borderTopWidth: 1, borderTopColor: c.line },
+    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, minHeight: 56 },
+    divider && { borderBottomWidth: 1, borderBottomColor: c.line },
     style,
   ];
   if (onPress) return <Pressy onPress={onPress} scaleTo={0.985} accessibilityLabel={title} style={st}>{body}</Pressy>;
@@ -312,7 +331,7 @@ export function Row({
 export function LegacyTile({ emoji, value, unit, label, style }: { emoji?: string; value: string | number; unit?: string; label?: string; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   return (
-    <View style={[{ borderRadius: R.card, padding: 16, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line }, cardShadow(c), style]}>
+    <View style={[cardBox(c), cardShadow(c), { padding: 16 }, style]}>
       {emoji ? <Text style={{ fontSize: 22, marginBottom: 6 }}>{emoji}</Text> : null}
       <Text style={{ fontFamily: F.bold, fontSize: 32, lineHeight: 40, color: c.fg }}>
         {value}
@@ -370,7 +389,7 @@ export function SyncDot({ state, size = 10 }: { state: SyncState; size?: number 
 }
 
 export function SyncChip({ state, text, onPress, style }: { state: SyncState; text: string; onPress?: () => void; style?: S<ViewStyle> }) {
-  const { c } = useTheme();
+  const { c, onViolet } = useTheme();
   return (
     <Pressy
       onPress={onPress}
@@ -378,8 +397,8 @@ export function SyncChip({ state, text, onPress, style }: { state: SyncState; te
       scaleTo={0.94}
       accessibilityLabel={text}
       style={[
-        { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 12, paddingRight: 14, borderRadius: 999, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line, alignSelf: 'flex-start' },
-        cardShadow(c),
+        { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 12, paddingRight: 14, borderRadius: 999, backgroundColor: onViolet ? 'rgba(255,255,255,0.18)' : c.card, borderWidth: c.shadow ? 0 : 1, borderColor: c.line, alignSelf: 'flex-start' },
+        onViolet ? null : cardShadow(c),
         style,
       ]}
     >
@@ -422,7 +441,7 @@ export function OnlineSwitch({
         <Text style={{ fontFamily: F.semi, fontSize: 15, color: c.fg }}>{title}</Text>
         {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{subtitle}</Text> : null}
       </View>
-      <Animated.View style={{ width: 52, height: 30, borderRadius: 99, padding: 3, backgroundColor: a.interpolate({ inputRange: [0, 1], outputRange: [c.fg3, brand.mint] }) }}>
+      <Animated.View style={{ width: 52, height: 30, borderRadius: 99, padding: 3, backgroundColor: a.interpolate({ inputRange: [0, 1], outputRange: ['#D4D4D8', c.primary] }) }}>
         <Animated.View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: a.interpolate({ inputRange: [0, 1], outputRange: [0, 22] }) }] }} />
       </Animated.View>
     </Pressable>
@@ -454,9 +473,9 @@ export function Segmented<T extends string | number = string>({
             accessibilityRole="radio"
             accessibilityLabel={o.label}
             accessibilityState={{ selected: on }}
-            style={{ minHeight: 40, paddingHorizontal: 12, borderRadius: R.button, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.primary : c.tile2 }}
+            style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: R.button, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.primary : c.card, borderWidth: on ? 0 : 1, borderColor: c.line }}
           >
-            <Text style={{ fontFamily: F.semi, fontSize: 13.5, color: on ? '#fff' : c.fg }}>{o.label}</Text>
+            <Text style={{ fontFamily: F.medium, fontSize: 14, color: on ? '#fff' : c.fg }}>{o.label}</Text>
           </Pressy>
         );
       })}
@@ -488,9 +507,9 @@ export function ChipPicker<T extends string | number = string>({
             accessibilityRole="radio"
             accessibilityState={{ selected: on }}
             accessibilityLabel={opt.label}
-            style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: on ? c.primary : c.line, backgroundColor: on ? c.primary : c.tile }}
+            style={{ minHeight: 40, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, borderWidth: on ? 1.5 : 1, borderColor: on ? c.primary : c.line, backgroundColor: on ? c.card : c.card, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Text style={{ fontFamily: F.semi, fontSize: 13.5, color: on ? '#fff' : c.fg }}>{opt.label}</Text>
+            <Text style={{ fontFamily: F.medium, fontSize: 14, color: on ? c.primary : c.fg }}>{opt.label}</Text>
           </Pressy>
         );
       })}
@@ -512,15 +531,15 @@ export function Field({ big = true, style, onFocus, onBlur, multiline, ...rest }
         {
           width: '100%',
           borderRadius: R.input,
-          borderWidth: 1,
+          borderWidth: focus ? 1.5 : 1,
           borderColor: focus ? c.accent : c.line,
           backgroundColor: c.inputBg,
           color: c.fg,
           fontFamily: F.medium,
           fontSize: big && !multiline ? 16 : 15,
-          paddingVertical: 11,
-          paddingHorizontal: 14,
-          minHeight: multiline ? 96 : undefined,
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          minHeight: multiline ? 96 : 52,
           textAlignVertical: multiline ? 'top' : 'center',
         },
         Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null,
@@ -533,12 +552,17 @@ export function Field({ big = true, style, onFocus, onBlur, multiline, ...rest }
 /* ------------------------------------------------------------------ */
 /* Misc                                                                */
 /* ------------------------------------------------------------------ */
-export function Empty({ title, text, style }: { title: string; text?: string; style?: S<ViewStyle> }) {
+export function Empty({ title, text, style, icon, action }: { title: string; text?: string; style?: S<ViewStyle>; icon?: IconName; action?: React.ReactNode }) {
   const { c } = useTheme();
+  // Customer Empty: art circle, 600 title, grey sub, optional CTA.
   return (
-    <View style={[{ borderRadius: R.card, paddingVertical: 12, paddingHorizontal: 12, alignItems: 'center', borderWidth: 1, borderColor: c.fg, backgroundColor: c.soft }, style]}>
-      <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg, marginBottom: 2, textAlign: 'center' }}>{title}</Text>
-      {text ? <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3, textAlign: 'center' }}>{text}</Text> : null}
+    <View style={[cardBox(c), cardShadow(c), { paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center' }, style]}>
+      <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+        <Icon name={icon ?? 'drop'} size={30} color={c.primary} />
+      </View>
+      <Text style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: c.fg, textAlign: 'center' }}>{title}</Text>
+      {text ? <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: c.fg3, textAlign: 'center', marginTop: 4 }}>{text}</Text> : null}
+      {action ? <View style={{ marginTop: 16, alignSelf: 'stretch' }}>{action}</View> : null}
     </View>
   );
 }
@@ -558,7 +582,7 @@ export function CallButton({ phone, small, label, style }: { phone: string; smal
       scaleTo={0.92}
       accessibilityLabel={label ?? 'Call'}
       style={[
-        { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card, borderWidth: 1, borderColor: c.line },
+        { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(84,9,218,0.08)' },
         style,
       ]}
     >
@@ -654,8 +678,8 @@ export function Stepper({ steps, style }: { steps: StepItem[]; style?: S<ViewSty
             <View
               style={{
                 width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 3,
-                backgroundColor: ok ? brand.mint : now ? c.primary : c.bg,
-                borderColor: ok ? brand.mint : now ? c.primary : c.line,
+                backgroundColor: ok ? '#16a34a' : now ? c.primary : c.card,
+                borderColor: ok ? '#16a34a' : now ? c.primary : c.line,
                 transform: now ? [{ scale: 1.12 }] : undefined,
               }}
             >

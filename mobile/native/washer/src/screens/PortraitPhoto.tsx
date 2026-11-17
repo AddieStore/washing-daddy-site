@@ -21,8 +21,8 @@ function Pic({ uri, label, ring }: { uri: string; label: string; ring?: boolean 
   const { c } = useTheme();
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
-      <Image source={{ uri }} accessibilityLabel={label} resizeMode="cover" style={{ width: '100%', aspectRatio: 1, borderRadius: 24, backgroundColor: brand.gold, borderWidth: ring ? 3 : 0, borderColor: brand.gold }} />
-      <Text style={{ fontFamily: F.bold, fontSize: 12.5, color: c.fg2, marginTop: 6 }}>{label}</Text>
+      <Image source={{ uri }} accessibilityLabel={label} resizeMode="cover" style={{ width: '100%', aspectRatio: 1, borderRadius: 16, backgroundColor: brand.gold, borderWidth: ring ? 3 : 0, borderColor: brand.gold }} />
+      <Text style={{ fontFamily: F.medium, fontSize: 12, color: c.fg2, marginTop: 8 }}>{label}</Text>
     </View>
   );
 }
@@ -44,14 +44,14 @@ function PortraitBody({ uri, fromLibrary, close }: { uri: string; fromLibrary: b
       <SheetTitle title={t('Aapki photo')} />
       {err ? (
         <>
-          <Text style={{ fontFamily: F.body, fontSize: 14.5, color: c.fg2, marginBottom: 14 }}>{t(err)}</Text>
-          <Button label={t('Dobara lo')} onPress={again} />
+          <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: c.fg2, marginBottom: 16 }}>{t(err)}</Text>
+          <Button label={t('Dobara lo')} style={{ minHeight: 52 }} onPress={again} />
         </>
       ) : !r ? (
-        <View style={{ alignItems: 'center', paddingVertical: 28 }}>
-          <Image source={{ uri }} resizeMode="cover" style={{ width: 150, aspectRatio: 1, borderRadius: 24, opacity: 0.55 }} />
+        <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+          <Image source={{ uri }} resizeMode="cover" style={{ width: 150, aspectRatio: 1, borderRadius: 16, opacity: 0.55 }} />
           <ActivityIndicator color={brand.violet} style={{ marginTop: 16 }} />
-          <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.bold, fontSize: 15, color: c.fg, marginTop: 10 }}>{t('Background hata rahe hain…')}</Text>
+          <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.semi, fontSize: 15, color: c.fg, marginTop: 12 }}>{t('Background hata rahe hain…')}</Text>
         </View>
       ) : (
         <>
@@ -59,12 +59,12 @@ function PortraitBody({ uri, fromLibrary, close }: { uri: string; fromLibrary: b
             <Pic uri={uri} label={t('Pehle')} />
             <Pic uri={r.after} label={t('Ab')} ring />
           </View>
-          <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, textAlign: 'center', marginTop: 12 }}>
+          <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, textAlign: 'center', marginTop: 12 }}>
             {r.cut ? t('Background hat gaya, peeche hamara golden yellow.') : t('Background hata nahi paaye, isliye photo seedhi golden yellow par lagi. Phone ke app mein background hat jata hai.')}
           </Text>
-          <View style={{ gap: 10, marginTop: 16 }}>
-            <Button label={t('Theek hai')} icon="check" onPress={ok} />
-            <Button label={t('Dobara lo')} variant="ghost" onPress={again} />
+          <View style={{ gap: 12, marginTop: 24 }}>
+            <Button label={t('Theek hai')} icon="check" style={{ minHeight: 52 }} onPress={ok} />
+            <Button label={t('Dobara lo')} variant="ghost" style={{ minHeight: 52 }} onPress={again} />
           </View>
         </>
       )}
@@ -77,9 +77,9 @@ export function openPhotoChooser() {
   sheet.open(close => (
     <View>
       <SheetTitle title={t('Profile photo badlo')} sub={t('Background apne aap hat jayega, peeche golden yellow aayega.')} />
-      <View style={{ gap: 10 }}>
-        <Button label={t('Camera se lo')} icon="cam" onPress={() => { close(); setTimeout(() => { void changeProfilePhoto(false) }, 350) }} />
-        <Button label={t('Gallery se chuno')} variant="ghost" onPress={() => { close(); setTimeout(() => { void changeProfilePhoto(true) }, 350) }} />
+      <View style={{ gap: 12 }}>
+        <Button label={t('Camera se lo')} icon="cam" style={{ minHeight: 52 }} onPress={() => { close(); setTimeout(() => { void changeProfilePhoto(false) }, 350) }} />
+        <Button label={t('Gallery se chuno')} variant="ghost" style={{ minHeight: 52 }} onPress={() => { close(); setTimeout(() => { void changeProfilePhoto(true) }, 350) }} />
       </View>
     </View>
   ));

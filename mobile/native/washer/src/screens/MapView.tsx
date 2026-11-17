@@ -164,7 +164,7 @@ export default function MapView({ places, me, height = 340 }: MapProps) {
   const { dark } = useTheme();
   const reduce = useReducedMotion();
   const html = useMemo(() => mapHtml(places, me, dark, reduce), [places, me, dark, reduce]);
-  const box = { height, borderRadius: 24, overflow: 'hidden' as const, backgroundColor: dark ? '#17171A' : '#F1F1F3' };
+  const box = { height, borderRadius: 16, overflow: 'hidden' as const, backgroundColor: dark ? '#17171A' : '#F1F1F3' };
   const label = t('Jahan aap kaam karte ho');
   if (Platform.OS === 'web') {
     return (

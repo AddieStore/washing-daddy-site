@@ -1,7 +1,8 @@
 // Profile tab sections: assigned clothes, my kit (add-only), my documents (read-only, set by Daddy).
 import React, { useState } from 'react';
 import { Image, Text, View } from 'react-native';
-import { BigNumber, Button, ChipPicker, DashCard, F, Field, Icon, LinkButton, ListCard, Pressy, SectionTitle, StatusPill, brand, sheet, ui, useTheme } from '../ui';
+import { Button, ChipPicker, F, Field, Icon, LinkButton, Pressy, StatusPill, brand, sheet, ui, useTheme } from '../ui';
+import { PRow, PSection, RowsCard, TNUM, WCard } from './ProntoBits';
 import { Kit, addKitItem, clothesHave, useStore } from '../state/store';
 import { KIT_KINDS, type KitKind } from '../lib/data';
 import { t } from '../lib/i18n';
@@ -21,13 +22,11 @@ function useBox() {
   return { c, box: { padding: 0, overflow: 'hidden' } as const };
 }
 
-/** Titled block on the page background (title 17px semibold, optional grey meta on the right). */
+/** Titled block on the page background (title 18 semibold, optional grey meta on the right). */
 function Section({ title, meta, children }: { title: string; meta?: string; children?: React.ReactNode }) {
-  const { c } = useTheme();
   return (
-    <View style={{ marginTop: 8 }}>
-      <SectionTitle title={title} />
-      {meta ? <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: -6, marginBottom: 10 }}>{meta}</Text> : null}
+    <View style={{ marginTop: 0 }}>
+      <PSection title={title} note={meta} style={{ marginTop: 12 }} />
       {children}
     </View>
   );
@@ -35,7 +34,7 @@ function Section({ title, meta, children }: { title: string; meta?: string; chil
 
 function Note({ children }: { children: React.ReactNode }) {
   const { c } = useTheme();
-  return <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 10 }}>{children}</Text>;
+  return <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, marginTop: 8 }}>{children}</Text>;
 }
 
 /* ---------- 1. Mere kapde ---------- */
@@ -45,18 +44,18 @@ export function ClothesCard() {
   const given = Kit.profile?.assigned_clothes;
   const own = clothesHave();
   const cell = (n: string | number, label: string) => (
-    <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 12 }}>
-      <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg2 }} numberOfLines={2}>{label}</Text>
-      <BigNumber value={n} size={32} style={{ marginTop: 6 }} />
+    <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 16 }}>
+      <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3 }} numberOfLines={2}>{label}</Text>
+      <Text style={[TNUM, { fontFamily: F.black, fontSize: 30, lineHeight: 36, letterSpacing: -0.5, color: c.fg, marginTop: 4 }]}>{n}</Text>
     </View>
   );
   return (
     <Section title={t('Mere kapde')}>
-      <DashCard style={[box, { flexDirection: 'row' }]}>
+      <WCard style={[box, { flexDirection: 'row' }]}>
         {cell(given == null ? '—' : given, t('Daddy ne diye'))}
-        <View style={{ width: 1, backgroundColor: c.line, marginVertical: 14 }} />
+        <View style={{ width: 1, backgroundColor: c.line, marginVertical: 16 }} />
         {cell(own, t('Maine khud add kiye'))}
-      </DashCard>
+      </WCard>
       {given == null ? <Note>{t('Daddy abhi kapde assign kar rahe hain')}</Note> : null}
     </Section>
   );
@@ -70,23 +69,25 @@ export function KitCard() {
   return (
     <Section title={t('Mera saaman')} meta={Kit.loaded ? undefined : t('Aa raha hai…')}>
       {items.length === 0 ? (
-        <DashCard style={{ padding: 16 }}>
+        <WCard style={{ padding: 16 }}>
           <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg2 }}>{t('Abhi koi saaman add nahi kiya')}</Text>
-        </DashCard>
+        </WCard>
       ) : (
-        <View style={{ gap: 12 }}>
+        <View style={{ gap: 16 }}>
           {KIT_KINDS.filter(k => items.some(i => i.kind === k.kind)).map(k => (
-            <View key={k.kind} style={{ gap: 10 }}>
-              <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: c.fg3, letterSpacing: 0.4, textTransform: 'uppercase', paddingHorizontal: 4 }}>{kindLabel(k.kind)}</Text>
-              {items.filter(i => i.kind === k.kind).map(i => (
-                <ListCard key={i.id} leading={<Thumb uri={Kit.photos?.[i.id]} />} title={i.name} detail={`${t('Add kiya')} ${fmtDate(i.at)}`}
-                  right={<Text style={{ fontFamily: F.black, fontSize: 18, color: c.fg }}>× {i.qty}</Text>} />
-              ))}
+            <View key={k.kind} style={{ gap: 8 }}>
+              <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3, paddingHorizontal: 4 }}>{kindLabel(k.kind)}</Text>
+              <RowsCard>
+                {items.filter(i => i.kind === k.kind).map((i, n, arr) => (
+                  <PRow key={i.id} leading={<Thumb uri={Kit.photos?.[i.id]} />} title={i.name} sub={`${t('Add kiya')} ${fmtDate(i.at)}`} last={n === arr.length - 1}
+                    right={<Text style={[TNUM, { fontFamily: F.bold, fontSize: 18, color: c.fg }]}>× {i.qty}</Text>} />
+                ))}
+              </RowsCard>
             </View>
           ))}
         </View>
       )}
-      <View style={{ marginTop: 14 }}>
+      <View style={{ marginTop: 12 }}>
         <Button label={t('Saaman add karo')} variant="violet" icon="plus" onPress={openAddKit} />
       </View>
       <Note>{t('Ek baar add kiya to hata nahi sakte')}</Note>
@@ -97,7 +98,7 @@ export function KitCard() {
 function Thumb({ uri }: { uri?: string }) {
   const { c } = useTheme();
   return (
-    <View style={{ width: 48, height: 48, borderRadius: 14, overflow: 'hidden', backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ width: 48, height: 48, borderRadius: 12, overflow: 'hidden', backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center' }}>
       {uri ? <Image source={{ uri }} style={{ width: 48, height: 48 }} resizeMode="cover" /> : <Icon name="cam" size={20} color={c.fg3} />}
     </View>
   );
@@ -134,7 +135,7 @@ function AddKitBody({ close }: { close: () => void }) {
   };
   const stepBtn = (label: string, d: number, off: boolean) => (
     <Pressy onPress={() => setQty(q => Math.min(999, Math.max(1, q + d)))} disabled={off} accessibilityLabel={label}
-      style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
+      style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
       <Text style={{ fontFamily: F.black, fontSize: 24, color: c.softInk }}>{d > 0 ? '+' : '−'}</Text>
     </Pressy>
   );
@@ -142,8 +143,8 @@ function AddKitBody({ close }: { close: () => void }) {
     return (
       <View>
         <SheetTitle title={t('Pakka add karein?')} sub={t('Ek baar add kiya to hata nahi sakte. Naam aur ginti dobara check kar lo.')} />
-        <View style={{ padding: 14, borderRadius: 16, backgroundColor: c.soft, marginBottom: 12 }}>
-          <Text style={{ fontFamily: F.black, fontSize: 18, color: c.fg }}>{nm} × {qty}</Text>
+        <View style={{ padding: 16, borderRadius: 16, backgroundColor: c.soft, marginBottom: 12 }}>
+          <Text style={{ fontFamily: F.bold, fontSize: 18, color: c.fg }}>{nm} × {qty}</Text>
           <Text style={{ fontFamily: F.body, fontSize: 13.5, color: c.fg2, marginTop: 2 }}>{kindLabel(kind)}</Text>
           {shot ? <Image source={{ uri: shot.preview }} style={{ width: 72, height: 72, borderRadius: 18, marginTop: 10 }} resizeMode="cover" /> : null}
         </View>
@@ -152,7 +153,7 @@ function AddKitBody({ close }: { close: () => void }) {
       </View>
     );
   }
-  const lab = { fontFamily: F.bold, fontSize: 13, color: c.fg2, marginTop: 14, marginBottom: 8 } as const;
+  const lab = { fontFamily: F.semi, fontSize: 13, color: c.fg2, marginTop: 16, marginBottom: 8 } as const;
   return (
     <View>
       <SheetTitle title={t('Saaman add karo')} sub={t('Jo saaman aapke paas hai wo likho.')} />
@@ -163,7 +164,7 @@ function AddKitBody({ close }: { close: () => void }) {
       <Text style={lab}>{t('Kitne?')}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 22 }}>
         {stepBtn(t('Kam'), -1, qty <= 1)}
-        <Text accessibilityLabel={t('Ginti') + ' ' + qty} style={{ fontFamily: F.black, fontSize: 36, color: c.fg, minWidth: 64, textAlign: 'center' }}>{qty}</Text>
+        <Text accessibilityLabel={t('Ginti') + ' ' + qty} style={{ fontFamily: F.black, fontSize: 32, lineHeight: 40, color: c.fg, minWidth: 64, textAlign: 'center' }}>{qty}</Text>
         {stepBtn(t('Zyada'), 1, qty >= 999)}
       </View>
       <Text style={lab}>{t('Saaman ki photo (optional)')}</Text>
@@ -174,14 +175,14 @@ function AddKitBody({ close }: { close: () => void }) {
         </View>
       ) : (
         <Pressy onPress={snap} accessibilityLabel={t('Photo lo')} scaleTo={0.96}
-          style={{ height: 96, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          style={{ height: 96, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
           <Icon name="cam" size={28} color={c.fg2} />
-          <Text style={{ fontFamily: F.black, fontSize: 13, color: c.fg2 }}>{t('Photo lo')}</Text>
+          <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg2 }}>{t('Photo lo')}</Text>
         </Pressy>
       )}
       <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: brand.red, marginTop: 14 }}>{t('Ek baar add kiya to hata nahi sakte')}</Text>
       <View style={{ marginTop: 12 }}>
-        <Button label={t('Aage badho')} variant="gold" disabled={!nm} onPress={() => setStep('confirm')} />
+        <Button label={t('Aage badho')} variant="violet" disabled={!nm} onPress={() => setStep('confirm')} />
       </View>
       <View style={{ alignItems: 'center' }}><LinkButton label={t('Rehne do')} onPress={close} /></View>
     </View>
@@ -200,7 +201,7 @@ export function DocsCard() {
     : pcc ? <StatusPill status="arrived" label={t('Pending')} /> : null;
   const head = (label: string, right?: React.ReactNode) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-      <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: c.fg3, letterSpacing: 0.4, textTransform: 'uppercase' }}>{label}</Text>
+      <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3 }}>{label}</Text>
       {right}
     </View>
   );
@@ -208,12 +209,12 @@ export function DocsCard() {
   const sub = { fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 4 } as const;
   return (
     <Section title={t('Mere documents')}>
-      <DashCard style={box}>
+      <WCard style={box}>
         <View style={{ padding: 16 }}>
           {head(t('Aadhaar'), last4 && p?.aadhaar_verified_at ? <StatusPill status="done" label={t('Verified')} /> : null)}
           {last4 ? (
             <>
-              <Text accessibilityLabel={t('Aadhaar') + ' ' + last4} style={{ fontFamily: F.black, fontSize: 22, letterSpacing: 1.2, color: c.fg, marginTop: 6 }}>XXXX XXXX {last4}</Text>
+              <Text accessibilityLabel={t('Aadhaar') + ' ' + last4} style={{ fontFamily: F.bold, fontSize: 22, lineHeight: 30, letterSpacing: 1.2, color: c.fg, marginTop: 4 }}>XXXX XXXX {last4}</Text>
               {p?.aadhaar_verified_at ? <Text style={sub}>{t('Verified')} {fmtDate(p.aadhaar_verified_at)}</Text> : <Text style={sub}>{t('Daddy abhi verify kar rahe hain')}</Text>}
             </>
           ) : wait}
@@ -229,8 +230,8 @@ export function DocsCard() {
             </>
           ) : wait}
         </View>
-      </DashCard>
-      <View style={{ height: 14 }} />
+      </WCard>
+      <View style={{ height: 12 }} />
       <DocsPanel />
     </Section>
   );

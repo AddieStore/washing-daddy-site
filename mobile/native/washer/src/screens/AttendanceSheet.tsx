@@ -43,9 +43,11 @@ function Figure({ size = 120 }: { size?: number }) {
 function Tip({ text }: { text: string }) {
   const { c } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-      <Icon name="check" size={16} color={brand.violet} />
-      <Text style={{ flex: 1, fontFamily: F.body, fontSize: 14, color: c.fg2 }}>{text}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(84,9,218,0.08)' }}>
+        <Icon name="check" size={14} color={c.primary} />
+      </View>
+      <Text style={{ flex: 1, fontFamily: F.body, fontSize: 14, lineHeight: 20, color: c.fg2 }}>{text}</Text>
     </View>
   );
 }
@@ -95,24 +97,24 @@ function AttendanceBody({ close }: { close: () => void }) {
       <SheetTitle title={t('Hazri ki photo')} sub={t('Cap aur WD T-shirt pehen kar apni photo lo')} />
       {!shot ? (
         <View>
-          <View style={{ alignItems: 'center', paddingVertical: 8, backgroundColor: c.tile2, borderRadius: 20 }}><Figure /></View>
-          <View style={{ gap: 8, marginTop: 14, marginBottom: 16 }}>
+          <View style={{ alignItems: 'center', paddingVertical: 16, backgroundColor: c.tile2, borderRadius: 16 }}><Figure /></View>
+          <View style={{ gap: 12, marginTop: 16, marginBottom: 16 }}>
             <Tip text={t('Seedhe khade ho, chehra saaf dikhe')} />
             <Tip text={t('Cap sir par, T-shirt poori dikhe')} />
             <Tip text={t('Roshni mein ho, peeche se nahi')} />
           </View>
-          {busy ? <ActivityIndicator color={brand.violet} style={{ marginBottom: 8 }} /> : null}
+          {busy ? <ActivityIndicator color={c.primary} style={{ marginBottom: 8 }} /> : null}
           <Button variant="violet" icon="cam" label={t('Photo lo')} onPress={snap} disabled={busy} />
         </View>
       ) : (
         <View>
           <View style={{ alignItems: 'center' }}>
             <Image source={{ uri: shot.preview }} accessibilityLabel={t('Hazri ki photo')} resizeMode="cover"
-              style={{ width: 200, height: 240, borderRadius: 20, backgroundColor: c.tile2, transform: [{ scaleX: 1 }] }} />
+              style={{ width: 200, height: 240, borderRadius: 16, backgroundColor: c.tile2, transform: [{ scaleX: 1 }] }} />
           </View>
           <View accessibilityLiveRegion="polite" style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             {matched ? <SuccessTick size={28} /> : null}
-            <Text style={{ flex: 1, fontFamily: matched ? F.semi : F.body, fontSize: 14.5, color: matched ? c.fg : c.fg2 }}>
+            <Text style={{ flex: 1, fontFamily: matched ? F.semi : F.body, fontSize: 14, lineHeight: 20, color: matched ? c.fg : c.fg2 }}>
               {matched ? t('T-shirt pehchan li') : t('T-shirt ka rang nahi mila, roshni mein dobara photo lo')}
             </Text>
           </View>
@@ -120,14 +122,14 @@ function AttendanceBody({ close }: { close: () => void }) {
             <Pressable onPress={() => setSure(v => !v)} accessibilityRole="checkbox" accessibilityState={{ checked: sure }}
               accessibilityLabel={t('Cap aur T-shirt pehne hain?')}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, minHeight: 48 }}>
-              <View style={{ width: 28, height: 28, borderRadius: 8, borderWidth: 2, borderColor: sure ? brand.violet : c.fg3, backgroundColor: sure ? brand.violet : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: sure ? 0 : 2, borderColor: c.dash, backgroundColor: sure ? c.primary : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
                 {sure ? <Icon name="check" size={18} color="#fff" /> : null}
               </View>
-              <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 15.5, color: c.fg }}>{t('Cap aur T-shirt pehne hain?')}</Text>
+              <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 16, color: c.fg }}>{t('Cap aur T-shirt pehne hain?')}</Text>
             </Pressable>
           ) : null}
           <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 6 }}>{t('Manager yeh photo dekhega')}</Text>
-          <View style={{ gap: 10, marginTop: 14 }}>
+          <View style={{ gap: 12, marginTop: 16 }}>
             {matched || canForce ? (
               <Button variant="violet" icon="check" disabled={!canSend} label={matched ? t('Hazri lagao') : t('Phir bhi bhejo (manager dekhega)')} onPress={send} />
             ) : null}

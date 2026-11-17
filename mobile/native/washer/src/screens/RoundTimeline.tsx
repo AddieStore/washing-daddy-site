@@ -3,7 +3,7 @@
 // arrows. Then locks the round. Core RN only (PanResponder + Animated), so it works with touch and with a mouse.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, PanResponder, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, DashCard, F, Icon, IconBubble, Pressy, SuccessTick, brand, cardShadow, sheet, ui, useReducedMotion, useTheme } from '../ui';
+import { Button, DashCard, F, Icon, Pressy, SuccessTick, brand, cardShadow, sheet, ui, useReducedMotion, useTheme } from '../ui';
 import { Route, S, W, act, carBy, planName, route, useStore } from '../state/store';
 import { STATUS } from '../lib/data';
 import { SLOTS, SLOT_COUNT, lists, place, slotRange } from '../lib/slots';
@@ -49,16 +49,16 @@ export function CheckInCard() {
   if (at) {
     return (
       <DashCard style={st.checked}>
-        <SuccessTick size={34} />
-        <Text accessibilityRole="text" style={{ fontFamily: F.semi, fontSize: 17, color: c.fg, flex: 1 }}>{t('Hub pahunch gaye')} · {t12(at)}</Text>
+        <SuccessTick size={36} />
+        <Text accessibilityRole="text" style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: c.fg, flex: 1 }}>{t('Hub pahunch gaye')} · {t12(at)}</Text>
       </DashCard>
     );
   }
   if (S.day?.started) return null;
   return (
     <DashCard onPress={openAttendance} accessibilityLabel={t('Hub pahunch gaya')} style={st.checked}>
-      <IconBubble icon="pin" size={40} tint="#0B7A57" bg="rgba(20,192,138,0.16)" />
-      <Text style={{ fontFamily: F.semi, fontSize: 17, color: c.fg, flex: 1 }}>{t('Hub pahunch gaya')}</Text>
+      <View style={st.tile}><Icon name="pin" size={18} color={c.primary} /></View>
+      <Text style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: c.fg, flex: 1 }}>{t('Hub pahunch gaya')}</Text>
       <View style={st.checkGo}><Icon name="check" size={18} color="#fff" /></View>
     </DashCard>
   );
@@ -77,7 +77,7 @@ function SlotSheet({ reg, close }: { reg: string; close: () => void }) {
     <Pressy onPress={onPress} scaleTo={0.985} accessibilityLabel={`${label}${sub ? ', ' + sub : ''}`} accessibilityState={{ selected: on }}
       style={[st.srow, !first && { borderTopWidth: 1, borderTopColor: c.line }, on && { backgroundColor: c.tile2 }]}>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: F.bold, fontSize: 16, color: c.fg }}>{label}</Text>
+        <Text style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: c.fg }}>{label}</Text>
         {sub ? <Text style={{ fontFamily: F.body, fontSize: 13, color: c.fg3 }}>{sub}</Text> : null}
       </View>
       {on ? <Icon name="check" size={22} color={brand.mint} /> : null}
@@ -86,7 +86,7 @@ function SlotSheet({ reg, close }: { reg: string; close: () => void }) {
   return (
     <View>
       <SheetTitle title={t('Slot chuno')} sub={car ? `${car.plate} · ${car.model}` : undefined} />
-      <View style={[{ borderRadius: 16, backgroundColor: c.card, borderWidth: 1, borderColor: c.line, overflow: 'hidden' }, cardShadow(c)]}>
+      <View style={[{ borderRadius: 16, backgroundColor: c.card, borderWidth: c.shadow ? 0 : 1, borderColor: c.line, overflow: 'hidden' }, cardShadow(c)]}>
         {SLOTS.map((s, i) => (
           <Row key={i} first={i === 0} on={cur === i} label={slotLabel(i)} onPress={() => pick(i)}
             sub={t(`Slot ${i + 1} · ${lay.slots[i].length} gaadi`)} />
@@ -212,7 +212,7 @@ function CarCard({ reg, target, zone, idx, count, locked, dragging, ctl }: {
           </>
         ) : (
           <>
-            {eta ? <Text style={{ fontFamily: F.black, fontSize: 15, color: c.fg }}>{short12(hm12(eta))}</Text> : null}
+            {eta ? <Text style={{ fontFamily: F.black, fontSize: 15, color: c.fg, fontVariant: ['tabular-nums'] }}>{short12(hm12(eta))}</Text> : null}
             <View style={[st.pill, { backgroundColor: c.tile2 }]}><Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 11, color: c.fg2 }}>{t(pill)}</Text></View>
           </>
         )}
@@ -373,27 +373,28 @@ export function LockBar({ bottom }: { bottom: number }) {
 }
 
 const st = StyleSheet.create({
-  help: { fontFamily: F.body, fontSize: 13, marginBottom: 10 },
+  help: { fontFamily: F.body, fontSize: 13, lineHeight: 20, marginBottom: 12 },
   zone: { position: 'absolute', left: 0, right: 0, borderRadius: 16 },
   zhead: { height: ZHEAD, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14 },
-  ztitle: { fontFamily: F.semi, fontSize: 17 },
+  ztitle: { fontFamily: F.semi, fontSize: 16, lineHeight: 24 },
   badge: { minWidth: 26, height: 26, paddingHorizontal: 8, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   empty: { fontFamily: F.semi, fontSize: 13, textAlign: 'center', position: 'absolute', left: 0, right: 0, top: ZHEAD + 16 },
   card: { position: 'absolute', left: SIDE, right: SIDE, height: CARD_H, flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingRight: 8, paddingLeft: 2, borderRadius: 16, borderWidth: 1 },
   grip: { width: 28, height: CARD_H - 8, alignItems: 'center', justifyContent: 'center', gap: 4 },
   dot: { width: 4, height: 4, borderRadius: 2 },
-  plate: { alignSelf: 'flex-start', paddingVertical: 1, paddingHorizontal: 6, borderRadius: 5, backgroundColor: '#fff', borderWidth: 2, borderColor: brand.ink, flexShrink: 1 },
+  plate: { alignSelf: 'flex-start', paddingVertical: 1, paddingHorizontal: 8, borderRadius: 6, backgroundColor: '#fff', borderWidth: 2, borderColor: brand.ink, flexShrink: 1 },
   plateTxt: { fontFamily: F.black, fontSize: 12, letterSpacing: 0.8, color: brand.ink },
   late: { paddingVertical: 2, paddingHorizontal: 7, borderRadius: 999, backgroundColor: brand.red },
   lateTxt: { fontFamily: F.black, fontSize: 11, color: '#fff' },
   side: { width: 78, alignItems: 'flex-end', gap: 6 },
-  ib: { width: 34, height: 30, borderRadius: 15, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  slotBtn: { height: 28, minWidth: 72, paddingHorizontal: 10, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  ib: { width: 34, height: 30, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  slotBtn: { height: 28, minWidth: 72, paddingHorizontal: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   pill: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999, maxWidth: 78 },
   ph: { position: 'absolute', left: SIDE, right: SIDE, height: CARD_H, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', backgroundColor: 'rgba(84,9,218,0.08)' },
-  srow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 16, minHeight: 60 },
-  checked: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 11 },
-  checkGo: { width: 32, height: 32, borderRadius: 16, backgroundColor: brand.mint, alignItems: 'center', justifyContent: 'center' },
+  srow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16, minHeight: 60 },
+  checked: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
+  tile: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' },
+  checkGo: { width: 36, height: 36, borderRadius: 12, backgroundColor: brand.violet, alignItems: 'center', justifyContent: 'center' },
   barWrap: { position: 'absolute', left: 0, right: 0, paddingHorizontal: 12 },
-  bar: { gap: 8, padding: 10, borderRadius: 16, borderWidth: 1, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 10 },
+  bar: { gap: 8, padding: 12, borderRadius: 16, borderWidth: 1, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 10 },
 });

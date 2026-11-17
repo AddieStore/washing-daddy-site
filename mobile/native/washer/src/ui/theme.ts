@@ -19,12 +19,12 @@ export const brand = {
 export const F = {
   shout: 'Anton_400Regular',
   hero: 'Poppins_700Bold',
-  // Astryx scale tops out at 700: `black` (formerly 800) maps to bold so every heading matches the web preview.
+  // Pronto r5 scale (customer app): 400 body, 500 label, 600 title, 700 figure, 800 hero.
   body: 'Poppins_400Regular',
   medium: 'Poppins_500Medium',
   semi: 'Poppins_600SemiBold',
   bold: 'Poppins_700Bold',
-  black: 'Poppins_700Bold',
+  black: 'Poppins_800ExtraBold',   // Pronto r5: hero headlines are ExtraBold (customer app)
 } as const;
 
 export type Tokens = {
@@ -80,37 +80,38 @@ const base = {
 
 export const lightTokens: Tokens = {
   ...base,
-  bg: '#FFFFFF',
+  // Pronto look shared with the customer app (customer src/theme.ts + pages/parts.tsx): grey page, white floating cards, neutral ink ramp.
+  bg: '#F5F5F8',
   stage: '#EFEFF1',
-  fg: '#111114',
-  fg2: '#4B4B55',
-  fg3: '#6B6B76',
-  line: 'rgba(17,17,20,0.094)',
+  fg: '#171717',
+  fg2: '#525252',
+  fg3: '#737373',
+  line: 'rgba(23,23,23,0.08)',
   tile: '#FFFFFF',
-  tile2: 'rgba(17,17,20,0.06)',
+  tile2: '#F4F4F5',
   accent: '#5409DA',
   accentInk: '#FFFFFF',
-  em: '#111114',
+  em: '#171717',
   barBg: 'rgba(255,255,255,0.92)',
   tabBg: '#FFFFFF',
   sheetBg: '#FFFFFF',
   inputBg: '#FFFFFF',
-  ok: '#0B7A57',
+  ok: '#16a34a',
   dash: 'rgba(17,17,20,0.28)',
   shadow: true,
   card: '#FFFFFF',
-  soft: '#F3F4F6',
-  softInk: '#3F3F46',
+  soft: '#F4F4F5',
+  softInk: '#525252',
   primary: '#5409DA',
-  hero: '#F7F7F8',
-  heroTrack: '#E7E7EA',
-  heroInk: '#111114',
-  shadowColor: '#111114',
+  hero: '#5409DA',
+  heroTrack: 'rgba(255,255,255,0.22)',
+  heroInk: '#FFFFFF',
+  shadowColor: '#1A1033',
 };
 
 export const darkTokens: Tokens = {
   ...lightTokens,
-  bg: '#0E0E10',
+  bg: '#141415',
   stage: '#08080A',
   fg: '#F4F4F5',
   fg2: '#C4C4CC',
@@ -132,14 +133,23 @@ export const darkTokens: Tokens = {
   soft: '#232326',
   softInk: '#D4D4D8',
   primary: '#7A42F0',
-  hero: '#1B1B1E',
-  heroTrack: '#34343A',
+  hero: '#3A06A0',
+  heroTrack: 'rgba(255,255,255,0.18)',
   heroInk: '#F4F4F5',
   shadowColor: '#000000',
 };
 
-/** Violet panels are gone (white look): OnViolet is now a pass-through with no overrides. */
-export const onVioletOverrides: Partial<Tokens> = {};
+/** Tokens for anything drawn on a violet block (VioletHeader, HeroCard): white ink, translucent white fills. */
+export const onVioletOverrides: Partial<Tokens> = {
+  fg: '#FFFFFF',
+  fg2: 'rgba(255,255,255,0.86)',
+  fg3: 'rgba(255,255,255,0.72)',
+  line: 'rgba(255,255,255,0.22)',
+  tile2: 'rgba(255,255,255,0.15)',
+  soft: 'rgba(255,255,255,0.15)',
+  softInk: '#FFFFFF',
+  shadow: false,
+};
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
 type Ctx = { c: Tokens; dark: boolean; onViolet: boolean };
@@ -156,7 +166,7 @@ export function ThemeProvider({ mode, children }: { mode: ThemeMode; children?: 
 export function OnViolet({ children }: { children?: React.ReactNode }) {
   const parent = useContext(ThemeCtx);
   const value = useMemo<Ctx>(
-    () => ({ c: { ...parent.c, ...onVioletOverrides }, dark: parent.dark, onViolet: false }),
+    () => ({ c: { ...parent.c, ...onVioletOverrides }, dark: parent.dark, onViolet: true }),
     [parent.c, parent.dark],
   );
   return React.createElement(ThemeCtx.Provider, { value }, children);
@@ -170,18 +180,19 @@ export function useTheme(): { c: Tokens; dark: boolean; onViolet: boolean } {
 export function cardShadow(c: Tokens) {
   return c.shadow
     ? ({
-        shadowColor: '#000000',
+        shadowColor: '#1A1033',
         shadowOpacity: 0.07,
-        shadowRadius: 5,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 1,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 3,
       } as const)
     : ({} as const);
 }
 
 /** Astryx shape tokens: cards 16, buttons 12, small chips/badges are pills. */
 export const R = { card: 16, button: 12, pill: 9999, input: 12 } as const;
-/** Card surface: 1px neutral border + radius 16 (spread into a style). */
+/** Card surface: radius 16, white; light mode floats on cardShadow (spread into a style). */
 export function cardBox(c: Tokens) {
-  return { borderRadius: R.card, backgroundColor: c.card, borderWidth: 1, borderColor: c.line } as const;
+  // Pronto r5: no hairline on light cards (the spread shadow carries them); dark mode keeps a faint edge.
+  return { borderRadius: R.card, backgroundColor: c.card, borderWidth: c.shadow ? 0 : 1, borderColor: c.line } as const;
 }

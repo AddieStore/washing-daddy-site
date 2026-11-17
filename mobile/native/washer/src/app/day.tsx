@@ -3,14 +3,14 @@
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { DotBg, DashCard, Footer, DemoNote, Empty, F, SectionTitle, WeekStrip, useTheme } from '../ui';
+import { DashCard, Footer, DemoNote, Empty, F, SectionTitle, WeekStrip, useTheme } from '../ui';
 import { DAY, MODE, useStore } from '../state/store';
 import { useDay, useDayMarks } from '../lib/history';
 import { dayStripDays } from '../lib/strip';
 import { dayLong, rupee } from '../lib/time';
 import { isHindi, t } from '../lib/i18n';
 import { ScreenBar } from '../screens/JobParts';
-import { DayRowCard, DaySummary } from '../screens/DayParts';
+import { DayRowCard, DaySummary, FadeUp } from '../screens/DayParts';
 
 export default function DayScreen() {
   useStore();
@@ -23,20 +23,19 @@ export default function DayScreen() {
   const done = data?.rows.filter((r) => r.status === 'done') || [], skipped = data?.rows.filter((r) => r.status === 'skipped') || [];
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <DotBg />
-      <ScreenBar back title={t('Din ka hisaab')} />
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
+            <ScreenBar back title={t('Din ka hisaab')} />
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
         <WeekStrip scroll days={dayStripDays(marks)} selected={date} onSelect={go} jumpLabel={t('Aaj')} />
-        <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 17, color: c.fg, marginTop: 16, marginBottom: 10 }}>{dayLong(date, isHindi())}</Text>
+        <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 22, lineHeight: 28, letterSpacing: -0.3, color: c.fg, marginTop: 24, marginBottom: 16 }}>{dayLong(date, isHindi())}</Text>
         {failed ? <Empty title={t('Din khul nahi paya. Internet dekho.')} /> : !data ? <Empty title={t('List aa rahi hai…')} /> : !data.rows.length ? <Empty title={t('Is din koi gaadi nahi')} /> : (
           <>
             <DaySummary d={data} earnLabel={t('Us din ki kamai')} />
-            <SectionTitle title={t('Gaadi ho gayi')} action={`${done.length}`} style={{ marginTop: 20 }} />
-            {done.length ? <View style={{ gap: 10 }}>{done.map((r) => <DayRowCard key={r.reg} r={r} />)}</View> : <DashCard style={{ padding: 14 }}><Text style={{ fontFamily: F.body, color: c.fg3 }}>–</Text></DashCard>}
+            <SectionTitle title={t('Gaadi ho gayi')} action={`${done.length}`} style={{ marginTop: 24 }} />
+            {done.length ? <View style={{ gap: 12 }}>{done.map((r, i) => <FadeUp key={r.reg} index={i + 3}><DayRowCard r={r} /></FadeUp>)}</View> : <DashCard style={{ padding: 16 }}><Text style={{ fontFamily: F.body, color: c.fg3 }}>–</Text></DashCard>}
             {skipped.length ? (
               <>
-                <SectionTitle title={t('Skip')} action={`${skipped.length}`} style={{ marginTop: 20 }} />
-                <View style={{ gap: 10 }}>{skipped.map((r) => <DayRowCard key={r.reg} r={r} />)}</View>
+                <SectionTitle title={t('Skip')} action={`${skipped.length}`} style={{ marginTop: 24 }} />
+                <View style={{ gap: 12 }}>{skipped.map((r) => <DayRowCard key={r.reg} r={r} />)}</View>
               </>
             ) : null}
             {data.extra ? <DemoNote>{t('Extra kaam')} {rupee(data.extra)}</DemoNote> : null}

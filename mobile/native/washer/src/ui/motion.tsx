@@ -1,7 +1,7 @@
 // Small, cheap motion pieces (plain Animated, native driver on phones): an entrance, a float, a pulse,
 // rising soap bubbles and a success tick. Every one of them stands still when the phone asks for reduced motion.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Platform, StyleProp, View, ViewStyle } from 'react-native';
+import { Animated, Easing, Platform, Pressable, StyleProp, View, ViewStyle } from 'react-native';
 import { useReducedMotion } from './Hosts';
 import { Icon } from './Icons';
 import { brand } from './theme';
@@ -148,5 +148,52 @@ export function SuccessTick({ size = 84 }: { size?: number }) {
         </Animated.View>
       </Animated.View>
     </View>
+  );
+}
+
+/* ---------- Pronto press + entrance (same feel as the customer app, on RN Animated) ---------- */
+
+/** Spring scale for a press: down to `scaleTo` (default 0.96) fast, back to 1 with a small overshoot. Reduced motion: no scale. */
+export function usePressSpring(scaleTo = 0.96) {
+  const rm = useReducedMotion();
+  const v = useRef(new Animated.Value(1)).current;
+  const down = () => { if (!rm) Animated.spring(v, { toValue: scaleTo, speed: 50, bounciness: 0, useNativeDriver: ND }).start() };
+  const up = () => { if (rm) { v.setValue(1); return } Animated.spring(v, { toValue: 1, speed: 24, bounciness: 14, useNativeDriver: ND }).start() };
+  return { scale: v, down, up };
+}
+
+/** A pressable that springs to 0.96 and back with a little overshoot. Use it for any tappable card, tile or row. */
+export function PressScale({ children, style, onPress, onLongPress, disabled, scaleTo = 0.96, accessibilityLabel, accessibilityRole = 'button', accessibilityState, hitSlop }: {
+  children?: React.ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void; onLongPress?: () => void; disabled?: boolean; scaleTo?: number;
+  accessibilityLabel?: string; accessibilityRole?: 'button' | 'switch' | 'radio' | 'link' | 'tab';
+  accessibilityState?: { selected?: boolean; checked?: boolean; disabled?: boolean }; hitSlop?: number;
+}) {
+  const { scale, down, up } = usePressSpring(scaleTo);
+  return (
+    <Pressable onPress={onPress} onLongPress={onLongPress} disabled={disabled} onPressIn={down} onPressOut={up} hitSlop={hitSlop}
+      accessibilityRole={accessibilityRole} accessibilityLabel={accessibilityLabel} accessibilityState={{ disabled: !!disabled, ...accessibilityState }}>
+      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
+    </Pressable>
+  );
+}
+
+/** Rises 16px and fades in. Stagger lists with `index` (35ms each, capped at 12) or pass `delay` in ms. Reduced motion: shown at once. */
+export function FadeUp({ index, delay, distance = 16, duration = 360, children, style }: {
+  index?: number; delay?: number; distance?: number; duration?: number; children?: React.ReactNode; style?: StyleProp<ViewStyle>;
+}) {
+  const rm = useReducedMotion();
+  const a = useRef(new Animated.Value(0)).current;
+  const d = index != null ? Math.min(index, 12) * 35 : (delay ?? 0);
+  useEffect(() => {
+    if (rm) { a.setValue(1); return }
+    const anim = Animated.timing(a, { toValue: 1, duration, delay: d, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: ND });
+    anim.start();
+    return () => anim.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rm]);
+  return (
+    <Animated.View style={[style, { opacity: a, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [distance, 0] }) }] }]}>
+      {children}
+    </Animated.View>
   );
 }

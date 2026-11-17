@@ -13,7 +13,7 @@ import { t } from '../lib/i18n';
 /** Small "Duty ON / Duty OFF" switch. Same action as before (act.toggleOnline), now the only place for it. */
 export function DutyToggle() {
   useStore();
-  const { c } = useTheme();
+  const { c, onViolet } = useTheme();
   const on = isOnline();
   const a = useRef(new Animated.Value(on ? 1 : 0)).current;
   useEffect(() => {
@@ -29,29 +29,29 @@ export function DutyToggle() {
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       style={{ flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', minHeight: 32 }}
     >
-      <Animated.View style={{ width: 40, height: 22, borderRadius: 11, padding: 2, backgroundColor: a.interpolate({ inputRange: [0, 1], outputRange: [c.fg3, brand.mint] }) }}>
+      <Animated.View style={{ width: 40, height: 22, borderRadius: 11, padding: 2, backgroundColor: a.interpolate({ inputRange: [0, 1], outputRange: [onViolet ? 'rgba(255,255,255,0.3)' : '#D4D4D8', onViolet ? '#4ADE80' : brand.mint] }) }}>
         <Animated.View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff', transform: [{ translateX: a.interpolate({ inputRange: [0, 1], outputRange: [0, 18] }) }] }} />
       </Animated.View>
-      <Text style={{ fontFamily: F.bold, fontSize: 13, letterSpacing: 0.2, color: on ? c.fg : c.fg3 }}>{label}</Text>
+      <Text style={{ fontFamily: F.semi, fontSize: 13, color: on ? c.fg : c.fg3 }}>{label}</Text>
     </Pressable>
   );
 }
 
 /** Pin + short place name. Loading, denied (tap opens settings) and error (hidden) are all handled here. */
 export function LocationChip() {
-  const { c } = useTheme();
+  const { c, onViolet } = useTheme();
   const g = useLocality();
   if (g.status === 'error') return null;
   const row = (txt: string, color: string) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 0 }}>
       <Icon name="pin" size={13} color={color} />
-      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12.5, color, flexShrink: 1 }}>{txt}</Text>
+      <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 13, color, flexShrink: 1 }}>{txt}</Text>
     </View>
   );
   if (g.status === 'denied') {
     return (
       <Pressy onPress={openLocationSettings} accessibilityLabel={t('Location chalu karo')} scaleTo={0.97} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
-        {row(t('Location chalu karo'), brand.violet)}
+        {row(t('Location chalu karo'), onViolet ? '#FFD166' : brand.violet)}
       </Pressy>
     );
   }

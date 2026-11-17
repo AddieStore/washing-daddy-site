@@ -44,12 +44,12 @@ function TabCell({ tb, on, n, onPress }: { tb: (typeof TABS)[number]; on: boolea
         accessibilityLabel={t(tb.label)}
         style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
       >
-        <Animated.View style={[on ? s.pillOn : s.pillOff, on && { backgroundColor: dark ? 'rgba(139,92,246,0.26)' : 'rgba(84,9,218,0.12)' }, { transform: [{ scale }] }]}>
+        <Animated.View style={[on ? s.pillOn : s.pillOff, on && { backgroundColor: dark ? 'rgba(139,92,246,0.26)' : 'rgba(84,9,218,0.11)' }, { transform: [{ scale }] }]}>
           <View>
             <Icon name={tb.icon} size={on ? 26 : 25} color={on ? c.primary : c.fg3} active={on} />
             {n > 0 ? <View style={s.badge}><Text style={s.badgeTxt}>{n}</Text></View> : null}
           </View>
-          <Text numberOfLines={1} style={[on ? s.lblOn : s.lbl, { color: on ? c.primary : c.fg3, fontFamily: on ? F.bold : F.medium }]}>{t(tb.label)}</Text>
+          <Text numberOfLines={1} style={[on ? s.lblOn : s.lbl, { color: on ? c.primary : c.fg3, fontFamily: on ? F.semi : F.medium }]}>{t(tb.label)}</Text>
         </Animated.View>
       </Pressable>
     </Animated.View>
@@ -79,7 +79,7 @@ function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
 
   return (
     <View pointerEvents="box-none" style={s.outer}>
-      <View style={[s.bar, { backgroundColor: c.tabBg, borderTopColor: c.line, paddingBottom: 10 + insets.bottom, shadowColor: '#000', shadowOpacity: dark ? 0 : 0.06 }]}>
+      <View style={[s.bar, { backgroundColor: c.tabBg, borderTopColor: c.line, paddingBottom: 10 + insets.bottom, shadowColor: '#1A1033', shadowOpacity: dark ? 0 : 0.07 }]}>
         {LEFT.map(cell)}
         <View style={{ width: MID }} />
         {RIGHT.map(cell)}
@@ -109,7 +109,7 @@ const s = StyleSheet.create({
   bar: {
     width: '100%', maxWidth: 480, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', paddingTop: 8, paddingHorizontal: 8,
     borderTopWidth: 1,
-    shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, elevation: 8,
+    shadowRadius: 12, shadowOffset: { width: 0, height: -3 }, elevation: 10,
   },
   tab: { flex: 1, alignItems: 'center', gap: 2, paddingTop: 6, paddingBottom: 0, minHeight: 54 },
   iconWrap: { width: 56, height: 32, alignItems: 'center', justifyContent: 'center' },
@@ -118,8 +118,8 @@ const s = StyleSheet.create({
   lblOn: { fontSize: 12, lineHeight: 16 },
   lbl: { fontSize: 10, lineHeight: 14 },
   fab: {
-    position: 'absolute', alignSelf: 'center', width: 64, height: 64, borderRadius: 32, borderWidth: 4, alignItems: 'center', justifyContent: 'center',
-    shadowColor: brand.violet, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 10,
+    position: 'absolute', alignSelf: 'center', width: 62, height: 62, borderRadius: 31, borderWidth: 4, alignItems: 'center', justifyContent: 'center',
+    shadowColor: brand.violet, shadowOpacity: 0.42, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 12,
   },
   badge: { position: 'absolute', top: -6, right: 2, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: brand.violet, alignItems: 'center', justifyContent: 'center' },
   badgeTxt: { fontFamily: F.bold, fontSize: 10, color: '#fff' },

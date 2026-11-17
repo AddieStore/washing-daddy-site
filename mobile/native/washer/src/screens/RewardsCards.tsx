@@ -4,7 +4,8 @@
 import React, { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { DashCard, F, Icon, IconBubble, ListCard, Ring, brand, useTheme } from '../ui';
+import { F, Icon, Ring, brand, useTheme } from '../ui';
+import { IconTile, PRow, TNUM, WCard } from './ProntoBits';
 import { DAY, attendLog, cleanNow, loadMonthRatings, Complaints } from '../state/store';
 import { BEST, CLEAN_MIN_AVG, EARLY_DAYS } from '../lib/rewards';
 import { outlook } from '../lib/rewardsView';
@@ -68,7 +69,7 @@ function MiniRing({ fraction, value, label, tone, title, line }: { fraction: num
   return (
     <View style={{ flex: 1, alignItems: 'center', gap: 8 }}>
       <Ring size={76} stroke={9} fraction={fraction} value={value} label={label} color={col.ring[tone]} track={c.soft} ink={c.fg} disc="transparent" />
-      <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg, textAlign: 'center' }}>{title}</Text>
+      <Text style={{ fontFamily: F.semi, fontSize: 13, lineHeight: 18, color: c.fg, textAlign: 'center' }}>{title}</Text>
       <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: line.tone === 'dead' ? brand.red : c.fg3, textAlign: 'center' }}>{line.text}</Text>
     </View>
   );
@@ -79,24 +80,24 @@ export function RewardsCard() {
   const { c } = useTheme();
   const o = useOutlook(), m = o.r.month, cr = cleanRing(o), cl = cleanLine(o);
   return (
-    <DashCard onPress={openRewards} accessibilityLabel={t('Attendance aur bonus')} style={{ padding: 16 }}>
+    <WCard onPress={openRewards} label={t('Attendance aur bonus')} scaleTo={0.98} style={{ padding: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <IconBubble icon="gift" size={42} />
+        <IconTile icon="gift" />
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 15.5, color: c.fg }}>{t('Attendance aur bonus')}</Text>
-          <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 2 }}>
+          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 22, color: c.fg }}>{t('Attendance aur bonus')}</Text>
+          <Text numberOfLines={2} style={[TNUM, { fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3, marginTop: 2 }]}>
             {t('Teeno saath')} {rupee(BEST)} · {t('Abhi mumkin')} {rupee(o.possible)}
           </Text>
         </View>
-        <Icon name="arrow" size={18} color={c.fg3} />
+        <Icon name="chevron" size={18} color={c.fg3} />
       </View>
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
         <MiniRing fraction={o.streak / EARLY_DAYS} value={o.streak} label={`/${EARLY_DAYS}`} tone={earlyLine(o).tone} title={t('Early bird')} line={earlyLine(o)} />
         <MiniRing fraction={m.total ? m.came / m.total : 0} value={m.came} label={`/${m.total}`} tone={monthLine(o).tone} title={t('Poora mahina')} line={monthLine(o)} />
         <MiniRing fraction={cr.fraction} value={cr.value} label={cr.unit.length > 8 ? '' : cr.unit} tone={cl.tone} title={t('No complaint')} line={cl} />
       </View>
-      <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3, marginTop: 14, textAlign: 'center' }}>{t('Bonus Manager mahine ke end mein deta hai')}</Text>
-    </DashCard>
+      <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, marginTop: 16, textAlign: 'center' }}>{t('Bonus Manager mahine ke end mein deta hai')}</Text>
+    </WCard>
   );
 }
 
@@ -104,13 +105,15 @@ export function RewardsCard() {
 export function RewardsMini() {
   const o = useOutlook(), m = o.r.month, cl = o.r.clean;
   return (
-    <ListCard
-      icon="gift"
-     
-      title={t('Bonus')}
-      detail={`${t('Early bird')} ${o.streak}/${EARLY_DAYS} · ${t('Poora mahina')} ${m.came}/${m.total} · ${t('No complaint')} ${cl.known ? (cl.eligible ? '✓' : cl.complaints) : '–'}`}
-      action="chevron"
-      onPress={openRewards}
-    />
+    <WCard>
+      <PRow
+        tile
+        icon="gift"
+        last
+        title={t('Bonus')}
+        sub={`${t('Early bird')} ${o.streak}/${EARLY_DAYS} · ${t('Poora mahina')} ${m.came}/${m.total} · ${t('No complaint')} ${cl.known ? (cl.eligible ? '✓' : cl.complaints) : '–'}`}
+        onPress={openRewards}
+      />
+    </WCard>
   );
 }
