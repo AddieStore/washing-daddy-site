@@ -1,89 +1,342 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Privacy Policy – Washing Daddy</title>
-<style>
-  :root { --bg: #FFF6E9; --fg: #1a1a2e; --fg2: #555; --accent: #5409DA; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg); color: var(--fg); line-height: 1.7; padding: 24px 16px 60px; }
-  .wrap { max-width: 680px; margin: 0 auto; }
-  h1 { font-size: 26px; margin-bottom: 6px; }
-  .updated { color: var(--fg2); font-size: 14px; margin-bottom: 28px; }
-  h2 { font-size: 18px; margin: 28px 0 8px; color: var(--accent); }
-  p, li { font-size: 15px; color: var(--fg2); margin-bottom: 10px; }
-  ul { padding-left: 22px; }
-  a { color: var(--accent); }
-  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-  .brand b { font-size: 20px; letter-spacing: -0.3px; }
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Privacy Policy ��� Washing Daddy</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">:root{--bg:#FFF6E9;--fg:#1a1a2e;--fg2:#444;--accent:#5409DA}
+*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.7;margin:0;padding:24px 16px 60px}
+.wrap,body>*{max-width:760px;margin-left:auto;margin-right:auto}
+h1{font-size:28px;margin:10px auto 6px}h2{font-size:18px;margin:32px auto 8px;color:var(--accent)}
+p{font-size:15px;color:var(--fg2);margin-top:0;margin-bottom:12px}a{color:var(--accent)}
+blockquote{background:#fff;border-left:4px solid #FFBA08;margin:12px auto;padding:2px 14px}
+.ph{background:#FFEE99;padding:0 3px;border-radius:3px}
+.brand{font-weight:700;font-size:20px;color:var(--accent)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="brand"><b>Washing Daddy</b></div>
-  <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: 16 October 2026</p>
-
-  <p>Washing Daddy ("we", "us", "our") operates the <b>Washing Daddy</b> customer app and the <b>WD Washer</b> washer app (together, the "Apps"). This policy explains what data we collect, why, and how we protect it.</p>
-
-  <h2>1. Data We Collect</h2>
-  <ul>
-    <li><b>Phone number</b> — used to sign you in via SMS one-time password (OTP). We do not collect your name from the phone; you type it yourself.</li>
-    <li><b>Name &amp; area</b> — the name and locality you enter during sign-up, so your washer or customer can identify you.</li>
-    <li><b>Car details</b> — make, model, registration number, and parking spot, so the washer knows which car to wash and where it is parked.</li>
-    <li><b>Photos</b> — car photos the washer takes to confirm a completed wash. Photos are stored as Base64 strings in our database; they are not shared with third parties.</li>
-    <li><b>Wash records</b> — date, status, time, and water used for each wash, so both parties can track service history.</li>
-    <li><b>Device information</b> — we do not collect device IDs, advertising IDs, or analytics data. The app does not use any third-party analytics or advertising SDK.</li>
-  </ul>
-
-  <h2>2. How We Use Your Data</h2>
-  <ul>
-    <li>To authenticate you via Firebase Authentication (SMS OTP).</li>
-    <li>To match customers with their assigned washer and show live wash status.</li>
-    <li>To let the washer record completed work and attach proof-of-service photos.</li>
-    <li>To calculate and display earnings for washers.</li>
-    <li>To let customers rate washes and send service requests (notes, rewash, skip, pause).</li>
-  </ul>
-
-  <h2>3. Data Storage &amp; Security</h2>
-  <p>All data is stored in <b>Google Cloud Firestore</b> (Firebase), hosted in Google's data centres. Access is controlled by Firestore Security Rules: each user can read and write only their own data. Admin access is limited to the business owner's phone number.</p>
-  <p>Photos are stored as encoded strings within Firestore documents, not in a public storage bucket.</p>
-
-  <h2>4. Third-Party Services</h2>
-  <ul>
-    <li><b>Firebase Authentication</b> — sends an SMS to your phone number for verification. Google's <a href="https://firebase.google.com/support/privacy">Firebase privacy policy</a> applies.</li>
-    <li><b>Firebase Cloud Firestore</b> — stores your account and wash data.</li>
-  </ul>
-  <p>We do not use any advertising networks, analytics platforms, or social-media SDKs.</p>
-
-  <h2>5. Data Sharing</h2>
-  <p>We do not sell, rent, or share your personal data with any third party. Your data is visible only to:</p>
-  <ul>
-    <li>You (your own account, cars, and wash history).</li>
-    <li>Your assigned washer (the cars on their round and wash status).</li>
-    <li>The business admin (for account approval and service management).</li>
-  </ul>
-
-  <h2>6. Data Retention &amp; Deletion</h2>
-  <p>Your data is kept as long as your account is active. If you want your account and all associated data deleted, contact us (see below) and we will remove it within 30 days.</p>
-
-  <h2>7. Children's Privacy</h2>
-  <p>The Apps are not directed at children under 13. We do not knowingly collect data from children.</p>
-
-  <h2>8. Your Rights</h2>
-  <p>You can request access to, correction of, or deletion of your personal data at any time by contacting us.</p>
-
-  <h2>9. Changes to This Policy</h2>
-  <p>We may update this policy from time to time. The "Last updated" date at the top will change. Continued use of the Apps after an update means you accept the new policy.</p>
-
-  <h2>10. Contact Us</h2>
-  <p>If you have questions about this privacy policy or your data, contact:</p>
-  <p><b>Washing Daddy</b><br>
-  Email: <a href="mailto:hello@washingdaddy.com">hello@washingdaddy.com</a><br>
-  Website: <a href="https://washingdaddy.com">washingdaddy.com</a></p>
-</div>
-<script src="/wd-footer.js" defer></script>
+<header id="title-block-header">
+<h1 class="title">Privacy Policy ��� Washing Daddy</h1>
+</header>
+<div class="brand">Washing Daddy</div><h1 id="privacy-policy">Privacy Policy</h1>
+<p><strong>Last updated:</strong> 17 November 2026</p>
+<p>Welcome to the privacy policy of Washing Daddy (“<strong>Privacy
+Policy</strong>” or “<strong>Policy</strong>”).</p>
+<p>Washing Daddy Private Limited (CIN: U45200DC2026PTC474412), having
+its registered office at GH-6/274, Prachin Apartments, Paschim Vihar,
+New Delhi – 110087, and its affiliates (together, “<strong>Washing
+Daddy</strong>”, “<strong>we</strong>” or “<strong>us</strong>”) provide
+a doorstep car wash service and the technology that connects customers
+who want their cars washed with washers who perform the wash. This
+Policy explains how we collect, store, use, process and disclose
+personal data when you access or use our website at
+https://washingdaddy.com/, the Washing Daddy customer app, or the WD
+Partner app for washers (together, the “<strong>Platform</strong>”), or
+use the products and services we offer on or through the Platform (the
+“<strong>Services</strong>”).</p>
+<p>At Washing Daddy we are committed to protecting your personal data
+and respecting your privacy. To give you access to the Services and the
+Wash Services, we have to collect and otherwise process certain data
+about you. Unless defined in this Policy, capitalised terms have the
+meaning given in our Terms &amp; Conditions, available at
+https://washingdaddy.com/terms.html (“<strong>Terms</strong>”). Please
+read this Policy together with the Terms.</p>
+<p>By using the Services, you confirm that you have read and agree to
+this Policy and consent to the processing described in it. If you do not
+agree, please do not use the Services.</p>
+<h2 id="background-and-key-information">1. Background and Key
+Information</h2>
+<p>1.1. This Policy applies to customers who use the customer app and
+website, and to washers who use the WD Partner app. Where a section
+applies to only one group, we say so.</p>
+<p>1.2. In short: we collect what we need to sign you in, find your car,
+send a washer, record that the wash was done, take payment and support
+you. We do not sell your personal data. We do not use advertising
+networks or third-party analytics or advertising SDKs in our apps.</p>
+<h2 id="personal-data-that-we-collect">2. Personal Data That We
+Collect</h2>
+<p>2.1. We collect different types of personal data about you. This
+includes:</p>
+<p><strong>Contact Data:</strong> your mobile number, your name, your
+area or society, house or flat details and, if you give it, your email
+address.</p>
+<p><strong>Identity and Profile Data:</strong> your name and, for
+washers, identity documents and records (such as ID proof and kit
+records) that you give us when you are onboarded.</p>
+<p><strong>Vehicle Data:</strong> your car’s make, model, registration
+number, colour or size, parking spot and parking instructions, and, if
+you choose to add it, a photograph of your car from your phone
+gallery.</p>
+<p><strong>Service and Photo Data:</strong> photographs taken by the
+washer of your car before and after the wash, wash records (date, time,
+status, duration, services done, water used), your ratings and feedback,
+notes and requests you send us (for example rewash, skip or pause), and
+attendance, round and work records of washers.</p>
+<p><strong>Transaction Data:</strong> details of the Services you have
+booked, passes, plans, coupons, referrals, WD Money balance and ledger,
+refunds, and payment references and status provided to us by payment
+processors. We do not receive or store your full card number, CVV or UPI
+PIN.</p>
+<p><strong>Communications Data:</strong> your communication preferences,
+the messages and calls you exchange with us, and records of support
+requests.</p>
+<p><strong>Location Data:</strong> the address and parking location you
+give us. For washers, the WD Partner app may use the phone’s location
+while a round is running to confirm arrival and work done, only after
+the washer allows location permission. The customer app does not track
+your phone’s location.</p>
+<p><strong>Technical Data:</strong> limited technical information that
+is generated when you use the Platform, such as server logs, time
+stamps, the type of app version and your sign-in identifier. We do not
+collect device advertising IDs.</p>
+<p>2.2. We also use aggregated or anonymised data, such as statistics on
+bookings, for any purpose. Aggregated data is not personal data as it
+does not reveal your identity. If we combine it with personal data so
+that it can identify you, we treat it as personal data under this
+Policy.</p>
+<p>2.3. What happens if I refuse to provide my personal data? Where we
+need personal data by law, or to perform the contract with you (for
+example to sign you in, find your car or take payment), and you do not
+provide it, we may not be able to provide the Services, and may have to
+cancel or limit your access.</p>
+<h2 id="how-do-we-collect-personal-data">3. How Do We Collect Personal
+Data?</h2>
+<p>3.1. <strong>Direct interactions.</strong> You give us personal data
+when you create an account or profile, add or edit your car and address,
+book or pay for a Service, enter a coupon or referral, rate a wash,
+report a problem, give feedback or contact us.</p>
+<p>3.2. <strong>Automated means.</strong> When you use the Platform we
+automatically generate and receive limited technical data, such as logs
+and time stamps, and the app and website store small items of data on
+your device (such as your sign-in session and preferences) so that they
+work properly. These are essential to the working of the Platform; we do
+not use advertising cookies or tracking pixels.</p>
+<p>3.3. <strong>Third parties and others.</strong> We receive data from:
+your assigned washer (such as confirmation of the wash and photographs);
+payment processors (payment status and references); the person who
+referred you, where you use a referral link; and, for washers, the
+references and documents provided during onboarding.</p>
+<h2 id="how-do-we-use-your-personal-data">4. How Do We Use Your Personal
+Data?</h2>
+<p>4.1. We use your personal data only when the law allows us to, mostly
+to provide the Services or to comply with the law. We use it:</p>
+<p>(a) to verify your identity, sign you in by one-time password (OTP)
+and create and manage your account;</p>
+<p>(b) to provide the Services, to match you with a washer, to show live
+wash status and to record that the wash was done, including through
+before-and-after photographs;</p>
+<p>(c) to enable the washer to find your car and perform the Wash
+Services, and to calculate and display the washer’s earnings;</p>
+<p>(d) to track transactions, process payments, give refunds and manage
+WD Money, passes, plans, coupons and referral rewards;</p>
+<p>(e) to send you booking, arrival, payment and service messages by
+SMS, WhatsApp, phone, email and in-app notifications;</p>
+<p>(f) to respond to your support requests and complaints, and to
+investigate damage claims and disputes;</p>
+<p>(g) to improve the Services, our service quality and our business,
+and to monitor service standards (including ratings);</p>
+<p>(h) to send you updates and offers about the Services, which you can
+opt out of;</p>
+<p>(i) to administer and protect our business and the Platform,
+including troubleshooting, security, fraud prevention and internal
+operations;</p>
+<p>(j) to enforce our Terms, comply with legal obligations, respond to
+court orders, and establish, exercise or defend legal claims.</p>
+<p>4.2. By using the Services and creating an account, you authorise us,
+our washers and our service providers to contact you by phone, SMS,
+WhatsApp, email or otherwise in connection with the Services.</p>
+<p>4.3. Information about you, whether or not you give it to us directly
+(including your correspondence with us), may be collected, compiled and
+shared by us to provide the Services to you, with washers, service
+providers (such as hosting, messaging and payment providers),
+consultants, lawyers and auditors, and other entities in the Washing
+Daddy group.</p>
+<p>4.4. We may disclose data without your consent where required by law
+or by a court or government agency. We do this in good faith where
+reasonably necessary to enforce this Policy or the Terms, or to comply
+with applicable laws.</p>
+<h2 id="cookies-and-similar-technologies">5. Cookies and Similar
+Technologies</h2>
+<p>5.1. Cookies and similar technologies (such as local storage) are
+small items of data that a site or app stores on your device so that it
+can recognise your device and remember information.</p>
+<p>5.2. Our website and apps use these only for essential purposes: to
+keep you signed in, to remember your preferences and to make the
+Platform work. We do not use them for advertising.</p>
+<p>5.3. If you open links to third-party sites (for example a payment
+page or social media), those sites may use their own cookies, which we
+do not control. You can block or delete cookies in your browser
+settings, but parts of the Platform may then not work.</p>
+<h2 id="disclosures-of-your-personal-data">6. Disclosures of Your
+Personal Data</h2>
+<p>6.1. We may share your personal data with the parties below for the
+purposes set out in Section 4:</p>
+<p>(a) <strong>Washers</strong>, to enable them to provide the Wash
+Services (for example your name, area, car details, parking spot and
+booking details). Washers see only the data they need for their own
+rounds.</p>
+<p>(b) <strong>Other companies in the Washing Daddy group.</strong></p>
+<p>(c) <strong>Service providers</strong> who work on our behalf,
+including: Google Firebase (Authentication, which sends the OTP by SMS,
+and Cloud Firestore, which stores your account and wash data); payment
+processors such as Cashfree and Razorpay; our automation and hosting
+provider (an n8n workflow server we operate); messaging providers (SMS,
+WhatsApp, Telegram, which we use internally to notify our team of
+photos, payments and operational alerts); and cloud-based tools we use
+to keep our customer records (for example Notion).</p>
+<p>(d) <strong>Other registered users</strong>, where you ask us to or
+explicitly consent (for example when you use a referral).</p>
+<p>(e) <strong>Regulators, courts and other bodies</strong>, where
+required by law or regulation.</p>
+<p>6.2. We do not sell or rent your personal data. We require all third
+parties to respect the security of your personal data and to treat it in
+accordance with the law. We do not allow them to use your personal data
+for their own purposes, and only permit them to process it for specified
+purposes and in accordance with our instructions.</p>
+<h2 id="your-rights-in-relation-to-your-personal-data">7. Your Rights in
+Relation to Your Personal Data</h2>
+<p>7.1. <strong>Access and correction.</strong> You warrant that the
+personal data you give us is accurate, up to date and true. You can see
+and correct much of your data in the app (profile, addresses, cars). You
+can also ask us for a copy of your personal data, or ask us to correct
+it, by writing to Business@washingdaddy.com. We will respond within
+seven (7) working days.</p>
+<p>7.2. <strong>Opting out of marketing.</strong> You can opt out of
+marketing messages by following the instructions in the message or by
+writing to us. It may take up to ten (10) business days to give effect
+to your request. We may still send you messages about your account and
+the Services you have booked.</p>
+<p>7.3. <strong>Erasure, withdrawal of consent and nomination.</strong>
+You may ask for deletion of your data (see Section 8), withdraw your
+consent to processing (which may mean we cannot provide the Services),
+and, as the law permits, nominate another person to exercise your rights
+in the event of your death or incapacity.</p>
+<p>7.4. <strong>Grievances.</strong> You can complain to us about how we
+handle your personal data using the contact details in Section 16. If
+you are not satisfied, you may approach the Data Protection Board of
+India or any other authority, as permitted under the Digital Personal
+Data Protection Act, 2023.</p>
+<h2 id="deletion-of-account-and-personal-data">8. Deletion of Account
+and Personal Data</h2>
+<p>8.1. <strong>In the app:</strong> open the Washing Daddy customer
+app, go to <strong>Profile</strong>, then <strong>Legal &amp;
+Privacy</strong>, then <strong>Delete account</strong>, and follow the
+steps. Before you confirm, the app shows what will happen: upcoming
+bookings will be cancelled, pass and WD Money balances will be lost, and
+your profile, addresses and history will no longer be available.</p>
+<p>8.2. <strong>By email:</strong> write to Business@washingdaddy.com
+from the registered mobile number or email, or call +91 77018 08924, and
+ask for your account and data to be deleted. Washers can ask the same
+way.</p>
+<p>8.3. We will process your request and delete your account and
+personal data within thirty (30) days. Once your account is deleted, you
+will lose access to all Services.</p>
+<p>8.4. For the avoidance of doubt, we will keep records that the law
+requires us to keep, such as transaction and tax records and records
+needed to deal with a legal claim, for as long as the law requires.
+Photographs and wash records linked to an open complaint or damage claim
+are kept until it is closed.</p>
+<h2 id="transfers-of-your-personal-data">9. Transfers of Your Personal
+Data</h2>
+<p>9.1. We comply with applicable laws on the storage and transfer of
+personal data. Some of our service providers (for example Google
+Firebase) operate servers in countries other than India, so your
+personal data may be transferred to and stored in other countries.</p>
+<p>9.2. By giving us your personal data, you agree to such transfer,
+storage and processing, in the manner described in this Policy. We will
+transfer personal data only to countries or parties where the law allows
+it.</p>
+<h2 id="data-security">10. Data Security</h2>
+<p>10.1. We use appropriate security measures to protect your personal
+data from unauthorised access and disclosure. These include: sign-in by
+OTP; access rules on our database so that each customer can read and
+write only their own data and washers see only their own rounds;
+administrator access limited to the business; encrypted connections; and
+server-side checks on prices and payments.</p>
+<p>10.2. Payment details (such as card numbers) are handled by the
+payment processor and not stored by us.</p>
+<p>10.3. You are responsible for keeping your OTP and phone secure. We
+will never ask you for your OTP. We are not responsible for unauthorised
+use of your account arising from your sharing your OTP or device. If you
+think your account has been misused, tell us immediately.</p>
+<p>10.4. No method of transmission or storage is completely secure. If a
+personal data breach occurs that affects you, we will notify you and the
+authorities as the law requires.</p>
+<h2 id="data-retention">11. Data Retention</h2>
+<p>11.1. We keep your personal data for as long as your account is
+active and as long as necessary to fulfil the purposes described in this
+Policy, and for a reasonable period afterwards to meet our legal
+obligations and handle disputes, claims and complaints.</p>
+<p>11.2. When you delete your account, we delete or anonymise your
+personal data within thirty (30) days, except for records we must keep
+by law (see Section 8.4).</p>
+<p>11.3. We may keep aggregated or anonymised data, which can no longer
+be linked to you, indefinitely for research or statistics.</p>
+<h2 id="business-transitions">12. Business Transitions</h2>
+<p>If we go through a business transition, such as a merger,
+acquisition, or sale of all or part of our assets, your personal data
+may be among the assets transferred. We will require the receiving party
+to protect it in line with this Policy.</p>
+<h2 id="children">13. Children</h2>
+<p>The Platform is not directed at children under 18. We do not
+knowingly collect personal data from children. If you believe a child
+has given us personal data, please contact us and we will delete it.</p>
+<h2 id="user-generated-content">14. User-Generated Content</h2>
+<p>When you post ratings, feedback, photos or other content on the
+Platform, it is used to run and improve the Services and, as described
+in the Terms, for quality checks. Do not post anything that you do not
+want us to use for these purposes, and do not include personal data of
+others. You are responsible for content you give us. We do not publish
+your name or the number plate of your car in advertising without your
+consent.</p>
+<h2 id="payments">15. Payments</h2>
+<p>15.1. We use payment processors, including Cashfree and Razorpay, to
+process payments. They collect and process your card, UPI and bank
+details under their own policies and security standards (including
+PCI-DSS). We receive only the payment status, the amount and a payment
+reference.</p>
+<p>15.2. WD Money, passes and plan details are kept as balances and
+records in our own system.</p>
+<p>15.3. For more information please read the terms and privacy policies
+of the payment processors on their websites.</p>
+<h2 id="updates-to-this-policy">16. Updates to This Policy</h2>
+<p>16.1. We may update this Policy from time to time. If we make
+changes, we will publish the revised Policy on the Platform and, where
+the change is material, tell you in the app or by message. The “Last
+updated” date at the top shows when it was last changed.</p>
+<p>16.2. By continuing to use the Platform after notice of a change, you
+consent to the updated Policy, to the extent the law allows. Please
+review this Policy from time to time.</p>
+<h2 id="grievance-officer-and-contact-us">17. Grievance Officer and
+Contact Us</h2>
+<p>If you have any questions about this Policy, how we process your
+personal data, or any grievance, you can write to us at
+Business@washingdaddy.com, call or message +91 77018 08924, or contact
+our Grievance Officers, whose details are below:</p>
+<p>Name: Sourabh Rao</p>
+<p>Contact number: +91 99117 20178</p>
+<p>Name: Ravi Kumar</p>
+<p>Contact number: +91 77018 08924</p>
+<p>Email address: Business@washingdaddy.com</p>
+<p>Address: Washing Daddy Private Limited, GH-6/274, Prachin Apartments,
+Paschim Vihar, New Delhi – 110087</p>
+<p>Website: https://washingdaddy.com</p>
 </body>
 </html>
