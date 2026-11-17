@@ -47,7 +47,8 @@ jobs:
       - run: npm ci
       - name: Maps key check
         env: { K: '${{ secrets.GOOGLE_MAPS_API_KEY }}' }
-        run: if [ -n "$K" ]; then echo "Maps key: on"; else echo "::warning::GOOGLE_MAPS_API_KEY secret not set: the app will show 'Map unavailable'"; fi
+        run: |
+          if [ -n "$K" ]; then echo "Maps key: on"; else echo "::warning::GOOGLE_MAPS_API_KEY secret not set, the app will show 'Map unavailable'"; fi
       - name: Firebase config
         env: { GS: '${{ secrets.CUSTOMER_GOOGLE_SERVICES_JSON }}' }
         run: |
