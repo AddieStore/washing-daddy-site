@@ -1,52 +1,64 @@
-/* Washing Daddy shared page footer. Illustration background, company name, trust chips,
-   contact buttons and the legal line. Added at the very bottom of every website page by
-   <script src="/wd-footer.js" defer></script>. */
+/* Washing Daddy shared website footer (Pronto-style columns). Added at the very bottom of
+   every page by <script src="/wd-footer.js" defer></script>. All facts here come from the
+   site, /privacy.html and /terms.html: update them in this one file. */
 (function () {
-  if (window.__wdFooter || document.getElementById('wd-art-footer')) return;
+  if (window.__wdFooter || document.getElementById('wd-footer')) return;
   window.__wdFooter = 1;
-  var css = '#wd-art-footer,#wd-art-footer *{color:#fff;box-sizing:border-box}#wd-art-footer h2,#wd-art-footer p,#wd-art-footer ul{margin-left:0;margin-right:0;padding-top:0;padding-bottom:0;font-family:inherit}#wd-art-footer{position:relative;display:block;width:100%;color:#fff;font-family:"Hind","Segoe UI",system-ui,sans-serif;isolation:isolate;overflow:hidden;background:#2A0478 url(/img/footer-delhi.jpg) center 35%/cover no-repeat}' +
-    '#wd-art-footer:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(42,4,120,.55) 0%,rgba(26,10,51,.78) 55%,rgba(26,10,51,.94) 100%)}' +
-    '#wd-art-footer .wdf-in{max-width:1100px;margin:0 auto;padding:44px 20px 0;text-align:center}' +
-    '#wd-art-footer .wdf-live{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);font-size:13px;font-weight:700;letter-spacing:.04em;backdrop-filter:blur(4px)}' +
-    '#wd-art-footer .wdf-dot{width:9px;height:9px;border-radius:50%;background:#35e07a;box-shadow:0 0 0 0 rgba(53,224,122,.7);animation:wdfp 1.8s infinite}' +
-    '@keyframes wdfp{70%{box-shadow:0 0 0 9px rgba(53,224,122,0)}100%{box-shadow:0 0 0 0 rgba(53,224,122,0)}}' +
-    '#wd-art-footer h2{margin:16px 0 4px!important;font-size:clamp(26px,5vw,46px);line-height:1.1;font-weight:800;letter-spacing:.01em;text-shadow:0 2px 10px rgba(0,0,0,.45)}' +
-    '#wd-art-footer h2 em{font-style:normal;color:#FFBA08!important}' +
-    '#wd-art-footer .wdf-sub{margin:0;font-size:clamp(14px,2vw,17px);opacity:.92}' +
-    '#wd-art-footer .wdf-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:22px 0 4px;padding:0;list-style:none}' +
-    '#wd-art-footer .wdf-chips li{display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:14px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);font-size:14px;font-weight:600;backdrop-filter:blur(4px)}' +
-    '#wd-art-footer .wdf-chips svg{width:18px;height:18px;flex:none;fill:none;stroke:#FFBA08;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}' +
-    '#wd-art-footer .wdf-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:18px 0 0}' +
-    '#wd-art-footer .wdf-btns a{padding:11px 20px;border-radius:999px;background:#FFBA08;color:#1A0A33!important;font-weight:800;font-size:14.5px;text-decoration:none}' +
-    '#wd-art-footer .wdf-btns a.alt{background:transparent;color:#fff!important;border:1.5px solid rgba(255,255,255,.7)}' +
-    '#wd-art-footer .wdf-btns a:hover{filter:brightness(1.08)}' +
-    '#wd-art-footer .wdf-legal{margin-top:30px;padding:16px 16px 18px;border-top:1px solid rgba(255,255,255,.2);font-size:13px;line-height:1.6;background:rgba(10,4,24,.55)}#wd-art-footer .wdf-wrap{margin:0 -20px}' +
-    '#wd-art-footer .wdf-legal b{font-size:14.5px}' +
-    '#wd-art-footer .wdf-legal a{color:#FFBA08!important;text-decoration:none;white-space:nowrap}#wd-art-footer .wdf-legal a:hover{text-decoration:underline}' +
-    '#wd-art-footer .wdf-wrap{margin:0 -20px}' +
-    '@media (prefers-reduced-motion:reduce){#wd-art-footer .wdf-dot{animation:none}}';
+  var css = '#wd-footer,#wd-footer *{box-sizing:border-box}' +
+    '#wd-footer{background:#0d0a14;color:#d9d4e4;font-family:"Hind","Segoe UI",system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.5;border-top:4px solid #FFBA08;text-align:left}' +
+    '#wd-footer a{color:#d9d4e4;text-decoration:none}#wd-footer a:hover{color:#FFBA08}' +
+    '#wd-footer .wdf-w{max-width:1160px;margin:0 auto;padding:0 20px}' +
+    '#wd-footer .wdf-top{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1.2fr;gap:30px;padding:46px 0 36px}' +
+    '#wd-footer h4{margin:0 0 14px;font-size:13px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#fff}' +
+    '#wd-footer ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}' +
+    '#wd-footer .wdf-brand b{display:block;font-size:26px;line-height:1.15;font-weight:800;color:#fff}#wd-footer .wdf-brand b em{font-style:normal;color:#FFBA08}' +
+    '#wd-footer .wdf-brand p{margin:12px 0 4px;color:#a9a2bd}' +
+    '#wd-footer .wdf-brand a.wdf-big{display:block;font-weight:700;font-size:17px;color:#FFBA08;margin:2px 0 10px;word-break:break-word}' +
+    '#wd-footer .wdf-g li{font-size:14px;color:#a9a2bd}#wd-footer .wdf-g li b{color:#fff;font-weight:700}' +
+    '#wd-footer .wdf-sec{border-top:1px solid rgba(255,255,255,.12);padding:30px 0}' +
+    '#wd-footer .wdf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px 24px}' +
+    '#wd-footer .wdf-grid a small{color:#8f87a6;margin-left:6px;font-size:13px}' +
+    '#wd-footer .wdf-two{display:grid;grid-template-columns:2fr 1fr;gap:40px}' +
+    '#wd-footer .wdf-base{border-top:1px solid rgba(255,255,255,.12);padding:22px 0 26px;font-size:13px;color:#a9a2bd;display:grid;gap:4px}' +
+    '#wd-footer .wdf-base b{color:#fff}' +
+    '@media(max-width:980px){#wd-footer .wdf-top{grid-template-columns:1fr 1fr 1fr}#wd-footer .wdf-brand{grid-column:1/-1}#wd-footer .wdf-two{grid-template-columns:1fr}}' +
+    '@media(max-width:600px){#wd-footer .wdf-top{grid-template-columns:1fr 1fr}#wd-footer .wdf-grid{grid-template-columns:1fr 1fr}#wd-footer .wdf-g{grid-column:1/-1}}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
-  function ic(p) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + p + '</svg>'; }
+
+  function L(href, text, extra) { return '<li><a href="' + href + '"' + (extra || '') + '>' + text + '</a></li>'; }
+  var ext = ' target="_blank" rel="noopener"';
+  var html =
+    '<div class="wdf-w"><div class="wdf-top">' +
+    '<div class="wdf-brand"><b>Washing <em>Daddy</em></b>' +
+    '<p>Feel free to reach us at:</p><a class="wdf-big" href="mailto:Business@washingdaddy.com">Business@washingdaddy.com</a>' +
+    '<p>Call or WhatsApp:</p><a class="wdf-big" href="tel:+917701808924">+91 77018 08924</a>' +
+    '<p>Instagram:</p><a class="wdf-big" href="https://instagram.com/washingdaddy.co"' + ext + '>@washingdaddy.co</a></div>' +
+    '<div><h4>Support</h4><ul>' + L('tel:+917701808924', 'Contact us') + L('https://wa.me/917701808924', 'WhatsApp us', ext) +
+    L('/account/', 'My account') + L('/pay/', 'Pay online') + L('/get/', 'Get the apps') +
+    L('/privacy.html#deletion-of-account-and-personal-data', 'Delete account') + '</ul></div>' +
+    '<div><h4>Company</h4><ul>' + L('/', 'Home') + L('/#plans', 'Plans &amp; prices') + L('/#map', 'Areas we serve') +
+    L('/#join', 'Become a washer partner') + L('/customer/', 'Customer app') + L('/washer/', 'Washer app (WD Partner)') + L('/admin/', 'Admin sign in') + '</ul></div>' +
+    '<div><h4>Legal</h4><ul>' + L('/terms.html', 'Terms &amp; Conditions') + L('/privacy.html', 'Privacy Policy') +
+    L('/cancellation.html', 'Cancellation &amp; Refund Policy') + '</ul></div>' +
+    '<div class="wdf-g"><h4>Grievance Officers</h4><ul>' +
+    '<li><b>Sourabh Rao</b><br><a href="tel:+919911720178">+91 99117 20178</a></li>' +
+    '<li><b>Ravi Kumar</b><br><a href="tel:+917701808924">+91 77018 08924</a></li>' +
+    '<li><a href="mailto:Business@washingdaddy.com">Business@washingdaddy.com</a></li></ul></div>' +
+    '</div>' +
+    '<div class="wdf-sec wdf-two"><div><h4>All services</h4><div class="wdf-grid">' +
+    '<a href="/#plans">WD Wash<small>₹199</small></a><a href="/#plans">WD Deep Cleaning<small>₹800</small></a><a href="/#plans">WD Exclusive wash<small>₹2,100</small></a>' +
+    '<a href="/#plans">WD Standard<small>₹999/mo</small></a><a href="/#plans">WD Pro<small>₹1,800/mo</small></a><a href="/#plans">WD Exclusive plan<small>₹2,500/mo</small></a>' +
+    '<a href="/#plans">WD Reserve<small>₹5,555/mo</small></a></div></div>' +
+    '<div><h4>Areas we serve</h4><ul>' + L('/#map', 'Paschim Vihar (GH-6, GH-9, GH-14)') + L('/#map', 'Meera Bagh') + L('/#map', 'Sundar Vihar') + '</ul></div></div>' +
+    '<div class="wdf-base"><div><b>Washing Daddy Private Limited</b> &middot; CIN U45200DC2026PTC474412</div>' +
+    '<div>Registered office: GH-6/274, Prachin Apartments, Paschim Vihar, New Delhi &ndash; 110087</div>' +
+    '<div>&copy; ' + new Date().getFullYear() + ' Washing Daddy Private Limited. All rights reserved. &middot; <a href="https://washingdaddy.com">washingdaddy.com</a></div></div></div>';
+
   var el = document.createElement('footer');
-  el.id = 'wd-art-footer';
+  el.id = 'wd-footer';
   el.setAttribute('aria-label', 'Washing Daddy Private Limited');
-  el.innerHTML = '<div class="wdf-in">' +
-    '<div class="wdf-live"><i class="wdf-dot"></i><span>Live in New Delhi <span id="wdf-clock"></span></span></div>' +
-    '<h2>Washing Daddy <em>Private Limited</em></h2>' +
-    '<p class="wdf-sub">Doorstep car wash, every day, by trained washers.</p>' +
-    '<ul class="wdf-chips">' +
-    '<li>' + ic('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>') + 'Registered company</li>' +
-    '<li>' + ic('<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>') + 'Secure online payments</li>' +
-    '<li>' + ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>') + 'Fixed-time visits</li>' +
-    '<li>' + ic('<path d="M5 13a7 7 0 0114 0v4a2 2 0 01-2 2h-1v-6h3M5 13v4a2 2 0 002 2h1v-6H5"/>') + 'Real people on call</li>' +
-    '</ul>' +
-    '<div class="wdf-btns"><a href="tel:+917701808924">Call 77018 08924</a><a class="alt" href="https://wa.me/917701808924" target="_blank" rel="noopener">WhatsApp</a><a class="alt" href="https://instagram.com/washingdaddy.co" target="_blank" rel="noopener">Instagram</a></div>' +
-    '<div class="wdf-wrap"><div class="wdf-legal"><b>Washing Daddy Private Limited</b>, New Delhi<br>&copy; ' + new Date().getFullYear() + ' Washing Daddy Private Limited. All rights reserved. &middot; <a href="https://washingdaddy.com">washingdaddy.com</a> &middot; <a href="/privacy.html">Privacy policy</a></div></div>' +
-    '</div>';
+  el.innerHTML = html;
+  /* replace each page's own older footer so there is only one */
+  Array.prototype.forEach.call(document.querySelectorAll('footer'), function (f) { f.style.display = 'none'; });
   document.body.appendChild(el);
-  function tick() {
-    var c = document.getElementById('wdf-clock'); if (!c) return;
-    try { c.textContent = '· ' + new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' }); } catch (e) {}
-  }
-  tick(); setInterval(tick, 30000);
 })();
