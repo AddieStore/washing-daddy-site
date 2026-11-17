@@ -61,7 +61,7 @@ export function QuickTiles({ onAfter }: { onAfter?: () => void }) {
   const [busy, setBusy] = useState(false);
   const cur = async () => {
     if (busy) return; setBusy(true);
-    try { await act.locate(); onAfter?.(); openPage({ k: 'addressMap' }); } catch (e: any) { toast(e.message || 'Could not find your location.') } finally { setBusy(false) }
+    try { await act.locate({ prompt: true }); onAfter?.(); openPage({ k: 'addressMap' }); } catch (e: any) { toast(e.message || 'Could not find your location.') } finally { setBusy(false) }
   };
   const tile = (label: string, icon: React.ReactNode, f: () => void, loading?: boolean) => (
     <Pressable key={label} onPress={f} style={({ pressed }) => ({ flex: 1, height: 88, padding: 12, justifyContent: 'space-between', borderRadius: 14, borderWidth: 1, borderColor: LINE, backgroundColor: pressed ? RAISED : '#fff', transform: [{ scale: pressed ? 0.98 : 1 }] })}>
