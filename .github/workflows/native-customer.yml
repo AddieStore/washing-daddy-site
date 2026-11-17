@@ -2,6 +2,8 @@
 # release build (APK + Play bundle) uploaded as a workflow artifact. The Firebase config comes from the
 # CUSTOMER_GOOGLE_SERVICES_JSON secret; without it the APK is built in demo mode (test data, OTP 1234). With it,
 # WD_RELEASE=1 makes app.config.ts refuse to fall back to demo mode.
+# GOOGLE_MAPS_API_KEY (secret) is the Maps key for the address map (Maps SDK for Android, Geocoding, Places API New);
+# without it the app builds fine and shows "Map unavailable" with a typed address instead.
 # The build is signed with Expo's debug key: re-sign with the release key from mobile/signing/ outside CI,
 # the same as the old APKs, so installed apps update in place.
 name: native-customer
@@ -43,6 +45,9 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
       - run: npm ci
+      - name: Maps key check
+        env: { K: '${{ secrets.GOOGLE_MAPS_API_KEY }}' }
+        run: if [ -n "$K" ]; then echo "Maps key: on"; else echo "::warning::GOOGLE_MAPS_API_KEY secret not set: the app will show 'Map unavailable'"; fi
       - name: Firebase config
         env: { GS: '${{ secrets.CUSTOMER_GOOGLE_SERVICES_JSON }}' }
         run: |
@@ -50,7 +55,7 @@ jobs:
           if [ -n "$GS" ]; then printf '%s' "$GS" > firebase/google-services.json; fi
           if [ -f firebase/google-services.json ]; then echo "Firebase: on"; echo "WD_RELEASE=1" >> "$GITHUB_ENV"; else echo "::warning::Firebase off: demo build"; fi
       - run: npx expo prebuild --platform android --no-install
-        env: { CI: 1, EXPO_OFFLINE: 1 }
+        env: { CI: 1, EXPO_OFFLINE: 1, GOOGLE_MAPS_API_KEY: '${{ secrets.GOOGLE_MAPS_API_KEY }}' }
       - run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
         working-directory: mobile/native/customer/android
       - name: Collect APK

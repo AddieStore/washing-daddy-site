@@ -1,8 +1,9 @@
-// Confirm location: a map under a fixed centre pin ("Washer will arrive here"). Drag the map, the pin stays. OWNER: PROFILE worker.
-// No Google Maps / GPS module yet (CONTRACT known gaps): the map is a drawn street grid on both web and phone, the centre is act.locate().
+// Confirm location, like Pronto's: a real Google map (phones) centred on the GPS fix, a fixed centre pin with a dark "Washer will arrive here"
+// bubble, drag the map to move, Places search on top, "Current location" pill, bottom card with the reverse-geocoded address. OWNER: PROFILE worker.
+// The map itself is src/ui/PickMap.native.tsx (react-native-maps, Google) / PickMap.web.tsx (stand-in streets in the preview). Without
+// GOOGLE_MAPS_API_KEY at build time the phone shows "Map unavailable" and the address is typed instead.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Animated, Easing, PanResponder, Pressable, Platform, ScrollView } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
+import { View, Animated, Easing, Pressable, Platform, TextInput, Keyboard } from 'react-native';
 import { Txt, useInsets } from '../ui/kit';
 import { Locate, Pin } from '../ui/icons';
 import { C } from '../theme';
@@ -10,98 +11,131 @@ import { act, useApp, addressOf, addresses, selectedAddress, here, openPage, clo
 import { PageBar } from './Stub';
 import { G, PrimaryBtn } from './parts';
 import { SearchBox, Shimmer } from '../sheets/address';
+import { PickMap, type PickMapRef } from '../ui/PickMap';
+import { hasKey, reverseGeocode, autocomplete, placeLocation, newSession, type Suggestion, type Place } from '../geo';
 
 const ND = Platform.OS !== 'web', EASE = Easing.bezier(0.22, 1, 0.36, 1);
-const KX = 0.016 / 360, KY = 0.039 / 1000;   // degrees per pixel (lng, lat)
-const PX = 74, PY = 88;                      // city block pitch in px
+const UNAVAILABLE = Platform.OS !== 'web' && !hasKey;
 
 /** Pages talk to each other here: AddressForm's "Change location" sets onPick; the map then hands the pin back instead of opening the form. */
 export const mapFlow: { onPick: null | ((lat: number, lng: number, area: string) => void); seed: null | { lat: number; lng: number }; viaMap: boolean } = { onPick: null, seed: null, viaMap: false };
 
-const hash = (i: number, j: number) => { let h = (i * 374761393 + j * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967295 };
-
-function Streets({ lat, lng, w, h }: { lat: number; lng: number; w: number; h: number }) {
-  const wx = lng / KX, wy = -lat / KY, ox = wx - w / 2, oy = wy - h / 2;
-  const i0 = Math.floor(ox / PX), j0 = Math.floor(oy / PY), ni = Math.ceil(w / PX) + 2, nj = Math.ceil(h / PY) + 2, out: React.ReactNode[] = [];
-  for (let j = 0; j < nj; j++) for (let i = 0; i < ni; i++) {
-    const gi = i0 + i, gj = j0 + j, r = hash(gi, gj), x = gi * PX - ox, y = gj * PY - oy, big = gi % 5 === 0 || gj % 4 === 0;
-    if (big) continue;
-    const park = r > 0.86;
-    out.push(<Rect key={i + '_' + j} x={x + 7} y={y + 7} width={PX - 14} height={PY - 14} rx={park ? 14 : 6} fill={park ? '#DCEBDD' : r > 0.5 ? '#E4E4E7' : '#D9D9DE'} />);
-  }
-  return <Svg width={w} height={h}><Rect width={w} height={h} fill="#F4F4F5" />{out}</Svg>;
-}
-
-/** nearest saved address names the pin, since there is no geocoder yet */
-function place(lat: number, lng: number): { title: string; sub: string } {
+/** offline fallback (preview, no key, geocoder error): the nearest saved address names the pin */
+function place(lat: number, lng: number): Place {
   const all = addresses(); let best: (typeof all)[number] | null = null, bd = 2500;
   for (const a of all) { const d = distance(lat, lng, a.lat, a.lng); if (d < bd) { bd = d; best = a } }
   const area = best?.area || (A() && A().area) || '';
   const t = (area.split(',')[0] || '').trim();
-  return { title: t || 'Pinned location', sub: area ? area + (best ? '' : '') : `${lat.toFixed(5)}, ${lng.toFixed(5)}` };
+  return { title: t || 'Pinned location', sub: area || `${lat.toFixed(5)}, ${lng.toFixed(5)}` };
 }
+
+type Row = { key: string; main: string; secondary: string; saved?: boolean; go(): void };
 
 export default function AddressMap({ id }: { id?: string }) {
   useApp();
   const ins = useInsets(), ex = id ? addressOf(id) : null, h0 = here(), sel = selectedAddress();
   const start = useMemo(() => mapFlow.seed || (ex ? { lat: ex.lat, lng: ex.lng } : h0 || (sel ? { lat: sel.lat, lng: sel.lng } : { lat: 28.668, lng: 77.0989 })), []);
-  const [c, setC] = useState(start), cRef = useRef(start), [size, setSize] = useState({ w: 360, h: 460 }), [moving, setMoving] = useState(false), [pl, setPl] = useState(() => place(start.lat, start.lng)), [busy, setBusy] = useState(false), [q, setQ] = useState('');
-  const lift = useRef(new Animated.Value(0)).current, base = useRef(start), timer = useRef<any>(null), flow = useRef(mapFlow.onPick ? { ...mapFlow } : null).current;
+  const cRef = useRef(start), map = useRef<PickMapRef>(null), seq = useRef(0), live = useRef(true);
+  const [moving, setMoving] = useState(true), [pl, setPl] = useState<Place>(() => place(start.lat, start.lng)), [busy, setBusy] = useState(false), [q, setQ] = useState('');
+  const [me, setMe] = useState<{ lat: number; lng: number } | null>(h0), [locating, setLocating] = useState(false), [typed, setTyped] = useState(''), [sug, setSug] = useState<Suggestion[]>([]), [searching, setSearching] = useState(false);
+  const lift = useRef(new Animated.Value(0)).current, flow = useRef(mapFlow.onPick ? { ...mapFlow } : null).current;
   const to = (v: number) => Animated.timing(lift, { toValue: v, duration: 180, easing: EASE, useNativeDriver: ND }).start();
-  const settle = (p: { lat: number; lng: number }) => { clearTimeout(timer.current); timer.current = setTimeout(() => { setPl(place(p.lat, p.lng)); setMoving(false); to(0) }, 450) };
-  const jump = (p: { lat: number; lng: number }) => { cRef.current = p; setC(p); setMoving(true); to(1); settle(p) };
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const pan = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true, onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => { base.current = cRef.current; setMoving(true); to(1); clearTimeout(timer.current) },
-    onPanResponderMove: (_, g) => { const p = { lat: base.current.lat + g.dy * KY, lng: base.current.lng - g.dx * KX }; cRef.current = p; setC(p) },
-    onPanResponderRelease: () => settle(cRef.current), onPanResponderTerminate: () => settle(cRef.current),
-  })).current;
-  const results = q.trim() ? addresses().filter(a => (a.label + ' ' + a.flat + ' ' + a.street + ' ' + a.area).toLowerCase().includes(q.trim().toLowerCase())).slice(0, 4) : [];
-  const locate = async () => { try { const p = await act.locate(); jump(p) } catch (e: any) { toast(e.message || 'Could not find your location.') } };
+  useEffect(() => () => { live.current = false }, []);
+
+  const onMoveStart = () => { setMoving(true); to(1) };
+  /** the map came to rest: name the point under the pin (Google Geocoding), falling back to the saved-address name */
+  const onSettle = (p: { lat: number; lng: number }) => {
+    cRef.current = p; const n = ++seq.current; setMoving(true);
+    reverseGeocode(p.lat, p.lng).then(r => { if (!live.current || n !== seq.current) return; setPl(r || place(p.lat, p.lng)); setMoving(false); to(0) });
+  };
+  const jump = (p: { lat: number; lng: number }, zoomed = false) => { if (UNAVAILABLE) { cRef.current = p; return } onMoveStart(); map.current?.flyTo(p, zoomed) };
+
+  const locate = async (first = false) => {
+    if (locating) return; setLocating(true);
+    try {
+      const f = await act.locate({ prompt: true });
+      if (!live.current) return;
+      if (f.source === 'gps') { setMe({ lat: f.lat, lng: f.lng }); jump(f, true) }
+      else if (!first) { toast(f.reason === 'off' ? 'Turn on your phone location to find you.' : 'Location is off for Washing Daddy. Search or move the pin instead.'); jump(f) }
+    } finally { if (live.current) setLocating(false) }
+  };
+  useEffect(() => { if (!ex && !mapFlow.seed && !UNAVAILABLE) locate(true) }, []);
+
+  /* search: saved addresses (instant) + Google Places (debounced 300 ms, one session token per search) */
+  useEffect(() => {
+    const t = q.trim(); if (t.length < 2 || UNAVAILABLE) { setSug([]); setSearching(false); return }
+    setSearching(true); const ctl = new AbortController();
+    const h = setTimeout(() => { autocomplete(t, cRef.current, ctl.signal).then(r => { if (!ctl.signal.aborted) { setSug(r); setSearching(false) } }) }, 300);
+    return () => { clearTimeout(h); ctl.abort() };
+  }, [q]);
+  const t = q.trim().toLowerCase();
+  const rows: Row[] = [
+    ...(t ? addresses().filter(a => (a.label + ' ' + a.flat + ' ' + a.street + ' ' + a.area).toLowerCase().includes(t)).slice(0, 3).map(a => ({ key: 's' + a.id, main: a.label === 'Other' && a.other ? a.other : a.label, secondary: [a.flat, a.area].filter(Boolean).join(', '), saved: true,
+      go: () => { setQ(''); newSession(); Keyboard.dismiss(); if (UNAVAILABLE) setTyped([a.flat, a.area].filter(Boolean).join(', ')); jump({ lat: a.lat, lng: a.lng }, true) } })) : []),
+    ...sug.map(s => ({ key: 'p' + s.id, main: s.main, secondary: s.secondary,
+      go: async () => { setQ(''); setSug([]); Keyboard.dismiss(); const r = await placeLocation(s.id); if (!live.current) return; if (r) jump(r, true); else toast('Could not open that place. Try another.') } })),
+  ];
   const confirm = () => {
-    setBusy(true); const p = cRef.current, area = place(p.lat, p.lng).sub;
+    setBusy(true); const p = cRef.current, area = UNAVAILABLE ? typed.trim() : pl.sub;
     if (flow?.onPick) { flow.onPick(p.lat, p.lng, area); mapFlow.onPick = null; mapFlow.seed = null; closePage(); return }
     mapFlow.viaMap = true; setBusy(false); openPage({ k: 'addressForm', id, lat: p.lat, lng: p.lng, area });
   };
-  useEffect(() => { if (!h0 && !ex && !mapFlow.seed) act.locate().then(p => { if (Math.abs(p.lat - cRef.current.lat) > 1e-9) jump(p) }).catch(() => {}) }, []);
   const pinY = lift.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
+  const card = { flexDirection: 'row', gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(84,9,218,0.25)', backgroundColor: 'rgba(84,9,218,0.04)' } as const;
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <PageBar title="Confirm your location" onBack={() => { mapFlow.onPick = null; mapFlow.seed = null; closePage() }} />
-      <View style={{ flex: 1, overflow: 'hidden' }} onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })} {...pan.panHandlers}>
-        <Streets lat={c.lat} lng={c.lng} w={size.w} h={size.h} />
-        <View pointerEvents="none" style={{ position: 'absolute', left: size.w / 2 - 12, top: size.h / 2 - 3, width: 24, height: 8, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.18)' }} />
-        <Animated.View pointerEvents="none" style={{ position: 'absolute', left: size.w / 2 - 80, width: 160, top: size.h / 2 - 82, alignItems: 'center', transform: [{ translateY: pinY }] }}>
-          <View style={{ backgroundColor: '#171717', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', maxWidth: 190 }}>
-            <Txt size={12} color="#fff">Washer will arrive here</Txt>
-            {moving ? <Txt size={12} color="rgba(255,255,255,0.7)">Locating…</Txt> : <Txt weight={500} size={12} color="#fff" numberOfLines={1}>{pl.title}</Txt>}
+      <View style={{ flex: 1, overflow: 'hidden', backgroundColor: '#F4F4F5' }}>
+        {UNAVAILABLE ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, paddingTop: 72 }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}><Pin size={26} color={C.violet} strokeWidth={1.5} /></View>
+            <Txt weight={500} size={16} style={{ marginTop: 16 }}>Map unavailable</Txt>
+            <Txt size={13} color={G.sub} style={{ marginTop: 4, textAlign: 'center', lineHeight: 19 }}>We could not load the map in this version. Type your address below and our washer will call you to find the exact spot.</Txt>
           </View>
-          <View style={{ width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 7, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#171717' }} />
-          <Pin size={40} color={C.violet} strokeWidth={1.5} />
-        </Animated.View>
+        ) : (
+          <>
+            <PickMap ref={map} start={start} me={me} onMoveStart={onMoveStart} onSettle={onSettle} />
+            <View pointerEvents="none" style={{ position: 'absolute', inset: 0 }}>
+              <View style={{ position: 'absolute', left: '50%', marginLeft: -12, top: '50%', marginTop: -3, width: 24, height: 8, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.18)' }} />
+              <Animated.View style={{ position: 'absolute', left: '50%', marginLeft: -90, width: 180, bottom: '50%', marginBottom: -3, alignItems: 'center', transform: [{ translateY: pinY }] }}>
+                <View style={{ backgroundColor: '#171717', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', maxWidth: 190 }}>
+                  <Txt size={12} color="#fff">Washer will arrive here</Txt>
+                  {moving ? <Txt size={12} color="rgba(255,255,255,0.7)">Locating…</Txt> : <Txt weight={500} size={12} color="#fff" numberOfLines={1}>{pl.title}</Txt>}
+                </View>
+                <View style={{ width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 7, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#171717' }} />
+                <Pin size={40} color={C.violet} strokeWidth={1.5} />
+              </Animated.View>
+            </View>
+            <Pressable onPress={() => locate()} accessibilityLabel="Current location" style={({ pressed }) => ({ position: 'absolute', left: '50%', marginLeft: -80, bottom: 28, width: 160, height: 40, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: C.violet, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, transform: [{ scale: pressed ? 0.98 : 1 }] })}>
+              <Locate size={18} color={C.violet} strokeWidth={1.5} /><Txt weight={500} size={14} color={C.violet}>{locating ? 'Finding you…' : 'Current location'}</Txt>
+            </Pressable>
+          </>
+        )}
         <View style={{ position: 'absolute', left: 16, right: 16, top: 12 }}>
           <View style={{ shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 3, backgroundColor: '#fff', borderRadius: 12 }}>
-            <SearchBox value={q} onChange={setQ} placeholder="Search saved address or area" />
+            <SearchBox value={q} onChange={setQ} placeholder="Search saved address or a new location" />
           </View>
-          {results.length ? <View style={{ marginTop: 8, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: G.line, overflow: 'hidden' }}>
-            {results.map((a, i) => <Pressable key={a.id} onPress={() => { setQ(''); jump({ lat: a.lat, lng: a.lng }) }} style={({ pressed }) => ({ padding: 12, backgroundColor: pressed ? G.raised : '#fff', borderTopWidth: i ? 1 : 0, borderTopColor: G.line })}><Txt weight={500} size={14}>{a.label === 'Other' && a.other ? a.other : a.label}</Txt><Txt size={12} color={G.sub} numberOfLines={1}>{[a.flat, a.area].filter(Boolean).join(', ')}</Txt></Pressable>)}
+          {rows.length || searching ? <View style={{ marginTop: 8, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: G.line, overflow: 'hidden', elevation: 4 }}>
+            {rows.map((r, i) => <Pressable key={r.key} onPress={r.go} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: pressed ? G.raised : '#fff', borderTopWidth: i ? 1 : 0, borderTopColor: G.line })}>
+              <Pin size={18} color={r.saved ? C.violet : G.mute} strokeWidth={1.5} />
+              <View style={{ flex: 1, minWidth: 0 }}><Txt weight={500} size={14} numberOfLines={1}>{r.main}</Txt>{r.secondary ? <Txt size={12} color={G.sub} numberOfLines={1}>{r.secondary}</Txt> : null}</View>
+              {r.saved ? <Txt size={11} color={C.violet}>Saved</Txt> : null}
+            </Pressable>)}
+            {searching && !sug.length ? <View style={{ padding: 12, borderTopWidth: rows.length ? 1 : 0, borderTopColor: G.line }}><Shimmer h={14} w={'60%'} /></View> : null}
           </View> : null}
         </View>
-        <Pressable onPress={locate} style={({ pressed }) => ({ position: 'absolute', alignSelf: 'center', bottom: 16, left: size.w / 2 - 80, width: 160, height: 40, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: C.violet, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, transform: [{ scale: pressed ? 0.98 : 1 }] })}>
-          <Locate size={18} color={C.violet} strokeWidth={1.5} /><Txt weight={500} size={14} color={C.violet}>Current location</Txt>
-        </Pressable>
       </View>
       <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, marginTop: -20, padding: 16, paddingBottom: Math.max(ins.bottom, 12) + 8, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: -4 }, elevation: 8 }}>
-        <Txt size={12} color={G.mute} style={{ marginBottom: 8 }}>Map location</Txt>
-        <View style={{ flexDirection: 'row', gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(84,9,218,0.25)', backgroundColor: 'rgba(84,9,218,0.04)' }}>
+        <Txt size={12} color={G.mute} style={{ marginBottom: 8 }}>{UNAVAILABLE ? 'Your address' : 'Map location'}</Txt>
+        <View style={card}>
           <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(84,9,218,0.1)', alignItems: 'center', justifyContent: 'center' }}><Locate size={20} color={C.violet} strokeWidth={1.5} /></View>
           <View style={{ flex: 1, minWidth: 0 }}>
-            {moving ? <View style={{ gap: 8 }}><Shimmer w={90} h={14} /><Shimmer h={12} /></View> : <><Txt weight={500} size={15} numberOfLines={1}>{pl.title}</Txt><Txt size={13} color={G.sub} numberOfLines={2} style={{ marginTop: 2 }}>{pl.sub}</Txt></>}
-            <Txt size={12} color={C.violet} style={{ marginTop: 6 }}>Add details about your flat on the next step</Txt>
+            {UNAVAILABLE ? <TextInput value={typed} onChangeText={setTyped} placeholder="Area, street or landmark" placeholderTextColor={G.mute} multiline maxLength={160} style={{ fontFamily: 'Poppins_400Regular', fontSize: 14, color: G.ink, minHeight: 40, paddingVertical: 4 }} />
+              : moving ? <View style={{ gap: 8 }}><Shimmer w={90} h={14} /><Shimmer h={12} /></View> : <><Txt weight={500} size={15} numberOfLines={1}>{pl.title}</Txt><Txt size={13} color={G.sub} numberOfLines={2} style={{ marginTop: 2 }}>{pl.sub}</Txt></>}
+            <Txt size={12} color={C.violet} style={{ marginTop: 6 }}>Add details about your flat on next step</Txt>
           </View>
         </View>
-        <PrimaryBtn label={flow?.onPick ? 'Confirm location' : 'Confirm and add details'} onPress={confirm} busy={busy} disabled={moving} style={{ marginTop: 16 }} />
+        <PrimaryBtn label={flow?.onPick ? 'Confirm location' : 'Confirm and add details'} onPress={confirm} busy={busy} disabled={UNAVAILABLE ? typed.trim().length < 3 : moving} style={{ marginTop: 16 }} />
       </View>
     </View>
   );
