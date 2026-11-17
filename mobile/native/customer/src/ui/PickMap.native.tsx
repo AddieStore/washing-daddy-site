@@ -30,14 +30,15 @@ window.me=function(la,ln){if(!map)return;var p={lat:la,lng:ln};if(!dot){dot=new 
 export function PickMap({ start, onMoveStart, onSettle, me, ref }: PickMapProps) {
   const web = useRef<React.ComponentRef<typeof WebView>>(null), ready = useRef(false), meRef = useRef(me);
   const [fail, setFail] = useState('');
-  const html = useMemo(() => page(start.lat, start.lng, KEY), []);
+  // the source object must keep the same identity: a new object on every render makes the WebView reload (the map then flickers in a loop)
+  const source = useMemo(() => ({ html: page(start.lat, start.lng, KEY), baseUrl: 'https://washingdaddy.com' }), []);
   const run = (js: string) => web.current?.injectJavaScript(js + ';true;');
   const showMe = () => { const m = meRef.current; if (ready.current && m) run(`me(${m.lat},${m.lng})`) };
   useImperativeHandle(ref, (): PickMapRef => ({ flyTo: (p, zoomed) => run(`fly(${p.lat},${p.lng},${zoomed ? 'true' : 'false'})`) }), []);
   useEffect(() => { meRef.current = me; showMe() }, [me?.lat, me?.lng]);
   return (
     <View style={{ flex: 1, backgroundColor: '#F4F4F5' }}>
-      <WebView ref={web} style={{ flex: 1, backgroundColor: '#F4F4F5' }} source={{ html, baseUrl: 'https://washingdaddy.com' }}
+      <WebView ref={web} style={{ flex: 1, backgroundColor: '#F4F4F5' }} source={source}
         originWhitelist={['*']} javaScriptEnabled domStorageEnabled setSupportMultipleWindows={false} overScrollMode="never"
         scrollEnabled={false} bounces={false} showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false}
         onMessage={e => {
