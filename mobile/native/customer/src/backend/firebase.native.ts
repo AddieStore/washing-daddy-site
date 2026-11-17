@@ -7,7 +7,7 @@
 import Constants from 'expo-constants';
 import { getAuth, onAuthStateChanged, signInWithPhoneNumber, signOut } from '@react-native-firebase/auth';
 import {
-  getFirestore, doc, collection, query, where, onSnapshot, getDoc, setDoc, updateDoc, addDoc,
+  getFirestore, doc, collection, query, where, onSnapshot, getDoc, setDoc, updateDoc, addDoc, deleteDoc,
 } from '@react-native-firebase/firestore';
 import type { Auth, AuthError, Backend, Db, DocRef, Query, Snap } from './types';
 
@@ -50,6 +50,7 @@ function makeAuth(): Auth {
       try { const r = await confirmer.confirm(String(code).replace(/\D/g, '')); user = r.user; confirmer = null; return { uid: r.user.uid } }
       catch (e) { if (auth.currentUser && auth.currentUser.phoneNumber) { user = auth.currentUser; return { uid: user.uid } } throw authErr(e) }
     },
+    async idToken() { try { return user ? await user.getIdToken() : null } catch (e) { return null } },
     async signOut() { confirmer = null; try { await signOut(auth) } catch (e) {} user = null },
     onChange(f) { listeners.add(f); return () => { listeners.delete(f) } },
   };
@@ -57,18 +58,19 @@ function makeAuth(): Auth {
 
 function makeDb(): Db {
   const fs = getFirestore();
-  const snap = (s: any): Snap => ({ id: s.id, exists: typeof s.exists === 'function' ? s.exists() : !!s.exists, data: () => s.data() });
+  const snap = (s: any): Snap => ({ id: s.id, exists: typeof s.exists === 'function' ? s.exists() : !!s.exists, data: () => s.data(), fromCache: !!(s.metadata && s.metadata.fromCache) });
   const ref = (r: any): DocRef => ({
     id: r.id,
     get: () => getDoc(r).then(snap),
     set: d => setDoc(r, d),
     update: p => updateDoc(r, p),
+    delete: () => deleteDoc(r),
     onSnapshot: (cb, err) => onSnapshot(r, (s: any) => cb(snap(s)), (e: any) => err && err(e)),
   });
   const q = (name: string, filters: [string, any, unknown][]): Query => ({
     where: (f, op, v) => q(name, filters.concat([[f, op, v]])),
     onSnapshot: (cb, err) => onSnapshot(query(collection(fs, name), ...filters.map(f => where(f[0], f[1], f[2]))),
-      (s: any) => cb(s.docs.map(snap)), (e: any) => err && err(e)),
+      (s: any) => cb(s.docs.map(snap), { fromCache: !!(s.metadata && s.metadata.fromCache) }), (e: any) => err && err(e)),
     doc: id => ref(id ? doc(fs, name, id) : doc(collection(fs, name))),
     add: d => addDoc(collection(fs, name), d).then((r: any) => ({ id: r.id })),
   });
@@ -77,3 +79,4 @@ function makeDb(): Db {
 
 const configured = !!(Constants.expoConfig?.extra as any)?.firebase && process.env.EXPO_PUBLIC_DEMO !== '1';
 export const backend: Backend | null = configured ? { auth: makeAuth(), db: makeDb() } : null;
+export const SIM_RELEASE = false;

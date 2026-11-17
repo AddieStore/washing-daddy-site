@@ -1,18 +1,19 @@
 // The small surface the app needs from the backend. Same shape as wd-sync.js gave the web app, so the
 // app logic ported over unchanged. Native builds get Firebase (firebase.native.ts); the web build, which is
 // only the Claude preview, gets none and runs on test data.
-export type Snap = { id: string; exists: boolean; data: () => any };
+export type Snap = { id: string; exists: boolean; data: () => any; fromCache?: boolean };   // fromCache: served from the phone's cache, not the server
 export type Unsub = () => void;
 export type DocRef = {
   id: string;
   get(): Promise<Snap>;
   set(data: object): Promise<void>;
   update(patch: object): Promise<void>;
+  delete(): Promise<void>;
   onSnapshot(cb: (s: Snap) => void, err?: (e: any) => void): Unsub;
 };
 export type Query = {
   where(field: string, op: '==' | 'in' | 'array-contains', v: unknown): Query;
-  onSnapshot(cb: (docs: Snap[]) => void, err?: (e: any) => void): Unsub;
+  onSnapshot(cb: (docs: Snap[], meta?: { fromCache: boolean }) => void, err?: (e: any) => void): Unsub;
   doc(id?: string): DocRef;
   add(data: object): Promise<{ id: string }>;
 };
@@ -27,6 +28,7 @@ export type Auth = {
   send(phone10: string): Promise<{ ok: true }>;
   confirm(code: string): Promise<{ uid: string }>;
   signOut(): Promise<void>;
+  idToken(): Promise<string | null>;   // Firebase ID token for n8n calls (Authorization: Bearer); n8n verifies it and takes the phone from it
   onChange(f: (signedIn: boolean) => void): Unsub;
 };
 export type Backend = { db: Db; auth: Auth };

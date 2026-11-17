@@ -345,3 +345,13 @@ Setup:
   and the service account needs the role **Firebase Cloud Messaging API Admin** (or Editor).
 - Washers must have opened the new app once, so the token is saved in `washers/{phone}.push_token`.
 - Jobs created from /admin/ "Give a washer extra work" do **not** push yet; only this GPS dispatch does.
+
+---
+
+# 13 — Pronto money (n8n)
+
+`13-pronto/13-pronto.json` is the server for the customer app's cart bookings, coupons, WD Money, gift cards
+and WD Pass (`wd-booking-create`, `wd-booking-cancel`, `wd-booking-reschedule`, `wd-coupon-validate`,
+`wd-wallet-topup`, `wd-gift-claim`, `wd-pass-buy`). Prices come from the Firestore docs the admin dashboard
+edits. Workflow 8's Cashfree webhook forwards payments for these orders to it (`wd-pronto-paid`); see the
+"Pronto order?" node in `2026-11-01/8-cashfree.json`. Details, tests and setup: `13-pronto/README.md`.

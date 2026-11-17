@@ -1,0 +1,286 @@
+{
+  "name": "11 — Razorpay checkout",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "wd-rzp-order",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "rzp-order-webhook",
+      "name": "Razorpay order maango (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "wd-rzp-order"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Razorpay keys come from n8n env vars (RAZORPAY_KEY_ID). Never paste a key into this node.\nconst KEY_ID = String($env.RAZORPAY_KEY_ID || '').trim();\n// Shared by the Razorpay Code nodes. n8n's Code sandbox has no require('crypto') by default,\n// so HMAC-SHA256 is done in plain JS (the same SHA-256 the Cashfree workflow uses in production).\n// Tested against Node's crypto in test.mjs.\nconst K256 = [\n  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,\n  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,\n  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,\n  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,\n  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,\n  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,\n  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,\n  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,\n];\n\n// Bytes, not characters: a rupee sign in the body is three bytes and must be hashed as three.\nfunction utf8Bytes(str) {\n  const s = String(str), out = [];\n  for (let i = 0; i < s.length; i++) {\n    let c = s.charCodeAt(i);\n    if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {\n      const lo = s.charCodeAt(i + 1);\n      if (lo >= 0xdc00 && lo <= 0xdfff) { c = 0x10000 + ((c - 0xd800) << 10) + (lo - 0xdc00); i++; }\n    }\n    if (c < 0x80) out.push(c);\n    else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));\n    else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));\n    else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));\n  }\n  return out;\n}\n\nfunction sha256(bytes) {\n  const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];\n  const msg = bytes.slice(), bitLen = bytes.length * 8;\n  msg.push(0x80);\n  while (msg.length % 64 !== 56) msg.push(0);\n  // length goes in as 64 bits; the high word stays 0 for anything a webhook could send\n  msg.push(0, 0, 0, 0, (bitLen >>> 24) & 0xff, (bitLen >>> 16) & 0xff, (bitLen >>> 8) & 0xff, bitLen & 0xff);\n\n  const w = new Array(64);\n  const rotr = (x, n) => ((x >>> n) | (x << (32 - n))) >>> 0;\n\n  for (let i = 0; i < msg.length; i += 64) {\n    for (let t = 0; t < 16; t++) {\n      w[t] = ((msg[i + t * 4] << 24) | (msg[i + t * 4 + 1] << 16) | (msg[i + t * 4 + 2] << 8) | msg[i + t * 4 + 3]) >>> 0;\n    }\n    for (let t = 16; t < 64; t++) {\n      const s0 = (rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3)) >>> 0;\n      const s1 = (rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10)) >>> 0;\n      w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;\n    }\n    let [a, b, c, d, e, f, g, h] = H;\n    for (let t = 0; t < 64; t++) {\n      const S1 = (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) >>> 0;\n      const ch = ((e & f) ^ (~e & g)) >>> 0;\n      const t1 = (h + S1 + ch + K256[t] + w[t]) >>> 0;\n      const S0 = (rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) >>> 0;\n      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;\n      const t2 = (S0 + maj) >>> 0;\n      h = g; g = f; f = e; e = (d + t1) >>> 0;\n      d = c; c = b; b = a; a = (t1 + t2) >>> 0;\n    }\n    H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;\n    H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;\n  }\n  const out = [];\n  for (const v of H) out.push((v >>> 24) & 0xff, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff);\n  return out;\n}\n\n\nfunction hmacSha256Hex(key, message) {\n  let k = utf8Bytes(key);\n  if (k.length > 64) k = sha256(k);\n  while (k.length < 64) k.push(0);\n  const inner = [], outer = [];\n  for (let i = 0; i < 64; i++) { inner.push(k[i] ^ 0x36); outer.push(k[i] ^ 0x5c); }\n  const d = sha256(outer.concat(sha256(inner.concat(utf8Bytes(message)))));\n  let hex = '';\n  for (const b of d) hex += (b < 16 ? '0' : '') + b.toString(16);\n  return hex;\n}\n\n// Constant time: the loop runs over the whole of both strings whatever they hold, so a\n// forger cannot learn the signature one character at a time from response times.\nfunction sameSecret(a, b) {\n  const x = String(a), y = String(b);\n  let diff = x.length ^ y.length;\n  for (let i = 0; i < Math.max(x.length, y.length); i++) {\n    diff |= (x.charCodeAt(i) || 0) ^ (y.charCodeAt(i) || 0);\n  }\n  return diff === 0;\n}\n\n// Razorpay order pricing and signature checking. Pure functions: the workflow's Code nodes\n// embed this file (plus lib.js) and call them, and test.mjs calls the same functions.\n\n// What we are willing to charge, in rupees. The browser names an item; it never sets the\n// amount. Keep these in step with WASHES in workflow 8 (\"Daam tay karo\") and the app.\nconst RZP_ITEMS = {\n  wash: ['WD Wash', 199],\n  deep: ['WD Deep Cleaning', 800],\n  exclusive: ['WD Exclusive', 2100],\n  test: ['Test payment', 1],\n};\nconst RZP_MIN_PAISE = 100; // Razorpay refuses orders under ₹1\n\n// body: what the browser POSTed. Returns either\n//   { ok: true, order: { amount, currency, receipt, notes }, name }\n//   { ok: false, status, message }\nfunction rzpPriceOrder(body, now, rand) {\n  const b = body && typeof body === 'object' ? body : {};\n  const id = String(b.item || '').trim().toLowerCase();\n  if (!Object.prototype.hasOwnProperty.call(RZP_ITEMS, id)) {\n    return { ok: false, status: 400, message: 'Please pick what you want to pay for.' };\n  }\n  const [name, rupees] = RZP_ITEMS[id];\n  const amount = Math.round(rupees * 100);\n  if (!Number.isInteger(amount) || amount < RZP_MIN_PAISE) {\n    return { ok: false, status: 400, message: 'Amount must be at least ₹1.' };\n  }\n  const phone = String(b.phone || '').replace(/\\D/g, '').slice(-10);\n  const who = String(b.name || '').replace(/[^\\p{L}\\p{N} .'-]/gu, '').trim().slice(0, 60);\n  const notes = { item: id };\n  if (/^[6-9]\\d{9}$/.test(phone)) notes.phone = phone;\n  if (who) notes.name = who;\n  // Receipt is ours, at most 40 characters, and unique enough to find in the dashboard.\n  const receipt = ('wd_' + id + '_' + Number(now).toString(36) + '_' + String(rand).replace(/\\W/g, '')).slice(0, 40);\n  return { ok: true, order: { amount, currency: 'INR', receipt, notes }, name };\n}\n\n// After Razorpay answered POST /v1/orders. res is n8n's full response ({ statusCode, body }).\n// Returns { status, body } for the respond node.\nfunction rzpOrderReply(res, priced, keyId) {\n  const code = Number(res && res.statusCode) || 0;\n  let o = res && res.body;\n  if (typeof o === 'string') { try { o = JSON.parse(o); } catch (e) { o = null; } }\n  if (code === 401) {\n    return { status: 401, body: { message: 'Payments are not set up correctly. Please try again later.' } };\n  }\n  if (code < 200 || code >= 300 || !o || !/^order_\\w+$/.test(String(o.id || ''))) {\n    return { status: 500, body: { message: 'Could not start the payment. Please try again.' } };\n  }\n  // Razorpay must have created exactly the order we priced.\n  if (Number(o.amount) !== priced.order.amount || o.currency !== 'INR') {\n    return { status: 500, body: { message: 'Could not start the payment. Please try again.' } };\n  }\n  return { status: 200, body: { order_id: o.id, amount: o.amount, currency: o.currency, key_id: keyId, name: priced.name } };\n}\n\n// The checkout's success handler sends these three. Razorpay's signature is\n// HMAC-SHA256(order_id + \"|\" + payment_id, KEY_SECRET) as lowercase hex.\nfunction rzpVerify(body, secret) {\n  if (!secret) return { status: 500, body: { ok: false, message: 'Payments are not set up yet.' } };\n  const b = body && typeof body === 'object' ? body : {};\n  const orderId = String(b.razorpay_order_id || '').trim();\n  const paymentId = String(b.razorpay_payment_id || '').trim();\n  const sig = String(b.razorpay_signature || '').trim().toLowerCase();\n  if (!orderId || !paymentId || !sig) {\n    return { status: 400, body: { ok: false, message: 'Missing payment details.' } };\n  }\n  if (!/^order_[A-Za-z0-9]{6,40}$/.test(orderId) || !/^pay_[A-Za-z0-9]{6,40}$/.test(paymentId) || !/^[0-9a-f]{64}$/.test(sig)) {\n    return { status: 400, body: { ok: false, message: 'Payment could not be verified.' } };\n  }\n  const expected = hmacSha256Hex(secret, orderId + '|' + paymentId);\n  if (!sameSecret(expected, sig)) {\n    return { status: 400, body: { ok: false, message: 'Payment could not be verified.' } };\n  }\n  return { status: 200, body: { ok: true, order_id: orderId, payment_id: paymentId } };\n}\n\nif (!KEY_ID) return [{ json: { ok: false, status: 500, body: { message: 'Payments are not set up yet.' } } }];\nconst req = $input.first().json;\nconst p = rzpPriceOrder(req.body, Date.now(), Math.random().toString(36).slice(2, 8));\nif (!p.ok) return [{ json: { ok: false, status: p.status, body: { message: p.message } } }];\nreturn [{ json: { ok: true, order: p.order, name: p.name, keyId: KEY_ID } }];"
+      },
+      "id": "rzp-price",
+      "name": "Razorpay daam tay karo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "ok",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "rzp-price-ok",
+      "name": "Razorpay daam sahi hai?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.razorpay.com/v1/orders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.order) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "rzp-create",
+      "name": "Razorpay order banao",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        -60
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "REPLACE_ME",
+          "name": "Razorpay live"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Shared by the Razorpay Code nodes. n8n's Code sandbox has no require('crypto') by default,\n// so HMAC-SHA256 is done in plain JS (the same SHA-256 the Cashfree workflow uses in production).\n// Tested against Node's crypto in test.mjs.\nconst K256 = [\n  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,\n  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,\n  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,\n  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,\n  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,\n  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,\n  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,\n  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,\n];\n\n// Bytes, not characters: a rupee sign in the body is three bytes and must be hashed as three.\nfunction utf8Bytes(str) {\n  const s = String(str), out = [];\n  for (let i = 0; i < s.length; i++) {\n    let c = s.charCodeAt(i);\n    if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {\n      const lo = s.charCodeAt(i + 1);\n      if (lo >= 0xdc00 && lo <= 0xdfff) { c = 0x10000 + ((c - 0xd800) << 10) + (lo - 0xdc00); i++; }\n    }\n    if (c < 0x80) out.push(c);\n    else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));\n    else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));\n    else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));\n  }\n  return out;\n}\n\nfunction sha256(bytes) {\n  const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];\n  const msg = bytes.slice(), bitLen = bytes.length * 8;\n  msg.push(0x80);\n  while (msg.length % 64 !== 56) msg.push(0);\n  // length goes in as 64 bits; the high word stays 0 for anything a webhook could send\n  msg.push(0, 0, 0, 0, (bitLen >>> 24) & 0xff, (bitLen >>> 16) & 0xff, (bitLen >>> 8) & 0xff, bitLen & 0xff);\n\n  const w = new Array(64);\n  const rotr = (x, n) => ((x >>> n) | (x << (32 - n))) >>> 0;\n\n  for (let i = 0; i < msg.length; i += 64) {\n    for (let t = 0; t < 16; t++) {\n      w[t] = ((msg[i + t * 4] << 24) | (msg[i + t * 4 + 1] << 16) | (msg[i + t * 4 + 2] << 8) | msg[i + t * 4 + 3]) >>> 0;\n    }\n    for (let t = 16; t < 64; t++) {\n      const s0 = (rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3)) >>> 0;\n      const s1 = (rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10)) >>> 0;\n      w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;\n    }\n    let [a, b, c, d, e, f, g, h] = H;\n    for (let t = 0; t < 64; t++) {\n      const S1 = (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) >>> 0;\n      const ch = ((e & f) ^ (~e & g)) >>> 0;\n      const t1 = (h + S1 + ch + K256[t] + w[t]) >>> 0;\n      const S0 = (rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) >>> 0;\n      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;\n      const t2 = (S0 + maj) >>> 0;\n      h = g; g = f; f = e; e = (d + t1) >>> 0;\n      d = c; c = b; b = a; a = (t1 + t2) >>> 0;\n    }\n    H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;\n    H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;\n  }\n  const out = [];\n  for (const v of H) out.push((v >>> 24) & 0xff, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff);\n  return out;\n}\n\n\nfunction hmacSha256Hex(key, message) {\n  let k = utf8Bytes(key);\n  if (k.length > 64) k = sha256(k);\n  while (k.length < 64) k.push(0);\n  const inner = [], outer = [];\n  for (let i = 0; i < 64; i++) { inner.push(k[i] ^ 0x36); outer.push(k[i] ^ 0x5c); }\n  const d = sha256(outer.concat(sha256(inner.concat(utf8Bytes(message)))));\n  let hex = '';\n  for (const b of d) hex += (b < 16 ? '0' : '') + b.toString(16);\n  return hex;\n}\n\n// Constant time: the loop runs over the whole of both strings whatever they hold, so a\n// forger cannot learn the signature one character at a time from response times.\nfunction sameSecret(a, b) {\n  const x = String(a), y = String(b);\n  let diff = x.length ^ y.length;\n  for (let i = 0; i < Math.max(x.length, y.length); i++) {\n    diff |= (x.charCodeAt(i) || 0) ^ (y.charCodeAt(i) || 0);\n  }\n  return diff === 0;\n}\n\n// Razorpay order pricing and signature checking. Pure functions: the workflow's Code nodes\n// embed this file (plus lib.js) and call them, and test.mjs calls the same functions.\n\n// What we are willing to charge, in rupees. The browser names an item; it never sets the\n// amount. Keep these in step with WASHES in workflow 8 (\"Daam tay karo\") and the app.\nconst RZP_ITEMS = {\n  wash: ['WD Wash', 199],\n  deep: ['WD Deep Cleaning', 800],\n  exclusive: ['WD Exclusive', 2100],\n  test: ['Test payment', 1],\n};\nconst RZP_MIN_PAISE = 100; // Razorpay refuses orders under ₹1\n\n// body: what the browser POSTed. Returns either\n//   { ok: true, order: { amount, currency, receipt, notes }, name }\n//   { ok: false, status, message }\nfunction rzpPriceOrder(body, now, rand) {\n  const b = body && typeof body === 'object' ? body : {};\n  const id = String(b.item || '').trim().toLowerCase();\n  if (!Object.prototype.hasOwnProperty.call(RZP_ITEMS, id)) {\n    return { ok: false, status: 400, message: 'Please pick what you want to pay for.' };\n  }\n  const [name, rupees] = RZP_ITEMS[id];\n  const amount = Math.round(rupees * 100);\n  if (!Number.isInteger(amount) || amount < RZP_MIN_PAISE) {\n    return { ok: false, status: 400, message: 'Amount must be at least ₹1.' };\n  }\n  const phone = String(b.phone || '').replace(/\\D/g, '').slice(-10);\n  const who = String(b.name || '').replace(/[^\\p{L}\\p{N} .'-]/gu, '').trim().slice(0, 60);\n  const notes = { item: id };\n  if (/^[6-9]\\d{9}$/.test(phone)) notes.phone = phone;\n  if (who) notes.name = who;\n  // Receipt is ours, at most 40 characters, and unique enough to find in the dashboard.\n  const receipt = ('wd_' + id + '_' + Number(now).toString(36) + '_' + String(rand).replace(/\\W/g, '')).slice(0, 40);\n  return { ok: true, order: { amount, currency: 'INR', receipt, notes }, name };\n}\n\n// After Razorpay answered POST /v1/orders. res is n8n's full response ({ statusCode, body }).\n// Returns { status, body } for the respond node.\nfunction rzpOrderReply(res, priced, keyId) {\n  const code = Number(res && res.statusCode) || 0;\n  let o = res && res.body;\n  if (typeof o === 'string') { try { o = JSON.parse(o); } catch (e) { o = null; } }\n  if (code === 401) {\n    return { status: 401, body: { message: 'Payments are not set up correctly. Please try again later.' } };\n  }\n  if (code < 200 || code >= 300 || !o || !/^order_\\w+$/.test(String(o.id || ''))) {\n    return { status: 500, body: { message: 'Could not start the payment. Please try again.' } };\n  }\n  // Razorpay must have created exactly the order we priced.\n  if (Number(o.amount) !== priced.order.amount || o.currency !== 'INR') {\n    return { status: 500, body: { message: 'Could not start the payment. Please try again.' } };\n  }\n  return { status: 200, body: { order_id: o.id, amount: o.amount, currency: o.currency, key_id: keyId, name: priced.name } };\n}\n\n// The checkout's success handler sends these three. Razorpay's signature is\n// HMAC-SHA256(order_id + \"|\" + payment_id, KEY_SECRET) as lowercase hex.\nfunction rzpVerify(body, secret) {\n  if (!secret) return { status: 500, body: { ok: false, message: 'Payments are not set up yet.' } };\n  const b = body && typeof body === 'object' ? body : {};\n  const orderId = String(b.razorpay_order_id || '').trim();\n  const paymentId = String(b.razorpay_payment_id || '').trim();\n  const sig = String(b.razorpay_signature || '').trim().toLowerCase();\n  if (!orderId || !paymentId || !sig) {\n    return { status: 400, body: { ok: false, message: 'Missing payment details.' } };\n  }\n  if (!/^order_[A-Za-z0-9]{6,40}$/.test(orderId) || !/^pay_[A-Za-z0-9]{6,40}$/.test(paymentId) || !/^[0-9a-f]{64}$/.test(sig)) {\n    return { status: 400, body: { ok: false, message: 'Payment could not be verified.' } };\n  }\n  const expected = hmacSha256Hex(secret, orderId + '|' + paymentId);\n  if (!sameSecret(expected, sig)) {\n    return { status: 400, body: { ok: false, message: 'Payment could not be verified.' } };\n  }\n  return { status: 200, body: { ok: true, order_id: orderId, payment_id: paymentId } };\n}\n\nconst priced = $('Razorpay daam tay karo').first().json;\nconst r = rzpOrderReply($input.first().json, { order: priced.order, name: priced.name }, priced.keyId);\nreturn [{ json: r }];"
+      },
+      "id": "rzp-reply",
+      "name": "Razorpay jawab banao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "responseCode": "={{ $json.status }}"
+        }
+      },
+      "id": "rzp-order-send",
+      "name": "Razorpay order bhejo",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "responseCode": "={{ $json.status }}"
+        }
+      },
+      "id": "rzp-order-no",
+      "name": "Razorpay order mana",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        660,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "path": "wd-rzp-verify",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "rzp-verify-webhook",
+      "name": "Razorpay verify (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "wd-rzp-verify"
+    },
+    {
+      "parameters": {
+        "jsCode": "// The secret is read from the n8n env var RAZORPAY_KEY_SECRET and never leaves this node.\nconst SECRET = String($env.RAZORPAY_KEY_SECRET || '').trim();\n// Shared by the Razorpay Code nodes. n8n's Code sandbox has no require('crypto') by default,\n// so HMAC-SHA256 is done in plain JS (the same SHA-256 the Cashfree workflow uses in production).\n// Tested against Node's crypto in test.mjs.\nconst K256 = [\n  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,\n  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,\n  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,\n  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,\n  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,\n  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,\n  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,\n  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,\n];\n\n// Bytes, not characters: a rupee sign in the body is three bytes and must be hashed as three.\nfunction utf8Bytes(str) {\n  const s = String(str), out = [];\n  for (let i = 0; i < s.length; i++) {\n    let c = s.charCodeAt(i);\n    if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {\n      const lo = s.charCodeAt(i + 1);\n      if (lo >= 0xdc00 && lo <= 0xdfff) { c = 0x10000 + ((c - 0xd800) << 10) + (lo - 0xdc00); i++; }\n    }\n    if (c < 0x80) out.push(c);\n    else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));\n    else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));\n    else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));\n  }\n  return out;\n}\n\nfunction sha256(bytes) {\n  const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];\n  const msg = bytes.slice(), bitLen = bytes.length * 8;\n  msg.push(0x80);\n  while (msg.length % 64 !== 56) msg.push(0);\n  // length goes in as 64 bits; the high word stays 0 for anything a webhook could send\n  msg.push(0, 0, 0, 0, (bitLen >>> 24) & 0xff, (bitLen >>> 16) & 0xff, (bitLen >>> 8) & 0xff, bitLen & 0xff);\n\n  const w = new Array(64);\n  const rotr = (x, n) => ((x >>> n) | (x << (32 - n))) >>> 0;\n\n  for (let i = 0; i < msg.length; i += 64) {\n    for (let t = 0; t < 16; t++) {\n      w[t] = ((msg[i + t * 4] << 24) | (msg[i + t * 4 + 1] << 16) | (msg[i + t * 4 + 2] << 8) | msg[i + t * 4 + 3]) >>> 0;\n    }\n    for (let t = 16; t < 64; t++) {\n      const s0 = (rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3)) >>> 0;\n      const s1 = (rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10)) >>> 0;\n      w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;\n    }\n    let [a, b, c, d, e, f, g, h] = H;\n    for (let t = 0; t < 64; t++) {\n      const S1 = (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) >>> 0;\n      const ch = ((e & f) ^ (~e & g)) >>> 0;\n      const t1 = (h + S1 + ch + K256[t] + w[t]) >>> 0;\n      const S0 = (rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) >>> 0;\n      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;\n      const t2 = (S0 + maj) >>> 0;\n      h = g; g = f; f = e; e = (d + t1) >>> 0;\n      d = c; c = b; b = a; a = (t1 + t2) >>> 0;\n    }\n    H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;\n    H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;\n  }\n  const out = [];\n  for (const v of H) out.push((v >>> 24) & 0xff, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff);\n  return out;\n}\n\n\nfunction hmacSha256Hex(key, message) {\n  let k = utf8Bytes(key);\n  if (k.length > 64) k = sha256(k);\n  while (k.length < 64) k.push(0);\n  const inner = [], outer = [];\n  for (let i = 0; i < 64; i++) { inner.push(k[i] ^ 0x36); outer.push(k[i] ^ 0x5c); }\n  const d = sha256(outer.concat(sha256(inner.concat(utf8Bytes(message)))));\n  let hex = '';\n  for (const b of d) hex += (b < 16 ? '0' : '') + b.toString(16);\n  return hex;\n}\n\n// Constant time: the loop runs over the whole of both strings whatever they hold, so a\n// forger cannot learn the signature one character at a time from response times.\nfunction sameSecret(a, b) {\n  const x = String(a), y = String(b);\n  let diff = x.length ^ y.length;\n  for (let i = 0; i < Math.max(x.length, y.length); i++) {\n    diff |= (x.charCodeAt(i) || 0) ^ (y.charCodeAt(i) || 0);\n  }\n  return diff === 0;\n}\n\n// Razorpay order pricing and signature checking. Pure functions: the workflow's Code nodes\n// embed this file (plus lib.js) and call them, and test.mjs calls the same functions.\n\n// What we are willing to charge, in rupees. The browser names an item; it never sets the\n// amount. Keep these in step with WASHES in workflow 8 (\"Daam tay karo\") and the app.\nconst RZP_ITEMS = {\n  wash: ['WD Wash', 199],\n  deep: ['WD Deep Cleaning', 800],\n  exclusive: ['WD Exclusive', 2100],\n  test: ['Test payment', 1],\n};\nconst RZP_MIN_PAISE = 100; // Razorpay refuses orders under ₹1\n\n// body: what the browser POSTed. Returns either\n//   { ok: true, order: { amount, currency, receipt, notes }, name }\n//   { ok: false, status, message }\nfunction rzpPriceOrder(body, now, rand) {\n  const b = body && typeof body === 'object' ? body : {};\n  const id = String(b.item || '').trim().toLowerCase();\n  if (!Object.prototype.hasOwnProperty.call(RZP_ITEMS, id)) {\n    return { ok: false, status: 400, message: 'Please pick what you want to pay for.' };\n  }\n  const [name, rupees] = RZP_ITEMS[id];\n  const amount = Math.round(rupees * 100);\n  if (!Number.isInteger(amount) || amount < RZP_MIN_PAISE) {\n    return { ok: false, status: 400, message: 'Amount must be at least ₹1.' };\n  }\n  const phone = String(b.phone || '').replace(/\\D/g, '').slice(-10);\n  const who = String(b.name || '').replace(/[^\\p{L}\\p{N} .'-]/gu, '').trim().slice(0, 60);\n  const notes = { item: id };\n  if (/^[6-9]\\d{9}$/.test(phone)) notes.phone = phone;\n  if (who) notes.name = who;\n  // Receipt is ours, at most 40 characters, and unique enough to find in the dashboard.\n  const receipt = ('wd_' + id + '_' + Number(now).toString(36) + '_' + String(rand).replace(/\\W/g, '')).slice(0, 40);\n  return { ok: true, order: { amount, currency: 'INR', receipt, notes }, name };\n}\n\n// After Razorpay answered POST /v1/orders. res is n8n's full response ({ statusCode, body }).\n// Returns { status, body } for the respond node.\nfunction rzpOrderReply(res, priced, keyId) {\n  const code = Number(res && res.statusCode) || 0;\n  let o = res && res.body;\n  if (typeof o === 'string') { try { o = JSON.parse(o); } catch (e) { o = null; } }\n  if (code === 401) {\n    return { status: 401, body: { message: 'Payments are not set up correctly. Please try again later.' } };\n  }\n  if (code < 200 || code >= 300 || !o || !/^order_\\w+$/.test(String(o.id || ''))) {\n    return { status: 500, body: { message: 'Could not start the payment. Please try again.' } };\n  }\n  // Razorpay must have created exactly the order we priced.\n  if (Number(o.amount) !== priced.order.amount || o.currency !== 'INR') {\n    return { status: 500, body: { message: 'Could not start the payment. Please try again.' } };\n  }\n  return { status: 200, body: { order_id: o.id, amount: o.amount, currency: o.currency, key_id: keyId, name: priced.name } };\n}\n\n// The checkout's success handler sends these three. Razorpay's signature is\n// HMAC-SHA256(order_id + \"|\" + payment_id, KEY_SECRET) as lowercase hex.\nfunction rzpVerify(body, secret) {\n  if (!secret) return { status: 500, body: { ok: false, message: 'Payments are not set up yet.' } };\n  const b = body && typeof body === 'object' ? body : {};\n  const orderId = String(b.razorpay_order_id || '').trim();\n  const paymentId = String(b.razorpay_payment_id || '').trim();\n  const sig = String(b.razorpay_signature || '').trim().toLowerCase();\n  if (!orderId || !paymentId || !sig) {\n    return { status: 400, body: { ok: false, message: 'Missing payment details.' } };\n  }\n  if (!/^order_[A-Za-z0-9]{6,40}$/.test(orderId) || !/^pay_[A-Za-z0-9]{6,40}$/.test(paymentId) || !/^[0-9a-f]{64}$/.test(sig)) {\n    return { status: 400, body: { ok: false, message: 'Payment could not be verified.' } };\n  }\n  const expected = hmacSha256Hex(secret, orderId + '|' + paymentId);\n  if (!sameSecret(expected, sig)) {\n    return { status: 400, body: { ok: false, message: 'Payment could not be verified.' } };\n  }\n  return { status: 200, body: { ok: true, order_id: orderId, payment_id: paymentId } };\n}\n\nconst r = rzpVerify($input.first().json.body, SECRET);\nreturn [{ json: r }];"
+      },
+      "id": "rzp-verify",
+      "name": "Razorpay signature jaanch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "responseCode": "={{ $json.status }}"
+        }
+      },
+      "id": "rzp-verify-send",
+      "name": "Razorpay verify jawab",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        440,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Razorpay order maango (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Razorpay daam tay karo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Razorpay daam tay karo": {
+      "main": [
+        [
+          {
+            "node": "Razorpay daam sahi hai?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Razorpay daam sahi hai?": {
+      "main": [
+        [
+          {
+            "node": "Razorpay order banao",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Razorpay order mana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Razorpay order banao": {
+      "main": [
+        [
+          {
+            "node": "Razorpay jawab banao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Razorpay jawab banao": {
+      "main": [
+        [
+          {
+            "node": "Razorpay order bhejo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Razorpay verify (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Razorpay signature jaanch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Razorpay signature jaanch": {
+      "main": [
+        [
+          {
+            "node": "Razorpay verify jawab",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

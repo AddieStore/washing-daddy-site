@@ -19,6 +19,7 @@ export type Account = {
   prefs: { photo: boolean; pay: boolean; drops: boolean };
   cars: Car[]; payments: Payment[]; orders: Order[]; requests: Rewash[]; bookings: Booking[];
   credit?: number;   // Referral Credit in rupees from wd-pay-lookup, read-only
+  first?: string; last?: string; email?: string;   // Edit profile (Pronto); name stays the display name = first + ' ' + last
 };
 export type Session = { token: string; phone: string; real: boolean };
 
@@ -54,7 +55,7 @@ export function fromCustomerDoc(r: any, old: Account | null): Account {
       washes: 0, paused: null, note: null, rating: 0 }, o || {}, c, { id: o ? o.id : (c.id || 'c' + i), status: active ? (c.status || 'active') : 'new' });
   });
   return Object.assign({ prefs: { photo: true, pay: true, drops: true }, payments: [], orders: [], requests: [], bookings: [] }, prev || {},
-    { name: r.name || '', phone: String(r.phone).slice(-10), since: r.since || 'October 2026', area: r.area || '', status: r.status, cars });
+    { name: r.name || '', first: r.first_name || undefined, last: r.last_name || undefined, email: r.email || undefined, phone: String(r.phone).slice(-10), since: r.since || 'October 2026', area: r.area || '', status: r.status, cars });
 }
 
 /* ---------- schedule: weekly extras spread by a hash of the registration ---------- */
@@ -112,10 +113,6 @@ export type WashDoc = {
   minutes?: number | null; tasks: { key: string; label: string; done: boolean; done_at?: string | null }[]; photos: Photo[];
   water_litres?: number | null; washer_note?: string | null; skip_reason?: string | null; customer_note_seen?: boolean;
   remote?: boolean; first?: boolean; notStarted?: boolean;
-  // set by the washer app once the round is locked / the wash runs long (all optional)
-  slot?: number | null; slot_from?: string | null; slot_to?: string | null;
-  interior?: boolean; extra_minutes?: number | null; addons?: { key: string; at?: string | null; minutes?: number | null }[];
-  overdue_at?: string | null;
 };
 export const TASK_LABEL: Record<string, string> = { pressure: 'Pressure wash', foam: 'Foam wash', interior: 'Interior cleaning', tyre: 'Tyre & trim polish', detailing: 'Detailing', dry: 'Dried by hand' };
 export const TASK_SUB: Record<string, string> = { pressure: 'Roof to rims, no cloth touches the paint', foam: 'Snow foam lifts the dust first', interior: 'Mats, dashboard, seats', tyre: 'Satin finish, not greasy', detailing: 'Clay, polish and wax', dry: 'Microfibre only' };
@@ -134,22 +131,8 @@ export function fromContract(r: any): WashDoc {
     minutes: numOrNull(r.minutes ?? (r.started_at && r.finished_at ? t2m(hm(r.finished_at)!) - t2m(hm(r.started_at)!) : null)),
     tasks: (Array.isArray(r.tasks) ? r.tasks : []).map((t: any) => ({ key: String(t.key), label: TASK_LABEL[t.key] || String(t.label || t.key), done: !!t.done, done_at: hm(t.done_at) })),
     photos: (Array.isArray(r.photos) ? r.photos : []).map((p: any) => ({ kind: p.kind, src: safeImg(p.url) })).filter((p: Photo) => p.src),
-    water_litres: numOrNull(r.water_litres), washer_note: r.washer_note || '', skip_reason: r.skip_reason || '', customer_note_seen: !!r.customer_note_seen, remote: true,
-    slot: Number.isFinite(+r.slot) && r.slot !== null && r.slot !== '' ? +r.slot : null, slot_from: hm(r.slot_from), slot_to: hm(r.slot_to),
-    interior: r.interior === true, extra_minutes: numOrNull(r.extra_minutes),
-    addons: (Array.isArray(r.addons) ? r.addons : []).filter((a: any) => a && a.key).map((a: any) => ({ key: String(a.key), at: hm(a.at), minutes: numOrNull(a.minutes) })),
-    overdue_at: r.overdue_at ? String(r.overdue_at) : null };
+    water_litres: numOrNull(r.water_litres), washer_note: r.washer_note || '', skip_reason: r.skip_reason || '', customer_note_seen: !!r.customer_note_seen, remote: true };
 }
-// "Aapka time: 7:20 – 8:15 AM"; empty until the washer locks the round
-export function slotTxt(d: WashDoc) {
-  if (!d.slot_from || !d.slot_to) return '';
-  const a = ampm(d.slot_from), b = ampm(d.slot_to);
-  return `Aapka time: ${a.slice(-2) === b.slice(-2) ? a.slice(0, -3) : a} – ${b}`;
-}
-export const INTERIOR_TXT = (d: WashDoc) => `Interior cleaning bhi ho rahi hai · +${d.extra_minutes || 10} min`;
-export const LATE_TXT = 'Washer thoda late hai, jaldi pahunch rahe hain';
-export const isLate = (d: WashDoc) => !!d.overdue_at && d.status !== 'done' && d.status !== 'skipped';
-export const extrasOf = (d: WashDoc) => (d.addons || []).map(a => `${TASK_LABEL[a.key] || a.key}${a.minutes ? ` · +${a.minutes} min` : ''}`);
 export function planTasks(c: Car, d: Date): TaskKey[] { const w = extras(c, d); return ['pressure', ...w.map(k => KEYMAP[k]), 'dry'] }
 
 // Test data: what a morning looks like for the sample account
@@ -171,5 +154,5 @@ export function chipText(c: Car, d: WashDoc) {
   if (c.status === 'new' && !d.remote) return 'First wash tomorrow, 6–7:30 AM';
   if (d.status === 'skipped') return d.skip_reason === 'Paused by you' && c.paused ? 'Paused till ' + fmt(c.paused.to) : 'No wash today';
   const done = d.tasks.filter(t => t.done).length;
-  return ({ scheduled: slotTxt(d) || `${w} comes around ${ampm(d.eta) || '6:30 AM'}`, on_the_way: `${w} is on the way`, arrived: `${w} has reached your car`, washing: `Washing now · ${done} of ${d.tasks.length}`, done: `Washed today · ${ampm(d.finished_at)}` } as Record<string, string>)[d.status];
+  return ({ scheduled: `${w} comes around ${ampm(d.eta) || '6:30 AM'}`, on_the_way: `${w} is on the way`, arrived: `${w} has reached your car`, washing: `Washing now · ${done} of ${d.tasks.length}`, done: `Washed today · ${ampm(d.finished_at)}` } as Record<string, string>)[d.status];
 }

@@ -2,6 +2,7 @@
 // Usage: node tools/shots.mjs [outDir=dist-preview/shots] [steps.json]
 // steps: [{"tap":"text=Get code"},{"type":"9876504210"},{"fill":["input","x"]},{"wait":800},{"shot":"home"},{"scroll":400},{"press":"Enter"}]
 // tap selectors: "text=Foo" -> exact-ish visible text (getByText), anything else is a Playwright locator ("input", "css=...", "role=button[name=Go]").
+// VIEW=360x800 env sets the viewport (default 390x844).
 // type: types into the focused element (or {"type":"..","into":"input"}).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,7 +19,8 @@ const steps = process.argv[3] ? JSON.parse(fs.readFileSync(process.argv[3], 'utf
 fs.mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+const [VW, VH] = (process.env.VIEW || '390x844').split('x').map(Number);
+const ctx = await browser.newContext({ viewport: { width: VW, height: VH }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
 const problems = [];
 page.on('console', (m) => { if (m.type() === 'error') problems.push('console.error: ' + m.text()); });
@@ -53,7 +55,7 @@ for (const s of steps) {
       if (s.into) await loc(s.into).click({ timeout: 5000 });
       await page.keyboard.type(String(s.type), { delay: 20 });
     } else if (s.press) await page.keyboard.press(s.press);
-    else if (s.scroll !== undefined) await page.mouse.wheel(0, s.scroll);
+    else if (s.scroll !== undefined) { await page.mouse.move(VW / 2, VH / 2); await page.mouse.wheel(0, s.scroll); }
     else if (s.wait) await page.waitForTimeout(s.wait);
     else if (s.shot) { await page.evaluate(() => document.fonts.ready); await shot(s.shot); }
     else if (s.goto) await page.goto(s.goto);

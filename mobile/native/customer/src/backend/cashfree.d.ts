@@ -2,3 +2,4 @@
 export type CheckoutResult = { orderId: string };
 export declare function cashfreeCheckout(paymentSessionId: string, orderId: string): Promise<CheckoutResult>;
 export declare const CASHFREE_AVAILABLE: boolean;
+export declare const CASHFREE_ENV: string;   // 'PRODUCTION' | 'SANDBOX' on phones, 'NONE' in the preview

@@ -1,0 +1,30 @@
+// node test.mjs — checks the workflow's logic against Node's own crypto.
+import fs from 'node:fs'; import crypto from 'node:crypto'; import assert from 'node:assert/strict';
+const src = fs.readFileSync(new URL('./lib.js', import.meta.url), 'utf8') + fs.readFileSync(new URL('./logic.js', import.meta.url), 'utf8');
+const m = new Function(src + '; return { hmacSha256Hex, rzpPriceOrder, rzpOrderReply, rzpVerify, sameSecret };')();
+const SECRET = 'test_secret_not_real_' + 'x'.repeat(10);
+for (const msg of ['', 'a', 'order_ABC123def456|pay_XYZ789ghi012', 'ü₹'.repeat(40), 'x'.repeat(500)])
+  assert.equal(m.hmacSha256Hex(SECRET, msg), crypto.createHmac('sha256', SECRET).update(msg).digest('hex'));
+assert.equal(m.hmacSha256Hex('k'.repeat(100), 'hi'), crypto.createHmac('sha256', 'k'.repeat(100)).update('hi').digest('hex'));
+const sign = (o, p) => crypto.createHmac('sha256', SECRET).update(o + '|' + p).digest('hex');
+const O = 'order_Abc123Def456', P = 'pay_Xyz789Ghi012';
+assert.equal(m.rzpVerify({ razorpay_order_id: O, razorpay_payment_id: P, razorpay_signature: sign(O, P) }, SECRET).status, 200);
+assert.equal(m.rzpVerify({ razorpay_order_id: O, razorpay_payment_id: P, razorpay_signature: sign(O, 'pay_Other123456') }, SECRET).status, 400);
+assert.equal(m.rzpVerify({ razorpay_order_id: O, razorpay_payment_id: P, razorpay_signature: 'a'.repeat(64) }, SECRET).status, 400);
+assert.equal(m.rzpVerify({ razorpay_order_id: O, razorpay_payment_id: P }, SECRET).status, 400);
+assert.equal(m.rzpVerify({}, SECRET).status, 400);
+assert.equal(m.rzpVerify(null, SECRET).status, 400);
+assert.equal(m.rzpVerify({ razorpay_order_id: O, razorpay_payment_id: P, razorpay_signature: sign(O, P) }, '').status, 500);
+assert.equal(m.rzpVerify({ razorpay_order_id: O, razorpay_payment_id: P, razorpay_signature: sign(O, P).toUpperCase() }, SECRET).status, 200);
+const p = m.rzpPriceOrder({ item: 'wash', amount: 1, name: 'Ravi <b>', phone: '+91 98765 04210' }, 1e12, 'abc123');
+assert.ok(p.ok); assert.equal(p.order.amount, 19900); assert.equal(p.order.currency, 'INR');
+assert.ok(p.order.receipt.length <= 40); assert.equal(p.order.notes.phone, '9876504210'); assert.ok(!/[<>]/.test(p.order.notes.name));
+assert.equal(m.rzpPriceOrder({ item: 'test' }, 1, 'a').order.amount, 100);
+for (const bad of [{}, { item: 'free' }, { item: '__proto__' }, { item: 'constructor' }, null]) assert.equal(m.rzpPriceOrder(bad, 1, 'a').status, 400);
+const ok = { statusCode: 200, body: { id: 'order_Abc123', amount: 19900, currency: 'INR' } };
+assert.equal(m.rzpOrderReply(ok, p, 'rzp_test_x').body.key_id, 'rzp_test_x');
+assert.equal(m.rzpOrderReply({ ...ok, body: { ...ok.body, amount: 100 } }, p, 'k').status, 500);
+assert.equal(m.rzpOrderReply({ statusCode: 401, body: {} }, p, 'k').status, 401);
+assert.equal(m.rzpOrderReply({ statusCode: 400, body: { error: {} } }, p, 'k').status, 500);
+assert.equal(m.rzpOrderReply({ statusCode: 200, body: JSON.stringify(ok.body) }, p, 'k').status, 200);
+console.log('all passed');
