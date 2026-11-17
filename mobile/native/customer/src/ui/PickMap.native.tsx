@@ -1,31 +1,54 @@
-// Address picker map on phones: the real Google map. The centre pin is drawn by the page above this view; the map is dragged underneath it.
-import React, { useImperativeHandle, useRef } from 'react';
+// Address picker map on phones: the real Google map (Maps JavaScript API) shown in a WebView.
+// Why not react-native-maps: both releases of it crashed this app at launch on Ravi's phone (Expo 58 / RN 0.88),
+// and a WebView is already part of the app. The centre pin is drawn by the page above this view; the map is dragged underneath it.
+import React, { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { View, Text } from 'react-native';
-import type MapViewType from 'react-native-maps';
-import type { Region } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
+import { KEY } from '../geo';
 import type { PickMapProps, PickMapRef } from './PickMap';
 
-// Loaded defensively: if the native maps module is missing from a build, importing react-native-maps throws at
-// start-up and would crash the whole app. Here it only costs the map (a note is shown instead).
-let RNM: typeof import('react-native-maps') | null = null;
-try { RNM = require('react-native-maps') } catch (e) { console.warn('react-native-maps failed to load', e) }
+const page = (lat: number, lng: number, key: string) => `<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>html,body,#m{margin:0;height:100%;background:#F4F4F5;overflow:hidden}</style></head><body><div id="m"></div>
+<script>
+var map,dot;
+function post(o){window.ReactNativeWebView.postMessage(JSON.stringify(o))}
+window.gm_authFailure=function(){post({t:'fail',why:'key'})};
+window.initMap=function(){
+  map=new google.maps.Map(document.getElementById('m'),{center:{lat:${lat},lng:${lng}},zoom:17,disableDefaultUI:true,gestureHandling:'greedy',clickableIcons:false,keyboardShortcuts:false,rotateControl:false,tilt:0});
+  map.addListener('dragstart',function(){post({t:'move'})});
+  map.addListener('zoom_changed',function(){post({t:'move'})});
+  map.addListener('idle',function(){var c=map.getCenter();post({t:'idle',lat:c.lat(),lng:c.lng()})});
+  post({t:'ready'});
+};
+window.fly=function(la,ln,z){if(!map)return;post({t:'move'});map.panTo({lat:la,lng:ln});if(z)map.setZoom(17)};
+window.me=function(la,ln){if(!map)return;var p={lat:la,lng:ln};if(!dot){dot=new google.maps.Marker({position:p,map:map,clickable:false,zIndex:1,icon:{path:google.maps.SymbolPath.CIRCLE,scale:8,fillColor:'#2F6BFF',fillOpacity:1,strokeColor:'#fff',strokeWeight:3}})}else dot.setPosition(p)};
+</script>
+<script async src="https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=initMap&loading=async" onerror="post({t:'fail',why:'net'})"></script>
+</body></html>`;
 
 export function PickMap({ start, onMoveStart, onSettle, me, ref }: PickMapProps) {
-  const map = useRef<MapViewType>(null), moving = useRef(false), skip = useRef(false);
-  useImperativeHandle(ref, (): PickMapRef => ({
-    flyTo: (p, zoomed) => { skip.current = false; map.current?.animateCamera({ center: { latitude: p.lat, longitude: p.lng }, ...(zoomed ? { zoom: 17 } : {}) }, 450) },
-  }), []);
-  const begin = () => { if (!moving.current) { moving.current = true; onMoveStart() } };
-  const done = (r: Region) => { moving.current = false; onSettle({ lat: r.latitude, lng: r.longitude }) };
-  if (!RNM) return <View style={{ flex: 1, backgroundColor: '#F4F4F5', alignItems: 'center', justifyContent: 'center' }}><Text>Map could not load on this phone</Text></View>;
-  const MapView = RNM.default, PROVIDER_GOOGLE = RNM.PROVIDER_GOOGLE;
+  const web = useRef<React.ComponentRef<typeof WebView>>(null), ready = useRef(false), meRef = useRef(me);
+  const [fail, setFail] = useState('');
+  const html = useMemo(() => page(start.lat, start.lng, KEY), []);
+  const run = (js: string) => web.current?.injectJavaScript(js + ';true;');
+  const showMe = () => { const m = meRef.current; if (ready.current && m) run(`me(${m.lat},${m.lng})`) };
+  useImperativeHandle(ref, (): PickMapRef => ({ flyTo: (p, zoomed) => run(`fly(${p.lat},${p.lng},${zoomed ? 'true' : 'false'})`) }), []);
+  useEffect(() => { meRef.current = me; showMe() }, [me?.lat, me?.lng]);
   return (
     <View style={{ flex: 1, backgroundColor: '#F4F4F5' }}>
-      <MapView ref={map} style={{ flex: 1 }} provider={PROVIDER_GOOGLE}
-        initialCamera={{ center: { latitude: start.lat, longitude: start.lng }, zoom: 17, heading: 0, pitch: 0 }}
-        onRegionChange={(_, g) => { if (g?.isGesture) begin() }} onRegionChangeComplete={done}
-        showsUserLocation={!!me} showsMyLocationButton={false} showsCompass={false} toolbarEnabled={false} showsBuildings={false} showsTraffic={false}
-        rotateEnabled={false} pitchEnabled={false} moveOnMarkerPress={false} mapPadding={{ top: 0, left: 0, right: 0, bottom: 0 }} />
+      <WebView ref={web} style={{ flex: 1, backgroundColor: '#F4F4F5' }} source={{ html, baseUrl: 'https://washingdaddy.com' }}
+        originWhitelist={['*']} javaScriptEnabled domStorageEnabled setSupportMultipleWindows={false} overScrollMode="never"
+        scrollEnabled={false} bounces={false} showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false}
+        onMessage={e => {
+          let m: any; try { m = JSON.parse(e.nativeEvent.data) } catch { return }
+          if (m.t === 'ready') { ready.current = true; showMe() }
+          else if (m.t === 'move') onMoveStart();
+          else if (m.t === 'idle') onSettle({ lat: m.lat, lng: m.lng });
+          else if (m.t === 'fail') setFail(m.why === 'key' ? 'The map key was not accepted.' : 'The map could not connect.');
+        }}
+        onError={() => setFail('The map could not connect.')} />
+      {fail ? <View pointerEvents="none" style={{ position: 'absolute', left: 16, right: 16, top: 12, backgroundColor: '#fff', borderRadius: 10, padding: 10 }}><Text style={{ fontSize: 12, color: '#B42318' }}>{fail}</Text></View> : null}
     </View>
   );
 }
