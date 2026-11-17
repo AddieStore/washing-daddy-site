@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, F, brand, ui, useTheme } from '../ui';
+import { BigNumber, Button, DashCard, F, IconBubble, ui, useTheme } from '../ui';
 import { Money, act, emit, useStore, view } from '../state/store';
 import { rupee } from '../lib/time';
 import { t } from '../lib/i18n';
@@ -36,24 +36,32 @@ export default function JobAlert() {
     ui.toast(t('Extra tab mein dekho'));
   };
   return (
-    <View accessibilityViewIsModal style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 600, backgroundColor: 'rgba(18,7,36,0.72)', justifyContent: 'flex-end', alignItems: 'center' }}>
+    <View accessibilityViewIsModal style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 600, backgroundColor: 'rgba(17,17,20,0.72)', justifyContent: 'flex-end', alignItems: 'center' }}>
       <Pressable accessibilityLabel="Close" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} onPress={dismiss} />
       <Animated.View
         accessibilityRole="alert"
         style={{
-          width: '100%', maxWidth: 420, maxHeight: height * 0.9, backgroundColor: c.bg, borderTopLeftRadius: 30, borderTopRightRadius: 30,
-          paddingTop: 24, paddingHorizontal: 20, paddingBottom: 24 + insets.bottom,
+          width: '100%', maxWidth: 420, maxHeight: height * 0.9, backgroundColor: c.sheetBg, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          paddingTop: 24, paddingHorizontal: 16, paddingBottom: 24 + insets.bottom,
           opacity: a, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }],
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start', backgroundColor: brand.gold, borderRadius: 999, paddingVertical: 5, paddingHorizontal: 12, marginBottom: 12 }}>
-          <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: brand.orange, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }} />
-          <Text style={{ fontFamily: F.black, fontSize: 13, color: brand.ink2, letterSpacing: 0.3 }}>{t('⚡ Naya kaam aaya!')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start', backgroundColor: 'rgba(84,9,218,0.08)', borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12, marginBottom: 16 }}>
+          <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }} />
+          <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.primary }}>{t('⚡ Naya kaam aaya!')}</Text>
         </View>
-        <Text style={{ fontFamily: F.black, fontSize: 22, color: c.fg, marginBottom: 4 }}>{job.service || t('Extra kaam')}</Text>
-        <Text style={{ fontFamily: F.body, fontSize: 14, color: c.fg3, marginBottom: 20 }}>{meta}</Text>
-        <Text style={{ fontFamily: F.black, fontSize: 28, color: c.ok, marginBottom: 20 }}>{rupee(Money.share(job.price)) + ' ' + t('aapke')}</Text>
-        <View style={{ gap: 10 }}>
+        <DashCard style={{ padding: 16, marginBottom: 24, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <IconBubble icon="plus" size={36} tint={c.primary} bg="rgba(84,9,218,0.08)" />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 16, color: c.fg }}>{job.service || t('Extra kaam')}</Text>
+            {meta ? <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 2 }}>{meta}</Text> : null}
+          </View>
+          <View style={{ alignItems: 'flex-end', flexShrink: 0, maxWidth: '42%' }}>
+            <BigNumber value={rupee(Money.share(job.price))} size={24} style={{ color: c.ok }} />
+            <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{t('aapke')}</Text>
+          </View>
+        </DashCard>
+        <View style={{ gap: 12 }}>
           <Button label={t('✓ Lo yeh kaam')} variant="gold" onPress={accept} />
           <Button label={t('Nahi karna')} variant="ghost" onPress={() => act.alertPass()} />
         </View>

@@ -3,9 +3,10 @@ import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text, View, 
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { onConfetti, onFlash, onToast } from './bus';
 import { SheetHost } from './Sheet';
-import { F, brand } from './theme';
+import { F, useTheme } from './theme';
 
-function useReducedMotion() {
+/** true when the phone asks for less motion (Settings > Accessibility); loops and entrances should then stay still */
+export function useReducedMotion() {
   const [rm, setRm] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -21,19 +22,21 @@ function useReducedMotion() {
 
 /* ---------- Toast ---------- */
 function ToastHost({ rm }: { rm: boolean }) {
+  const { dark } = useTheme();
   const insets = React.useContext(SafeAreaInsetsContext);
   const [msg, setMsg] = useState('');
   const t = useRef(new Animated.Value(0)).current;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Customer toast: a dark ink pill that slides down from the top edge.
   useEffect(
     () =>
       onToast((m) => {
         setMsg(m);
         if (timer.current) clearTimeout(timer.current);
-        Animated.timing(t, { toValue: 1, duration: rm ? 0 : 320, easing: Easing.out(Easing.back(1.4)), useNativeDriver: true }).start();
+        Animated.timing(t, { toValue: 1, duration: rm ? 0 : 300, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: true }).start();
         timer.current = setTimeout(() => {
-          Animated.timing(t, { toValue: 0, duration: rm ? 0 : 260, useNativeDriver: true }).start();
+          Animated.timing(t, { toValue: 0, duration: rm ? 0 : 220, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: true }).start();
         }, 2600);
       }),
     [rm, t],
@@ -46,10 +49,10 @@ function ToastHost({ rm }: { rm: boolean }) {
       accessibilityLiveRegion="polite"
       style={[
         st.toastWrap,
-        { bottom: 96 + (insets?.bottom ?? 0), opacity: t, transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] },
+        { top: (insets?.top ?? 0) + 10, opacity: t, transform: [{ translateY: t.interpolate({ inputRange: [0, 1], outputRange: [-140, 0] }) }] },
       ]}
     >
-      <View style={st.toast}>
+      <View style={[st.toast, { backgroundColor: dark ? '#2A2A2E' : '#171717' }]}>
         <Text style={st.toastTxt}>{msg}</Text>
       </View>
     </Animated.View>
@@ -170,16 +173,15 @@ export function UiHosts() {
 const st = StyleSheet.create({
   toastWrap: { position: 'absolute', left: 16, right: 16, alignItems: 'center' },
   toast: {
-    backgroundColor: brand.ink,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 999,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     maxWidth: 420,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
+    shadowColor: '#1A1033',
+    shadowOpacity: 0.18,
     shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
-  toastTxt: { color: brand.cream, fontFamily: F.bold, fontSize: 15, textAlign: 'center' },
+  toastTxt: { fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: '#FFFFFF', textAlign: 'center' },
 });

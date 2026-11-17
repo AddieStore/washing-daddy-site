@@ -18,11 +18,13 @@ export const brand = {
 
 export const F = {
   shout: 'Anton_400Regular',
-  hero: 'AlfaSlabOne_400Regular',
-  body: 'Poppins_500Medium',
+  hero: 'Poppins_700Bold',
+  // Pronto r5 scale (customer app): 400 body, 500 label, 600 title, 700 figure, 800 hero.
+  body: 'Poppins_400Regular',
+  medium: 'Poppins_500Medium',
   semi: 'Poppins_600SemiBold',
   bold: 'Poppins_700Bold',
-  black: 'Poppins_800ExtraBold',
+  black: 'Poppins_800ExtraBold',   // Pronto r5: hero headlines are ExtraBold (customer app)
 } as const;
 
 export type Tokens = {
@@ -44,6 +46,15 @@ export type Tokens = {
   ok: string;
   dash: string;
   shadow: boolean;
+  /** Redesign tokens (2026-11): see partner-redesign-spec.md. */
+  card: string;        // white card surface
+  soft: string;        // light-violet: inactive bars, inactive tab, quiet bubbles
+  softInk: string;     // text/icon colour on `soft`
+  primary: string;     // violet for selected day, highlighted bar, centre button
+  hero: string;        // tinted gold hero card
+  heroTrack: string;   // ring track on the hero card
+  heroInk: string;     // text on the hero card
+  shadowColor: string; // soft card shadow colour
   violet: string;
   violet2: string;
   ink: string;
@@ -69,60 +80,74 @@ const base = {
 
 export const lightTokens: Tokens = {
   ...base,
-  bg: '#FFF6E9',
-  stage: '#EFE2CC',
-  fg: '#1A0A33',
-  fg2: 'rgba(26,10,51,0.76)',
-  fg3: 'rgba(26,10,51,0.56)',
-  line: 'rgba(26,10,51,0.12)',
+  // Pronto look shared with the customer app (customer src/theme.ts + pages/parts.tsx): grey page, white floating cards, neutral ink ramp.
+  bg: '#F5F5F8',
+  stage: '#EFEFF1',
+  fg: '#171717',
+  fg2: '#525252',
+  fg3: '#737373',
+  line: 'rgba(23,23,23,0.08)',
   tile: '#FFFFFF',
-  tile2: 'rgba(26,10,51,0.06)',
+  tile2: '#F4F4F5',
   accent: '#5409DA',
-  accentInk: '#FFF6E9',
-  em: '#5409DA',
-  barBg: 'rgba(255,246,233,0.86)',
-  tabBg: 'rgba(255,255,255,0.9)',
-  sheetBg: '#FFF6E9',
+  accentInk: '#FFFFFF',
+  em: '#171717',
+  barBg: 'rgba(255,255,255,0.92)',
+  tabBg: '#FFFFFF',
+  sheetBg: '#FFFFFF',
   inputBg: '#FFFFFF',
-  ok: '#0E9F6E',
-  dash: 'rgba(26,10,51,0.28)',
+  ok: '#16a34a',
+  dash: 'rgba(17,17,20,0.28)',
   shadow: true,
+  card: '#FFFFFF',
+  soft: '#F4F4F5',
+  softInk: '#525252',
+  primary: '#5409DA',
+  hero: '#5409DA',
+  heroTrack: 'rgba(255,255,255,0.22)',
+  heroInk: '#FFFFFF',
+  shadowColor: '#1A1033',
 };
 
 export const darkTokens: Tokens = {
   ...lightTokens,
-  bg: '#1A0A33',
-  stage: '#120724',
-  fg: '#FFF6E9',
-  fg2: 'rgba(255,246,233,0.78)',
-  fg3: 'rgba(255,246,233,0.56)',
-  line: 'rgba(255,246,233,0.14)',
-  tile: 'rgba(255,255,255,0.07)',
-  tile2: 'rgba(255,255,255,0.11)',
-  accent: '#FFBA08',
-  accentInk: '#1A0A33',
-  em: '#FFBA08',
-  barBg: 'rgba(26,10,51,0.8)',
-  tabBg: 'rgba(34,9,79,0.86)',
-  sheetBg: '#22094F',
-  inputBg: 'rgba(255,255,255,0.07)',
-  ok: '#2EE6A6',
-  dash: 'rgba(255,246,233,0.32)',
+  bg: '#141415',
+  stage: '#08080A',
+  fg: '#F4F4F5',
+  fg2: '#C4C4CC',
+  fg3: '#A1A1AA',
+  line: 'rgba(255,255,255,0.10)',
+  tile: '#161618',
+  tile2: 'rgba(255,255,255,0.08)',
+  accent: '#7A42F0',
+  accentInk: '#FFFFFF',
+  em: '#F4F4F5',
+  barBg: 'rgba(14,14,16,0.88)',
+  tabBg: '#161618',
+  sheetBg: '#161618',
+  inputBg: 'rgba(255,255,255,0.06)',
+  ok: '#5CE6B5',
+  dash: 'rgba(244,244,245,0.32)',
   shadow: false,
+  card: '#161618',
+  soft: '#232326',
+  softInk: '#D4D4D8',
+  primary: '#7A42F0',
+  hero: '#3A06A0',
+  heroTrack: 'rgba(255,255,255,0.18)',
+  heroInk: '#F4F4F5',
+  shadowColor: '#000000',
 };
 
-/** Overrides applied inside violet hero cards (.on-violet). */
+/** Tokens for anything drawn on a violet block (VioletHeader, HeroCard): white ink, translucent white fills. */
 export const onVioletOverrides: Partial<Tokens> = {
-  fg: '#FFF6E9',
-  fg2: 'rgba(255,246,233,0.84)',
-  fg3: 'rgba(255,246,233,0.62)',
-  line: 'rgba(255,246,233,0.18)',
-  tile: 'rgba(255,255,255,0.1)',
-  tile2: 'rgba(255,255,255,0.16)',
-  accent: '#FFBA08',
-  accentInk: '#1A0A33',
-  ok: '#2EE6A6',
-  dash: 'rgba(255,246,233,0.38)',
+  fg: '#FFFFFF',
+  fg2: 'rgba(255,255,255,0.86)',
+  fg3: 'rgba(255,255,255,0.72)',
+  line: 'rgba(255,255,255,0.22)',
+  tile2: 'rgba(255,255,255,0.15)',
+  soft: 'rgba(255,255,255,0.15)',
+  softInk: '#FFFFFF',
   shadow: false,
 };
 
@@ -151,15 +176,23 @@ export function useTheme(): { c: Tokens; dark: boolean; onViolet: boolean } {
   return useContext(ThemeCtx);
 }
 
-/** Card shadow like --card-shadow (light only). */
+/** Astryx "low" elevation: a very light 0 2 6 shadow, light mode only. */
 export function cardShadow(c: Tokens) {
   return c.shadow
     ? ({
-        shadowColor: '#5409DA',
-        shadowOpacity: 0.09,
-        shadowRadius: 15,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 2,
+        shadowColor: '#1A1033',
+        shadowOpacity: 0.07,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 3,
       } as const)
     : ({} as const);
+}
+
+/** Astryx shape tokens: cards 16, buttons 12, small chips/badges are pills. */
+export const R = { card: 16, button: 12, pill: 9999, input: 12 } as const;
+/** Card surface: radius 16, white; light mode floats on cardShadow (spread into a style). */
+export function cardBox(c: Tokens) {
+  // Pronto r5: no hairline on light cards (the spread shadow carries them); dark mode keeps a faint edge.
+  return { borderRadius: R.card, backgroundColor: c.card, borderWidth: c.shadow ? 0 : 1, borderColor: c.line } as const;
 }

@@ -545,6 +545,78 @@
         1400,
         100
       ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://firestore.googleapis.com/v1/projects/{{ $env.FIREBASE_PROJECT_ID }}/databases/(default)/documents:runQuery",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ structuredQuery: { from: [{ collectionId: 'washers' }], where: { compositeFilter: { op: 'AND', filters: [\n  { fieldFilter: { field: { fieldPath: 'route_id' }, op: 'EQUAL', value: { stringValue: String($('Nazdeeki washer dhundo').first().json.washer_id) } } },\n  { fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'approved' } } } ] } }, limit: 3 } }) }}",
+        "options": {}
+      },
+      "id": "washer-token",
+      "name": "Washer ka token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3000,
+        -400
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "2",
+          "name": "Firebase service account (Google Service Account API)"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Push for extra kaam: one item per approved washer device token.\n// Share = 50% of the job price. 'Job check' only exposes price (not the service name),\n// so the service is read from the stored job doc returned by 'Job lookup'.\nconst rows = $input.all().map(i => i.json);\nconst list = rows.flatMap(r => Array.isArray(r) ? r : [r]);\nconst job = $('Job check').first().json;\nconst price = Number(job.price);\nlet service = '';\ntry { service = String((($('Job lookup').first().json.fields || {}).service || {}).stringValue || ''); } catch (e) {}\nconst docId = String(job.doc_id || $('Nazdeeki washer dhundo').first().json.doc_id || '');\nif (!Number.isFinite(price) || price <= 0) return [];\nconst share = Math.round(price * 0.5);\nconst body = '\\u20b9' + share + ' aapke' + (service ? ' \\u00b7 ' + service : '');\nconst seen = new Set();\nconst out = [];\nfor (const r of list) {\n  const f = (r && r.document && r.document.fields) || {};\n  const t = f.push_token && f.push_token.stringValue ? String(f.push_token.stringValue).trim() : '';\n  if (!t || seen.has(t)) continue;\n  seen.add(t);\n  out.push({ json: { token: t, body, doc_id: docId } });\n}\nreturn out;"
+      },
+      "id": "push-taiyaar",
+      "name": "Push taiyaar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3200,
+        -400
+      ],
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://fcm.googleapis.com/v1/projects/{{ $env.FIREBASE_PROJECT_ID }}/messages:send",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: { token: $json.token, notification: { title: 'Extra kaam aaya hai', body: $json.body },\n  android: { priority: 'HIGH', notification: { channel_id: 'wd_extra_v1', sound: 'wd_extra.wav' } },\n  apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'wd_extra.wav' } } },\n  data: { kind: 'extra', job: String($json.doc_id) } } }) }}",
+        "options": {}
+      },
+      "id": "push-bhejo",
+      "name": "Push bhejo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3400,
+        -400
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "2",
+          "name": "Firebase service account (Google Service Account API)"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -749,6 +821,11 @@
             "node": "Jawab do (200)",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Washer ka token",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -770,6 +847,28 @@
           },
           {
             "node": "Unpaid alert gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Washer ka token": {
+      "main": [
+        [
+          {
+            "node": "Push taiyaar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push taiyaar": {
+      "main": [
+        [
+          {
+            "node": "Push bhejo",
             "type": "main",
             "index": 0
           }

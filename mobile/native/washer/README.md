@@ -14,7 +14,7 @@ money tab, live location, Hinglish/Hindi and day/night themes. Every change to a
 
 - `src/app/` screens (expo-router): `(tabs)/index` round, `extra`, `paisa`, `profile`; `job` the car being washed.
 - `src/state/store.ts` all state and actions; screens never talk to the database directly.
-- `src/backend/` Firestore + phone auth through React Native Firebase, or the in-memory demo (OTP 1234).
+- `src/backend/` Firestore + phone auth through React Native Firebase (phone + PIN via a custom token from n8n workflow 12, or SMS OTP), or the in-memory demo (PIN 1234 or OTP 1234).
 - `src/lib/` the task schedule, Hindi table, time and money formatting, photo capture.
 - `src/ui/` design kit (tokens from the web app's CSS).
 

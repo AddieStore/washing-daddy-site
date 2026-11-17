@@ -4,7 +4,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 export type IconName =
   | 'phone' | 'pin' | 'arrow' | 'check' | 'cam' | 'walk' | 'flag' | 'drop' | 'star' | 'note' | 'warn'
   | 'redo' | 'pause' | 'help' | 'plus' | 'back' | 'user' | 'globe' | 'sun' | 'reset' | 'logout' | 'sos'
-  | 'tabRound' | 'tabExtra' | 'tabPaisa' | 'tabMe';
+  | 'calendar' | 'bell' | 'shield' | 'id' | 'kit' | 'doc' | 'gift' | 'tabRound' | 'tabExtra' | 'tabPaisa' | 'tabMe' | 'car' | 'chevron' | 'clock';
 
 export type TaskKey = 'pressure' | 'foam' | 'interior' | 'tyre' | 'detailing' | 'dry';
 
@@ -83,25 +83,79 @@ const ICONS: Record<IconName, (color: string, active: boolean) => React.ReactNod
       <Path d="M12 10v4.2M12 17h.01" />
     </>
   ),
-  tabRound: (c, a) => (
+  calendar: () => (
     <>
-      <Circle cx={6} cy={18} r={2.5} fill={c} fillOpacity={a ? 0.22 : 0} />
-      <Circle cx={18} cy={6} r={2.5} fill={c} fillOpacity={a ? 0.22 : 0} />
-      <Path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5" />
+      <Rect x={3.5} y={5} width={17} height={15.5} rx={3.5} />
+      <Path d="M3.5 10h17M8 3v4M16 3v4" />
     </>
   ),
-  tabExtra: (c, a) => <Path d="M13 2.5 4.5 13.5h6.5l-1 8 8.5-11H12z" fill={c} fillOpacity={a ? 0.22 : 0} />,
+  bell: () => <Path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15zM10 21.5a2.2 2.2 0 0 0 4 0" />,
+  shield: () => (
+    <>
+      <Path d="M12 3l7.5 2.8v5.6c0 4.6-3.1 8.1-7.5 9.6-4.4-1.5-7.5-5-7.5-9.6V5.8z" />
+      <Path d="M8.6 12.2l2.6 2.6 4.4-5" />
+    </>
+  ),
+  id: () => (
+    <>
+      <Rect x={2.8} y={5} width={18.4} height={14} rx={3} />
+      <Circle cx={8.6} cy={11} r={2} />
+      <Path d="M5.6 16c.6-1.5 1.7-2.2 3-2.2s2.4.7 3 2.2M14.5 9.5h4M14.5 13h3" />
+    </>
+  ),
+  kit: () => (
+    <>
+      <Path d="M3.5 8.5h17V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19z" />
+      <Path d="M8.5 8.5V6.5a1.5 1.5 0 0 1 1.5-1.5h4a1.5 1.5 0 0 1 1.5 1.5v2M3.5 13.5h17M10.5 13.5v2h3v-2" />
+    </>
+  ),
+  doc: () => (
+    <>
+      <Path d="M6 3h8l4.5 4.5V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <Path d="M14 3v4.5h4.5M8.5 13.5l2.2 2.2 4-4.4" />
+    </>
+  ),
+  gift: () => (
+    <>
+      <Rect x={3.5} y={8.5} width={17} height={4} rx={1.2} />
+      <Path d="M5 12.5V20h14v-7.5M12 8.5V20M12 8.5C10 8.5 7.5 8 7.5 6a2 2 0 0 1 3.4-1.4c.7.7 1.1 2 1.1 3.9zM12 8.5c2 0 4.5-.5 4.5-2.5a2 2 0 0 0-3.4-1.4c-.7.7-1.1 2-1.1 3.9z" />
+    </>
+  ),
+  car: () => (
+    <>
+      <Path d="M4 16v-3l1.8-4.6A2 2 0 0 1 7.7 7h8.6a2 2 0 0 1 1.9 1.4L20 13v3z" />
+      <Path d="M4 16v2.5M20 16v2.5M4 13h16" />
+      <Circle cx={8} cy={14.5} r={0.6} />
+      <Circle cx={16} cy={14.5} r={0.6} />
+    </>
+  ),
+  chevron: () => <Path d="m9.5 6 6 6-6 6" />,
+  clock: () => (
+    <>
+      <Circle cx={12} cy={12} r={8.5} />
+      <Path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  // Same glyphs as the Astryx preview (sun, bolt, rupee, person); "active" is shown by colour only.
+  tabRound: (c, a) => (
+    <>
+      <Circle cx={6} cy={18} r={2.6} fill={a ? c : 'none'} />
+      <Circle cx={18} cy={6} r={2.6} fill={a ? c : 'none'} />
+      <Path d="M8.6 18H15a3.2 3.2 0 0 0 0-6.4H9a3.2 3.2 0 0 1 0-6.4h6.4" />
+    </>
+  ),
+  tabExtra: (c, a) => <Path d="M13.2 2.8 5 13.4h6l-1.2 7.8 8.2-10.6h-6z" fill={a ? c : 'none'} />,
   tabPaisa: (c, a) => (
     <>
-      <Rect x={2.5} y={5.5} width={19} height={14} rx={3} fill={c} fillOpacity={a ? 0.22 : 0} />
-      <Path d="M9 9h6M9 11.5h6M10.5 9c1.6 0 2.7.8 2.7 2.5s-1.1 2.5-2.7 2.5H9.5l3.8 3" />
+      <Path d="M4.5 7.5A2.5 2.5 0 0 1 7 5h9.5a2 2 0 0 1 2 2v1.5" />
+      <Rect x={3} y={7.5} width={18} height={12.5} rx={3.2} fill={a ? c : 'none'} />
+      <Circle cx={16.4} cy={13.8} r={1.4} fill={a ? '#fff' : c} stroke="none" />
     </>
   ),
   tabMe: (c, a) => (
     <>
-      <Circle cx={12} cy={12} r={9.5} fill={c} fillOpacity={a ? 0.22 : 0} />
-      <Circle cx={12} cy={10} r={3.2} />
-      <Path d="M6.3 18.4c1.4-1.9 3.4-2.9 5.7-2.9s4.3 1 5.7 2.9" />
+      <Circle cx={12} cy={8} r={4} fill={a ? c : 'none'} />
+      <Path d="M4.6 20.4c.6-4 3.6-6 7.4-6s6.8 2 7.4 6z" fill={a ? c : 'none'} />
     </>
   ),
 };
@@ -129,14 +183,24 @@ const STROKE: Partial<Record<IconName, { w: number; cap?: 'round'; join?: 'round
   reset: { w: 2, cap: 'round' },
   logout: { w: 2, cap: 'round' },
   sos: { w: 2, cap: 'round', join: 'round' },
-  tabRound: { w: 2, cap: 'round', join: 'round' },
-  tabExtra: { w: 2, cap: 'round', join: 'round' },
-  tabPaisa: { w: 2, cap: 'round', join: 'round' },
-  tabMe: { w: 2, cap: 'round', join: 'round' },
+  calendar: { w: 2, cap: 'round', join: 'round' },
+  bell: { w: 2, cap: 'round', join: 'round' },
+  shield: { w: 2, cap: 'round', join: 'round' },
+  id: { w: 2, cap: 'round', join: 'round' },
+  kit: { w: 2, cap: 'round', join: 'round' },
+  doc: { w: 2, cap: 'round', join: 'round' },
+  gift: { w: 2, cap: 'round', join: 'round' },
+  car: { w: 1.9, cap: 'round', join: 'round' },
+  clock: { w: 1.9, cap: 'round', join: 'round' },
+  chevron: { w: 2, cap: 'round', join: 'round' },
+  tabRound: { w: 2.2, cap: 'round', join: 'round' },
+  tabExtra: { w: 2.2, cap: 'round', join: 'round' },
+  tabPaisa: { w: 2.2, cap: 'round', join: 'round' },
+  tabMe: { w: 2.2, cap: 'round', join: 'round' },
 };
 
 export function Icon({ name, size = 24, color = '#000', active = false }: P & { name: IconName }) {
-  const solid = name === 'star';
+  const solid = name === 'star' && size <= 14;
   const s = STROKE[name];
   return (
     <Svg

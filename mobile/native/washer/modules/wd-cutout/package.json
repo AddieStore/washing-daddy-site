@@ -1,0 +1,1 @@
+{ "name": "wd-cutout", "version": "1.0.0", "private": true, "description": "On-device subject (car or person) background cut-out (Android ML Kit subject segmentation)", "main": "src/index.ts" }

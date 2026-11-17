@@ -1,8 +1,10 @@
-// "Nayi gaadi add karo": a car the washer sold himself. It lands on his round today; Ravi approves it.
+// "Naya customer jodo": the washer signs a new customer up in front of them, step by step. The car(s) land on his round
+// today; The manager approves. One newcars doc per car (the store takes one car per call); the first car carries the extras' numbers.
 import React, { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Linking, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Button, ChipPicker, Eyebrow, Field, F, LinkButton, Pressy, brand, sheet, ui, useTheme } from '../ui';
+import { Button, ChipPicker, Field, F, Icon, LinkButton, Pressy, brand, sheet, ui, useTheme } from '../ui';
+import { WCard, TNUM } from './ProntoBits';
 import { act, DAY, route } from '../state/store';
 import { PLAN, PLAN_PRICE, normReg, type PlanId } from '../lib/schedule';
 import { SHARE } from '../lib/data';
@@ -15,32 +17,101 @@ export function openAddCar() {
 
 // Legacy is closed to new cars; old Legacy cars keep it
 const PLANS = (Object.keys(PLAN) as PlanId[]).filter((k) => k !== 'legacy');
+const STEPS = ['Gaadi', 'Customer', 'Pata', 'Plan', 'Aur gaadi', 'Paisa'] as const;
+type Geo = { lat: number; lng: number };
+type Pay = 'cash' | 'upi' | 'later';
+const mapUrl = (g: Geo) => `https://maps.google.com/?q=${g.lat.toFixed(5)},${g.lng.toFixed(5)}`;
 
 function AddCarForm({ close }: { close: () => void }) {
   const { c } = useTheme();
+  const [step, setStep] = useState(0);
   const [model, setModel] = useState('');
   const [plate, setPlate] = useState('');
-  const [area, setArea] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [geo, setGeo] = useState<Geo | null>(null);
+  const [locBusy, setLocBusy] = useState(false);
+  const [locMsg, setLocMsg] = useState('');
   const [plan, setPlan] = useState<PlanId>('std');
-  const [fee, setFee] = useState(PLAN_PRICE.std);
+    const [extras, setExtras] = useState<string[]>([]);
+  const [pay, setPay] = useState<Pay>('later');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const bad = (m: string) => { setErr(m); ui.haptic(14); };
-  const setF = (v: number) => setFee(Math.max(0, Math.min(20000, v)));
-  const step = (d: number) => { setF(fee + d); ui.haptic(4); };
+  const bad = (m: string) => { setErr(m); ui.haptic(14); return false; };
+  const ph = phone.replace(/\D/g, '');
+  const ex = extras.filter((x) => x.trim());   // an empty extra box is just ignored
+  const regs = [normReg(plate), ...ex.map((x) => normReg(x))];
+  const fee = PLAN_PRICE[plan];   // list price; never shown to the washer
+  const total = fee * regs.length;   // recorded with the payment, never shown
+
+  const useLocation = async () => {
+    if (locBusy) return;
+    setLocBusy(true); setLocMsg('');
+    try {
+      const Location = await import('expo-location');
+      const p = await Location.requestForegroundPermissionsAsync();
+      if (p.status !== 'granted') { setLocMsg(t('Location ki ijaazat nahi mili. Neeche pata likh do.')); return; }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const g = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setGeo(g); ui.haptic(8);
+      try {
+        const r = (await Location.reverseGeocodeAsync({ latitude: g.lat, longitude: g.lng }))[0];
+        if (r && !address.trim()) {
+          const bits = [r.name, r.street, r.district || r.subregion, r.city, r.postalCode].filter((x, i, a): x is string => !!x && a.indexOf(x) === i);
+          if (bits.length) setAddress(bits.join(', ').slice(0, 200));
+        }
+      } catch (e) { console.warn('reverse geocode', e); }
+    } catch (e) {
+      console.warn('location', e);
+      setLocMsg(t('Location nahi mili. Neeche pata likh do.'));
+    } finally { setLocBusy(false); }
+  };
+
+  const check = (s: number): boolean => {
+    if (s === 0) {
+      const reg = normReg(plate);
+      if (reg.length < 4) return bad(t('Poora number daalo'));
+      if (route().some((x) => x.reg === reg)) return bad(t('Yeh gaadi pehle se round pe hai'));
+    }
+    if (s === 1) {
+      if (ph.length !== 10) return bad(t(ph ? 'Phone 10 number ka hota hai' : 'Phone number daalo'));
+    }
+    if (s === 2) {
+      if (address.trim().length < 5) return bad(t('Poora pata likho'));
+    }
+    if (s === 4) {
+      for (let i = 0; i < ex.length; i++) {
+        const r = regs[i + 1];
+        if (r.length < 4) return bad(t('Poora number daalo'));
+        if (regs.indexOf(r) !== i + 1) return bad(t('Yeh number dobara likha hai'));
+        if (route().some((x) => x.reg === r)) return bad(t('Yeh gaadi pehle se round pe hai'));
+      }
+    }
+    setErr('');
+    return true;
+  };
+  const next = () => { if (check(step)) { setStep(step + 1); ui.haptic(4); } };
+  const back = () => { setErr(''); setStep(Math.max(0, step - 1)); };
 
   const submit = async () => {
-    const m = model.trim(), p = plate.trim().toUpperCase(), reg = normReg(p), ph = phone.replace(/\D/g, '');
-    if (!m) return bad(t('Gaadi ka naam likho'));
-    if (reg.length < 4) return bad(t('Poora number daalo'));
-    if (route().some((x) => x.reg === reg)) return bad(t('Yeh gaadi pehle se round pe hai'));
-    if (ph && ph.length !== 10) return bad(t('Phone 10 number ka hota hai'));
-    setErr(''); setBusy(true);
+    for (let s = 0; s <= 4; s++) if (!check(s)) { setStep(s); return; }
+    setBusy(true); setErr('');
+    const m = model.trim() || 'Gaadi', addr = address.trim(), cn = name.trim(), cp = '+91' + ph;
+    const area = addr.slice(0, 80);
+    const paid = pay === 'later' ? null : { method: pay, amount: total };
     try {
-      await act.addCar({ reg, plate: p, model: m, area: area.trim(), plan, fee, customer_name: name.trim(), customer_phone: ph ? '+91' + ph : '' });
+      await act.addCar({
+        reg: regs[0], plate: plate.trim().toUpperCase(), model: m, area, plan, fee, customer_name: cn, customer_phone: cp,
+        address: addr, geo, paid, others: regs.slice(1),
+      });
+      for (let i = 1; i < regs.length; i++) {
+        await act.addCar({
+          reg: regs[i], plate: ex[i - 1].trim().toUpperCase(), model: 'Gaadi', area, plan, fee, customer_name: cn, customer_phone: cp,
+          address: addr, geo, paid: null, others: [regs[0]],
+        });
+      }
       close();
       router.navigate('/');
     } catch (e) {
@@ -50,42 +121,138 @@ function AddCarForm({ close }: { close: () => void }) {
     }
   };
 
-  const share = fee * SHARE;
+  const share = fee * regs.length * SHARE;
+  const last = step === STEPS.length - 1;
   return (
     <View style={{ paddingBottom: 8 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 22, color: c.fg }}>{t('Nayi gaadi add karo')}</Text>
-      <Text style={{ fontFamily: F.body, fontSize: 14.5, color: c.fg2, marginTop: 4, marginBottom: 10 }}>
-        {t('Aaj se aapke round pe aa jayegi. Ravi manzoori denge aur book mein daalenge.')}
-      </Text>
-      <Eyebrow style={lbl(0)}>{t('Gaadi')}</Eyebrow>
-      <Field value={model} onChangeText={setModel} maxLength={60} placeholder={t('Jaise: Swift')} />
-      <Eyebrow style={lbl()}>{t('Gaadi ka number')}</Eyebrow>
-      <Field value={plate} onChangeText={(v) => setPlate(v.toUpperCase())} maxLength={20} autoCapitalize="characters" autoCorrect={false} placeholder="DL 8C AB 1234" />
-      <Eyebrow style={lbl()}>{t('Ghar / area')}</Eyebrow>
-      <Field value={area} onChangeText={setArea} maxLength={80} placeholder="GH-9, 212" />
-      <Eyebrow style={lbl()}>{t('Customer')}</Eyebrow>
-      <Field value={name} onChangeText={setName} maxLength={80} placeholder={t('Naam')} />
-      <Field value={phone} onChangeText={(v) => setPhone(v.replace(/\D/g, ''))} maxLength={10} keyboardType="number-pad" inputMode="numeric" placeholder={t('Phone (10 number)')} style={{ marginTop: 8 }} />
-      <Eyebrow style={lbl()}>{t('Plan')}</Eyebrow>
-      <ChipPicker
-        options={PLANS.map((k) => ({ value: k, label: PLAN[k].name }))}
-        value={plan}
-        onChange={(k) => { setPlan(k); setF(PLAN_PRICE[k]); ui.haptic(4); }}
-      />
-      <Eyebrow style={lbl()}>{t('Mahine ka kitna tay hua?')}</Eyebrow>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <StepBtn label="−" a11y={t('Kam')} onPress={() => step(-100)} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 56, borderRadius: 16, backgroundColor: c.tile, borderWidth: 1, borderColor: c.line, flexDirection: 'row', gap: 6 }}>
-          <Text style={{ fontFamily: F.shout, fontSize: 34, color: c.fg }}>₹{fee}</Text>
-          <Text style={{ fontFamily: F.bold, fontSize: 13, color: c.fg3 }}>{t('mahina')}</Text>
-        </View>
-        <StepBtn label="+" a11y={t('Zyada')} onPress={() => step(100)} />
+      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 22, lineHeight: 28, color: c.fg }}>{t('Naya customer jodo')}</Text>
+      <View style={{ flexDirection: 'row', gap: 4, marginTop: 12 }} accessibilityLabel={`${t('Step')} ${step + 1}/${STEPS.length}`}>
+        {STEPS.map((_, i) => (
+          <View key={i} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: i <= step ? c.primary : c.soft }} />
+        ))}
       </View>
-      <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, textAlign: 'center', marginTop: 12 }}>
-        {t(`Aapka aadha: ${rupee(share)} mahina, ${rupee(share / daysInMonth(DAY))} roz. Ravi ki manzoori ke baad ginna shuru hoga.`)}
+      <Text style={{ fontFamily: F.medium, fontSize: 14, color: c.fg3, marginTop: 8, marginBottom: 16 }}>
+        {`${t('Step')} ${step + 1}/${STEPS.length} · ${t(STEPS[step])}`}
       </Text>
-      {err ? <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.bold, fontSize: 14, color: brand.red, marginTop: 10 }}>{err}</Text> : null}
-      <Button variant="violet" label={busy ? t('Daal raha hoon…') : t('Round pe daalo')} disabled={busy} onPress={submit} style={{ marginTop: 14 }} />
+
+      {step === 0 ? (
+        <WCard style={{ padding: 16 }}>
+          <Eyebrow style={lbl(0)}>{t('Gaadi ka number')}</Eyebrow>
+          <Field value={plate} onChangeText={(v) => setPlate(v.toUpperCase())} maxLength={20} autoCapitalize="characters" autoCorrect={false} placeholder="DL 8C AB 1234" />
+          <Eyebrow style={lbl()}>{t('Gaadi ka naam / model (optional)')}</Eyebrow>
+          <Field value={model} onChangeText={setModel} maxLength={60} placeholder={t('Jaise: Swift')} />
+        </WCard>
+      ) : null}
+
+      {step === 1 ? (
+        <WCard style={{ padding: 16 }}>
+          <Eyebrow style={lbl(0)}>{t('Customer ka naam')}</Eyebrow>
+          <Field value={name} onChangeText={setName} maxLength={80} placeholder={t('Naam')} />
+          <Eyebrow style={lbl()}>{t('Phone (10 number)')}</Eyebrow>
+          <Field value={phone} onChangeText={(v) => setPhone(v.replace(/\D/g, ''))} maxLength={10} keyboardType="number-pad" inputMode="numeric" placeholder="98XXXXXXXX" />
+        </WCard>
+      ) : null}
+
+      {step === 2 ? (
+        <WCard style={{ padding: 16 }}>
+          <Button variant={geo ? 'ghost' : 'violet'} icon="pin" label={locBusy ? t('Location dhoondh raha hoon…') : geo ? t('Location dobara lo') : t('Meri location lo')} disabled={locBusy} onPress={useLocation} />
+          {locMsg ? <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.semi, fontSize: 13.5, color: c.fg2, marginTop: 10 }}>{locMsg}</Text> : null}
+          {geo ? (
+            <View style={{ marginTop: 12 }}>
+              <PinMap />
+              <Pressy
+                onPress={() => { void Linking.openURL(mapUrl(geo)).catch(() => {}); }}
+                accessibilityLabel={t('Map pe dekho')}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, marginTop: 8, paddingHorizontal: 16, borderRadius: 12, backgroundColor: c.soft }}
+              >
+                <Icon name="pin" size={22} color={c.softInk} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.softInk }}>{t('Location mil gayi')} · {t('Map pe dekho')}</Text>
+                  <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg2 }}>{geo.lat.toFixed(5)}, {geo.lng.toFixed(5)}</Text>
+                </View>
+                <Icon name="arrow" size={20} color={c.softInk} />
+              </Pressy>
+            </View>
+          ) : null}
+          <Eyebrow style={lbl()}>{t('Poora pata (flat / tower / society)')}</Eyebrow>
+          <Field value={address} onChangeText={setAddress} maxLength={200} multiline placeholder={t('Flat 402, Tower B, Society ka naam')} />
+        </WCard>
+      ) : null}
+
+      {step === 3 ? (
+        <>
+          <WCard style={{ padding: 16 }}>
+            <Eyebrow style={lbl(0)}>{t('Plan')}</Eyebrow>
+            <ChipPicker
+              options={PLANS.map((k) => ({ value: k, label: PLAN[k].name }))}
+              value={plan}
+              onChange={(k) => { setPlan(k); ui.haptic(4); }}
+            />
+          </WCard>
+          <WCard style={{ padding: 16, marginTop: 12 }}>
+            <Text style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: c.fg }}>
+              {t(`Aapko milega: ${rupee(share)} / mahina (${rupee(share / daysInMonth(DAY))} roz)`)}
+            </Text>
+            <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 6 }}>{t('Manager ki manzoori ke baad ginna shuru hoga.')}</Text>
+          </WCard>
+        </>
+      ) : null}
+
+      {step === 4 ? (
+        <WCard style={{ padding: 16 }}>
+          <Text style={{ fontFamily: F.body, fontSize: 14, color: c.fg2 }}>{t('Same customer, same plan. Bas gaadi ka number chahiye.')}</Text>
+          {extras.map((x, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Field value={x} onChangeText={(v) => setExtras(extras.map((y, j) => (j === i ? v.toUpperCase() : y)))} maxLength={20} autoCapitalize="characters" autoCorrect={false} placeholder="DL 8C AB 1234" accessibilityLabel={t('Aur gaadi')} />
+              </View>
+              <Pressy onPress={() => { setExtras(extras.filter((_, j) => j !== i)); ui.haptic(4); }} accessibilityLabel={t('Hata do')} scaleTo={0.9} style={{ minHeight: 52, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.soft }}>
+                <Text style={{ fontFamily: F.semi, fontSize: 14, color: brand.red }}>{t('Hata do')}</Text>
+              </Pressy>
+            </View>
+          ))}
+          <Button variant="ghost" icon="plus" label={`${t('+ Ek aur gaadi jodo')}${extras.length ? ` (${extras.length})` : ''}`} onPress={() => { setExtras([...extras, '']); ui.haptic(6); }} style={{ marginTop: 14 }} />
+        </WCard>
+      ) : null}
+
+      {step === 5 ? (
+        <>
+          <WCard style={{ padding: 16 }}>
+            <Row k={t('Customer')} v={`${name.trim() ? name.trim() + ' · ' : ''}+91 ${ph}`} />
+            <Row k={t('Pata')} v={address.trim()} />
+            <Row k={t('gaadi')} v={regs.map((r, i) => (i === 0 ? plate.trim().toUpperCase() || r : ex[i - 1].trim().toUpperCase())).join(', ')} />
+            <Row k={t('Plan')} v={PLAN[plan].name} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.line }}>
+              <Text style={{ fontFamily: F.medium, fontSize: 15, color: c.fg2 }}>{t('Aapko milega')}</Text>
+              <Text style={[TNUM, { fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: c.fg }]}>{rupee(share)}<Text style={{ fontFamily: F.body, fontSize: 13, letterSpacing: 0, color: c.fg3 }}> {t('mahina')}</Text></Text>
+            </View>
+          </WCard>
+          <Eyebrow style={lbl(16)}>{t('Customer se paisa liya?')}</Eyebrow>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {(['cash', 'upi', 'later'] as Pay[]).map((k) => {
+              const on = pay === k;
+              const label = k === 'cash' ? t('Cash mila') : k === 'upi' ? t('UPI mila') : t('Baad mein');
+              return (
+                <Pressy key={k} onPress={() => { setPay(k); ui.haptic(4); }} accessibilityLabel={label} accessibilityState={{ selected: on }}
+                  style={{ minHeight: 52, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 12, borderWidth: on ? 2 : 1, borderColor: on ? brand.violet : c.line, backgroundColor: on ? brand.violet : c.card }}>
+                  <Text style={{ fontFamily: F.semi, fontSize: 15, color: on ? '#fff' : c.fg }}>{label}</Text>
+                </Pressy>
+              );
+            })}
+          </View>
+          {pay === 'later' ? <Text style={{ fontFamily: F.body, fontSize: 13, color: c.fg3, marginTop: 8 }}>{t('Abhi paisa nahi liya. Baad mein le lena.')}</Text> : null}
+        </>
+      ) : null}
+
+      {err ? <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.semi, fontSize: 14, color: brand.red, marginTop: 12 }}>{err}</Text> : null}
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+        {step > 0 ? <Button variant="ghost" label={t('Peeche')} full={false} onPress={back} style={{ minWidth: 110 }} /> : null}
+        <View style={{ flex: 1 }}>
+          {last
+            ? <Button variant="violet" label={busy ? t('Daal raha hoon…') : t('Round pe daalo')} disabled={busy} onPress={submit} />
+            : <Button variant="violet" iconRight="arrow" label={t('Aage badho')} onPress={next} />}
+        </View>
+      </View>
       <View style={{ alignItems: 'center', marginTop: 4 }}>
         <LinkButton label={t('Rehne do')} onPress={close} />
       </View>
@@ -93,13 +260,38 @@ function AddCarForm({ close }: { close: () => void }) {
   );
 }
 
-const lbl = (mt = 12) => ({ marginTop: mt, marginBottom: 6 });
+const lbl = (mt = 16) => ({ marginTop: mt, marginBottom: 8 });
 
-function StepBtn({ label, a11y, onPress }: { label: string; a11y: string; onPress: () => void }) {
+/** Field label: sentence case, 13 / 600 (the old small-caps eyebrow is gone). */
+function Eyebrow({ children, style }: { children?: React.ReactNode; style?: any }) {
+  const { c } = useTheme();
+  return <Text style={[{ fontFamily: F.semi, fontSize: 13, lineHeight: 18, color: c.fg2 }, style]}>{children}</Text>;
+}
+
+function Row({ k, v }: { k: string; v: string }) {
   const { c } = useTheme();
   return (
-    <Pressy onPress={onPress} accessibilityLabel={a11y} scaleTo={0.9} style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: c.tile2, borderWidth: 1, borderColor: c.line }}>
-      <Text style={{ fontFamily: F.black, fontSize: 26, color: c.fg, marginTop: -2 }}>{label}</Text>
-    </Pressy>
+    <View style={{ flexDirection: 'row', gap: 12, paddingVertical: 5 }}>
+      <Text style={{ width: 76, fontFamily: F.medium, fontSize: 13, color: c.fg3 }}>{k}</Text>
+      <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 14.5, color: c.fg }}>{v}</Text>
+    </View>
+  );
+}
+
+// A small drawn "map": soft blocks, two roads and a pin. No map SDK.
+function PinMap() {
+  const { c } = useTheme();
+  return (
+    <View accessible={false} style={{ height: 84, borderRadius: 12, overflow: 'hidden', backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ position: 'absolute', left: 0, right: 0, top: 30, height: 10, backgroundColor: c.card, opacity: 0.8 }} />
+      <View style={{ position: 'absolute', top: 0, bottom: 0, left: '62%', width: 10, backgroundColor: c.card, opacity: 0.8 }} />
+      <View style={{ position: 'absolute', left: 14, top: 10, width: 54, height: 14, borderRadius: 4, backgroundColor: c.line, opacity: 0.6 }} />
+      <View style={{ position: 'absolute', left: 20, bottom: 10, width: 70, height: 26, borderRadius: 4, backgroundColor: c.line, opacity: 0.6 }} />
+      <View style={{ position: 'absolute', right: 16, bottom: 12, width: 40, height: 22, borderRadius: 4, backgroundColor: c.line, opacity: 0.6 }} />
+      <View style={{ position: 'absolute', left: '62%', top: 35, width: 10, height: 10, marginLeft: 0, marginTop: 0, borderRadius: 5, backgroundColor: 'rgba(232,56,79,0.25)', transform: [{ scale: 3 }] }} />
+      <View style={{ position: 'absolute', left: '62%', top: 8, marginLeft: -7 }}>
+        <Icon name="pin" size={32} color={brand.red} />
+      </View>
+    </View>
   );
 }

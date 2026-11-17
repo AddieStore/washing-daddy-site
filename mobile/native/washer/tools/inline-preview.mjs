@@ -74,7 +74,7 @@ const scripts = [];
 html = html.replace(/<script\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)>\s*<\/script>/gi, (_m, a, src, b) => {
   if (/^(data:|https?:)/i.test(src)) throw new Error(`external script not allowed: ${src}`);
   const attrs = `${a} ${b}`.replace(/\b(defer|async)\b/gi, '').replace(/\s+/g, ' ').trim();
-  const code = replaceAssets(stripMaps(readText(src))).replace(/<\/script/gi, '<\\/script');
+  const code = replaceAssets(stripMaps(readText(src))).replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
   scripts.push(`<script${attrs ? ' ' + attrs : ''}>${code}</script>`);
   return '';
 });

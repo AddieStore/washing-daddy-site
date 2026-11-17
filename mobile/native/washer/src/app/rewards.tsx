@@ -1,0 +1,184 @@
+// Rewards screen: this month's attendance as a calendar, the three bonuses with progress, and what is still possible.
+// The manager pays any bonus at the end of the month; the app only shows where the washer stands.
+// Third bonus (No Complaint): no customer complaint this month, or a 4.8+ average rating (lib/complaints.ts).
+import React from 'react';
+import { ScrollView, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Footer, DemoNote, F, Icon, Ring, brand, useTheme } from '../ui';
+import { DAY, attendLog, useStore, monthComplaints } from '../state/store';
+import { BEST, CLEAN_BONUS, EARLY_BONUS, EARLY_DAYS, MONTH_BONUS } from '../lib/rewards';
+import { unseen } from '../lib/complaints';
+import { monthDays, type DayState } from '../lib/rewardsView';
+import { rupee } from '../lib/time';
+import { t } from '../lib/i18n';
+import { FadeUp, PRow, PSection, RowsCard, VBack, VHeader, WCard, TNUM } from '../screens/ProntoBits';
+import { cleanLine, cleanRing, earlyLine, monthLine, openComplaints, useOutlook, useToneColors, type Line } from '../screens/RewardsCards';
+
+const WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function alpha(hex: string, a: number) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+function Cell({ day, state, early }: { day: number; state: DayState; early: boolean }) {
+  const { c } = useTheme();
+  const base = { flex: 1, aspectRatio: 1, borderRadius: 12, alignItems: 'center' as const, justifyContent: 'center' as const, marginHorizontal: 2 };
+  const look = state === 'came' ? { backgroundColor: alpha(c.ok, 0.16) }
+    : state === 'missed' ? { backgroundColor: alpha(brand.red, 0.12) }
+    : state === 'today' ? { borderWidth: 2, borderColor: c.primary, backgroundColor: c.soft }
+    : { backgroundColor: 'transparent' };
+  const ink = state === 'came' ? c.ok : state === 'missed' ? brand.red : state === 'today' ? c.primary : c.fg3;
+  return (
+    <View style={[base, look]} accessible accessibilityLabel={`${day}, ${t(state === 'came' ? 'Aaye' : state === 'missed' ? 'Chhoot gaye' : state === 'today' ? 'Aaj' : 'Aane wale din')}${early ? ', ' + t('Early bird') : ''}`}>
+      <Text style={{ fontFamily: state === 'upcoming' ? F.body : F.bold, fontSize: 13, lineHeight: 16, color: ink }}>{day}</Text>
+      <View style={{ height: 10, marginTop: 1, alignItems: 'center', justifyContent: 'center' }}>
+        {state === 'came' ? <Icon name="check" size={9} color={c.ok} />
+          : state === 'missed' ? <Text style={{ fontFamily: F.black, fontSize: 10, lineHeight: 10, color: brand.red }}>×</Text>
+          : null}
+      </View>
+      {early ? <View style={{ position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: 3, backgroundColor: c.primary }} /> : null}
+    </View>
+  );
+}
+
+function Legend({ label, swatch }: { label: string; swatch: React.ReactNode }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      {swatch}
+      <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg2 }}>{label}</Text>
+    </View>
+  );
+}
+
+function Calendar({ title }: { title: string }) {
+  const { c } = useTheme();
+  const { lead, days } = monthDays(attendLog(), DAY);
+  const cells: (typeof days[number] | null)[] = [...Array(lead).fill(null), ...days];
+  while (cells.length % 7) cells.push(null);
+  const rows = [...Array(cells.length / 7)].map((_, i) => cells.slice(i * 7, i * 7 + 7));
+  const sw = (bg: string, extra?: object) => <View style={[{ width: 14, height: 14, borderRadius: 5, backgroundColor: bg }, extra]} />;
+  return (
+    <WCard style={{ padding: 16 }}>
+      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 22, color: c.fg, marginBottom: 12 }}>{title}</Text>
+      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+        {WEEK.map(w => <Text key={w} style={{ flex: 1, textAlign: 'center', fontFamily: F.semi, fontSize: 11.5, color: c.fg3, marginHorizontal: 2 }} numberOfLines={1}>{t(w)}</Text>)}
+      </View>
+      <View style={{ gap: 4 }}>
+        {rows.map((r, i) => (
+          <View key={i} style={{ flexDirection: 'row' }}>
+            {r.map((d, j) => d
+              ? <Cell key={j} day={d.day} state={d.state} early={d.early} />
+              : <View key={j} style={{ flex: 1, marginHorizontal: 2 }} />)}
+          </View>
+        ))}
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 6, marginTop: 14 }}>
+        <Legend label={t('Aaye')} swatch={sw(alpha(c.ok, 0.3))} />
+        <Legend label={t('Chhoot gaye')} swatch={sw(alpha(brand.red, 0.25))} />
+        <Legend label={t('Aaj')} swatch={sw(c.soft, { borderWidth: 2, borderColor: c.primary })} />
+        <Legend label={t('Aane wale din')} swatch={sw('transparent', { borderWidth: 1, borderColor: c.line })} />
+        <Legend label={t('Early bird din')} swatch={<View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary, margin: 3 }} />} />
+      </View>
+    </WCard>
+  );
+}
+
+function StatusPill({ line }: { line: Line }) {
+  const { c } = useTheme();
+  const col = useToneColors();
+  const fg = col.ink[line.tone];
+  const icon = line.tone === 'ok' ? 'check' : line.tone === 'dead' ? 'warn' : 'flag';
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12, backgroundColor: line.tone === 'live' ? c.soft : alpha(line.tone === 'ok' ? c.ok : brand.red, 0.12) }}>
+      <Icon name={icon} size={16} color={fg} />
+      <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 13, lineHeight: 18, color: line.tone === 'live' ? c.softInk : fg }}>{line.text}</Text>
+    </View>
+  );
+}
+
+function BonusCard({ title, amount, rule, fraction, value, unit, line }: { title: string; amount: number; rule: string; fraction: number; value: number | string; unit: string; line: Line }) {
+  const { c } = useTheme();
+  const col = useToneColors();
+  return (
+    <WCard style={{ padding: 16, gap: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+        <Ring size={92} stroke={10} fraction={fraction} value={value} label={unit} color={col.ring[line.tone]} track={c.soft} ink={c.fg} disc="transparent" />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <Text style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 22, color: c.fg, flexShrink: 1 }}>{title}</Text>
+            <Text style={{ fontFamily: F.black, fontSize: 18, lineHeight: 24, fontVariant: ['tabular-nums'], color: line.tone === 'dead' ? c.fg3 : c.primary, textDecorationLine: line.tone === 'dead' ? 'line-through' : 'none' }}>{rupee(amount)}</Text>
+          </View>
+          <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3, marginTop: 4 }}>{rule}</Text>
+        </View>
+      </View>
+      <StatusPill line={line} />
+    </WCard>
+  );
+}
+
+export default function Rewards() {
+  useStore();
+  const { c } = useTheme();
+  const router = useRouter();
+  const goBack = () => { if (router.canGoBack()) router.back(); else router.navigate('/') };
+  const o = useOutlook(), m = o.r.month, cr = cleanRing(o);
+  const total = BEST, mine = monthComplaints(), newOnes = unseen(mine);
+  return (
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
+        <VHeader pad={56}>
+          <VBack title={t('Bonus')} onBack={goBack} />
+          <FadeUp index={0} style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 24 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.8)' }}>{t('Is mahine ka bonus')}</Text>
+              <Text style={{ fontFamily: F.black, fontSize: 30, lineHeight: 36, letterSpacing: -0.5, color: '#fff', marginTop: 2, fontVariant: ['tabular-nums'] }}>{`${t('Teeno saath')}: ${rupee(total)}`}</Text>
+              <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)', marginTop: 2 }}>{`${t('Abhi mumkin')}: ${rupee(o.possible)}${o.earnedSoFar ? ` · ${t('Pakka')}: ${rupee(o.earnedSoFar)}` : ''}`}</Text>
+            </View>
+            <Ring size={84} stroke={9} fraction={m.total ? m.came / m.total : 0} value={m.came} label={`/${m.total} ${t('din')}`} color="#FFD166" track="rgba(255,255,255,0.22)" ink="#fff" labelColor="rgba(255,255,255,0.75)" />
+          </FadeUp>
+          <Text style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.9)', marginTop: 16 }}>{t('Bonus Manager mahine ke end mein deta hai. App mein paisa nahi chalta.')}</Text>
+        </VHeader>
+        <View style={{ paddingHorizontal: 16, marginTop: -36 }}>
+          <FadeUp index={1}><Calendar title={t('Is mahine ki attendance')} /></FadeUp>
+          <PSection title={t('Teen bonus')} />
+          <View style={{ gap: 12 }}>
+            <FadeUp index={2}><BonusCard
+              title={t('Early bird')} amount={EARLY_BONUS}
+              rule={t('Subah 6:00 AM se pehle pehli gaadi ki photo, lagatar 30 din = ₹1,000')}
+              fraction={o.streak / EARLY_DAYS} value={o.streak} unit={`/${EARLY_DAYS}`} line={earlyLine(o)}
+            /></FadeUp>
+            <FadeUp index={3}><BonusCard
+              title={t('Poora mahina')} amount={MONTH_BONUS}
+              rule={t('Mahine ke har din aao = ₹1,000')}
+              fraction={m.total ? m.came / m.total : 0} value={m.came} unit={`/${m.total}`} line={monthLine(o)}
+            /></FadeUp>
+            <FadeUp index={4}><BonusCard
+              title={t('No complaint')} amount={CLEAN_BONUS}
+              rule={t('Mahine mein koi customer complaint nahi, ya rating 4.8★ ya upar (kam se kam 5 rating) = ₹1,000')}
+              fraction={cr.fraction} value={cr.value} unit={cr.unit} line={cleanLine(o)}
+            /></FadeUp>
+            <FadeUp index={5}>
+              <RowsCard>
+                <PRow
+                  tile
+                  icon="note"
+                  last
+                  title={t('Customer feedback')}
+                  sub={mine.length ? `${t('Is mahine')}: ${mine.length}${newOnes ? ` · ${t('Naya')}: ${newOnes}` : ''}` : t('Abhi koi complaint nahi')}
+                  onPress={openComplaints}
+                />
+              </RowsCard>
+            </FadeUp>
+          </View>
+          <DemoNote>{t('"Aaye" = us din hub pe check-in. Early bird = pehli gaadi ki photo 6:00 AM se pehle.')}</DemoNote>
+          <DemoNote style={{ marginTop: 4 }}>{t('Jo complaint Manager galat maane, woh nahi gini jaati.')}</DemoNote>
+        </View>
+        <View style={{ marginTop: 'auto' }}><Footer /></View>
+      </ScrollView>
+    </View>
+  );
+}

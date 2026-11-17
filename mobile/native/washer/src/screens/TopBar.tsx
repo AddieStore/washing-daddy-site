@@ -1,20 +1,21 @@
-// Shared top bar: violet strip with a gold underline (the web app's day theme). Left: logo or back button;
+// Shared top bar: light page-coloured strip, round white icon buttons (2026 dashboard look). Left: logo or back button;
 // middle: title; right: any slot. SyncChipLive is the sync chip every screen shows.
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { F, Icon, OnViolet, Pressy, SyncChip, brand, type IconName } from '../ui';
+import { F, Icon, OnViolet, Pressy, SyncChip, VioletBg, cardShadow, useTheme, type IconName } from '../ui';
 import { syncState, useStore } from '../state/store';
 import { t } from '../lib/i18n';
 import { openSyncSheet } from './sheets';
 
 const LOGO = require('../../assets/img/logo.webp');
 
-/** Round cream icon button with an ink outline, as on the web top bar. */
+/** Icon button: round white-15% on the violet bar, a white shadowed square elsewhere. */
 export function TopIconBtn({ icon, label, onPress, size = 22 }: { icon: IconName; label: string; onPress?: () => void; size?: number }) {
+  const { c, onViolet } = useTheme();
   return (
-    <Pressy onPress={onPress} scaleTo={0.88} accessibilityLabel={label} style={s.iconBtn}>
-      <Icon name={icon} size={size} color={brand.ink} />
+    <Pressy onPress={onPress} scaleTo={0.92} hitSlop={4} accessibilityLabel={label} style={[s.iconBtn, onViolet ? { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 18 } : [{ backgroundColor: c.card }, cardShadow(c)]]}>
+      <Icon name={icon} size={Math.min(size, 20)} color={c.fg} />
     </Pressy>
   );
 }
@@ -31,7 +32,7 @@ export function SyncChipLive() {
 }
 
 export function TopBar({
-  left, onBack, title, right, top, border = true, sync = true,
+  left, onBack, title, right, top, border = true, sync = true, plain = false, bottomPad = 12,
 }: {
   /** 'logo' draws the Washing Daddy logo, 'back' a back button (needs onBack), or pass your own node */
   left?: 'logo' | 'back' | React.ReactNode;
@@ -40,40 +41,50 @@ export function TopBar({
   right?: React.ReactNode;
   /** rendered above the bar (the ticker) */
   top?: React.ReactNode;
+  /** kept for old call sites; the violet bar has no border */
   border?: boolean;
   /** draw the live sync chip after `right` */
   sync?: boolean;
+  /** the old plain grey strip instead of the violet header block */
+  plain?: boolean;
+  /** extra space under the bar inside the violet block (use 48 + marginTop -36 on the next block to overlap) */
+  bottomPad?: number;
 }) {
   const insets = useSafeAreaInsets();
-  const lnode = left === 'logo' ? <Logo />
-    : left === 'back' ? <TopIconBtn icon="back" label={t('Wapas')} onPress={onBack} />
-    : left;
-  return (
-    <OnViolet>
-      <View style={[s.wrap, { backgroundColor: brand.violet, borderBottomWidth: border ? 4 : 0 }]}>
-        <View style={{ height: insets.top }} />
-        {top}
-        <View style={s.bar}>
-          {lnode}
-          {title ? <Text numberOfLines={1} style={s.title}>{title}</Text> : <View style={{ flex: 1 }} />}
-          <View style={s.right}>
-            {right}
-            {sync ? <SyncChipLive /> : null}
-          </View>
+  const { c } = useTheme();
+  const inner = (
+    <>
+      <View style={{ height: insets.top }} />
+      {top}
+      <View style={s.bar}>
+        {left === 'logo' ? <Logo /> : left === 'back' ? <TopIconBtn icon="back" label={t('Wapas')} onPress={onBack} /> : left}
+        {title ? <Text numberOfLines={1} style={[s.title, { color: c.fg }]}>{title}</Text> : <View style={{ flex: 1 }} />}
+        <View style={s.right}>
+          {right}
+          {sync ? <SyncChipLive /> : null}
         </View>
       </View>
-    </OnViolet>
+    </>
+  );
+  if (plain) {
+    return <View style={[s.wrap, { backgroundColor: c.bg, borderBottomWidth: border ? 1 : 0, borderBottomColor: c.line }]}>{inner}</View>;
+  }
+  // Pronto: violet gradient header block with white text (customer Profile header).
+  return (
+    <View style={[s.wrap, { overflow: 'hidden', paddingBottom: bottomPad }]}>
+      <VioletBg />
+      <OnViolet>{inner}</OnViolet>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  wrap: { borderBottomColor: brand.gold },
-  bar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 16, minHeight: 72 },
-  title: { flex: 1, minWidth: 0, fontFamily: F.black, fontSize: 17, color: brand.cream },
+  wrap: {},
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 16, minHeight: 60 },
+  title: { flex: 1, minWidth: 0, fontFamily: F.semi, fontSize: 18, lineHeight: 26 },
   right: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   iconBtn: {
-    width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: brand.cream,
-    borderWidth: 3, borderColor: brand.ink, shadowColor: brand.ink, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 3, height: 3 },
+    width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
   },
-  chip: { backgroundColor: 'rgba(18,7,36,0.55)', borderColor: 'rgba(255,246,233,0.3)', height: 48 },
+  chip: { height: 36 },
 });

@@ -31,7 +31,7 @@ export interface Db {
   doc(path: string): DocRef;
 }
 
-// Phone sign-in. The installed app sends a real 6-digit SMS code; the demo takes 1234.
+// Phone sign-in. The installed app sends a real 6-digit SMS code (or signs in with a PIN token); the demo takes 1234.
 export interface Auth {
   real: boolean;
   codeLength: number;
@@ -40,6 +40,9 @@ export interface Auth {
   onChange(cb: (phone: string | null) => void): Unsub;
   send(phone10: string): Promise<void>;
   confirm(code: string): Promise<void>;
+  // Phone + PIN login: n8n (workflow 12) checks the PIN and answers with a Firebase custom token for the same
+  // user the OTP sign-in uses, so phone() and the rules see the same +91 number. The demo takes 'demo:<10 digits>'.
+  signInWithToken(token: string): Promise<void>;
   signOut(): Promise<void>;
   idToken(): Promise<string | null>;   // Firebase ID token for server calls (n8n); null in the demo
 }

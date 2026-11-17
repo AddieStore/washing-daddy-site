@@ -22,6 +22,8 @@ if (process.env.WD_RELEASE === '1') {
 
 const PACKAGE = 'com.washingdaddy.washer'; // must not change: store listings carry over
 
+const notifSounds = (fs.existsSync(path.join(__dirname, 'assets/notif')) ? fs.readdirSync(path.join(__dirname, 'assets/notif')) : []).filter(f => /^wd_(c_.+|extra)\.wav$/.test(f)).map(f => `./assets/notif/${f}`);
+
 const config: ExpoConfig = {
   name: 'WD Partner',
   slug: 'wd-partner',
@@ -42,7 +44,7 @@ const config: ExpoConfig = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    permissions: ['CAMERA', 'ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'VIBRATE'],
+    permissions: ['CAMERA', 'ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'VIBRATE', 'POST_NOTIFICATIONS', 'SCHEDULE_EXACT_ALARM'],
     ...(hasAndroidFirebase ? { googleServicesFile: androidGoogleServices } : {}),
   },
   ios: {
@@ -79,11 +81,15 @@ const config: ExpoConfig = {
       },
     ],
     'expo-audio',
+    // the spoken wash-stage alerts: the sound files are made by tools/prep-notif-sounds.sh; only the ones that exist are bundled
+    ['expo-notifications', { color: '#5409DA', sounds: notifSounds }],
     [
       'expo-location',
       {
         locationWhenInUsePermission:
           'WD Partner uses your location while the app is open so customers can see you on your way to their car.',
+        // onboarding asks for "Allow all the time" on Android (adds ACCESS_BACKGROUND_LOCATION); the tracking itself is not built yet
+        isAndroidBackgroundLocationEnabled: true,
       },
     ],
     [
@@ -104,7 +110,7 @@ const config: ExpoConfig = {
       },
     ],
     ...(hasAndroidFirebase
-      ? ['@react-native-firebase/app', '@react-native-firebase/auth']
+      ? ['@react-native-firebase/app', '@react-native-firebase/auth', '@react-native-firebase/messaging']
       : []),
   ] as ExpoConfig['plugins'],
   experiments: { typedRoutes: false },

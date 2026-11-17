@@ -9,7 +9,7 @@ export type Car = {
   mine?: boolean; pending?: boolean; status?: string;   // cars the washer added himself (newcars/)
 };
 export type WashStatus = 'scheduled' | 'on_the_way' | 'arrived' | 'washing' | 'done' | 'skipped';
-export type Photo = { kind: 'before' | 'after' | 'issue'; asset_id?: string; url?: string; at: string };
+export type Photo = { kind: 'before' | 'after' | 'issue'; asset_id?: string; url?: string; at: string; spot?: string };
 export type Wash = {
   date: string; reg: string; car_label: string; washer: { id: string; name: string; photo_url?: string }; washer_id: string;
   status: WashStatus; eta: string;
@@ -17,6 +17,9 @@ export type Wash = {
   minutes: number | null; tasks: { key: TaskKey; label: string; done: boolean; done_at: string | null }[];
   photos: Photo[]; water_litres: number | null; washer_note: string | null; skip_reason: string | null;
   customer_note_seen: boolean; seq: number; updated_at: string;
+  // the round as a timeline (lib/slots.ts), the interior add-on, and a late flag: all synced to the customer app and the dashboard
+  slot?: number; slot_from?: string; slot_to?: string; interior?: boolean; interior_from?: number | null; extra_minutes?: number;
+  addons?: { key: string; at: string; minutes: number }[]; overdue_at?: string | null;
 };
 export type Req = { id: string; reg: string; kind: string; text: string; spots: string[]; created_at: string; status: string; seen_at?: string; done_at?: string };
 export type Job = {
@@ -28,7 +31,7 @@ export type WasherDoc = { phone: string; name: string; area?: string; status: 'p
   // set by an admin only (the rules stop the washer writing them); the washer app only shows them
   assigned_clothes?: number; aadhaar_last4?: string; aadhaar_verified_at?: string; pcc?: { status: 'pending' | 'clear' | 'rejected'; verified_at?: string; ref?: string } };
 export type KitKind = 'clothes' | 'shampoo' | 'spray_gun' | 'other';
-export type KitItem = { id: string; kind: KitKind; name: string; qty: number; at: string };
+export type KitItem = { id: string; kind: KitKind; name: string; qty: number; at: string; has_photo?: boolean };
 export const KIT_KINDS: { kind: KitKind; label: string }[] = [
   { kind: 'clothes', label: 'Kapde / microfiber' }, { kind: 'shampoo', label: 'Shampoo' },
   { kind: 'spray_gun', label: 'Spray gun' }, { kind: 'other', label: 'Aur saaman' },
@@ -43,7 +46,9 @@ export const PHONE_TO_WASHER: Record<string, string> = Object.fromEntries(Object
 
 export const OWNER_PHONE = '+917701808924';
 export const OWNER_WA = '917701808924';
-export const BOOK_URL = 'https://n8n.washingdaddy.com/webhook/wd-washer-cars';
+const N8N_HOOKS = 'https://n8n.washingdaddy.com/webhook/';
+export const BOOK_URL = N8N_HOOKS + 'wd-washer-cars';
+export const PIN_URL = N8N_HOOKS + 'wd-washer-pin';   // phone + PIN login (n8n workflow 12)
 export const SHARE = 0.5;   // half of what a car pays is the washer's
 
 export const STATUS: Record<WashStatus, string> = { scheduled: 'Baaki', on_the_way: 'Raaste mein', arrived: 'Pahunch gaye', washing: 'Wash chal raha', done: 'Ho gaya', skipped: 'Skip' };
@@ -53,7 +58,7 @@ export const REQ_KIND: Record<string, string> = { note: 'Customer ka note', rewa
 export const JOIN_AREAS = ['GH-9 Paschim Vihar', 'GH-6 Paschim Vihar', 'GH-14 Paschim Vihar', 'Meera Bagh', 'Sundar Vihar', 'Guru Hari Apartments'];
 
 // where an area sits on the map, same table the customer app draws its map from [lng,lat]
-const AREA_LL: Record<string, [number, number]> = {
+export const AREA_LL: Record<string, [number, number]> = {
   'GH-9 Paschim Vihar': [77.0989, 28.6680], 'GH-6 Paschim Vihar': [77.0970, 28.6695], 'GH-14 Paschim Vihar': [77.0982, 28.6705],
   'Meera Bagh': [77.1065, 28.6720], 'Sundar Vihar': [77.1110, 28.6710], 'Guru Hari Apartments': [77.0960, 28.6650],
 };

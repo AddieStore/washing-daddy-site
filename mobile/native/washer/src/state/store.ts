@@ -11,30 +11,64 @@ import { backend, type Data, type DbError, type Unsub } from '../backend';
 import { isoIST, dateIST, addDaysStr, daysInMonth } from '../lib/time';
 import { PLAN, TASK, tasksFor, normReg, isPlan, type TaskKey } from '../lib/schedule';
 import {
-  WASHERS, PHONE_TO_WASHER, DEMO_ROSTER, BOOK_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
+  WASHERS, PHONE_TO_WASHER, DEMO_ROSTER, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
   type Car, type Wash, type Req, type Job, type WasherDoc, type KitItem, type KitKind, type WasherInfo, type Photo,
 } from '../lib/data';
-import { setHindi, t } from '../lib/i18n';
+import { setLang, t } from '../lib/i18n';
+import type { Lang } from '../lib/i18n';
+import { guideAt, isSundayIST, nameClip, SPOTS, INTERIOR_SECS } from '../lib/washGuide';
+import { SLOT_COUNT, slotRange, etaIn, lists, place } from '../lib/slots';
+import { lateClips } from '../lib/hindiNumber';
+import { setupWashAlerts, alertsReady, scheduleWashAlerts, cancelWashAlerts, cancelAllWashAlerts, scheduleLateAlert, cancelLateAlert, scheduleMorningAlarm } from '../lib/washAlerts';
 import { ui } from '../ui/bus';
+import { registerPushToken, clearPushToken } from '../lib/pushToken';
+import { requestPinToken, PIN_MSG, isPin } from '../lib/pinLogin';
 
 const { db, auth } = backend;
 // a wash can only be closed once this many photos of the car are taken
-export const MIN_PHOTOS = 2;
+export const MIN_PHOTOS = 2
+/** What the photo gate needs. Mon-Sat: MIN_PHOTOS of the car. Sunday (interior day): MIN_PHOTOS of the car plus one photo of each inside spot. */
+export function photoNeeds(w: { started_at?: string | null; photos: { kind: string; spot?: string }[] }) {
+  const sunday = isSundayIST(w.started_at);
+  const car = w.photos.filter(p => p.kind === 'after' && !p.spot).length;
+  const have = new Set(w.photos.filter(p => p.spot).map(p => p.spot));
+  const missing = sunday ? SPOTS.filter(s => !have.has(s.key)) : [];
+  // the voice asks for the inside photos once the car photos are done
+  return { sunday, car, missing, nextSpot: car >= MIN_PHOTOS ? missing[0] || null : null, ok: car >= MIN_PHOTOS && missing.length === 0 };
+};
+import type { Attend } from '../lib/rewards';
+import type { CleanInput } from '../lib/rewards';
+import { arrivals, cleanComplaint, cleanInput, inMonth, ratingKeys, sampleComplaintDoc, type Complaint, type RatingRow } from '../lib/complaints';
 export const REAL = auth.real;
 export const MODE = backend.mode;
 
 /* ---------------- persisted state ---------------- */
 type Session = { washerId: string | null; real?: boolean; name?: string; phone?: string; since?: string; at?: string };
-type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash> };
+// slots/order/locked: the round as a timeline (lib/slots.ts): which slot each car sits in, the order, and whether the washer locked it
+type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash>; slots?: Record<string, number>; order?: string[]; locked?: boolean; locked_at?: string | null; checkin_at?: string | null; checkin_photo?: string | null; checkin_uniform?: Uniform | null };
+// the check-in selfie: shirt_match/shirt_share come from lib/shirt.ts; the cap is ticked by the washer and reviewed by the manager
+export type Uniform = { shirt_match: boolean; shirt_share: number; self_confirmed: true };
 type Selfie = { date: string; washer: string; url?: string; asset_id?: string };
+// the app language the washer picked in onboarding; only 'hinglish' and 'hi' are translated today, the rest fall back (see act.setLangPref)
+export type LangPref = Lang;
 type State = {
-  session: Session | null; online: boolean; theme: 'light' | 'dark' | 'auto'; lang: 'hinglish' | 'hi';
+  session: Session | null; online: boolean; theme: 'light' | 'dark' | 'auto'; lang: Lang;
+  lang_pref?: LangPref; onboarded?: Record<string, string>;   // onboarded: 10-digit phone -> when the first-run onboarding was finished
   day: Day | null; outbox: Record<string, Wash>; rejected?: Record<string, Wash>; current: string | null;
-  selfie: Selfie | null; hist: Record<string, number>; rounds: Record<string, { at: string; cars: Data[] }>;
+  selfie: Selfie | null; hist: Record<string, number>; attend?: Attend; carPhotos?: Record<string, { url: string; at: string; cut?: boolean }>; rounds: Record<string, { at: string; cars: Data[] }>;
 };
 export let S: State = { session: null, online: true, theme: 'light', lang: 'hinglish', day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
 const KEY = 'wd-washer-v1';
 let saveT: ReturnType<typeof setTimeout> | null = null;
+// attendance log for the rewards: one entry per day, `first` is only kept when it is the first car photo of that day
+function noteAttend(v: { in?: string; first?: string }, onlyIfNew = false) {
+  S.attend = S.attend || {}; const e = S.attend[DAY] = S.attend[DAY] || {};
+  if (v.in && !e.in) e.in = v.in;
+  if (v.first && !(onlyIfNew && e.first)) e.first = v.first;
+  save();
+  const id = myDocId();
+  if (id && id !== '+91') db.doc('checkins/' + DAY + '_' + id).update(v).catch(() => {});
+}
 function save() {
   if (saveT) clearTimeout(saveT);
   saveT = setTimeout(() => { AsyncStorage.setItem(KEY, JSON.stringify(S)).catch(() => {}) }, 150);
@@ -48,12 +82,14 @@ export type AuthStep = 'loading' | 'phone' | 'otp' | 'join' | 'wait' | 'blocked'
 export const view = {
   authStep: 'loading' as AuthStep,
   otpPhone: '',
+  loginMode: 'otp' as 'pin' | 'otp',   // the sign-in card: SMS OTP (default since 2026-11-13; PIN login kept dormant)
   bookState: 'loading' as 'loading' | 'live' | 'cached' | 'empty' | 'demo',
   syncMode: 'connecting' as 'connecting' | 'live' | 'demo',
   readOnly: false,
   netOk: true,
   jobAlert: null as Job | null,
   pendingPhotos: {} as Record<string, { kind: Photo['kind']; display: string }[]>,
+  onboarding: false,   // the one-time onboarding (screens/Onboarding.tsx) is showing; the sign-in waits for it
 };
 let booted = false;
 
@@ -78,7 +114,12 @@ export const me = (): WasherInfo => {
     : { ...b, name: S.session.name || b.name, phone: S.session.phone || b.phone, img: null, lifetime: 0, rating: '–', since: S.session.since || '2026' };
 };
 const ROSTER: Record<string, Car[]> = REAL ? {} : JSON.parse(JSON.stringify(DEMO_ROSTER));
-export const route = (): Car[] => ROSTER[me().id] || [];
+export const route = (): Car[] => {
+  const r = ROSTER[me().id] || [], o = S.day?.order;
+  if (!o || !o.length) return r;
+  const at = (reg: string) => { const i = o.indexOf(reg); return i < 0 ? 1e6 : i };
+  return r.map((c, i) => ({ c, i })).sort((a, b) => at(a.c.reg) - at(b.c.reg) || a.i - b.i).map(x => x.c);
+};
 export const carBy = (reg: string | null | undefined) => route().find(c => c.reg === reg);
 export const W = (reg: string | null | undefined): Wash | null => (reg && S.day?.washes?.[reg]) || null;
 export const isOnline = () => S.online !== false;
@@ -102,7 +143,7 @@ function composeRound(id: string) {
   const book = bookCars || [], have = new Set(book.map(c => c.reg));
   ROSTER[id] = book.concat(NewCar.mine.filter(c => !have.has(c.reg)));
 }
-const Book = {
+export const Book = {
   setRound(id: string, cars: Data[]) { bookCars = cars.filter(c => c && c.plate && normReg(c.plate)).map(shapeBookCar); composeRound(id) },
   async load() {
     if (!REAL) { view.bookState = 'demo'; emit(); return }
@@ -197,13 +238,29 @@ export const Hist = {
 
 /* ---------------- the round ---------------- */
 export const Route = {
-  etaList() { // 6:00 or now, then ~12 minutes a car
+  slotOf(reg: string): number | null { const s = S.day?.slots?.[reg]; return typeof s === 'number' ? s : null },
+  isLocked() { return !!S.day?.locked },
+  // cars per slot, in order, and the cars not placed yet
+  layout() { const regs = route().map(c => c.reg); return lists(regs, S.day?.slots || {}) },
+  // the ETA of a car from its place in the timeline, "HH:MM" (null when it has no slot)
+  slotEta(reg: string): string | null {
+    const s = Route.slotOf(reg); if (s == null) return null;
+    const l = Route.layout().slots[s]; return etaIn(s, Math.max(0, l.indexOf(reg)), l.length);
+  },
+  // a car still not done once its slot is over
+  isLate(reg: string, nowMs = Date.now()): boolean {
+    const s = Route.slotOf(reg); const w = W(reg); if (s == null || !S.day?.locked || (w && ['done', 'skipped'].includes(w.status))) return false;
+    return nowMs > Date.parse(DAY + 'T00:00:00+05:30') + slotRange(s).toMin * 60e3;
+  },
+  etaList() { // the slot times when the round is locked; else 6:00 or now, then ~12 minutes a car
+    if (S.day?.locked && route().every(c => Route.slotOf(c.reg) != null)) return route().map(c => Route.slotEta(c.reg) as string);
     const now = Date.now(), six = Date.parse(DAY + 'T06:00:00+05:30'), base = Math.max(now, six);
     return route().map((_, i) => isoIST(base + i * 12 * 60e3).slice(11, 16));
   },
   nextReg() { const n = route().find(c => { const w = W(c.reg); return w && !['done', 'skipped'].includes(w.status) }); return n ? n.reg : null },
   liveReg() { const n = route().find(c => { const w = W(c.reg); return w && ['on_the_way', 'arrived', 'washing'].includes(w.status) }); return n ? n.reg : null },
-  retime() { // only rewrite an ETA that has drifted by more than 10 minutes
+  retime() { // only rewrite an ETA that has drifted by more than 10 minutes (a locked round keeps its slot times)
+    if (S.day?.locked) return;
     let k = 0; const now = Date.now();
     route().forEach(c => {
       const w = W(c.reg); if (!w || w.status !== 'scheduled') return; k++;
@@ -269,6 +326,8 @@ export const Sync = {
       if (booted && !first && isOnline()) { const nj = Extra.pending.find(j => !prevIds.has(j.id)); if (nj) showJobAlert(nj) }
       emit();
     }, err));
+    // customer complaints about me (lib/complaints.ts, block at the end of this file): live, read-only
+    unsubs.push(watchComplaints(id, err));
     // today's ratings, one doc per car
     regs.forEach(reg => unsubs.push(db.doc('ratings/' + DAY + '_' + reg).onSnapshot(d => {
       const v = d.exists ? d.data() : null, seen = reg in RT, was = RT[reg]; RT[reg] = v && v.stars ? v.stars : 0;
@@ -298,7 +357,7 @@ export const Sync = {
             S.rejected = S.rejected || {}; S.rejected[key] = doc; delete S.outbox[key]; save(); await this.adopt(key, true);
             refused++;
             if (refused >= 3) { view.readOnly = true; ui.toast(t('Is account se customer tak update nahi jaa raha')); break }
-            const c = carBy(doc.reg); ui.toast(`${c ? c.model : doc.reg}: update nahi gaya, Ravi ko batao`); continue;
+            const c = carBy(doc.reg); ui.toast(t(`${c ? c.model : doc.reg}: update nahi gaya, Manager ko batao`)); continue;
           }
           if (e && e.code === 'unavailable') { view.netOk = false; emit(); await new Promise(r => setTimeout(r, 800 + Math.random() * 800)); continue }
           view.netOk = false; break;
@@ -352,6 +411,26 @@ function newWash(c: Car, seq: number, eta: string): Wash {
     photos: [], water_litres: null, washer_note: null, skip_reason: null, customer_note_seen: false, seq, updated_at: isoIST(),
   };
 }
+// write the slot, ETA and position of every car that has not started (called when the round is locked)
+function syncSlots() {
+  const day = S.day!; const ls = Route.layout();
+  route().forEach((c, i) => {
+    const s = Route.slotOf(c.reg); if (s == null) return;
+    const eta = Route.slotEta(c.reg) as string, r = slotRange(s);
+    let w = W(c.reg);
+    if (!w) { w = newWash(c, i + 1, eta); day.washes[c.reg] = w; }
+    if (w.status !== 'scheduled') return;
+    mutate(c.reg, d => { d.eta = eta; d.slot = s; d.slot_from = r.from; d.slot_to = r.to; d.seq = i + 1 });
+  });
+  void ls;
+}
+function lateAlerts() {
+  route().forEach(c => {
+    const s = Route.slotOf(c.reg), w = W(c.reg);
+    if (!S.day?.locked || s == null || (w && ['done', 'skipped'].includes(w.status))) { void cancelLateAlert(c.reg); return }
+    void scheduleLateAlert(c.reg, c.reg, new Date(Date.parse(DAY + 'T00:00:00+05:30') + slotRange(s).toMin * 60e3));
+  });
+}
 function mutate(reg: string, fn: (d: Wash) => void) {
   const cur = W(reg); if (!cur) return null;
   const d: Wash = JSON.parse(JSON.stringify(cur)); fn(d); d.washer = { ...washerObj() }; d.updated_at = isoIST();
@@ -359,14 +438,63 @@ function mutate(reg: string, fn: (d: Wash) => void) {
 }
 
 /* ---------------- job alert ---------------- */
-function showJobAlert(job: Job) { view.jobAlert = job; ui.haptic([20, 60, 20, 60, 20]); ui.alertSound(); emit() }
+function showJobAlert(job: Job) { view.jobAlert = job; ui.haptic([20, 60, 20, 60, 20]); ui.alertSound(Math.round(Money.share(job.price))); emit() }
 
 /* =====================================================================
    Actions the screens call
    ===================================================================== */
 export const act = {
+  complaintSeen(id: string) { void markComplaintSeen(id) },   // the washer opened a complaint: open -> seen
   setCurrent(reg: string) { S.current = reg; save(); emit() },
   currentReg() { return S.current || Route.liveReg() || Route.nextReg() },
+  // ---- the round timeline: drag a car into a slot, then lock the round ----
+  moveCar(reg: string, slot: number | null, index = 1e9) {
+    ensureDay(); const day = S.day!;
+    if (day.locked) { ui.toast(t('Round locked hai. Pehle unlock karo')); return false }
+    const w = W(reg); if (w && w.status !== 'scheduled') { ui.toast(t('Yeh gaadi shuru ho chuki hai, ise hila nahi sakte')); return false }
+    if (slot != null && (slot < 0 || slot >= SLOT_COUNT)) return false;
+    const r = place(route().map(c => c.reg), day.slots || {}, reg, slot, index);
+    day.order = r.order; day.slots = r.slots; save(); ui.haptic(8); emit(); return true;
+  },
+  lockRound() {
+    ensureDay(); const day = S.day!;
+    const open = route().filter(c => Route.slotOf(c.reg) == null);
+    if (open.length) { ui.toast(t(`${open.length} gaadi abhi kisi slot mein nahi hai`)); ui.haptic(14); return false }
+    day.locked = true; day.locked_at = isoIST(); syncSlots(); lateAlerts(); save(); emit(); Sync.flush();
+    ui.haptic([20, 40, 20]); ui.confetti(.5); ui.toast(t('Round lock ho gaya. Customers ko unka time dikh raha hai')); return true;
+  },
+  unlockRound() {
+    ensureDay(); const day = S.day!; day.locked = false; day.locked_at = null; lateAlerts(); save(); emit();
+    ui.toast(t('Round khul gaya. Gaadiyan aage-peeche kar sakte ho')); return true;
+  },
+  // "Interior kar raha hoon": 10 extra minutes for this car, the guide gets an interior block, customer and dashboard see it
+  addInterior(reg: string) {
+    const w = W(reg); if (!w || w.status !== 'washing' || !w.started_at) { ui.toast(t('Pehle wash shuru karo')); return false }
+    if (w.interior || isSundayIST(w.started_at)) { ui.toast(t('Interior pehle se jud chuka hai')); return false }
+    const g = guideAt(w.started_at); if (!g) return false;
+    const at = g.plan[g.idx + 1] ? g.plan[g.idx + 1].from : g.elapsed + 5;   // starts when the stage that is running now ends
+    mutate(reg, d => {
+      d.interior = true; d.interior_from = at; d.extra_minutes = (d.extra_minutes || 0) + INTERIOR_SECS / 60;
+      d.addons = [...(d.addons || []), { key: 'interior', at: isoIST(), minutes: INTERIOR_SECS / 60 }];
+      if (!d.tasks.some(x => x.key === 'interior')) d.tasks.push({ key: 'interior', label: TASK.interior.en, done: false, done_at: null });
+    });
+    ui.speak('ph_interior'); ui.haptic([20, 40, 20]); ui.toast(t('Interior jud gaya. 10 minute badh gaye')); emit();
+    void scheduleWashAlerts(reg, w.started_at, me().name.split(' ')[0], at);
+    return true;
+  },
+  // "Hub pahunch gaya": the morning check-in, seen live on the dashboard
+  async checkIn(o?: { photo?: string; shirt?: { shirt_match: boolean; shirt_share: number } }) {
+    ensureDay(); const day = S.day!; if (day.checkin_at) return true;
+    const uniform: Uniform | null = o?.shirt ? { shirt_match: o.shirt.shirt_match, shirt_share: o.shirt.shirt_share, self_confirmed: true } : null;
+    const photo = o?.photo && o.photo.length <= 40000 ? o.photo : null;
+    day.checkin_at = isoIST(); if (photo) day.checkin_photo = photo; if (uniform) day.checkin_uniform = uniform;
+    noteAttend({ in: day.checkin_at }); save(); emit(); ui.haptic([20, 40, 20]);
+    try {
+      const id = myDocId();
+      if (id && id !== '+91') await db.doc('checkins/' + DAY + '_' + id).set({ phone: id, name: me().name, date: DAY, at: day.checkin_at, ...(photo ? { photo } : {}), ...(uniform ? { uniform } : {}) });
+    } catch (e) { console.warn('checkin', e) }
+    return true;
+  },
   startRound() {
     if (REAL && view.bookState === 'loading') { ui.toast(t('Gaadiyon ki list aa rahi hai, ek minute ruko')); return false }
     ensureDay(); const etas = Route.etaList();
@@ -378,6 +506,8 @@ export const act = {
   startWash(reg: string) {
     mutate(reg, d => { d.status = 'washing'; d.started_at = isoIST(); if (!d.arrived_at) d.arrived_at = d.started_at });
     ui.haptic([20, 40, 20]); ui.toast(t(`Timer chalu · ${carBy(reg)?.customer} ko "Wash chal raha" dikh raha hai`)); emit();
+    guideTick();
+    const w0 = W(reg); if (w0?.started_at) void scheduleWashAlerts(reg, w0.started_at, me().name.split(' ')[0], w0.interior_from);
   },
   task(reg: string, key: TaskKey) {
     const wd = W(reg); if (!wd) return;
@@ -389,9 +519,19 @@ export const act = {
     emit();
   },
   // the photo arrives as a small data: URL (contract: url, ≤ ~30 KB), see lib/photo.ts
-  addPhoto(reg: string, kind: Photo['kind'], url: string) {
-    mutate(reg, d => { if (d.photos.length >= 8) d.photos.shift(); d.photos.push({ kind, at: isoIST(), url }) });
+  addPhoto(reg: string, kind: Photo['kind'], url: string, spot?: string) {
+    // a retake of an inside spot replaces that spot's earlier photo
+    mutate(reg, d => {
+      if (spot) d.photos = d.photos.filter(p => p.spot !== spot);
+      if (d.photos.length >= 12) d.photos.shift();
+      d.photos.push({ kind, at: isoIST(), url, ...(spot ? { spot } : {}) });
+    });
+    // the first car photo of the day, with its time, counts for the early-bird reward
+    if (kind === 'after' && !spot) noteAttend({ first: isoIST() }, true);
     ui.toast(t(kind === 'issue' ? 'Problem ki photo customer ko gayi' : 'Photo customer ko gayi'));
+    // Sunday: once the car photos are done, the voice asks for the next inside photo
+    const w = W(reg); const nx = w && isSundayIST(w.started_at) && kind === 'after' ? photoNeeds(w).nextSpot : null;
+    if (nx) ui.speak(nx.clip);
   },
   photoPending(reg: string, kind: Photo['kind'], display: string | null) {
     if (display) (view.pendingPhotos[reg] = view.pendingPhotos[reg] || []).push({ kind, display });
@@ -399,7 +539,7 @@ export const act = {
     emit();
   },
   delPhoto(reg: string, kind: Photo['kind']) {
-    mutate(reg, d => { for (let i = d.photos.length - 1; i >= 0; i--) if (d.photos[i].kind === kind) { d.photos.splice(i, 1); break } });
+    mutate(reg, d => { for (let i = d.photos.length - 1; i >= 0; i--) if (d.photos[i].kind === kind && !d.photos[i].spot) { d.photos.splice(i, 1); break } });
     ui.toast(t('Photo hata di'));
   },
   setNote(reg: string, text: string) {
@@ -408,16 +548,21 @@ export const act = {
   // returns false when the photo gate stops it
   finish(reg: string) {
     const wd = W(reg); if (!wd) return false;
-    if (wd.photos.filter(p => p.kind === 'after').length < MIN_PHOTOS) { act.needPhoto(); return false }
+    if (!photoNeeds(wd).ok) { act.needPhoto(reg); return false }
     const litres = wd.tasks.reduce((a, x) => a + (x.done ? TASK[x.key].litres : 0), 0) || TASK.pressure.litres;
     const end = isoIST();
     mutate(reg, d => { d.status = 'done'; d.finished_at = end; d.minutes = Math.max(1, Math.round((Date.parse(end) - Date.parse(d.started_at || end)) / 60000)); d.water_litres = litres });
+    void cancelWashAlerts(reg); void cancelLateAlert(reg);
     ui.haptic([20, 40, 20, 40, 60]); ui.confetti(1); Route.retime(); emit(); return true;
   },
-  needPhoto() { ui.toast(t(`Kam se kam ${MIN_PHOTOS} gaadi ki photo lo, phir wash band hogi`)); ui.haptic(14) },
+  needPhoto(reg?: string) {
+    const w = reg ? W(reg) : null; const n = w && isSundayIST(w.started_at) ? photoNeeds(w).missing.length : 0;
+    ui.toast(t(n ? `Gaadi ki ${MIN_PHOTOS} photo aur andar ki ${n} photo baaki hain` : `Kam se kam ${MIN_PHOTOS} gaadi ki photo lo, phir wash band hogi`)); ui.haptic(14);
+  },
   skip(reg: string, reason: string) {
     mutate(reg, d => { d.status = 'skipped'; d.skip_reason = reason });
     const sk = skipAsk(reg); if (sk) Sync.setRequest(sk.id, { status: 'done', done_at: isoIST() });
+    void cancelWashAlerts(reg); void cancelLateAlert(reg);
     ui.haptic(14); Route.retime(); ui.toast(t('Skip kiya. Customer ko wajah dikh rahi hai')); emit();
   },
   unskip(reg: string) { mutate(reg, d => { d.status = d.arrived_at ? 'arrived' : 'scheduled'; d.skip_reason = null }); emit() },
@@ -430,14 +575,22 @@ export const act = {
   },
   reqSeen(id: string) { Sync.setRequest(id, { status: 'seen', seen_at: isoIST() }); ui.haptic(6) },
   reqDone(id: string) { Sync.setRequest(id, { status: 'done', done_at: isoIST() }); ui.haptic([10, 30, 10]); ui.toast(t('Customer ko dikh gaya: kar diya')) },
-  async addCar(car: { reg: string; plate: string; model: string; area: string; plan: string; fee: number; customer_name: string; customer_phone: string }) {
+  // A new customer signed up in front of the washer. One doc per car (the owner approves each); the extra details the
+  // security rules have no field for (address, map pin, payment, the other cars of the same customer) travel in `note`.
+  async addCar(car: { reg: string; plate: string; model: string; area: string; plan: string; fee: number; customer_name: string; customer_phone: string;
+    address?: string; geo?: { lat: number; lng: number } | null; paid?: { method: 'cash' | 'upi'; amount: number } | null; others?: string[] }) {
+    const bits: string[] = [];
+    if (car.address) bits.push('Addr: ' + car.address.replace(/\s+/g, ' ').slice(0, 120));
+    if (car.geo) bits.push(`Map: https://maps.google.com/?q=${car.geo.lat.toFixed(5)},${car.geo.lng.toFixed(5)}`);
+    if (car.paid) bits.push(`Paid ${car.paid.method.toUpperCase()} Rs${Math.round(car.paid.amount)}`);
+    const note = (bits.join(' | ') + (car.others && car.others.length ? ' | Same customer: ' + car.others.join(', ') : '')).slice(0, 300);
     const doc = {
-      reg: car.reg, plate: car.plate, model: car.model, area: car.area || '', plan: car.plan || 'std', fee: Number(car.fee) || 0,
-      customer_name: car.customer_name || '', customer_phone: car.customer_phone || '', note: '', washer_id: me().id,
+      reg: car.reg, plate: car.plate, model: car.model, area: (car.area || '').slice(0, 80), plan: car.plan || 'std', fee: Number(car.fee) || 0,
+      customer_name: car.customer_name || '', customer_phone: car.customer_phone || '', note, washer_id: me().id,
       added_by: auth.phone() || '', status: 'pending', created_at: isoIST(), updated_at: isoIST(),
     };
     await db.doc('newcars/' + doc.reg).set(doc);
-    ui.haptic([20, 50, 20]); ui.confetti(.5); ui.toast(t('Gaadi round pe aa gayi. Ravi ko bhej diya'));
+    ui.haptic([20, 50, 20]); ui.confetti(.5); ui.toast(t('Gaadi round pe aa gayi. Manager ko bhej diya'));
   },
   toggleOnline() {
     S.online = !isOnline(); save(); ui.haptic(S.online ? [10, 30, 10] : 12);
@@ -456,6 +609,13 @@ export const act = {
   alertAccept() { const j = view.jobAlert; if (j && !j.washer_id) Sync.extraSet(j.id, { washer_id: me().id }); view.jobAlert = null; emit() },
   // only decline an already-assigned job; an unassigned booking is just dismissed
   alertPass() { const j = view.jobAlert; if (j && j.washer_id) Sync.extraSet(j.id, { status: 'declined', declined_at: isoIST() }); view.jobAlert = null; emit() },
+  // the washer's own reminder photo of a car on his round (kept on this phone only, one per car, replaced on retake)
+  setCarPhoto(reg: string, url: string | null, cut = false) {
+    S.carPhotos = S.carPhotos || {};
+    if (url) S.carPhotos[reg] = { url, at: isoIST(), cut }; else delete S.carPhotos[reg];
+    save(); emit(); ui.haptic(url ? [10, 30, 10] : 8);
+    ui.toast(t(url ? 'Gaadi ki photo save ho gayi' : 'Photo hata di'));
+  },
   setSelfie(url: string) {
     S.selfie = { date: DAY, washer: me().id, url }; save();
     // show the face on every car still to come today
@@ -463,10 +623,21 @@ export const act = {
     ui.toast(t('Photo save ho gayi. Customers ko dikhegi.')); ui.confetti(.3); emit();
   },
   setTheme(v: State['theme']) { S.theme = v; save(); emit() },
-  setLang(v: State['lang']) { S.lang = v; setHindi(v === 'hi'); save(); emit() },
+  setLang(v: Lang) { S.lang = v; S.lang_pref = v; setLang(v); save(); emit() },
+  // any language can be picked; until it is translated the app speaks Hindi (Marathi, same script) or Hinglish
+  setLangPref(v: LangPref) { act.setLang(v) },
+  // last onboarding screen: remember it for this phone, then carry on with the sign-in it was holding back
+  async finishOnboarding() {
+    const go = afterOnboard;
+    if (go) await go();   // a failure (no net) throws and keeps the onboarding up, so the washer can try again
+    afterOnboard = null;
+    S.onboarded = { ...(S.onboarded || {}), [onboardPhone()]: isoIST() }; save();
+    view.onboarding = false; emit();
+  },
   flushNow() { view.readOnly = false; refused = 0; Sync.flush(); ui.toast(t('Bhej raha hoon…')) },
   resetDay() {
     Object.keys(S.outbox).forEach(k => { if (k.startsWith(DAY)) delete S.outbox[k] });
+    void cancelAllWashAlerts();
     S.day = null; S.current = null; ensureDay(); save(); ui.toast(t('Reset ho gaya')); emit();
   },
   // Logging out wipes this phone's round: customer names/addresses, the outbox and every photo (they all live in S).
@@ -477,14 +648,15 @@ export const act = {
       await Promise.race([Sync.flush(), new Promise(r => setTimeout(r, 8000))]);
       if (outboxSize() && !discard) { ui.toast(t('Kuch update abhi bheje nahi gaye. Net aane pe phir try karo.')); return false }
     }
-    Sync.stop(); stopWatch(); stopKit(); stopGps();
-    const { theme, lang } = S;
-    S = { session: null, online: true, theme, lang, day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
+    Sync.stop(); stopWatch(); stopKit(); stopGps(); void cancelAllWashAlerts();
+    const { theme, lang, lang_pref, onboarded } = S;
+    S = { session: null, online: true, theme, lang, lang_pref, onboarded, day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
     if (saveT) { clearTimeout(saveT); saveT = null }
     try { await AsyncStorage.setItem(KEY, JSON.stringify(S)) } catch (e) { }
     bookCars = null; R = {}; RT = {}; view.pendingPhotos = {}; view.jobAlert = null; view.readOnly = false;
     if (REAL) { NewCar.mine = []; Object.keys(ROSTER).forEach(k => delete ROSTER[k]) }
-    await auth.signOut(); view.authStep = 'phone'; emit();
+    if (REAL) await Promise.race([clearPushToken(), new Promise(r => setTimeout(r, 4000))]);   // needs the sign-in, so before signOut
+    await auth.signOut(); view.authStep = 'phone'; view.loginMode = 'otp'; emit();
     return true;
   },
 
@@ -493,11 +665,29 @@ export const act = {
     if (!REAL && !PHONE_TO_WASHER[p10]) throw Object.assign(new Error(''), { hi: 'Yeh number washer list mein nahi hai. Office se baat karo.' });
     await auth.send(p10); view.otpPhone = p10; view.authStep = 'otp'; emit();
   },
-  async confirmOtp(code: string) {
+  // onOk runs once the code is accepted (the screen's success tick), before anything else changes
+  async confirmOtp(code: string, onOk?: () => Promise<void>) {
     await auth.confirm(code);
-    if (!REAL) { S.session = { washerId: PHONE_TO_WASHER[view.otpPhone], at: isoIST() }; save(); enterApp(); return }
-    await afterRealLogin();
+    await afterSignIn(onOk);
   },
+  // Phone + PIN (no SMS): n8n checks the PIN and sends a sign-in token for this number's Firebase user; from there
+  // it is the same path as an accepted OTP. The demo takes PIN 1234 for the demo washers.
+  async pinLogin(p10: string, pin: string, onOk?: () => Promise<void>) {
+    const no = (code: keyof typeof PIN_MSG) => Object.assign(new Error(PIN_MSG[code]), { code, hi: PIN_MSG[code] });
+    if (REAL) {
+      const r = await requestPinToken(PIN_URL, p10, pin);
+      if (!r.ok) throw no(r.code);
+      await auth.signInWithToken(r.token);
+    } else {
+      await new Promise(res => setTimeout(res, 400));
+      if (!PHONE_TO_WASHER[p10]) throw no('not_washer');
+      if (!isPin(pin) || pin !== '1234') throw Object.assign(new Error(''), { code: 'bad_pin', hi: 'PIN galat hai. Test mein 1234 daalo.' });
+      await auth.signInWithToken('demo:' + p10);
+    }
+    view.otpPhone = p10;
+    await afterSignIn(onOk);
+  },
+  setLoginMode(m: 'pin' | 'otp') { if (view.loginMode !== m) { view.loginMode = m; emit() } },
   async join(name: string, area: string, ref: string) {
     const phone = auth.phone()!; const doc: Data = { phone, name, area, status: 'pending', created_at: isoIST(), updated_at: isoIST() };
     // the code rides along when the rules accept it; sign-up still goes through without it
@@ -505,34 +695,118 @@ export const act = {
     catch (e) { if (!ref) throw e; await db.doc('washers/' + phone).set(doc) }
     view.authStep = 'wait'; emit(); watchMe();
   },
-  backToPhone() { if (REAL) auth.signOut(); view.authStep = 'phone'; emit() },
+  backToPhone() { if (REAL) auth.signOut(); view.onboarding = false; afterOnboard = null; view.authStep = 'phone'; emit() },
   // remember how many cars were done on a day (the Paisa week bars read this)
   noteHist(day: string, n: number) { S.hist = S.hist || {}; if (S.hist[day] !== n) { S.hist[day] = n; save(); emit() } },
 };
 
+// after an accepted OTP or PIN: onboarding once per number, then washers/{+91number} decides join/wait/in
+async function afterSignIn(onOk?: () => Promise<void>) {
+  if (onOk) await onOk().catch(() => {});
+  const next = REAL ? afterRealLogin
+    : async () => { S.session = { washerId: PHONE_TO_WASHER[view.otpPhone], at: isoIST() }; save(); enterApp() };
+  if (!isOnboarded()) { startOnboarding(next); return }
+  await next();
+}
+
+/* ---------- first-run onboarding: once per phone number, between the OTP and join/wait/in ---------- */
+let afterOnboard: (() => Promise<void>) | null = null;
+export const onboardPhone = () => (view.otpPhone || (auth.phone() || '').slice(-10) || S.session?.phone || '');
+const isOnboarded = () => !!S.onboarded?.[onboardPhone()];
+function startOnboarding(next: () => Promise<void>) {
+  afterOnboard = next; view.onboarding = true;
+  if (view.authStep === 'loading') view.authStep = 'phone';
+  emit();
+}
+
 /* ---------- real sign-in: washers/{+91number} decides who gets in ---------- */
 let meUnsub: Unsub | null = null;
+/* ---------- the guided wash: tells the washer the next stage as it starts (voice + toast + buzz) ---------- */
+const guided = new Set<string>();   // 'DATE_REG_stageIndex' already announced
+export function guideTick() {
+  if (!S.day || view.authStep !== 'in') return;
+  for (const wd of Object.values(S.day.washes)) {
+    if (wd.status !== 'washing' || !wd.started_at) continue;
+    const g = guideAt(wd.started_at, Date.now(), wd.interior_from); if (!g) continue;
+    const k = S.day.date + '_' + wd.reg + '_' + g.idx;
+    if (guided.has(k)) continue;
+    guided.add(k);
+    // later stages are spoken by the phone's own scheduled alerts (they also work with the app closed); in the app only stage 0, or all if alerts are off
+    if (g.idx === 0 || !alertsReady()) ui.speak([g.step.pre || null, nameClip(me().name), g.step.clip]);
+    ui.haptic([20, 40, 20]);   // the banner on the car screen shows the stage, so no toast
+  }
+  lateTick();
+}
+// cars whose slot is over and which are not done: say the car number, the slot and the line, every 10 minutes (in the app;
+// with the app closed the phone plays the scheduled 'kaam nahi hua' notification)
+const lastLate: Record<string, number> = {};
+function lateTick() {
+  const now = Date.now();
+  for (const c of route()) {
+    if (!Route.isLate(c.reg, now)) continue;
+    const w = W(c.reg);
+    if (w && !w.overdue_at) mutate(c.reg, d => { d.overdue_at = isoIST() });   // synced: the dashboard and customer can see it
+    if (now - (lastLate[c.reg] || 0) < 10 * 60e3) continue;
+    lastLate[c.reg] = now;
+    const s = Route.slotOf(c.reg); ui.speak([nameClip(me().name), ...lateClips(c.reg, s != null ? slotRange(s).from : null)]);
+    ui.toast(t(`${c.reg}: is gaadi par kaam nahi hua`));
+  }
+}
 /* ---------- kit and ID records (profile tab) ---------- */
 // IDs and assigned clothes come from the washer's own washers/ doc (admin-written, read-only here);
 // the kit list is washerkit/{phone}.items: add-only, the rules refuse any change to an existing item.
-export const Kit = { items: [] as KitItem[], profile: null as WasherDoc | null, loaded: false };
-let kitUnsub: Unsub | null = null;
+export const Kit = { items: [] as KitItem[], photos: {} as Record<string, string>, profile: null as WasherDoc | null, loaded: false };
+let kitUnsub: Unsub | null = null, kitPhotoUnsub: Unsub | null = null;
 const myDocId = () => (REAL ? auth.phone() : '+91' + (S.session?.phone || me().phone)) || '';
 function watchKit() {
+  watchDocs();
   const id = myDocId(); if (kitUnsub || !id || id === '+91') return;
   kitUnsub = db.doc('washerkit/' + id).onSnapshot(d => {
     const v = d.exists ? d.data() : null; Kit.items = Array.isArray(v?.items) ? v!.items : []; Kit.loaded = true; emit();
   }, e => console.warn('kit', e));
+  // the photos of those items, one doc each: kitphotos/{phone}_{itemId}
+  kitPhotoUnsub = db.collection('kitphotos').where('phone', '==', id).onSnapshot(sn => {
+    const m: Record<string, string> = {}; sn.docs.forEach(d => { const v = d.data(); if (v?.item && v.photo) m[v.item] = v.photo });
+    Kit.photos = m; emit();
+  }, e => console.warn('kit photos', e));
 }
-function stopKit() { if (kitUnsub) { try { kitUnsub() } catch (e) { } kitUnsub = null } Kit.items = []; Kit.profile = null; Kit.loaded = false }
-export async function addKitItem(kind: KitKind, name: string, qty: number): Promise<void> {
+function stopKit() { stopDocs(); if (kitUnsub) { try { kitUnsub() } catch (e) { } kitUnsub = null } if (kitPhotoUnsub) { try { kitPhotoUnsub() } catch (e) { } kitPhotoUnsub = null } Kit.items = []; Kit.photos = {}; Kit.profile = null; Kit.loaded = false }
+export async function addKitItem(kind: KitKind, name: string, qty: number, photo?: string | null): Promise<void> {
   const id = myDocId(); const nm = name.trim().slice(0, 60);
   if (!id || id === '+91' || !nm || !(qty >= 1) || qty > 999) throw Object.assign(new Error('bad'), { hi: 'Naam aur ginti sahi daalo.' });
-  const item: KitItem = { id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), kind, name: nm, qty: Math.floor(qty), at: isoIST() };
+  const item: KitItem = { id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), kind, name: nm, qty: Math.floor(qty), at: isoIST(), ...(photo ? { has_photo: true } : {}) };
+  // photo first (its own doc), then the item that points at it; a failed photo stops the whole add
+  if (photo) await db.doc('kitphotos/' + id + '_' + item.id).set({ phone: id, item: item.id, photo, at: item.at });
   // read the latest list first, then write it back with the new item at the end (the rules require the old items untouched)
   const cur = await db.doc('washerkit/' + id).get();
   const items: KitItem[] = cur.exists && Array.isArray(cur.data()?.items) ? cur.data()!.items : [];
   await db.doc('washerkit/' + id).set({ phone: id, items: [...items, item], updated_at: isoIST() });
+}
+/* ---------- identity documents (Aadhaar front/back, PAN): a photo or a PDF each, washerdocs/{phone}_{kind} ---------- */
+// Washers can upload while joining (before approval) and replace until an admin marks one 'verified'.
+export type DocKind = 'aadhaar_front' | 'aadhaar_back' | 'pan';
+export const DOC_KINDS: { kind: DocKind; label: string }[] = [
+  { kind: 'aadhaar_front', label: 'Aadhaar (aage ka)' }, { kind: 'aadhaar_back', label: 'Aadhaar (peeche ka)' }, { kind: 'pan', label: 'PAN card' },
+];
+export type DocItem = { kind: DocKind; mime: string; name: string; data: string; at: string; status: 'submitted' | 'verified' | 'rejected'; note?: string };
+export const Docs = { items: {} as Partial<Record<DocKind, DocItem>>, loaded: false };
+let docsUnsub: Unsub | null = null;
+export function watchDocs() {
+  const id = myDocId(); if (docsUnsub || !id || id === '+91') return;
+  docsUnsub = db.collection('washerdocs').where('phone', '==', id).onSnapshot(sn => {
+    const m: Partial<Record<DocKind, DocItem>> = {};
+    sn.docs.forEach(x => { const v = x.data() as DocItem; if (v?.kind && v.data) m[v.kind] = v });
+    Docs.items = m; Docs.loaded = true; emit();
+  }, e => console.warn('docs', e));
+}
+function stopDocs() { if (docsUnsub) { try { docsUnsub() } catch (e) { } docsUnsub = null } Docs.items = {}; Docs.loaded = false }
+/** data is a data: URL (image/jpeg, image/webp, image/png or application/pdf), at most ~900 KB; the rules enforce it too. */
+export async function uploadDoc(kind: DocKind, mime: string, name: string, data: string): Promise<void> {
+  const id = myDocId();
+  if (!id || id === '+91') throw Object.assign(new Error('no phone'), { hi: 'Pehle phone number se login karo.' });
+  if (data.length > 900000) throw Object.assign(new Error('big'), { hi: 'File bahut badi hai. Chhoti photo ya PDF chuno.' });
+  if (Docs.items[kind]?.status === 'verified') throw Object.assign(new Error('locked'), { hi: 'Yeh document verify ho chuka hai, badal nahi sakte.' });
+  await db.doc('washerdocs/' + id + '_' + kind).set({ phone: id, kind, mime, name: name.slice(0, 120), data, at: isoIST(), status: 'submitted' });
 }
 export const clothesHave = () => Kit.items.filter(i => i.kind === 'clothes').reduce((n, i) => n + i.qty, 0);
 
@@ -565,12 +839,13 @@ async function afterRealLogin() {
   if (r === 'in') { enterApp(); watchMe() } else { view.authStep = r; emit(); if (r !== 'join') watchMe() }
 }
 function enterApp() {
+  void setupWashAlerts().then(() => scheduleMorningAlarm());   // asks for notification + exact-alarm permission up front (installed app only), then the 5:00 alarm
   watchKit();
   view.authStep = 'in'; ensureDay(); emit();
   if (MODE === 'demo') demoExtras();   // seeded before listening, so the sample jobs do not pop up as new
   Book.load();
   Sync.listen();
-  if (REAL) startGps();
+  if (REAL) { startGps(); void registerPushToken() }
 }
 
 /* ---------- live location for the customer's map (installed app only) ---------- */
@@ -626,7 +901,7 @@ export async function boot() {
   if (started) return; started = true;
   try { const x = JSON.parse((await AsyncStorage.getItem(KEY)) || 'null'); if (x && typeof x === 'object') S = Object.assign(S, x) } catch (e) { }
   S.rounds = S.rounds || {}; S.outbox = S.outbox || {};
-  setHindi(S.lang === 'hi');
+  setLang(S.lang || 'hinglish');
   view.syncMode = MODE;
   booted = true;
   if (REAL) {
@@ -635,6 +910,7 @@ export async function boot() {
     const phone = await auth.ready();
     if (S.session && (!phone || phone.slice(-10) !== S.session.phone)) { S.session = null; save() }
     if (S.session && WASHERS[S.session.washerId || '']) { enterApp(); watchMe() }
+    else if (phone && !isOnboarded()) startOnboarding(afterRealLogin);   // the app was closed half-way through onboarding
     else if (phone) { try { await afterRealLogin() } catch (e) { view.authStep = 'phone' } }
     else view.authStep = 'phone';
   } else if (S.session && WASHERS[S.session.washerId || '']) enterApp();
@@ -642,6 +918,7 @@ export async function boot() {
   emit();
   // keep sending what is waiting; a new day starts a new round
   setInterval(() => { if (Object.keys(S.outbox).length) Sync.flush() }, 20000);
+  setInterval(guideTick, 3000);
   setInterval(() => {
     const d = dateIST();
     if (d !== DAY && view.authStep === 'in') { DAY = d; RT = {}; ensureDay(); Book.load(); Sync.listen(); emit() }
@@ -661,3 +938,81 @@ export function syncState(): ['connecting' | 'demo' | 'wait' | 'offline' | 'live
 }
 export const outboxSize = () => Object.keys(S.outbox).length;
 export const planName = (c: Car) => PLAN[c.plan]?.name || 'WD Standard';
+/** The attendance log behind the monthly rewards (read-only view). */
+export const attendLog = (): Attend => S.attend || {};
+
+/* ---------------- customer complaints + this month's ratings (No Complaint Bonus) ----------------
+   Self-contained. complaints/{id} where washer_id == my round id (the key washes/newcars use), live; the washer can
+   only move one from 'open' to 'seen'. The customer's phone is dropped in cleanComplaint() and never kept here.
+   The month's rating average joins my washes docs with ratings/{DATE_REG} (ratings carry no washer_id): see
+   loadMonthRatings(). Rules for the bonus: lib/complaints.ts + cleanMonth() in lib/rewards.ts. */
+export const Complaints = { items: [] as Complaint[], loaded: false, failed: false, ratings: [] as RatingRow[], ratingsMonth: '', ratingsAt: 0 };
+const ratingCache: Record<string, number | null> = {};   // 'DATE_REG' -> stars, null = not rated (yet)
+let ratingsBusy = false, demoComplaintsDone = false;
+function watchComplaints(id: string, err: (e: DbError) => void): Unsub {
+  if (MODE === 'demo') demoComplaints(id);
+  let first = true;   // a listener's first answer is what was already there, not news
+  return db.collection('complaints').where('washer_id', '==', id).onSnapshot(sn => {
+    const prev = new Set(Complaints.items.map(c => c.id));
+    const next = sn.docs.map(d => cleanComplaint(d.data(), d.id)).filter((c): c is Complaint => !!c && c.washer_id === id);
+    const fresh = first ? [] : arrivals(prev, next);
+    first = false; Complaints.items = next; Complaints.loaded = true; Complaints.failed = false;
+    if (booted && fresh.length) { ui.toast(t('Ek customer ne feedback diya')); ui.haptic([10, 40, 10]) }
+    emit();
+  }, e => { Complaints.failed = true; emit(); err(e) });
+}
+async function markComplaintSeen(cid: string) {
+  const c = Complaints.items.find(x => x.id === cid); if (!c || c.status !== 'open') return;
+  const at = isoIST(); c.status = 'seen'; c.seen_at = at; emit();
+  try { await db.doc('complaints/' + cid).update({ status: 'seen', seen_at: at, updated_at: at }) } catch (e) { console.warn('complaint seen', e) }
+}
+/** This month's complaints (every status), newest first. */
+export const monthComplaints = (): Complaint[] => inMonth(Complaints.items, DAY.slice(0, 7));
+/** What rewards()/outlook() take for the No Complaint Bonus; null until the complaints have loaded. */
+export const cleanNow = (): CleanInput | null => (Complaints.loaded ? cleanInput(Complaints.items, Complaints.ratings, DAY.slice(0, 7)) : null);
+/** Fetch the stars for my washes this month: washes (washer_id, date) -> ratings/{DATE_REG}, at most 120 reads,
+ *  20 at a time, cached; re-run at most every 10 minutes unless forced. Only the last two days are re-read when unrated. */
+export async function loadMonthRatings(force = false): Promise<void> {
+  const month = DAY.slice(0, 7);
+  if (ratingsBusy || !S.session?.washerId) return;
+  if (!force && Complaints.ratingsMonth === month && Date.now() - Complaints.ratingsAt < 10 * 60e3) return;
+  ratingsBusy = true;
+  try {
+    const rows = await Sync.washesSince(month + '-01'); if (!rows) return;
+    const keys = ratingKeys(rows, month), recent = addDaysStr(DAY, -1);
+    const need = keys.filter(k => !(k in ratingCache) || (ratingCache[k] == null && k.slice(0, 10) >= recent));
+    for (let i = 0; i < need.length; i += 20) {
+      await Promise.all(need.slice(i, i + 20).map(async k => {
+        try { const g = await db.doc('ratings/' + k).get(); const v = g.exists ? g.data() : null; ratingCache[k] = v && Number.isInteger(v.stars) ? v.stars : null }
+        catch (e) { /* not cached: tried again next time */ }
+      }));
+    }
+    Complaints.ratings = keys.filter(k => ratingCache[k] != null).map(k => ({ date: k.slice(0, 10), reg: k.slice(11), stars: ratingCache[k] as number }));
+    Complaints.ratingsMonth = month; Complaints.ratingsAt = Date.now(); emit();
+  } finally { ratingsBusy = false }
+}
+// demo only: no complaints unless the preview's localStorage asks for some (tests and screenshots), e.g.
+//   localStorage['wd-demo-complaints'] = '{"complaints":[{"text":"...","kind":"late"}],"stars":[5,4,4,3],"later":true}'
+// complaints go on this month's cars; `stars` is cycled over this month's done washes as ratings; `later` adds one
+// more complaint a few seconds after sign-in so the live toast can be seen.
+function demoComplaints(id: string) {
+  if (demoComplaintsDone) return; demoComplaintsDone = true;
+  let x: any = null;
+  try { const raw = (globalThis as any).localStorage?.getItem('wd-demo-complaints'); x = raw ? JSON.parse(raw) : null } catch (e) { x = null }
+  if (!x || typeof x !== 'object') return;
+  const rs = route(), list: any[] = Array.isArray(x) ? x : Array.isArray(x.complaints) ? x.complaints : [];
+  const put = (p: any, i: number) => {
+    const reg = p.reg || rs[i % Math.max(1, rs.length)]?.reg || 'DL4CAB2731', cid = 'demo-c' + i;
+    db.doc('complaints/' + cid).set(sampleComplaintDoc({ id: cid, date: p.date || DAY, reg, washer_id: id, text: p.text, kind: p.kind, status: p.status, customer_name: p.customer_name, stars: p.stars }));
+  };
+  list.slice(0, 10).forEach(put);
+  if (x.later) setTimeout(() => put({ text: 'Aaj gaadi der se saaf hui.', kind: 'late' }, list.length), 6000);
+  const stars: number[] = Array.isArray(x.stars) ? x.stars.filter((n: any) => Number.isInteger(n) && n >= 1 && n <= 5) : [];
+  if (stars.length) db.collection('washes').where('washer_id', '==', id).get().then(sn => {
+    sn.docs.map(d => d.data()!).filter(w => w && w.status === 'done' && String(w.date).startsWith(DAY.slice(0, 7)))
+      .forEach((w, i) => db.doc('ratings/' + w.date + '_' + w.reg).set({ date: w.date, reg: w.reg, stars: stars[i % stars.length], at: w.date + 'T10:00:00+05:30' }));
+  });
+}
+
+// the reminder photo of a car, if the washer took one
+export const carPhoto = (reg: string | null | undefined) => (reg && S.carPhotos?.[reg]) || null;
