@@ -59,6 +59,11 @@ jobs:
         env: { CI: 1, EXPO_OFFLINE: 1, GOOGLE_MAPS_API_KEY: '${{ secrets.GOOGLE_MAPS_API_KEY }}' }
       - run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
         working-directory: mobile/native/customer/android
+      - name: Which native packages were linked
+        run: |
+          f=$(find android/app/build/generated -name PackageList.java | head -1); echo "PackageList: $f"
+          grep -n "new .*Package(" "$f" || true
+          unzip -l android/app/build/outputs/apk/release/app-release.apk | grep -E "\.dex$" || true
       - name: Collect APK
         run: |
           mkdir -p out
