@@ -16,16 +16,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     if (wantIos && !ios) throw new Error('WD_RELEASE=1: firebase/GoogleService-Info.plist is missing, refusing to build a demo app');
     if (process.env.EXPO_PUBLIC_DEMO) throw new Error('WD_RELEASE=1: EXPO_PUBLIC_DEMO must not be set in a release build');
   }
-  const mapsKey = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
   const plugins = (config.plugins || []).filter(p => firebase || !String(Array.isArray(p) ? p[0] : p).startsWith('@react-native-firebase'));
   return {
     ...config,
     name: config.name!, slug: config.slug!,
     plugins,
-    android: { ...config.android, ...(mapsKey ? { config: { ...(config.android as any)?.config, googleMaps: { apiKey: mapsKey } } } : {}), ...(android ? { googleServicesFile: './firebase/google-services.json' } : {}) },
-    ios: { ...config.ios, ...(mapsKey ? { config: { ...(config.ios as any)?.config, googleMapsApiKey: mapsKey } } : {}), ...(ios ? { googleServicesFile: './firebase/GoogleService-Info.plist' } : {}) },
-    // GOOGLE_MAPS_API_KEY comes from the build environment (CI secret), never from the repo. Empty = the app shows "Map unavailable".
-    extra: { ...config.extra, firebase, googleMapsKey: mapsKey, androidPackage: config.android?.package, iosBundle: config.ios?.bundleIdentifier,
-      androidCert: '61:2C:82:98:D4:A4:ED:70:A1:A5:35:32:EB:43:F8:42:D0:BF:64:69' },
+    android: { ...config.android, ...(android ? { googleServicesFile: './firebase/google-services.json' } : {}) },
+    ios: { ...config.ios, ...(ios ? { googleServicesFile: './firebase/GoogleService-Info.plist' } : {}) },
+    extra: { ...config.extra, firebase },
   };
 };

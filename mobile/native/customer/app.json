@@ -20,7 +20,6 @@
           "bhim",
           "whatsapp"
         ],
-        "NSLocationWhenInUseUsageDescription": "Washing Daddy uses your location to put the pin at your door so our washer can find you.",
         "NSPhotoLibraryUsageDescription": "Pick a photo of your car to show it on your home screen."
       }
     },
@@ -39,7 +38,7 @@
           "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
-      "permissions": ["android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION"],
+      "permissions": [],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
       ],
@@ -80,13 +79,6 @@
           "photosPermission": "Pick a photo of your car to show it on your home screen.",
           "cameraPermission": false,
           "microphonePermission": false
-        }
-      ],
-      [
-        "expo-location",
-        {
-          "locationWhenInUsePermission": "Washing Daddy uses your location to put the pin at your door so our washer can find you.",
-          "isAndroidBackgroundLocationEnabled": false
         }
       ],
       "@maplibre/maplibre-react-native"

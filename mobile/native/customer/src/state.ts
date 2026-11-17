@@ -17,7 +17,6 @@ import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { cutout } from './img';
-import { getPosition, type Fix } from './geo';
 import { backend } from './backend/firebase';
 import { cashfreeCheckout, CASHFREE_AVAILABLE } from './backend/cashfree';
 import type { Db, Unsub } from './backend/types';
@@ -817,14 +816,11 @@ const PX_ACTS = {
   },
 
   /* --- addresses --- */
-  /** current position for the map pin and the distance chips: the phone's GPS (expo-location). `prompt` is for taps by the user: it shows our
-   *  explainer and then the system permission dialog. Without permission or GPS it resolves to the account's area centre with
-   *  source 'fallback' (and leaves the distance chips off, since there is no real position). */
-  async locate(opts: { prompt?: boolean } = {}): Promise<Fix> {
-    const a = selectedAddress(), c = AREA_COORDS[(S.acct && A().area) || ''] || [77.0989, 28.668];
-    const fix = await getPosition(a ? { lat: a.lat, lng: a.lng } : { lat: c[1], lng: c[0] }, opts);
-    if (fix.source === 'gps') { HERE = { lat: fix.lat, lng: fix.lng }; emit() }
-    return fix;
+  /** current position for the map pin and distances. TODO(MAP): needs expo-location in a new native build; until then
+   *  it returns the selected address or the account's area centre. */
+  async locate(): Promise<{ lat: number; lng: number }> {
+    await wait(400); const a = selectedAddress(), c = AREA_COORDS[(S.acct && A().area) || ''] || [77.0989, 28.668];
+    HERE = a ? { lat: a.lat, lng: a.lng } : { lat: c[1], lng: c[0] }; emit(); return HERE;
   },
   /** create (no id) or update an address -> its id. Receiver phone: 10 digits when it is for someone else. */
   async saveAddress(x: Omit<Address, 'id'> & { id?: string }): Promise<string> {
