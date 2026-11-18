@@ -47,7 +47,8 @@ jobs:
       - run: npm ci
       - name: Maps key check
         env: { K: '${{ secrets.GOOGLE_MAPS_API_KEY }}' }
-        run: if [ -n "$K" ]; then echo "Maps key: on"; else echo "::warning::GOOGLE_MAPS_API_KEY secret not set: the app will show 'Map unavailable'"; fi
+        run: |
+          if [ -n "$K" ]; then echo "Maps key: on"; else echo "::warning::GOOGLE_MAPS_API_KEY secret not set, the app will show 'Map unavailable'"; fi
       - name: Firebase config
         env: { GS: '${{ secrets.CUSTOMER_GOOGLE_SERVICES_JSON }}' }
         run: |
@@ -57,7 +58,13 @@ jobs:
       - run: npx expo prebuild --platform android --no-install
         env: { CI: 1, EXPO_OFFLINE: 1, GOOGLE_MAPS_API_KEY: '${{ secrets.GOOGLE_MAPS_API_KEY }}' }
       - run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+        env: { GOOGLE_MAPS_API_KEY: '${{ secrets.GOOGLE_MAPS_API_KEY }}' }
         working-directory: mobile/native/customer/android
+      - name: Which native packages were linked
+        run: |
+          f=$(find android/app/build/generated -name PackageList.java | head -1); echo "PackageList: $f"
+          grep -n "new .*Package(" "$f" || true
+          unzip -l android/app/build/outputs/apk/release/app-release.apk | grep -E "\.dex$" || true
       - name: Collect APK
         run: |
           mkdir -p out
