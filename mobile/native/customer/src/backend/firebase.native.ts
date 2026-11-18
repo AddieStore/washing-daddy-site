@@ -24,8 +24,11 @@ const AUTH_ERR: Record<string, [string, string]> = {
   'auth/missing-client-identifier': ['setup', "This app isn't set up for sign-in yet. Call us on 77018 08924."],
 };
 const authErr = (e: any): AuthError => {
-  const m = AUTH_ERR[(e && e.code) || ''] || ['failed', "Couldn't sign in. Try again."];
-  return Object.assign(new Error(m[1]), { code: m[0], en: m[1], cause: e });
+  const raw = String((e && e.code) || '');
+  const m = AUTH_ERR[raw] || ['failed', "Couldn't sign in. Try again."];
+  // the Firebase code is shown for setup problems and unknown errors, so a screenshot tells us the real cause
+  const msg = m[0] === 'setup' || m[0] === 'failed' ? `${m[1]} (${raw || 'no code'})` : m[1];
+  return Object.assign(new Error(msg), { code: m[0], en: msg, cause: e });
 };
 const e164 = (p: string) => { const d = String(p || '').replace(/\D/g, '').slice(-10); return d.length === 10 ? '+91' + d : null };
 
