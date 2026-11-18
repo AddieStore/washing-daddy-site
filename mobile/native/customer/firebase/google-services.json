@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "82190943726-gnnihb24gndkct4shlis83vj75if81bu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.washingdaddy.customer",
+            "certificate_hash": "612c8298d4a4ed70a1a53532eb43f842d0bf6469"
+          }
+        },
+        {
           "client_id": "82190943726-v1msl9hos22e5dfjfvflqtr8oq46vjjb.apps.googleusercontent.com",
           "client_type": 3
         }
