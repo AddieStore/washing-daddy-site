@@ -8,6 +8,7 @@ import { Txt, useInsets } from '../ui/kit';
 import { Footer } from '../ui/Footer';
 import { Back, Help as HelpIc, Pin } from '../ui/icons';
 import { FadeUp } from '../ui/motion';
+import { JobRider, showsRider } from '../ui/JobRider';
 import { feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
 import { sheets } from '../sheets';
 import { inr, fmt, iso, TODAY } from '../data/dates';
@@ -89,10 +90,8 @@ export function JobCard({ j, onPress }: { j: Job; onPress: () => void }) {
               <Txt size={13} color={G.sub}>Service rating</Txt>
               <Stars n={j.stars || 0} size={22} gap={6} onPick={n => (canRate(j) ? openRateSheet(j.id, n) : toast('You can rate once the wash is done'))} />
             </View>
-          ) : trackable(j) ? (
-            <Tap onPress={() => sheets.track(j.id)} style={{ borderTopWidth: 1, borderColor: G.line, marginTop: 8, paddingTop: 8, minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Txt size={13} color={G.sub}>Washer</Txt><Txt weight={500} size={13} color={C.violet}>Track live</Txt>
-            </Tap>
+          ) : showsRider(j) ? (
+            <View style={{ marginTop: 10 }}><JobRider j={j} compact /></View>
           ) : null}
         </View>
       ) : (

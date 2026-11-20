@@ -12,6 +12,8 @@ export type RiderTrackProps = {
   progress: number;                 // 0..1 along the road
   eta?: string | number | null;     // ISO string or epoch ms
   status?: Status;
+  title?: string;                   // overrides the headline (e.g. a scheduled booking far from its slot)
+  subtitle?: string;
   compact?: boolean;
 };
 
@@ -228,15 +230,15 @@ function Scene({ W, progress, status }: { W: number; progress: number; status?: 
   );
 }
 
-export function RiderTrack({ progress, eta, status = 'on_the_way', compact }: RiderTrackProps) {
+export function RiderTrack({ progress, eta, status = 'on_the_way', compact, title, subtitle }: RiderTrackProps) {
   const [W, setW] = useState(360), [now, setNow] = useState(Date.now());
   useEffect(() => { const i = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(i); }, []);
   const s = compact ? 120 / DH : 1, DW = Math.max(240, W / s), H = DH * s;
   const m = minsLeft(eta, now), arrived = status === 'in_progress' || status === 'done';
-  const headline = arrived ? 'Your washer is here' : m == null ? STAGE[status] || 'On the way' : m <= 0 ? 'Arriving now' : `Arriving in ${m} min`;
+  const headline = title ? title : arrived ? 'Your washer is here' : m == null ? STAGE[status] || 'On the way' : m <= 0 ? 'Arriving now' : `Arriving in ${m} min`;
   const pct = Math.round(Math.min(1, Math.max(0, progress)) * 100);
   const t = etaMs(eta);
-  const sub = arrived ? 'Washing your car right now' : Number.isFinite(t) ? `${STAGE[status] || 'On the way'} · reaches you by ${clock(t)}` : STAGE[status] || '';
+  const sub = subtitle != null ? subtitle : arrived ? 'Washing your car right now' : Number.isFinite(t) ? `${STAGE[status] || 'On the way'} · reaches you by ${clock(t)}` : STAGE[status] || '';
   return (
     <View style={{ backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', shadowColor: '#1A1033', shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 3 }}>
       <View onLayout={e => setW(e.nativeEvent.layout.width)} style={{ height: H, overflow: 'hidden' }} accessibilityLabel={`${headline}. ${sub}`}>
