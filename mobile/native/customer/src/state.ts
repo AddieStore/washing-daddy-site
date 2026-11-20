@@ -928,6 +928,9 @@ const jobTitlePlain = (lines: { name: string }[]) => (lines[0] ? lines[0].name :
 /* =====================================================================
    ACTIONS
    ===================================================================== */
+/** Android can read the sign-in SMS itself (Firebase uses the SMS Retriever API: no SMS permission needed) and sign in before
+ *  the code is typed. The OTP screen listens for that and carries on by itself. */
+export const onAutoSignIn = (f: () => void): (() => void) => (AUTH ? AUTH.onChange(b => { if (b && AUTH.phone()) f() }) : () => {});
 const failed = () => new Error(`That didn't go through. Call or WhatsApp us on ${showPhone(SUPPORT.phone)}.`);
 export const act = {
   ...PX_ACTS,

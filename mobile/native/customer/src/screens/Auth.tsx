@@ -1,13 +1,13 @@
 /* Sign-in poster and flow: phone -> code -> (new numbers) about -> plan. Ported from renderAuth() in customer/index.html. */
 import { useEffect, useRef, useState } from 'react';
-import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
+import { Animated, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
 import { C, F, SP, InkContext, creamInk } from '../theme';
 import Reanimated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { Field, Txt, useInsets, PAD } from '../ui/kit';
 import { Pressable3, FadeUp } from '../ui/motion';
 import { BrandBg, BrandLogo, PhotoStrip, Sheet } from '../ui/Brand';
 import { Back, Check, Zap, Calendar } from '../ui/icons';
-import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp, legalPages } from '../state';
+import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp, legalPages, onAutoSignIn } from '../state';
 import { openLegalSheet } from '../pages/LegalDoc';
 import { Plate } from '../ui/Plate';
 import { sellablePlans, DEFAULT_PLAN, PlanId, fromPrice } from '../data/reference';
@@ -88,6 +88,19 @@ export default function Auth() {
   const shake = useRef(new Animated.Value(0)).current;
   const scroll = useRef<any>(null);
   const working = useRef(false);
+  // Android draws edge to edge, so the window does not always shrink for the keyboard and the number box ended up under it.
+  // Measure how much of the screen the keyboard covers (0 when the window did resize), pad the sheet by that much and scroll
+  // the field into view once the keyboard is fully out (doing it on focus is what used to knock the keyboard down).
+  const [kb, setKb] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', e => {
+      const cover = Math.max(0, Math.round(win.height - e.endCoordinates.screenY));
+      setKb(Platform.OS === 'android' ? cover : 0);
+      setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 60);
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKb(0));
+    return () => { show.remove(); hide.remove() };
+  }, [win.height]);
 
   // Android: never restyle or scroll the page while a field is gaining focus. A focus-time re-layout made the keyboard open and close at once on
   // build 21 (phone step). The window resizes for the keyboard by itself; only the longer sign-up steps nudge the sheet up, after the keyboard is out.
@@ -148,6 +161,11 @@ export default function Auth() {
     }
     working.current = false; setBusy(false);
   };
+  // the phone read the SMS and signed in by itself: show the boxes as filled and carry on
+  useEffect(() => {
+    if (step !== 'otp') return;
+    return onAutoSignIn(() => { if (working.current) return; const c = Array(OTP_N).fill('•'); setCode(c); verify(c) });
+  }, [step, phone]);
   const fill = (digits: string) => {
     const c = Array(OTP_N).fill('').map((_, j) => digits[j] || '');
     setCode(c); setErr('');
@@ -361,7 +379,7 @@ export default function Auth() {
       <View style={{ flex: 1, backgroundColor: C.brandDeep }}>
         <BrandBg />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{ flexGrow: 1, alignItems: 'center' }}>
+          <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: kb }}>
             <View style={{ width: W, flexGrow: 1 }}>
               {top}
               <Sheet style={{ marginTop: SP.s, flexGrow: 1 }}>
