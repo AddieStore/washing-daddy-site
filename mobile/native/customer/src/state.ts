@@ -962,21 +962,25 @@ export const act = {
     const monthly = s.mode === 'monthly';
     let plan: PlanId = (monthly && s.plan) ? s.plan : DEFAULT_PLAN;
     if (HIDDEN_FROM_NEW.includes(plan)) plan = DEFAULT_PLAN;
-    const area = areaFor(ad.area + ' ' + ad.street), w = WASHER_FOR(area), plate = s.plate.trim().toUpperCase().replace(/\s+/g, '');
+    const area = areaFor(ad.area + ' ' + ad.street).slice(0, 80), w = WASHER_FOR(area), plate = s.plate.trim().toUpperCase().replace(/\s+/g, '');
     const spot = [ad.flat.trim(), ad.street.trim()].filter(Boolean).join(', ');
-    const car0 = { id: 'c0', name: s.model, make: '', plate, plan, washer: w, parking: spot || (area + ', parking spot to be confirmed'), window: 'Before 7:30 AM', keys: "I'll unlock it" };
     const addr = { flat: ad.flat.trim().slice(0, 120), street: (ad.street || '').trim().slice(0, 120), area: (ad.area || '').trim().slice(0, 160), lat: ad.lat, lng: ad.lng };
+    // The live Firestore rules only allow the listed top-level fields on customers/{phone} (hasOnly), so the exact spot and the
+    // sign-up choice travel inside the car entry (cars is a free-form list) instead of as new top-level fields.
+    const car0 = { id: 'c0', name: s.model, make: '', plate, plan, washer: w, parking: spot || (area + ', parking spot to be confirmed'), window: 'Before 7:30 AM', keys: "I'll unlock it",
+      mode: s.mode, addr };
     if (DB && AUTH) {
-      try { await DB.doc('customers/' + AUTH.phone()).set({ phone: AUTH.phone(), name: s.name, area, mode: s.mode, address: addr, status: 'new', cars: [car0], regs: [regOf(car0)], since: fmt(TODAY, { month: 'long', year: 'numeric' }), created_at: nowIST(), updated_at: nowIST() }) }
+      try { await DB.doc('customers/' + AUTH.phone()).set({ phone: AUTH.phone(), name: s.name, area, status: 'new', cars: [car0], regs: [regOf(car0)], since: fmt(TODAY, { month: 'long', year: 'numeric' }), created_at: nowIST(), updated_at: nowIST() }) }
       catch (e) { console.warn(e); throw new Error("Couldn't save your sign-up. Check your signal and try again.") }
     } else await wait(800);
     S.session = { token: p.token, phone: p.phone, real: REAL };
     S.acct = { name: s.name, phone: p.phone, since: fmt(TODAY, { month: 'long', year: 'numeric' }), area, mode: s.mode, prefs: { photo: true, pay: true, drops: true },
-      cars: [{ ...car0, id: REAL ? 'c0' : 'c' + Date.now(), img: null, till: null, status: 'new', doneAt: null, mins: 0, streak: 0, washes: 0, paused: null, note: null, rating: 0 }],
+      cars: [{ ...car0, id: REAL ? 'c0' : 'c' + Date.now(), img: null, till: null, status: 'new', doneAt: null, mins: 0, streak: 0, washes: 0, paused: null, note: null, rating: 0 } as any],
       payments: [], orders: [], requests: [], bookings: [] };
-    S.carIdx = 0; S.px = emptyPX(); pendingSignup = null; enter(true);
-    // first saved address = the signup spot (quietly; saveAddress toasts, so keep the welcome toast on top by doing it after)
-    try { await act.saveAddress({ label: 'Home' as AddressLabel, ...addr, receiver: { self: true } }) } catch (e) { console.warn('signup address', e) }
+    S.carIdx = 0; S.px = emptyPX(); pendingSignup = null;
+    // first saved address = the signup spot, kept on the phone (no addresses rule is published yet, so no Firestore write here)
+    S.px.addresses.push({ id: newId('a'), label: 'Home' as AddressLabel, ...addr, receiver: { self: true } }); S.px.addrId = S.px.addresses[0].id;
+    enter(true);
     if (!monthly) { try { act.setCartMode('instant') } catch (e) {} }
   },
   async resendOtp(phone10: string) { await act.sendOtp(phone10); toast('New code sent') },
