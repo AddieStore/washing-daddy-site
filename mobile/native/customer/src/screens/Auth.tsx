@@ -47,10 +47,12 @@ const StepBar = ({ n, total }: { n: number; total: number }) => (
   </View>
 );
 // the two big "how do you want your car washed" cards
+// Opaque fill and no Android elevation: a see-through tint over an elevated card made Android draw the shadow box through it
+// (the grey inner rectangle on the selected card in build 23).
 function ModeCard({ on, title, text, tag, icon, onPress }: { on: boolean; title: string; text: string; tag: string; icon: React.ReactNode; onPress: () => void }) {
   return (
     <Pressable3 onPress={onPress} accessibilityRole="button" accessibilityState={{ selected: on }} scaleTo={0.975} style={{ marginBottom: SP.m }}>
-      <View style={{ padding: SP.l + 2, borderRadius: 22, borderWidth: 2, borderColor: on ? L.violet : L.hair, backgroundColor: on ? 'rgba(84,9,218,0.06)' : '#fff', shadowColor: C.violet, shadowOpacity: on ? 0.22 : 0.06, shadowRadius: on ? 16 : 10, shadowOffset: { width: 0, height: 5 }, elevation: on ? 4 : 1 }}>
+      <View style={{ padding: SP.l + 2, borderRadius: 22, borderWidth: 2, borderColor: on ? L.violet : L.hair, backgroundColor: on ? '#F4EEFF' : '#fff', shadowColor: C.violet, shadowOpacity: on ? 0.22 : 0.06, shadowRadius: on ? 16 : 10, shadowOffset: { width: 0, height: 5 }, elevation: Platform.OS === 'android' ? 0 : (on ? 4 : 1) }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: on ? L.violet : 'rgba(84,9,218,0.09)', alignItems: 'center', justifyContent: 'center' }}>{icon}</View>
           <View style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: on ? L.violet : L.line, backgroundColor: on ? L.violet : 'transparent', alignItems: 'center', justifyContent: 'center' }}>{on ? <Check size={15} color="#fff" strokeWidth={2.4} /> : null}</View>
