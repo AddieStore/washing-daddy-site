@@ -19,7 +19,7 @@ const SHADOW_F = { shadowColor: '#1A1033', shadowOpacity: 0.12, shadowRadius: 24
 /** r5 card: white, no hairline, radius 16, soft spread shadow (Pronto). Pass borderWidth to bring an outline back for selected states. */
 export const card = (extra?: object): ViewStyle => ({ backgroundColor: '#fff', borderWidth: 0, borderColor: G.line, borderRadius: 16, shadowColor: '#1A1033', shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 3, ...extra });
 /** soft grey page behind white cards (cart, schedule, bookings, money, profile) */
-export const PAGE_BG = '#F5F5F8';
+export const PAGE_BG = '#F6F2FF';   // = C.canvas
 const SPR_IN = { damping: 18, stiffness: 420, mass: 0.6 }, SPR_OUT = { damping: 11, stiffness: 320, mass: 0.6 };
 export const TNUM: TextStyle = { fontVariant: ['tabular-nums'] };
 
@@ -60,10 +60,10 @@ function specOf(id: string): { art?: ArtSpec; photo?: string } | null {
 /** Service art at a fixed size. Live catalogue: art.key = a built-in drawing; no key -> photo if given, else the generic
  *  drawing (art/generic.tsx) from art.icon + art.accent in the same style, so dashboard-added services look like the rest.
  *  Ids without a spec: the drawing for the id, else the 3D render / photo. */
-export function SvcArt({ id, size, cover, h, radius = 12, noPhoto }: { id: string; size: number; cover?: boolean; h?: number; radius?: number; noPhoto?: boolean }) {
+export function SvcArt({ id, size, cover, h, radius = 12, photo }: { id: string; size: number; cover?: boolean; h?: number; radius?: number; photo?: boolean }) {
   const spec = specOf(id);
-  if (size > 0 && !noPhoto && spec && spec.photo) { const H = h || size; return <Image source={{ uri: spec.photo }} resizeMode="cover" style={{ width: size, height: H, borderRadius: radius }} />; }
-  const pk = size > 0 && !noPhoto ? SVC_PHOTO[id] : undefined;
+  if (size > 0 && photo && spec && spec.photo) { const H = h || size; return <Image source={{ uri: spec.photo }} resizeMode="cover" style={{ width: size, height: H, borderRadius: radius }} />; }
+  const pk = size > 0 && photo ? SVC_PHOTO[id] : undefined;
   if (pk && pk in RATIO) {
     // real photo of our washer (portrait): fill the box, biased to the top so the face and hands stay in frame
     const H = h || size, ih = Math.max(H, size / RATIO[pk as ImgKey]);

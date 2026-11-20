@@ -108,7 +108,7 @@ export default function TabBar() {
   return (
     <>
       <View pointerEvents="box-none" style={s.outer}>
-        <View style={[s.bar, { backgroundColor: T.tabBg, borderTopColor: T.page.line, height: TAB_H + pb, paddingBottom: 4 + pb, shadowOpacity: T.day ? 0.07 : 0 }]}>
+        <View style={[s.bar, { backgroundColor: T.tabBg, borderTopColor: T.day ? C.hairViolet : T.page.line, height: TAB_H + pb, paddingBottom: 4 + pb, shadowOpacity: T.day ? 0.07 : 0 }]}>
           {LEFT.map(cell)}
           {fab ? <View style={{ width: MID }} /> : null}
           {RIGHT.map(cell)}
