@@ -68,7 +68,9 @@ export default function Auth() {
   const scroll = useRef<any>(null);
   const working = useRef(false);
 
-  const toCard = () => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 120);   // keeps the sheet's field above the keyboard
+  // Android: never restyle or scroll the page while a field is gaining focus. A focus-time re-layout made the keyboard open and close at once on
+  // build 21 (phone step). The window resizes for the keyboard by itself; only the longer sign-up steps nudge the sheet up, after the keyboard is out.
+  const toCard = () => { if (step === 'phone') return; setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 350) };
   useEffect(() => { scroll.current?.scrollTo({ y: 0, animated: false }); setErr(''); }, [step]);
 
   // resend countdown
@@ -158,12 +160,11 @@ export default function Auth() {
 
   /* ---------- the sheet content ---------- */
   const six = OTP_N > 4;
-  const [pf, setPf] = useState(false);
   const phoneField = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, borderRadius: 16, borderWidth: 1.5, borderColor: pf || phone ? L.violet : 'transparent', backgroundColor: pf ? '#fff' : L.raised, paddingHorizontal: SP.l, ...(pf ? { shadowColor: C.violet, shadowOpacity: 0.16, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } } : null) }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, borderRadius: 16, borderWidth: 1.5, borderColor: phone ? L.violet : 'rgba(84,9,218,0.18)', backgroundColor: L.raised, paddingHorizontal: SP.l }}>
       <Txt weight={600} size={18} color={L.ink} style={NUM}>+91</Txt>
       <View style={{ width: 1, height: 24, backgroundColor: L.line }} />
-      <TextInput value={shown} onChangeText={onPhone} onFocus={() => { setPf(true); toCard() }} onBlur={() => setPf(false)} onSubmitEditing={sendCode} inputMode="numeric" keyboardType="number-pad" maxLength={16} autoComplete="tel-national" textContentType="telephoneNumber"
+      <TextInput value={shown} onChangeText={onPhone} onSubmitEditing={sendCode} inputMode="numeric" keyboardType="number-pad" maxLength={16} autoComplete="tel-national" textContentType="telephoneNumber"
         placeholder="Mobile number" placeholderTextColor={L.muted} accessibilityLabel="Mobile number"
         style={{ flex: 1, minWidth: 0, fontFamily: F.b500, fontSize: 20, letterSpacing: 0.4, color: L.ink, paddingVertical: 14, fontVariant: ['tabular-nums'], outlineStyle: 'none' } as any} />
     </View>
@@ -202,8 +203,7 @@ export default function Auth() {
               onKeyPress={e => { if (e.nativeEvent.key === 'Backspace' && !d && i > 0) { const c = code.slice(); c[i - 1] = ''; setCode(c); boxes.current[i - 1]?.focus() } }}
               inputMode="numeric" keyboardType="number-pad" textContentType={i ? undefined : 'oneTimeCode'} autoComplete={i ? 'off' : 'sms-otp'} maxLength={OTP_N} selectTextOnFocus editable={!busy}
               accessibilityLabel={`Digit ${i + 1}`}
-              style={[{ flex: 1, maxWidth: 64, height: 68, textAlign: 'center', padding: 0, fontFamily: F.b600, fontSize: six ? 26 : 30, color: L.ink, fontVariant: ['tabular-nums'], backgroundColor: on ? '#fff' : L.raised, borderWidth: 1.5, borderColor: on || d ? L.violet : 'transparent', borderRadius: 16, outlineStyle: 'none' } as any,
-                on && { shadowColor: C.violet, shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }]} />
+              style={[{ flex: 1, maxWidth: 64, height: 68, textAlign: 'center', padding: 0, fontFamily: F.b600, fontSize: six ? 26 : 30, color: L.ink, fontVariant: ['tabular-nums'], backgroundColor: L.raised, borderWidth: 1.5, borderColor: on || d ? L.violet : 'rgba(84,9,218,0.18)', borderRadius: 16, outlineStyle: 'none' } as any]} />
           );
         })}
       </Animated.View>
@@ -261,11 +261,17 @@ export default function Auth() {
   if (step === 'phone') top = (
     <View style={{ paddingTop: ins.top + SP.l }}>
       <FadeUp style={{ paddingHorizontal: PAD + 4 }}>
-        <BrandLogo w={96} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <BrandLogo w={96} />
+          <Pressable onPress={() => act.continueAsGuest()} accessibilityRole="button" accessibilityLabel="Skip login and look around" hitSlop={10}
+            style={({ pressed }) => ({ paddingHorizontal: 16, height: 36, borderRadius: 18, justifyContent: 'center', backgroundColor: pressed ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' })}>
+            <Txt weight={600} size={14} color="#fff">Skip</Txt>
+          </Pressable>
+        </View>
         <Txt weight={700} size={32} color="#fff" style={{ lineHeight: 40, marginTop: SP.l }}>Your car, washed{'\n'}<Txt weight={700} size={32} color={C.saffron}>every morning.</Txt></Txt>
         <Txt size={15} color="rgba(255,255,255,0.86)" style={{ lineHeight: 22, marginTop: SP.s, maxWidth: 330 }}>A washer comes to where it's parked. Pressure wash only, no pocha.</Txt>
       </FadeUp>
-      <View style={{ marginTop: SP.l, marginBottom: SP.m }}><PhotoStrip width={W} h={100} /></View>
+      <View style={{ marginTop: SP.l, marginBottom: SP.m }}><PhotoStrip width={W} h={150} /></View>
     </View>
   );
   else top = (

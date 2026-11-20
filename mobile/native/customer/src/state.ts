@@ -94,7 +94,9 @@ export function go(t: Tab) {
 /* ---------- getters ---------- */
 export const A = () => S.acct as Account;
 export const car = () => A().cars[Math.min(S.carIdx, A().cars.length - 1)];
-export const realAcct = () => !!(S.session && S.session.real);
+export const realAcct = () => !!(S.session && S.session.real && !S.session.guest);
+/** browsing without logging in ("Skip" on the sign-in screen): an empty local account, nothing is written anywhere */
+export const isGuest = () => !!(S.session && S.session.guest);
 export const payReal = () => PAY_LIVE && realAcct() && CASHFREE_AVAILABLE;
 export const carImg = (c: Car): string | null => c.photo || c.img || null;   // an IMG key or a data/https URI; pass through img.src()
 export const daysLeft = (c: Car) => daysLeftOf(c, realAcct());
@@ -402,7 +404,7 @@ export async function boot() {
   if (S.session && S.acct && !S.px) S.px = S.session.real ? emptyPX() : demoPX();
   ui = { ...ui, ready: true }; renderAll();
   AppState.addEventListener('change', st => { if (st === 'active' && refreshToday() && !sheetOpen()) renderAll() });
-  if (REAL && S.session && AUTH) {
+  if (REAL && S.session && !S.session.guest && AUTH) {
     // the Firebase sign-in is the session: lost or a different number goes back to sign-in
     await AUTH.ready();
     if (!AUTH.phone() || AUTH.phone10() !== S.session.phone) { S.session = null; S.acct = null; S.carIdx = 0; stopSync(); commit(); return }
@@ -953,6 +955,19 @@ export const act = {
     S.carIdx = 0; S.px = emptyPX(); pendingSignup = null; enter(true);
   },
   async resendOtp(phone10: string) { await act.sendOtp(phone10); toast('New code sent') },
+  /** "Skip" on sign-in: straight into the app as a guest. Anything that needs an account sends them back to log in (see GUEST_BLOCKED). */
+  continueAsGuest() {
+    S.session = { token: 'guest', phone: '', real: REAL, guest: true };
+    S.acct = { name: 'Guest', phone: '', since: fmt(TODAY, { month: 'long', year: 'numeric' }), area: '', prefs: { photo: true, pay: true, drops: true },
+      cars: [{ id: 'g0', name: 'Your car', make: '', plate: '', plan: DEFAULT_PLAN, washer: '', parking: '', window: 'Before 7:30 AM', keys: "I'll unlock it",
+        img: null, till: null, status: 'new', doneAt: null, mins: 0, streak: 0, washes: 0, paused: null, note: null, rating: 0 }],
+      payments: [], orders: [], requests: [], bookings: [] } as any;
+    S.carIdx = 0; S.px = emptyPX(); enter(false);
+  },
+  /** guest -> back to the sign-in screen; the cart and chosen services stay so they can finish after logging in */
+  askLogin(why = 'Log in to continue') {
+    if (!isGuest()) return; try { closeSheet() } catch (e) {} S.session = null; S.acct = null; S.carIdx = 0; resetPX(); ui = { ...ui, tab: 'home', page: null, pages: [] }; commit(); toast(why);
+  },
   async logout() {
     // wipe the saved account (name, address, cars, orders) from the phone, not just from memory; only the theme stays
     S.session = null; S.acct = null; S.cart = {}; S.svc = {}; S.carIdx = 0; resetPX(); stopSync(); if (SIM) { clearTimeout(SIM.t); SIM = null }
@@ -1158,6 +1173,18 @@ export const act = {
     SIM.t = setTimeout(tick, 900);
   },
 };
+
+// a guest can browse and fill the cart; these need a real account, so they open sign-in instead
+const GUEST_BLOCKED = ['addCar', 'carPhoto', 'pause', 'resume', 'note', 'removeNote', 'issue', 'closeReq', 'rate', 'payPlan', 'switchPlan', 'tip', 'checkoutCart', 'book',
+  'cancelBooking', 'bookServices', 'togglePref', 'setName', 'deleteAccount', 'placeOrder', 'cancelJob', 'rescheduleJob', 'rateJob', 'saveAddress', 'deleteAddress',
+  'saveProfile', 'topUp', 'claimGift', 'buyPass', 'shareReferral', 'findFriends', 'requestDeletion'] as const;
+for (const k of GUEST_BLOCKED) {
+  const f = (act as any)[k]; if (typeof f !== 'function') continue;
+  (act as any)[k] = function (this: any, ...args: any[]) {
+    if (isGuest()) { act.askLogin(); return Promise.reject(Object.assign(new Error('Log in to continue'), { guest: true })) }
+    return f.apply(this, args);
+  };
+}
 /** a page or tab by name (custom buttons); names that a feature switch turned off do nothing */
 export function openNamed(v: string) {
   const need: Record<string, keyof Features> = { refer: 'refer', pass: 'pass', money: 'wallet', refunds: 'wallet', coupons: 'coupons', store: 'store', plan: 'plans', schedule: 'scheduled' };

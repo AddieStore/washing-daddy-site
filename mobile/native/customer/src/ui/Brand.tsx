@@ -1,7 +1,8 @@
 /* Brand shell shared by sign-in and the permission primer: a violet gradient top and a white sheet with rounded top corners.
    After login the app sits on the same violet-tinted canvas (C.canvas), so the hand-off is one colour family. */
-import { ReactNode, useEffect, useRef } from 'react';
-import { Animated, Easing, Image, StyleSheet, View, StyleProp, ViewStyle } from 'react-native';
+import { ReactNode, useEffect, useMemo, useRef } from 'react';
+import { Image, PanResponder, Pressable, StyleSheet, View, StyleProp, ViewStyle } from 'react-native';
+import Animated, { Easing, SharedValue, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C } from '../theme';
 import { FadeUp, useRM } from './motion';
@@ -28,25 +29,80 @@ export function Sheet({ children, style, onLayout }: { children: ReactNode; styl
 }
 
 const SLIDE_KEYS = ['slide0', 'slide1', 'slide2', 'slide3', 'slide4', 'slide5', 'slide6'] as const;
-/** gently drifting strip of the real washer photos (stands still with reduced motion) */
-export function PhotoStrip({ width, h = 132 }: { width: number; h?: number }) {
-  const rm = useRM(), x = useRef(new Animated.Value(0)).current;
-  const cw = Math.round(h * 0.8), gap = 10, set = SLIDE_KEYS.length * (cw + gap);
+const N = SLIDE_KEYS.length;
+
+/** one card of the ring; all motion is derived from the shared `pos` on the UI thread */
+function RingCard({ i, pos, cw, h, spacing, onPick }: { i: number; pos: SharedValue<number>; cw: number; h: number; spacing: number; onPick: (i: number) => void }) {
+  const st = useAnimatedStyle(() => {
+    // signed distance (in cards) from the front, wrapped to [-N/2, N/2]
+    let d = (i - pos.value) % N;
+    if (d > N / 2) d -= N; else if (d < -N / 2) d += N;
+    const a = Math.abs(d), c = Math.min(a, 1);
+    const sc = 1 - 0.25 * c - 0.06 * Math.min(Math.max(a - 1, 0), 1);
+    const sign = d < 0 ? -1 : 1;
+    // first step is wide, later steps tuck behind it
+    const x = sign * spacing * (Math.min(a, 1) + 0.55 * Math.min(Math.max(a - 1, 0), 2));
+    return {
+      opacity: a >= 2.6 ? 0 : 1 - 0.55 * c - 0.3 * Math.min(Math.max(a - 1, 0), 1.6),
+      zIndex: Math.round(100 - a * 10),
+      transform: [{ perspective: 700 }, { translateX: x }, { scale: sc }, { rotateY: sign * Math.min(a, 1.2) * 32 + 'deg' }],
+    };
+  });
+  // dim overlay grows with distance
+  const dim = useAnimatedStyle(() => {
+    let d = (i - pos.value) % N;
+    if (d > N / 2) d -= N; else if (d < -N / 2) d += N;
+    return { opacity: Math.min(Math.abs(d), 1) * 0.35 };
+  });
+  return (
+    <Animated.View style={[{ position: 'absolute', top: 0, width: cw, height: h }, st]}>
+      <Pressable onPress={() => onPick(i)} accessibilityRole="image" accessibilityLabel={'Washer photo ' + (i + 1)} style={{ flex: 1, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.12)' }}>
+        <Image source={src(SLIDE_KEYS[i])!} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#1A0650' }, dim]} />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+/** touch-scrollable 3D ring of the real washer photos: drag/fling to rotate (infinite, snaps to one centred photo),
+    centre photo biggest, neighbours smaller/tilted/dimmed, tap a side photo to bring it front, gentle auto-rotate
+    (off with reduced motion). Only horizontal drags are claimed, so page scroll and the keyboard are untouched. */
+export function PhotoStrip({ width, h = 132, autoMs = 3000 }: { width: number; h?: number; autoMs?: number }) {
+  const rm = useRM();
+  const cw = Math.round(h * 1.05), spacing = Math.min(cw * 0.78, (width - cw) / 2 - 6);
+  const pos = useSharedValue(0);
+  const last = useRef(0), start = useRef(0), dragging = useRef(false);
+  const snapTo = (t: number, ms = 420) => { pos.value = withTiming(t, { duration: ms, easing: Easing.out(Easing.cubic) }); };
+  const touch = () => { last.current = Date.now(); };
+  const pick = (i: number) => {
+    touch();
+    let d = (i - pos.value) % N; if (d > N / 2) d -= N; else if (d < -N / 2) d += N;
+    if (Math.abs(d) > 0.01) snapTo(Math.round(pos.value + d));
+  };
+  const pan = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy) * 1.4,
+    onPanResponderTerminationRequest: () => false,
+    onPanResponderGrant: () => { touch(); dragging.current = true; cancelAnimation(pos); start.current = pos.value; },
+    onPanResponderMove: (_, g) => { pos.value = start.current - g.dx / spacing; },
+    onPanResponderRelease: (_, g) => { dragging.current = false; touch(); snapTo(Math.round(start.current - (g.dx + g.vx * 180) / spacing), 480); },
+    onPanResponderTerminate: () => { dragging.current = false; touch(); snapTo(Math.round(pos.value)); },
+  }), [spacing]);
   useEffect(() => {
     if (rm) return;
-    const a = Animated.loop(Animated.timing(x, { toValue: -set, duration: 46000, easing: Easing.linear, useNativeDriver: true }));
-    a.start();
-    return () => a.stop();
-  }, [rm, set]);
+    const t = setInterval(() => {
+      if (dragging.current || Date.now() - last.current < 4500) return;
+      snapTo(Math.round(pos.value) + 1, 700);
+    }, autoMs);
+    return () => clearInterval(t);
+  }, [rm, autoMs]);
   return (
-    <FadeUp delay={120} style={{ width, height: h + 16, overflow: 'hidden' }}>
-      <Animated.View style={{ flexDirection: 'row', gap, paddingLeft: 20, transform: [{ translateX: x }], width: set * 2 + 20 }}>
-        {[...SLIDE_KEYS, ...SLIDE_KEYS].map((k, i) => (
-          <View key={i} style={{ width: cw, height: h, marginTop: i % 2 ? 16 : 0, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.12)' }}>
-            <Image source={src(k)!} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
-          </View>
-        ))}
-      </Animated.View>
+    <FadeUp delay={120} style={{ width, height: h + 8 }}>
+      <View {...pan.panHandlers} onTouchStart={touch} style={{ width, height: h + 8, alignItems: 'center', paddingTop: 4 }}>
+        <View style={{ width: cw, height: h }}>
+          {SLIDE_KEYS.map((_, i) => <RingCard key={i} i={i} pos={pos} cw={cw} h={h} spacing={spacing} onPick={pick} />)}
+        </View>
+      </View>
     </FadeUp>
   );
 }

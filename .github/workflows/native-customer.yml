@@ -4,6 +4,7 @@
 # WD_RELEASE=1 makes app.config.ts refuse to fall back to demo mode.
 # GOOGLE_MAPS_API_KEY (secret) is the Maps key for the address map (Maps SDK for Android, Geocoding, Places API New);
 # without it the app builds fine and shows "Map unavailable" with a typed address instead.
+# The .aab is the Play Store upload file: sign it with the release key (jarsigner) before uploading.
 # The build is signed with Expo's debug key: re-sign with the release key from mobile/signing/ outside CI,
 # the same as the old APKs, so installed apps update in place.
 name: native-customer
@@ -60,6 +61,9 @@ jobs:
       - run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
         env: { GOOGLE_MAPS_API_KEY: '${{ secrets.GOOGLE_MAPS_API_KEY }}' }
         working-directory: mobile/native/customer/android
+      - run: ./gradlew bundleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
+        env: { GOOGLE_MAPS_API_KEY: '${{ secrets.GOOGLE_MAPS_API_KEY }}' }
+        working-directory: mobile/native/customer/android
       - name: Which native packages were linked
         run: |
           f=$(find android/app/build/generated -name PackageList.java | head -1); echo "PackageList: $f"
@@ -69,10 +73,13 @@ jobs:
         run: |
           mkdir -p out
           cp android/app/build/outputs/apk/release/app-release.apk out/customer-unsigned.apk
+          cp android/app/build/outputs/bundle/release/app-release.aab out/customer-unsigned.aab
       - uses: actions/upload-artifact@v4
         with:
           name: washing-daddy-customer-native
-          path: mobile/native/customer/out/customer-unsigned.apk
+          path: |
+            mobile/native/customer/out/customer-unsigned.apk
+            mobile/native/customer/out/customer-unsigned.aab
           if-no-files-found: error
       - name: Commit APK back to the branch
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
@@ -80,7 +87,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f mobile/native/customer/out/customer-unsigned.apk
+          git add -f mobile/native/customer/out/customer-unsigned.apk mobile/native/customer/out/customer-unsigned.aab
           git diff --staged --quiet && exit 0
           git commit -m "Build customer native APK [skip ci]"
           for i in 1 2 3 4 5; do
