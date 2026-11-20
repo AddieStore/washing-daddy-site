@@ -31,7 +31,10 @@ export type Washer = { name: string; rating: number; jobs: number; photo?: strin
 export type Job = {
   id: string; mode: CartMode; status: JobStatus; date: string; slot: string; lines: JobLine[];
   total: number; saved: number; mins: number; addressId?: string; recur?: string;
-  pay: 'paid' | 'pay_on_arrival' | 'refunded' | 'pass'; payVia?: string; coupon?: string | null;
+  pay: 'paid' | 'pay_on_arrival' | 'refunded' | 'pass' | 'pending' | 'failed' | 'cancelled'; payVia?: string; coupon?: string | null;
+  payRef?: string;      // gateway payment id (Razorpay pay_..., Cashfree cf_payment_id) or our order id
+  orderId?: string;     // our payorders id (WD...), shown as the booking reference until the server gives a booking id
+  eta?: string;         // instant: when the washer should reach the car (ISO, IST); 15 min within 1 km
   washer?: Washer | null; stars?: number; review?: string; createdAt: string;
 };
 
@@ -39,6 +42,7 @@ export type Job = {
 export type PX = {
   addresses: Address[]; addrId: string | null; wallet: Wallet; refunds: Refund[]; passes: PassHold[];
   referral: ReferralState; jobs: Job[]; usedCoupons: string[]; deletion?: { at: string; status: 'requested' } | null;
+  attempts?: Job[];   // bookings whose payment was cancelled or failed: kept on the phone so Bookings shows them
 };
 export const emptyPX = (): PX => ({ addresses: [], addrId: null, wallet: { cash: 0, promo: 0, ledger: [] }, refunds: [], passes: [], referral: { completed: 0, earned: 0, pending: 0, ledger: [] }, jobs: [], usedCoupons: [], deletion: null });
 

@@ -39,7 +39,7 @@ export default function Money({ tab }: { tab?: boolean }) {
   const add = async () => {
     const e = topUpCheck(amt); if (e) { toast(e); return }
     setBusy(true);
-    try { const r = await act.topUp(amt); if (!r.pending) { confetti(); toast(`${rs(amt)} added to ${WALLET.name}`) } } catch (x: any) { toast(x.message) }
+    try { const r = await act.topUp(amt); if (!r.shown && !r.pending) { confetti(); toast(`${rs(amt)} added to ${WALLET.name}`) } } catch (x: any) { toast(x.message) }
     setBusy(false);
   };
   const refresh = async () => { setRef(true); try { await act.refresh() } catch {} setRef(false) };

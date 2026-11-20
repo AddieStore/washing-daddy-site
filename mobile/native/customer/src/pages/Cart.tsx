@@ -79,7 +79,7 @@ export default function Cart() {
     if (instantShut) return toast(st.label);
     if (!addr) { toast('Add where your car is parked'); return openAddressPicker() }
     setBusy(true);
-    try { const r = await act.placeOrder(); if (r.pending) toast('Complete the payment to confirm your booking'); setOk({ paid: r.paid, pending: r.pending }) } catch (e: any) { toast(e?.message || 'Could not book. Try again.') }
+    try { const r = await act.placeOrder(); if (!r.shown) { if (r.pending) toast('Complete the payment to confirm your booking'); setOk({ paid: r.paid, pending: r.pending }) } } catch (e: any) { toast(e?.message || 'Could not book. Try again.') }
     setBusy(false);
   };
   const modeLine = mode === 'scheduled' ? (w ? whenText(w) : null) : mode === 'recurring' && rc ? `${RECURRING.find(r => r.id === rc.freq)?.label}, ${rc.freq === 'alt' ? 'every other day' : rc.days.map(d => DOW[d]).join(' & ')} · from ${whenText({ date: rc.start, slot: rc.slot })}` : null;

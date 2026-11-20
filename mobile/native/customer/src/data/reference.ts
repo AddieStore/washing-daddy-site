@@ -340,7 +340,7 @@ export const WALLET = {
 /* ---- WD Pass (prepaid visits) ---- */
 export type PassPlan = { id: string; name: string; title: string; visits: number; price: number; mrp: number; days: number; covers: string[]; maxMins: number; benefits: [string, string][]; faqs: [string, string][]; status?: LiveStatus };
 export const PASS_PLANS: PassPlan[] = [
-  { id: 'pass3', name: 'WD Pass', title: 'Exterior Wash', visits: 3, price: 349, mrp: 447, days: 30, covers: ['ext', 'foam', 'tyre', 'glass', 'wash'], maxMins: 35,
+  { id: 'pass3', name: 'WD Pass', title: 'Exterior Wash', visits: 3, price: 199, mrp: 447, days: 30, covers: ['ext', 'foam', 'tyre', 'glass', 'wash'], maxMins: 35,
     benefits: [['Save on every booking', 'Each wash costs less than a single booking'], ['Flexible bookings', 'Use a visit for any covered service, instant or scheduled'], ['30 days to use', 'Your visits stay valid for 30 days from purchase']],
     faqs: [['Can I use my visits whenever I want?', 'Yes. Book instant or scheduled, any day within 30 days of buying the pass.'],
       ['What services can I use my pass for?', 'Exterior pressure wash, foam wash, tyre and rim polish, glass care and the WD Wash pack.'],
