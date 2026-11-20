@@ -785,7 +785,9 @@ function fromOndemand(id: string, d: any): Job {
     mins: lines.reduce((a, l) => a + l.mins * l.q, 0), addressId: d.address_id || undefined, pay: d.refunded ? 'refunded' : d.pass_id ? 'pass' : d.paid ? 'paid' : 'pay_on_arrival', payVia: d.pay_via || undefined,
     coupon: d.coupon || null, washer: d.washer_id ? { name: d.washer_name || d.washer_id, rating: +d.washer_rating || 0, jobs: +d.washer_jobs || 0, photo: d.washer_photo || null } : null,
     stars: r ? r.stars : undefined, review: r ? r.review : undefined, createdAt: d.created_at || '',
-    payRef: d.gateway_ref || d.pay_ref || undefined, orderId: d.pay_ref || undefined, eta: d.eta || etaFrom(d.mode, d.created_at) };
+    payRef: d.gateway_ref || d.pay_ref || undefined, orderId: d.pay_ref || undefined, eta: d.eta || etaFrom(d.mode, d.created_at),
+    washerAt: Number.isFinite(+d.washer_lat) && Number.isFinite(+d.washer_lng) && d.washer_lat !== '' ? { lat: +d.washer_lat, lng: +d.washer_lng, at: String(d.washer_loc_at || '') } : undefined,
+    carAt: Number.isFinite(+d.lat) && Number.isFinite(+d.lng) && d.lat !== '' && d.lat != null ? { lat: +d.lat, lng: +d.lng } : undefined };
 }
 // instant: a washer within 1 km reaches the car in 15 minutes
 export const ETA_MIN = 15;
