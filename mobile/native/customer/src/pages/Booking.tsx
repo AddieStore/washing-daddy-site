@@ -12,7 +12,7 @@ import { inr } from '../data/dates';
 import { SHOW_RATINGS } from '../data/reference';
 import { PageBar } from './Stub';
 import { G, card, Tap, Photo, PrimaryBtn, TNUM } from './parts';
-import { trackable } from './Bookings';
+import { JobRider, showsRider } from '../ui/JobRider';
 import { Stars, STAR_WORDS, durText, washerImg, washerSub, STATUS_TEXT, IcoBox, refundNote, POLICY, openRateSheet, openCancelSheet, openRescheduleSheet, openBookingHelp } from '../sheets/bookings';
 
 const STEPS = ['Booked', 'Washer assigned', 'On the way', 'Wash in progress', 'Completed'];
@@ -115,7 +115,7 @@ export default function Booking({ id }: { id: string }) {
 
         {PAY_BANNER[j.pay] ? <View style={{ backgroundColor: PAY_BANNER[j.pay].bg, borderRadius: 16, padding: 16 }}><Txt weight={600} size={15} color={PAY_BANNER[j.pay].fg}>{PAY_BANNER[j.pay].t}</Txt><Txt size={13} color={PAY_BANNER[j.pay].fg} style={{ marginTop: 4, lineHeight: 19 }}>{PAY_BANNER[j.pay].s}</Txt>{j.pay !== 'pending' ? <PrimaryBtn outline small label="Chat with us" onPress={() => act.whatsapp(`Hi Washing Daddy, about my booking ${ref}.`)} style={{ marginTop: 12 }} /> : null}</View> : null}
 
-        {trackable(j) && !PAY_BANNER[j.pay] ? <FadeUp><Rider j={j} /></FadeUp> : null}
+        {showsRider(j) ? <FadeUp><JobRider j={j} /></FadeUp> : null}
 
         <View style={card({ padding: 16 })}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
