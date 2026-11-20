@@ -13,7 +13,7 @@ import { CAR_SERVICES, CART_MODES, RECURRING, WALLET, type CartMode } from '../d
 import { openAddressPicker } from '../sheets/address';
 import { openSlotSheet, openRecurSheet, openBillSheet } from '../sheets/slot';
 import { PageBar } from './Stub';
-import { CountUp } from '../ui/motion';
+import { CountUp, FadeUp } from '../ui/motion';
 import { G, card, Photo, AddBtn, PrimaryBtn, SuccessTick, Price, TNUM, SHADOW_F, PAGE_BG, inr, Tap } from './parts';
 
 const ND = Platform.OS !== 'web';
@@ -41,6 +41,28 @@ const Rowx = ({ icon, title, sub, onPress, last, right }: { icon: React.ReactNod
     {right}<Chev size={16} color={G.mute} strokeWidth={1.5} />
   </Pressable>
 );
+
+/* one cart line: the left part (photo, name, price, chevron) opens the service; the stepper is a separate hit area */
+function LineRow({ l, i }: { l: ReturnType<typeof svcLines>['lines'][number]; i: number }) {
+  return (
+    <FadeUp index={i} distance={10} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <Tap label={`${l.name}${l.variantLabel ? ', ' + l.variantLabel : ''}. See what you get`} scaleTo={0.97} onPress={() => openPage({ k: 'svc', id: l.id })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0 }}>
+        <Photo id={l.id} radius={10} pad={4} style={{ width: 52, height: 52 }} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Txt weight={500} size={14} numberOfLines={2} style={{ lineHeight: 20 }}>{l.name}</Txt>
+          {l.variantLabel ? <Txt size={12} color={G.mute} style={{ lineHeight: 16 }}>{l.variantLabel}</Txt> : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Price v={l.total} size={14} />
+            {l.mrp > l.price ? <Price v={l.mrp * l.q} size={12} weight={400} strike /> : null}
+            <Txt size={12} weight={500} color={G.violet}>What you get</Txt>
+          </View>
+        </View>
+        <Chev size={16} color={G.mute} strokeWidth={1.5} />
+      </Tap>
+      <AddBtn size="lg" qty={l.q} onAdd={() => act.addSvc(l.key)} onSub={() => act.subSvc(l.key)} unit={l.mins * l.q + ' mins'} />
+    </FadeUp>
+  );
+}
 
 export default function Cart() {
   useApp();
@@ -88,20 +110,7 @@ export default function Cart() {
             </View>
             <View style={card({ padding: 16 })}>
               <View style={{ gap: 16 }}>
-                {lines.map(l => (
-                  <View key={l.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <Photo id={l.id} radius={10} pad={4} style={{ width: 52, height: 52 }} />
-                    <View style={{ flex: 1 }}>
-                      <Txt weight={500} size={14} numberOfLines={2} style={{ lineHeight: 20 }}>{l.name}</Txt>
-                      {l.variantLabel ? <Txt size={12} color={G.mute} style={{ lineHeight: 16 }}>{l.variantLabel}</Txt> : null}
-                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                        <Price v={l.total} size={14} />
-                        {l.mrp > l.price ? <Price v={l.mrp * l.q} size={12} weight={400} strike /> : null}
-                      </View>
-                    </View>
-                    <AddBtn size="lg" qty={l.q} onAdd={() => act.addSvc(l.key)} onSub={() => act.subSvc(l.key)} unit={l.mins * l.q + ' mins'} />
-                  </View>
-                ))}
+                {lines.map((l, i) => <LineRow key={l.key} l={l} i={i} />)}
               </View>
               <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 16, backgroundColor: G.raised, borderRadius: 10, padding: 10 }}>
                 <Info size={16} color={G.mute} strokeWidth={1.5} /><Txt size={12} color={G.sub} style={{ flex: 1, lineHeight: 16 }}>Slots may vary based on washer availability and the selected service.</Txt>

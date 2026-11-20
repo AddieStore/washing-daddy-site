@@ -16,6 +16,7 @@ export type Rewash = { id: string; carId: string; spots: string[]; open: boolean
 export type Booking = { id: string; carId: string; type: string; what: string; date: string; slot: string };
 export type Account = {
   name: string; phone: string; since: string; area: string; status?: string;
+  mode?: 'instant' | 'monthly';   // what they picked at sign-up
   prefs: { photo: boolean; pay: boolean; drops: boolean };
   cars: Car[]; payments: Payment[]; orders: Order[]; requests: Rewash[]; bookings: Booking[];
   credit?: number;   // Referral Credit in rupees from wd-pay-lookup, read-only

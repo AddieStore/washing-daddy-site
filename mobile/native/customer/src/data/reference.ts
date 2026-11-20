@@ -19,7 +19,7 @@ export const PLANS: Plan[] = [
 ];
 
 // Plans that new customers and new cars can no longer pick. Existing cars on them keep their plan. Flip here to sell them again.
-export const HIDDEN_FROM_NEW: PlanId[] = ['legacy', 'std'];
+export const HIDDEN_FROM_NEW: PlanId[] = ['legacy'];   // new customers always see the four plans: Standard, Pro, Exclusive, Reserve
 export const sellablePlans = (): Plan[] => PLANS.filter(p => !HIDDEN_FROM_NEW.includes(p.id));
 export const DEFAULT_PLAN: PlanId = 'pro';
 export const fromPrice = (): number => Math.min(...sellablePlans().map(p => p.price));
