@@ -67,6 +67,7 @@ export function JobCard({ j, onPress }: { j: Job; onPress: () => void }) {
     <Tap onPress={onPress} style={card({ padding: 16 })}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
         <Txt weight={500} size={17} style={{ flex: 1 }}>{jobTitle(j)}</Txt>
+        {j.pay === 'pending' || j.pay === 'failed' || j.pay === 'cancelled' ? <View style={{ backgroundColor: j.pay === 'pending' ? 'rgba(255,186,8,0.22)' : 'rgba(220,38,38,0.08)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, marginTop: 1 }}><Txt weight={500} size={12} color={j.pay === 'pending' ? '#8A5A00' : G.neg}>{j.pay === 'pending' ? 'Payment pending' : j.pay === 'failed' ? 'Payment failed' : 'Payment cancelled'}</Txt></View> : null}
         {!done ? <View style={{ backgroundColor: gone ? 'rgba(220,38,38,0.08)' : 'rgba(84,9,218,0.08)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, marginTop: 1 }}><Txt weight={500} size={12} color={tone}>{STATUS_TEXT[j.status]}</Txt></View> : null}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>

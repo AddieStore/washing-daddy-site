@@ -276,6 +276,96 @@ const rec = r => { all.push(r); return r; };
     const down = rec(await call(W3, 'wd-wallet-topup', { amount: 500 }));
     check('Cashfree down: 502 + alert, payorder marked failed', down.status === 502 && !!down.alert && [...W3.docs.entries()].some(([k, d]) => k.startsWith('payorders/') && d.data.status === 'failed'), down);
   }
+  // ================= Razorpay first, Cashfree backup =================
+  {
+    const RK = 'rzp_test_secret_not_real', RHOOK = 'rzp_hook_secret_not_real';
+    const RENV = Object.assign({}, ENV, { RAZORPAY_KEY_ID: 'rzp_test_KEYID', RAZORPAY_KEY_SECRET: RK, RAZORPAY_WEBHOOK_SECRET: RHOOK });
+    const fakeRzp = W => {
+      W.rzOrders = new Map(); W.rzPays = new Map(); W.rzRefunds = []; W.rzFail = false; let n = 0;
+      W.route = async o => {
+        if (!o.url.startsWith('https://api.razorpay.com/v1/')) return null;
+        const res = (statusCode, body) => ({ statusCode, body, headers: {} });
+        if (o.headers.Authorization !== 'Basic ' + Buffer.from('rzp_test_KEYID:' + RK).toString('base64')) return res(401, { error: { code: 'BAD_REQUEST_ERROR', description: 'auth' } });
+        const p = o.url.slice('https://api.razorpay.com/v1'.length);
+        if (o.method === 'POST' && p === '/orders') {
+          if (W.rzFail) return res(500, { error: { description: 'down' } });
+          const ord = Object.assign({ id: 'order_Rz' + String(++n).padStart(8, '0'), status: 'created', amount_paid: 0 }, o.body); W.rzOrders.set(ord.id, ord); return res(200, ord);
+        }
+        let m = /^\/payments\/([^/]+)$/.exec(p);
+        if (o.method === 'GET' && m) { const x = W.rzPays.get(m[1]); return x ? res(200, x) : res(400, { error: { description: 'no payment' } }); }
+        m = /^\/payments\/([^/]+)\/capture$/.exec(p);
+        if (o.method === 'POST' && m) { const x = W.rzPays.get(m[1]); x.status = 'captured'; return res(200, x); }
+        m = /^\/payments\/([^/]+)\/refund$/.exec(p);
+        if (o.method === 'POST' && m) { W.rzRefunds.push(Object.assign({ payment_id: m[1] }, o.body)); return res(200, { id: 'rfnd_1', status: 'processed' }); }
+        return res(400, { error: { description: 'fake razorpay: no route ' + p } });
+      };
+    };
+    // what Razorpay Checkout hands the app after a payment
+    const payRz = (W, rzOrderId, o = {}) => {
+      const ord = W.rzOrders.get(rzOrderId), id = 'pay_Rz' + Math.floor(Math.random() * 1e9);
+      W.rzPays.set(id, { id, order_id: rzOrderId, amount: o.amount || ord.amount, currency: 'INR', status: o.status || 'captured', method: 'upi' });
+      return { razorpay_order_id: rzOrderId, razorpay_payment_id: id, razorpay_signature: crypto.createHmac('sha256', o.key || RK).update(rzOrderId + '|' + id).digest('hex') };
+    };
+    const rc = (W, body, opt = {}) => call(W, 'wd-rzp-confirm', body, Object.assign({ env: RENV }, opt));
+
+    const W = makeWorld(K, seed()); fakeRzp(W);
+    const r = rec(await call(W, 'wd-booking-create', Object.assign(cart(), { rzp: true }), { env: RENV }));
+    const ro = r.body.razorpay || {};
+    check('rzp:true -> Razorpay order for 17640 paise, receipt = our order, key id only (never the secret)', r.status === 200 && r.body.gateway === 'razorpay' && ro.amount === 17640 && ro.keyId === 'rzp_test_KEYID'
+      && W.rzOrders.get(ro.orderId).receipt === r.body.orderId && W.cfOrders.size === 0 && !JSON.stringify(r.body).includes(RK), r);
+    check('payorder remembers the Razorpay order', W.get('payorders/' + r.body.orderId).rzp_order_id === ro.orderId && W.get('payorders/' + r.body.orderId).gateway === 'razorpay');
+    const again = rec(await call(W, 'wd-booking-create', Object.assign(cart(), { rzp: true }), { env: RENV }));
+    check('same request again: same Razorpay order, no second one', again.body.razorpay && again.body.razorpay.orderId === ro.orderId && W.rzOrders.size === 1, again);
+    const old = rec(await call(W, 'wd-booking-create', cart(), { env: RENV }));
+    check('older app (no rzp flag) on the same request: switched to a Cashfree session', old.status === 200 && !!old.body.paymentSessionId && old.body.orderId === r.body.orderId, old);
+    const okP = payRz(W, ro.orderId);
+    const forged = rec(await rc(W, Object.assign({ orderId: r.body.orderId }, okP, { razorpay_signature: 'a'.repeat(64) })));
+    check('forged signature: 400 + alert, nothing fulfilled', forged.status === 400 && !!forged.alert && !W.get('ondemand/' + r.body.bookingId), forged);
+    const thief = rec(await rc(W, Object.assign({ orderId: r.body.orderId }, okP), { phone: OTHER }));
+    check('someone else confirming my order: refused', thief.status === 400 && !W.get('ondemand/' + r.body.bookingId), thief);
+    const conf = rec(await rc(W, Object.assign({ orderId: r.body.orderId }, okP)));
+    const job = W.get('ondemand/' + r.body.bookingId);
+    check('confirm: paid, booking doc via Razorpay with the payment id', conf.status === 200 && conf.body.paid === true && conf.body.bookingId === r.body.bookingId && job && job.paid && job.pay_via === 'Razorpay' && job.gateway_ref === okP.razorpay_payment_id && job.price === 176.4, { conf, job });
+    check('payorder paid via razorpay', W.get('payorders/' + r.body.orderId).paid_gateway === 'razorpay' && W.get('payorders/' + r.body.orderId).rzp_payment_id === okP.razorpay_payment_id);
+    const conf2 = rec(await rc(W, Object.assign({ orderId: r.body.orderId }, okP)));
+    check('confirm twice: still paid, nothing written again', conf2.body.paid === true && !conf2.notify);
+    const hookBody = JSON.stringify({ event: 'order.paid', payload: { order: { entity: { id: ro.orderId, receipt: r.body.orderId, amount_paid: 17640, currency: 'INR' } }, payment: { entity: { id: okP.razorpay_payment_id, method: 'upi' } } } });
+    const hook = h => L.handle('wd-rzp-hook', { env: RENV, http: W.http, sd: W.sd, crypto, now: Date.now() }, { headers: { 'x-razorpay-signature': h }, rawBody: hookBody });
+    const hk = await hook(crypto.createHmac('sha256', RHOOK).update(hookBody).digest('hex'));
+    check('webhook after the app confirmed: 200, no double booking', hk.status === 200 && !hk.notify, hk);
+    const hkBad = await hook(crypto.createHmac('sha256', 'wrong').update(hookBody).digest('hex'));
+    check('webhook with a bad signature: 401', hkBad.status === 401);
+    const cx = rec(await call(W, 'wd-booking-cancel', { bookingId: r.body.bookingId }, { env: RENV }));
+    check('cancel a Razorpay booking: Razorpay refund for 17640 paise, not Cashfree', cx.status === 200 && W.rzRefunds.length === 1 && W.rzRefunds[0].amount === 17640 && W.rzRefunds[0].payment_id === okP.razorpay_payment_id && W.cfRefunds.length === 0, { cx, rz: W.rzRefunds });
+
+    // app closed before confirming: the webhook fulfils it
+    const Wh = makeWorld(K, seed()); fakeRzp(Wh);
+    const p2 = rec(await call(Wh, 'wd-pass-buy', { plan: 'pass3', rzp: true }, { env: RENV }));
+    const rp2 = payRz(Wh, p2.body.razorpay.orderId);
+    const body2 = JSON.stringify({ event: 'order.paid', payload: { order: { entity: { id: p2.body.razorpay.orderId, receipt: p2.body.orderId, amount_paid: p2.body.razorpay.amount, currency: 'INR' } }, payment: { entity: { id: rp2.razorpay_payment_id, method: 'card' } } } });
+    const hk2 = await L.handle('wd-rzp-hook', { env: RENV, http: Wh.http, sd: Wh.sd, crypto, now: Date.now() }, { headers: { 'x-razorpay-signature': crypto.createHmac('sha256', RHOOK).update(body2).digest('hex') }, rawBody: body2 });
+    check('webhook alone (app closed): pass activated', hk2.status === 200 && Wh.get('passes/P' + p2.body.orderId) && Wh.get('passes/P' + p2.body.orderId).status === 'active', hk2);
+    const late = rec(await rc(Wh, Object.assign({ orderId: p2.body.orderId }, rp2)));
+    check('app confirms after the webhook: answers paid', late.status === 200 && late.body.paid === true, late);
+
+    // underpaid / authorised-only / Razorpay down / backup asked for
+    const Wu = makeWorld(K, seed()); fakeRzp(Wu);
+    const t3 = rec(await call(Wu, 'wd-wallet-topup', { amount: 500, rzp: true }, { env: RENV }));
+    const under = rec(await rc(Wu, Object.assign({ orderId: t3.body.orderId }, payRz(Wu, t3.body.razorpay.orderId, { amount: 100 }))));
+    check('payment for less than the order: 502 + alert, no money added', under.status === 502 && !!under.alert && !Wu.get('wallets/' + ME), under);
+    const auth = rec(await rc(Wu, Object.assign({ orderId: t3.body.orderId }, payRz(Wu, t3.body.razorpay.orderId, { status: 'authorized' }))));
+    check('authorised-only payment is captured then fulfilled', auth.body.paid === true && Wu.get('wallets/' + ME).cash === 500, auth);
+    const Wd = makeWorld(K, seed()); fakeRzp(Wd); Wd.rzFail = true;
+    const dn = rec(await call(Wd, 'wd-booking-create', Object.assign(cart(), { rzp: true }), { env: RENV }));
+    check('Razorpay down: Cashfree session instead + alert', dn.status === 200 && dn.body.gateway === 'cashfree' && !!dn.body.paymentSessionId && /Razorpay order failed/.test(dn.alert || ''), dn);
+    const Wb = makeWorld(K, seed()); fakeRzp(Wb);
+    const b1 = rec(await call(Wb, 'wd-booking-create', Object.assign(cart(), { rzp: true }), { env: RENV }));
+    const b2 = rec(await call(Wb, 'wd-booking-create', Object.assign(cart(), { rzp: true, gateway: 'cashfree' }), { env: RENV }));
+    check('backup asked for on the same order: Cashfree session for the same order id', b2.status === 200 && b2.body.gateway === 'cashfree' && b2.body.orderId === b1.body.orderId && !!b2.body.paymentSessionId, b2);
+    const Wn = makeWorld(K, seed());
+    const nokeys = rec(await call(Wn, 'wd-booking-create', Object.assign(cart(), { rzp: true })));
+    check('no Razorpay keys on the server: Cashfree as before', nokeys.status === 200 && nokeys.body.gateway === 'cashfree' && !!nokeys.body.paymentSessionId, nokeys);
+  }
   check('no app-facing reply is ever a 404 (the app would read it as "not live yet")', all.every(r => r.status !== 404), all.filter(r => r.status === 404));
   check('every error reply has ok:false and a message', all.filter(r => r.status >= 400).every(r => r.body.ok === false && typeof r.body.message === 'string' && r.body.message.length > 5));
 
@@ -304,8 +394,8 @@ const rec = r => { all.push(r); return r; };
     const log8t = await run(WF8, 'Cashfree bola (webhook)', { json: { headers: tw.headers, body: JSON.parse(tw.rawBody) }, binary: { data: { data: Buffer.from(tw.rawBody).toString('base64') } } }, { env: ENV, staticData: sd8, http: W.http }).catch(e => ({ err: e.message, order: [] }));
     check('workflow 8: a tip does NOT take the Pronto branch', !log8t.order.includes('Pronto ko bhejo (workflow 13)') && log8t.order.includes('Pronto order?'), log8t.order);
     const s13 = JSON.stringify(WF13) + JSON.stringify(WF8);
-    check('no secrets in either workflow file', !/BEGIN (RSA )?PRIVATE KEY|cf_test_secret|TEST_APP_ID|ya29\./.test(s13));
-    check('every 13 webhook path is unique and POST', new Set(WF13.nodes.filter(n => n.type.endsWith('webhook')).map(n => n.parameters.path)).size === 8 && WF13.nodes.filter(n => n.type.endsWith('webhook')).every(n => n.parameters.httpMethod === 'POST'));
+    check('no secrets in either workflow file', !/BEGIN (RSA )?PRIVATE KEY|cf_test_secret|rzp_test_secret|rzp_hook_secret|TEST_APP_ID|ya29\./.test(s13));
+    check('every 13 webhook path is unique and POST', new Set(WF13.nodes.filter(n => n.type.endsWith('webhook')).map(n => n.parameters.path)).size === 10 && WF13.nodes.filter(n => n.type.endsWith('webhook')).every(n => n.parameters.httpMethod === 'POST'));
   }
   console.log(`# pass ${pass}  fail ${fail}`);
   process.exit(fail ? 1 : 0);

@@ -2227,7 +2227,7 @@ window.WD_SEED={
    ],
    "order": 0,
    "visits": 3,
-   "price": 349,
+   "price": 199,
    "mrp": 447,
    "validDays": 30,
    "covers": [

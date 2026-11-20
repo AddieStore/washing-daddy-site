@@ -217,6 +217,31 @@ function verifyCfWebhook(ctx, raw, ts, sig) {
   return { ok: true };
 }
 
+/* ======================= Razorpay (first choice; Cashfree is the backup) ======================= */
+// Keys are the env vars workflow 11 already uses: RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET (test or live).
+// RAZORPAY_WEBHOOK_SECRET is optional: with it, wd-rzp-hook fulfils orders whose app never came back.
+const rzpKeys = env => { const id = String(env.RAZORPAY_KEY_ID || '').trim(), sec = String(env.RAZORPAY_KEY_SECRET || '').trim(); return id && sec ? { id, sec } : null; };
+async function rzpCall(ctx, method, path, body) {
+  const k = rzpKeys(ctx.env); if (!k) throw Object.assign(new Error('Razorpay env not set'), { setup: true });
+  return ctx.http({ method, url: 'https://api.razorpay.com/v1' + path, body,
+    headers: { Authorization: 'Basic ' + Buffer.from(k.id + ':' + k.sec).toString('base64'), 'Content-Type': 'application/json' } });
+}
+// -> { ok, rzpOrderId } | { ok:false, why }. receipt = our order id, so the dashboard and the webhook find it.
+async function rzpOrder(ctx, orderId, amount, phone, note, tags) {
+  const paise = Math.round(r2(amount) * 100);
+  if (!(paise >= 100)) return { ok: false, why: 'under Rs 1' };
+  const notes = Object.assign({ wd_order: orderId, note: clean(note, 200) }, tags);
+  const r = await rzpCall(ctx, 'POST', '/orders', { amount: paise, currency: 'INR', receipt: orderId.slice(0, 40), notes, payment_capture: 1 });
+  const b = r.body || {};
+  if (r.statusCode >= 200 && r.statusCode < 300 && b.id && Number(b.amount) === paise && b.currency === 'INR') return { ok: true, rzpOrderId: b.id };
+  return { ok: false, why: 'razorpay ' + r.statusCode + ' ' + clean((b.error && (b.error.description || b.error.code)) || '', 120) };
+}
+const hmacHex = (ctx, secret, msg) => ctx.crypto.createHmac('sha256', secret).update(String(msg)).digest('hex');
+function sameHex(ctx, a, b) { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && ctx.crypto.timingSafeEqual(x, y); }
+// What the app needs to open Razorpay Checkout for one of our orders.
+const rzpOpen = (ctx, d, orderId) => ({ gateway: 'razorpay', razorpay: { keyId: rzpKeys(ctx.env).id, orderId: d.rzp_order_id, amount: Math.round(r2(d.amount) * 100), currency: 'INR',
+  name: 'Washing Daddy', description: clean(d.note || '', 120), prefill: { contact: String(d.phone || '').slice(-10), name: clean(d.name || '', 60) } }, orderId });
+
 /* ======================= live config (admin dashboard) ======================= */
 const DEF_FEES = { convenience: 19, convenienceBelow: 299, gstPct: 5, visit: 0,
   slotSurcharge: { '08:00': 30, '08:30': 30, '09:00': 30, '09:30': 30, '13:00': 50, '13:30': 50, '17:30': 30, '18:00': 30, '18:30': 30 },
@@ -365,7 +390,9 @@ async function gate(ctx, req, feature) {
   return { ok: true, phone: t.phone, cfg };
 }
 // Same request from the same phone within 2 minutes -> same order id (a retry never makes a second order)
-const orderIdFor = (ctx, prefix, phone, body) => prefix + b62(sha(ctx, phone + '|' + prefix + '|' + stable(body) + '|' + Math.floor(ctx.now / 120000)), 20);
+// rzp / gateway only pick how to pay, so leave them out: switching to the Cashfree backup keeps the same order.
+const orderIdFor = (ctx, prefix, phone, body) => { const b = Object.assign({}, isObj(body) ? body : {}); delete b.rzp; delete b.gateway;
+  return prefix + b62(sha(ctx, phone + '|' + prefix + '|' + stable(b) + '|' + Math.floor(ctx.now / 120000)), 20); };
 const bookingIdFor = (ctx, orderId) => b62(sha(ctx, 'booking|' + orderId), 20);   // 20 chars: workflow 10 expects a Firestore-style id
 async function activePassOf(ctx, phone) {
   const today = todayIST(ctx.now);
@@ -474,13 +501,23 @@ async function startOrder(ctx, orderId, po, name, note) {
     return reply(200, Object.assign({ ok: true, paid: true, orderId }, po.booking_id ? { bookingId: po.booking_id } : {}), { notify: f.notify, alert: f.alert, dispatch: f.dispatch });
   }
   const tags = { kind: po.kind, phone: po.phone.slice(-10) };
+  if (ctx.rzp && ctx.want !== 'cashfree' && rzpKeys(ctx.env)) {
+    const rz = await rzpOrder(ctx, orderId, po.amount, po.phone, note, tags);
+    if (rz.ok) {
+      const d = Object.assign({}, po, { rzp_order_id: rz.rzpOrderId, note: clean(note, 120), name: clean(name, 60) });
+      await fsCommit(ctx, [wPatch(ctx, 'payorders', orderId, { status: 'awaiting_payment', gateway: 'razorpay', rzp_order_id: rz.rzpOrderId, note: d.note, name: d.name }, { exists: true })]);
+      return reply(200, Object.assign({ ok: true, paid: false }, rzpOpen(ctx, d, orderId), po.booking_id ? { bookingId: po.booking_id } : {}));
+    }
+    // Razorpay refused: fall through to Cashfree, and tell Ravi
+    ctx.rzpAlert = 'Workflow 13: Razorpay order failed for ' + orderId + ' (' + rz.why + '), used Cashfree.';
+  }
   const cf = await cfOrder(ctx, orderId, po.amount, po.phone, name, note, tags);
   if (!cf.ok) {
     await fsCommit(ctx, [wPatch(ctx, 'payorders', orderId, { status: 'failed', error: cf.why }, { exists: true })]).catch(() => {});
     return fail(502, "Couldn't start the payment. Try again." + NOTHING, { alert: 'Workflow 13: Cashfree order failed for ' + orderId + ': ' + cf.why });
   }
-  await fsCommit(ctx, [wPatch(ctx, 'payorders', orderId, { status: 'awaiting_payment', session: cf.sessionId }, { exists: true })]);
-  return reply(200, Object.assign({ ok: true, paid: false, paymentSessionId: cf.sessionId, orderId }, po.booking_id ? { bookingId: po.booking_id } : {}));
+  await fsCommit(ctx, [wPatch(ctx, 'payorders', orderId, { status: 'awaiting_payment', session: cf.sessionId, gateway: 'cashfree' }, { exists: true })]);
+  return reply(200, Object.assign({ ok: true, paid: false, gateway: 'cashfree', paymentSessionId: cf.sessionId, orderId }, po.booking_id ? { bookingId: po.booking_id } : {}), ctx.rzpAlert ? { alert: ctx.rzpAlert } : undefined);
 }
 // A retry of the same request: answer from the order we already have.
 async function resumeOrder(ctx, doc, phone) {
@@ -488,7 +525,15 @@ async function resumeOrder(ctx, doc, phone) {
   if (d.phone !== phone) return fail(409, 'Please try again.' + NOTHING);
   const extra = d.booking_id ? { bookingId: d.booking_id } : {};
   if (d.status === 'paid') return reply(200, Object.assign({ ok: true, paid: true, orderId: doc.id }, extra));
-  if (d.status === 'awaiting_payment' && d.session) return reply(200, Object.assign({ ok: true, paid: false, paymentSessionId: d.session, orderId: doc.id }, extra));
+  if (d.status === 'awaiting_payment' && d.rzp_order_id && ctx.rzp && ctx.want !== 'cashfree' && rzpKeys(ctx.env)) return reply(200, Object.assign({ ok: true, paid: false }, rzpOpen(ctx, d, doc.id), extra));
+  if (d.status === 'awaiting_payment' && d.session) return reply(200, Object.assign({ ok: true, paid: false, gateway: 'cashfree', paymentSessionId: d.session, orderId: doc.id }, extra));
+  if (d.status === 'awaiting_payment' && d.rzp_order_id) {
+    // the app could not open Razorpay (or is an older build): same order, Cashfree as the backup
+    const cf = await cfOrder(ctx, doc.id, d.amount, d.phone, d.name || '', d.note || 'Washing Daddy', { kind: d.kind, phone: String(d.phone).slice(-10) });
+    if (!cf.ok) return fail(502, "Couldn't start the payment. Try again." + NOTHING, { alert: 'Workflow 13: Cashfree backup failed for ' + doc.id + ': ' + cf.why });
+    await fsCommit(ctx, [wPatch(ctx, 'payorders', doc.id, { session: cf.sessionId }, { exists: true })]);
+    return reply(200, Object.assign({ ok: true, paid: false, gateway: 'cashfree', paymentSessionId: cf.sessionId, orderId: doc.id }, extra));
+  }
   if (d.status === 'failed') return fail(409, "That didn't go through. Wait 2 minutes and try again." + NOTHING);
   return fail(409, 'Your last try is still going through. Wait a minute and check before trying again.' + NOTHING);
 }
@@ -610,16 +655,16 @@ async function fulfil(ctx, orderId, pay) {
         writes.push(wSet(ctx, 'ondemand', d.booking_id, { service: names.slice(0, 80), service_id: d.lines.map(l => l.id).join('+').slice(0, 80),
           services: d.lines.map(l => ({ id: l.id, variant: l.variant, q: l.q, price: l.price })),
           // price = what Cashfree took (workflow 10 checks the order for exactly this); total = the whole bill
-          price: r2(pay.amount), total: d.total, saved: d.saved, paid: true, pay_ref: pay.amount > 0 ? orderId : '', pay_via: pay.amount > 0 ? 'Cashfree' : pay.via,
+          price: r2(pay.amount), total: d.total, saved: d.saved, paid: true, pay_ref: pay.amount > 0 ? orderId : '', pay_via: pay.amount > 0 ? (pay.gateway === 'razorpay' ? 'Razorpay' : 'Cashfree') : pay.via, gateway_ref: String(pay.ref || ''),
           payorder_id: orderId, mode: d.mode, date: d.date, slot: d.slot || '', address_id: d.address_id, area: d.area, flat: d.flat, lat: d.lat, lng: d.lng,
           car: d.car_name, reg: d.car_reg, phone, customer_id: phone, status: d.mode === 'instant' ? 'new' : 'scheduled', washer_id: '', created_at: at,
           coupon: d.coupon || null, pass_id: d.pass_id || null, wallet_use: d.wallet_use || 0 }, { exists: false }));
       }
-      if (d.mode === 'instant' && pay.amount > 0) dispatch = d.booking_id;   // workflow 10 can verify only Cashfree-paid jobs
+      if (d.mode === 'instant' && pay.amount > 0 && pay.gateway !== 'razorpay') dispatch = d.booking_id;   // workflow 10 can verify only Cashfree-paid jobs; Razorpay ones reach washers through the normal job alert
       notify = 'New ' + d.mode + ' booking ' + d.booking_id + ' from ' + phone + ': ' + names + (d.slot ? ' on ' + d.date + ' ' + d.slot : '') +
-        '. Total ' + fmtR(d.total) + (d.wallet_use ? ', WD Money ' + fmtR(d.wallet_use) : '') + (d.pass_id ? ', WD Pass' : '') + (pay.amount ? ', Cashfree ' + fmtR(pay.amount) : '') + '. ' + (d.area || '');
+        '. Total ' + fmtR(d.total) + (d.wallet_use ? ', WD Money ' + fmtR(d.wallet_use) : '') + (d.pass_id ? ', WD Pass' : '') + (pay.amount ? (pay.gateway === 'razorpay' ? ', Razorpay ' : ', Cashfree ') + fmtR(pay.amount) : '') + '. ' + (d.area || '');
     } else return { result: { ok: false, alert: 'Workflow 13: order ' + orderId + ' has unknown kind ' + d.kind } };
-    writes.push(wPatch(ctx, 'payorders', orderId, Object.assign({ status: 'paid', paid_at: at, paid_amount: r2(pay.amount), cf_payment_id: String(pay.ref || ''), pay_via: String(pay.via || '') }, extraPo), pre(po)));
+    writes.push(wPatch(ctx, 'payorders', orderId, Object.assign({ status: 'paid', paid_at: at, paid_amount: r2(pay.amount), cf_payment_id: pay.gateway === 'razorpay' ? '' : String(pay.ref || ''), rzp_payment_id: pay.gateway === 'razorpay' ? String(pay.ref || '') : '', pay_via: String(pay.via || ''), paid_gateway: pay.gateway || (pay.amount > 0 ? 'cashfree' : '') }, extraPo), pre(po)));
     return { writes, result: { ok: true, notify, alert: alerts.join('\n') || undefined, dispatch } };
   });
 }
@@ -645,6 +690,54 @@ async function prontoPaid(ctx, req) {
   return reply(200, { ok: true }, { notify: f.notify, alert: f.alert, dispatch: f.dispatch });
 }
 
+// The app finished Razorpay Checkout. It sends the three values Razorpay handed it; we check the signature with our
+// secret, confirm the payment with Razorpay itself (captured, our amount), and fulfil the order. Never trusts the phone.
+async function rzpConfirm(ctx, req) {
+  const h = (req && req.headers) || {};
+  const t = await verifyIdToken(ctx, h.authorization || h.Authorization);
+  if (!t.ok) return t.setup ? fail(503, 'Payments are being set up. Try again later.', { alert: 'Workflow 13: ' + t.why }) : fail(401, 'Sign in again to continue.');
+  if (!rateLimit(ctx, 'rzp|' + t.phone, 20, 60000)) return fail(429, 'Too many tries. Wait a minute and try again.');
+  const b = isObj(req.body) ? req.body : {}, orderId = String(b.orderId || ''), ro = String(b.razorpay_order_id || ''), rp = String(b.razorpay_payment_id || ''), sig = String(b.razorpay_signature || '');
+  if (!/^WD[BWP][A-Za-z0-9]{20}$/.test(orderId) || !/^order_[A-Za-z0-9]{6,40}$/.test(ro) || !/^pay_[A-Za-z0-9]{6,40}$/.test(rp) || !/^[a-f0-9]{64}$/.test(sig)) return fail(400, "We couldn't read that payment. If money was taken it will show up in a few minutes.");
+  const k = rzpKeys(ctx.env); if (!k) return fail(503, 'Payments are being set up. Try again later.', { alert: 'Workflow 13: RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET not set' });
+  const po = await fsGet(ctx, 'payorders', orderId);
+  if (!po || po.data.phone !== t.phone) return fail(400, 'We could not find that payment.');
+  const extra = po.data.booking_id ? { bookingId: po.data.booking_id } : {};
+  if (po.data.status === 'paid') return reply(200, Object.assign({ ok: true, paid: true, orderId }, extra));
+  if (po.data.rzp_order_id !== ro) return fail(400, 'That payment belongs to another order.', { alert: 'Workflow 13: Razorpay order mismatch on ' + orderId + ' (' + t.phone + ')' });
+  if (!sameHex(ctx, hmacHex(ctx, k.sec, ro + '|' + rp), sig)) return fail(400, "We couldn't confirm that payment.", { alert: 'Workflow 13: bad Razorpay signature on ' + orderId + ' (' + t.phone + ')' });
+  // ask Razorpay what really happened (amount and status), and capture if the account does not auto-capture
+  let r = await rzpCall(ctx, 'GET', '/payments/' + rp), pay = r.body || {};
+  const want = Math.round(r2(po.data.amount) * 100);
+  if (r.statusCode !== 200 || pay.order_id !== ro || Number(pay.amount) !== want || pay.currency !== 'INR') {
+    return fail(502, "We couldn't confirm that payment yet. If money was taken it will show up in a few minutes.", { alert: 'Workflow 13: Razorpay payment ' + rp + ' for ' + orderId + ' does not match (' + r.statusCode + ', ' + pay.amount + ' ' + pay.currency + ')' });
+  }
+  if (pay.status === 'authorized') {
+    r = await rzpCall(ctx, 'POST', '/payments/' + rp + '/capture', { amount: want, currency: 'INR' }); pay = r.body || {};
+  }
+  if (pay.status !== 'captured') return reply(200, Object.assign({ ok: true, paid: false, pending: true, orderId }, extra));
+  const f = await fulfil(ctx, orderId, { amount: r2(want / 100), ref: rp, via: 'Razorpay' + (pay.method ? ' · ' + String(pay.method).toUpperCase() : ''), gateway: 'razorpay' });
+  return reply(200, Object.assign({ ok: true, paid: true, orderId, ref: rp }, extra), { notify: f.notify, alert: f.alert, dispatch: f.dispatch });
+}
+// Razorpay's signed webhook (event order.paid), for when the app closed before it could confirm. Needs
+// RAZORPAY_WEBHOOK_SECRET (the secret typed when adding the webhook in the Razorpay dashboard).
+async function rzpHook(ctx, req) {
+  const secret = String(ctx.env.RAZORPAY_WEBHOOK_SECRET || '').trim();
+  const raw = typeof req.rawBody === 'string' ? req.rawBody : '', sig = String(((req.headers || {})['x-razorpay-signature']) || '');
+  if (!secret || !raw || !/^[a-f0-9]{64}$/.test(sig) || !sameHex(ctx, hmacHex(ctx, secret, raw), sig)) return reply(401, { ok: false }, { alert: secret ? 'Workflow 13 refused a Razorpay webhook: bad signature' : undefined });
+  let b; try { b = JSON.parse(raw); } catch (e) { return reply(400, { ok: false }); }
+  if (b.event !== 'order.paid') return reply(200, { ok: true, ignored: b.event });
+  const o = (b.payload && b.payload.order && b.payload.order.entity) || {}, p = (b.payload && b.payload.payment && b.payload.payment.entity) || {};
+  const orderId = String(o.receipt || '');
+  if (!/^WD[BWP][A-Za-z0-9]{20}$/.test(orderId)) return reply(200, { ok: true, ignored: 'not a Pronto order' });
+  const po = await fsGet(ctx, 'payorders', orderId);
+  if (!po) return reply(200, { ok: false }, { alert: 'Workflow 13: Razorpay paid order ' + orderId + ' has no payorders doc. Check Razorpay and credit by hand.' });
+  const want = Math.round(r2(po.data.amount) * 100);
+  if (po.data.rzp_order_id !== o.id || Number(o.amount_paid) < want || o.currency !== 'INR') return reply(200, { ok: false }, { alert: 'Workflow 13: Razorpay order ' + orderId + ' paid ' + o.amount_paid + ' ' + o.currency + ' but needs ' + want + ' paise. Not fulfilled.' });
+  const f = await fulfil(ctx, orderId, { amount: r2(want / 100), ref: String(p.id || ''), via: 'Razorpay' + (p.method ? ' · ' + String(p.method).toUpperCase() : ''), gateway: 'razorpay' });
+  return reply(200, { ok: true }, { notify: f.notify, alert: f.alert, dispatch: f.dispatch });
+}
+
 /* ---- cancel and reschedule ---- */
 const CANCELLABLE = ['new', 'scheduled', 'declined'];
 async function bookingCancel(ctx, req) {
@@ -664,9 +757,12 @@ async function bookingCancel(ctx, req) {
   let cfRefundId = '';
   if (gateway > 0) {
     cfRefundId = 'RF' + id.slice(0, 20);
-    const r = await cfCall(ctx, 'POST', '/pg/orders/' + po.id + '/refunds', { refund_amount: gateway, refund_id: cfRefundId, refund_note: 'Booking cancelled' });
-    const ok = (r.statusCode >= 200 && r.statusCode < 300) || /already exists|duplicate/i.test(JSON.stringify(r.body || ''));
-    if (!ok) return fail(502, "Couldn't start your refund, so the booking is still on. Try again or call us on 77018 08924.", { alert: 'Workflow 13: Cashfree refund failed for ' + po.id + ': ' + r.statusCode + ' ' + clean(JSON.stringify(r.body || ''), 160) });
+    const viaRzp = po.data.paid_gateway === 'razorpay' && po.data.rzp_payment_id;
+    const r = viaRzp
+      ? await rzpCall(ctx, 'POST', '/payments/' + po.data.rzp_payment_id + '/refund', { amount: Math.round(gateway * 100), receipt: cfRefundId, notes: { reason: 'Booking cancelled', booking: id } })
+      : await cfCall(ctx, 'POST', '/pg/orders/' + po.id + '/refunds', { refund_amount: gateway, refund_id: cfRefundId, refund_note: 'Booking cancelled' });
+    const ok = (r.statusCode >= 200 && r.statusCode < 300) || /already exists|duplicate|fully refunded/i.test(JSON.stringify(r.body || ''));
+    if (!ok) return fail(502, "Couldn't start your refund, so the booking is still on. Try again or call us on 77018 08924.", { alert: 'Workflow 13: ' + (viaRzp ? 'Razorpay' : 'Cashfree') + ' refund failed for ' + po.id + ': ' + r.statusCode + ' ' + clean(JSON.stringify(r.body || ''), 160) });
   }
   const legacyPaid = !po && j.paid === true;
   return txn(ctx, async () => {
@@ -747,13 +843,17 @@ async function bookingReschedule(ctx, req) {
 }
 
 const HANDLERS = { 'wd-booking-create': bookingCreate, 'wd-booking-cancel': bookingCancel, 'wd-booking-reschedule': bookingReschedule,
-  'wd-coupon-validate': couponValidate, 'wd-wallet-topup': walletTopup, 'wd-gift-claim': giftClaim, 'wd-pass-buy': passBuy, 'wd-pronto-paid': prontoPaid };
+  'wd-coupon-validate': couponValidate, 'wd-wallet-topup': walletTopup, 'wd-gift-claim': giftClaim, 'wd-pass-buy': passBuy, 'wd-pronto-paid': prontoPaid,
+  'wd-rzp-confirm': rzpConfirm, 'wd-rzp-hook': rzpHook };
 // Never throws: any crash becomes a 500 the app can show, and an alert for Ravi.
 async function handle(name, ctx, req) {
+  // body.rzp: this app build can open Razorpay Checkout (older builds only know Cashfree). body.gateway 'cashfree': use the backup.
+  const b0 = (req && isObj(req.body)) ? req.body : {};
+  ctx.rzp = b0.rzp === true; ctx.want = b0.gateway === 'cashfree' ? 'cashfree' : '';
   try { return await HANDLERS[name](ctx, req || {}); }
   catch (e) {
     const setup = !!(e && e.setup);
-    return fail(setup ? 503 : 500, (setup ? 'Payments are being set up. Try again later.' : "Something went wrong on our side. Try again in a minute.") + (name === 'wd-pronto-paid' ? '' : NOTHING),
+    return fail(setup ? 503 : 500, (setup ? 'Payments are being set up. Try again later.' : "Something went wrong on our side. Try again in a minute.") + (name === 'wd-pronto-paid' || name === 'wd-rzp-hook' || name === 'wd-rzp-confirm' ? '' : NOTHING),
       { alert: 'Workflow 13 ' + name + ' failed: ' + clean(e && e.message || e, 200) });
   }
 }

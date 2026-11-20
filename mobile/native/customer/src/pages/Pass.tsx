@@ -28,7 +28,7 @@ export default function Pass({ id }: { id?: string }) {
   );
   const pay = async () => {
     setBusy(true);
-    try { const r = await act.buyPass(p.id); if (!r.pending) { confetti(); setDone(true); toast(`${p.name} is active`) } } catch (e: any) { toast(e.message) }
+    try { const r = await act.buyPass(p.id); if (!r.shown && !r.pending) { confetti(); setDone(true); toast(`${p.name} is active`) } } catch (e: any) { toast(e.message) }
     setBusy(false);
   };
   const Hero = (

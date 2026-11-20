@@ -5,8 +5,8 @@ import { C } from '../theme';
 import { Txt } from '../ui/kit';
 import { Phone, Pin, Copy, Wallet, Receipt, Help as HelpIc, Chev, Check, Clock } from '../ui/icons';
 import { FadeUp } from '../ui/motion';
-import { feature, useApp, act, jobOf, jobTitle, jobWhen, canRate, addressOf, addrName, addrLine, receiverText, trackWasher, openPage, closePage, toast, UPCOMING, Job, Track } from '../state';
-import { TrackMap } from '../sheets/TrackMap';
+import { feature, useApp, act, jobOf, jobTitle, jobWhen, canRate, addressOf, addrName, addrLine, receiverText, openPage, closePage, toast, UPCOMING, Job } from '../state';
+import { RiderTrack } from '../ui/RiderTrack';
 import { sheets } from '../sheets';
 import { inr } from '../data/dates';
 import { SHOW_RATINGS } from '../data/reference';
@@ -50,19 +50,21 @@ function Steps({ j }: { j: Job }) {
   );
 }
 
-function LiveMap({ j }: { j: Job }) {
-  const [t, setT] = useState<Track | null>(null);
-  useEffect(() => trackWasher(j.id, setT), [j.id]);
-  return (
-    <Tap onPress={() => sheets.track(j.id)} style={card({ overflow: 'hidden' })}>
-      <View style={{ height: 190 }} pointerEvents="none">{t ? <TrackMap track={t} /> : <View style={{ flex: 1, backgroundColor: G.raised }} />}</View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 8 }}>
-        <View style={{ flex: 1, minWidth: 0 }}><Txt weight={500} size={14}>Live washer map</Txt><Txt size={12} color={G.mute} style={{ marginTop: 2 }} numberOfLines={1}>{t ? t.status : 'Finding location…'}</Txt></View>
-        <Txt weight={500} size={13} color={C.violet}>Open</Txt>
-      </View>
-    </Tap>
-  );
+/** progress along the road + eta for the rider scene (instant jobs default to createdAt + 15 min) */
+function Rider({ j }: { j: Job }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const i = setInterval(() => setNow(Date.now()), 20000); return () => clearInterval(i); }, []);
+  const made = Date.parse(j.createdAt), eta = j.eta ? Date.parse(j.eta) : j.mode === 'instant' && Number.isFinite(made) ? made + 15 * 60000 : NaN;
+  const timed = Number.isFinite(eta) && Number.isFinite(made) && eta > made ? Math.min(0.95, Math.max(0.2, (now - made) / (eta - made))) : 0.5;
+  const p = j.status === 'in_progress' ? 1 : j.status === 'upcoming' ? 0.05 : j.status === 'assigned' ? 0.2 : timed;
+  return <RiderTrack progress={p} eta={Number.isFinite(eta) ? eta : null} status={j.status} />;
 }
+
+const PAY_BANNER: Record<string, { t: string; s: string; bg: string; fg: string }> = {
+  pending: { t: 'Payment pending', s: 'We are confirming your payment with the bank. Your money is safe and this updates by itself.', bg: 'rgba(255,186,8,0.2)', fg: '#7A5000' },
+  failed: { t: 'Payment failed', s: 'No money was taken for this booking. If anything was deducted it is refunded in 3 to 5 working days.', bg: 'rgba(220,38,38,0.08)', fg: '#B91C1C' },
+  cancelled: { t: 'Payment cancelled', s: 'No money was taken. Book again whenever you are ready.', bg: '#F4F4F5', fg: '#525252' },
+};
 
 const Row = ({ k, v, tone, strike, bold }: { k: string; v: string; tone?: 'pos'; strike?: boolean; bold?: boolean }) => (
   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 28 }}>
@@ -86,7 +88,8 @@ export default function Booking({ id }: { id: string }) {
   );
   const up = UPCOMING.includes(j.status), done = j.status === 'done', gone = j.status === 'cancelled', a = j.addressId ? addressOf(j.addressId) : null;
   const itemTotal = j.lines.reduce((s, l) => s + l.price * l.q, 0), other = j.total - itemTotal, saved = j.saved;
-  const payText = j.pay === 'paid' ? `Paid${j.payVia ? ' via ' + j.payVia : ''}` : j.pay === 'pass' ? 'Paid with WD Pass' : j.pay === 'refunded' ? 'Refunded to WD Money' : 'Pay on arrival';
+  const payText = j.pay === 'paid' ? `Paid${j.payVia ? ' via ' + j.payVia : ''}` : j.pay === 'pass' ? 'Paid with WD Pass' : j.pay === 'refunded' ? 'Refunded to WD Money' : j.pay === 'pending' ? 'Payment pending' : j.pay === 'failed' ? 'Payment failed' : j.pay === 'cancelled' ? 'Payment cancelled' : 'Pay on arrival';
+  const ref = j.orderId || j.id.toUpperCase();
   return (
     <View style={{ flex: 1, backgroundColor: '#F7F7F8' }}>
       <PageBar title="Booking details" right={help} />
@@ -98,8 +101,8 @@ export default function Booking({ id }: { id: string }) {
               {gone ? null : <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: done ? G.pos : C.violet }} />}
             </View>
             <Txt size={14} color={G.sub} style={{ marginTop: 4 }}>{jobWhen(j)}</Txt>
-            <Pressable onPress={() => toast('Booking ID ' + j.id)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, minHeight: 24 }}>
-              <Txt size={12} color={G.mute}>Booking ID: {j.id.toUpperCase()}</Txt><Copy size={13} color={G.mute} strokeWidth={1.5} />
+            <Pressable onPress={() => act.copy(ref, 'Booking ID copied')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, minHeight: 24 }}>
+              <Txt size={12} color={G.mute}>Booking ID: {ref}</Txt><Copy size={13} color={G.mute} strokeWidth={1.5} />
             </Pressable>
             {gone ? (
               <View style={{ marginTop: 12, backgroundColor: G.raised, borderRadius: 10, padding: 12 }}>
@@ -110,7 +113,9 @@ export default function Booking({ id }: { id: string }) {
           </View>
         </FadeUp>
 
-        {trackable(j) ? <LiveMap j={j} /> : null}
+        {PAY_BANNER[j.pay] ? <View style={{ backgroundColor: PAY_BANNER[j.pay].bg, borderRadius: 16, padding: 16 }}><Txt weight={600} size={15} color={PAY_BANNER[j.pay].fg}>{PAY_BANNER[j.pay].t}</Txt><Txt size={13} color={PAY_BANNER[j.pay].fg} style={{ marginTop: 4, lineHeight: 19 }}>{PAY_BANNER[j.pay].s}</Txt>{j.pay !== 'pending' ? <PrimaryBtn outline small label="Chat with us" onPress={() => act.whatsapp(`Hi Washing Daddy, about my booking ${ref}.`)} style={{ marginTop: 12 }} /> : null}</View> : null}
+
+        {trackable(j) && !PAY_BANNER[j.pay] ? <FadeUp><Rider j={j} /></FadeUp> : null}
 
         <View style={card({ padding: 16 })}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -162,6 +167,7 @@ export default function Booking({ id }: { id: string }) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 }}>
             <IcoBox><Wallet size={18} color={G.mute} strokeWidth={1.5} /></IcoBox><Txt size={13} color={G.sub} style={{ flex: 1 }}>{payText}</Txt>
           </View>
+          {j.payRef ? <Pressable onPress={() => act.copy(j.payRef!, 'Payment ref copied')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, marginLeft: 36, minHeight: 24 }}><Txt size={12} color={G.mute}>Ref {j.payRef}</Txt><Copy size={13} color={G.mute} strokeWidth={1.5} /></Pressable> : null}
           {saved > 0 && !gone ? <View style={{ marginTop: 12, backgroundColor: 'rgba(22,163,74,0.08)', borderRadius: 10, padding: 12, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <Receipt size={16} color={G.pos} strokeWidth={1.5} /><Txt weight={500} size={13} color={G.pos}>{`You saved ${inr(saved)} on this booking`}</Txt></View> : null}
         </View>

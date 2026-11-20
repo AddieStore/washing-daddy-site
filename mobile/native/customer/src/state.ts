@@ -20,6 +20,7 @@ import { cutout } from './img';
 import { getPosition, type Fix } from './geo';
 import { backend } from './backend/firebase';
 import { cashfreeCheckout, CASHFREE_AVAILABLE } from './backend/cashfree';
+import { razorpayCheckout, cashfreeWebCheckout, PAYWEB_AVAILABLE, type RzpOpen } from './backend/payweb';
 import type { Db, Unsub } from './backend/types';
 import { TODAY, refreshToday, iso, parse, addDays, fmt, inr, nowIST, hm, ampm, t2m, m2t, wait, istNow } from './data/dates';
 import { AREAS, PLANS, PRODUCTS, SERVICES, CAR_SERVICES, WASHER_FOR, AREA_COORDS, PlanId, HIDDEN_FROM_NEW, DEFAULT_PLAN,
@@ -77,7 +78,7 @@ export type Page =
   | { k: 'money' } | { k: 'refunds' } | { k: 'pass'; id?: string } | { k: 'coupons' } | { k: 'refer' }
   | { k: 'profile' } | { k: 'profileEdit' } | { k: 'addresses'; pick?: boolean } | { k: 'addressMap'; id?: string } | { k: 'addressForm'; id?: string; lat?: number; lng?: number; area?: string }
   | { k: 'help' } | { k: 'helpTopic'; id: string } | { k: 'legal' } | { k: 'legalDoc'; id: string } | { k: 'deleteAccount' } | { k: 'about' }
-  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string }
+  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string } | { k: 'payResult' }
   | null;
 export type PageKind = NonNullable<Page>['k'];
 type UI = { tab: Tab; tabNonce: number; ready: boolean; signedIn: boolean; carNonce: number; sim: boolean; v: number; page: Page; pages: Page[] };
@@ -314,14 +315,11 @@ async function pay(kind: string, d: { amt: number; what: string; [k: string]: an
   // the wallet covered the whole amount: n8n already marked the order paid, there is nothing to open
   if (ok && j && j.paid === true && j.wallet === true && !j.paymentSessionId) return { ref: j.orderId || j.order_id || 'WALLET', pending: false };
   if (!ok || !j || !j.paymentSessionId) throw new Error(j && j.message ? j.message + ' Nothing was charged.' : `Payment didn't go through. Nothing was charged. (payment server answered ${status}${j ? '' : ', not JSON'})`);
-  try { await cashfreeCheckout(j.paymentSessionId, j.orderId || j.order_id) }
+  // native Cashfree sheet, or Cashfree's page inside the app when the SDK refuses: never the browser
+  try { await cashfreeAny(j.paymentSessionId, j.orderId || j.order_id) }
   catch (e: any) {
     if (e && e.cancelled) throw new Error('Payment cancelled. Nothing was charged.');
-    // The native checkout refuses apps that were not installed from the Play Store (APK installs). Pay on Cashfree's
-    // hosted page in the browser instead: same order, same webhook, same return page.
-    try { await Linking.openURL('https://washingdaddy.com/pay/go/?s=' + encodeURIComponent(j.paymentSessionId)) }
-    catch (e2) { throw new Error(`Payment didn't go through. Nothing was charged. (checkout: ${String(e && e.message || e).slice(0, 80)})`) }
-    toast('Finish the payment in your browser, then come back here.');
+    throw new Error(`Payment didn't go through. Nothing was charged. (checkout: ${errOf(e).slice(0, 80)})`);
   }
   if (kind === 'plan') {
     if (Number(j.discount) > 0) toast('Invite applied: ₹200 off');
@@ -648,14 +646,105 @@ export function bill(o: { mode?: CartMode; when?: When; coupon?: string | null; 
 }
 
 /* ---- bookings (on-demand jobs) ---- */
+/** What happened at the last checkout, for the result screen ({ k: 'payResult' }). Set by placeOrder / buyPass / payPlan. */
+export type PayResult = {
+  status: 'paid' | 'pending' | 'failed' | 'cancelled';
+  kind: 'booking' | 'pass' | 'plan' | 'wallet' | 'order';
+  title: string;              // "Foam Wash and 1 more", "WD Pass · 3 visits"
+  amount: number;             // rupees charged (or that would have been)
+  gateway?: 'Razorpay' | 'Cashfree' | 'WD Money' | 'WD Pass' | 'Demo';
+  ref?: string;               // payment id from the gateway
+  orderId?: string;           // our order id
+  bookingId?: string;         // when a booking was made: open it with { k: 'booking', id }
+  message?: string;           // why it failed / what happens next
+  at: string;                 // nowIST()
+  retry?: () => void;         // failed / cancelled: try the same payment again (same order, Razorpay first)
+  backup?: () => void;        // failed on Razorpay: pay the same order with Cashfree instead
+};
+let LAST_PAY: PayResult | null = null;
+export const lastPay = () => LAST_PAY;
+export function showPayResult(r: PayResult) { LAST_PAY = r; openPage({ k: 'payResult' }) }
+
+/* ---- in-app checkout: Razorpay first, Cashfree as the backup. Nothing opens in the browser. ----
+   The server (n8n workflow 13) prices the order and creates it with Razorpay (body.rzp) or Cashfree (body.gateway
+   'cashfree', same order id). The app only shows the payment page; wd-rzp-confirm checks Razorpay's signature and the
+   payment with Razorpay before anything is booked. Cashfree's result comes by its webhook, so that one shows pending
+   until the booking / pass / money lands in Firestore. */
+type PayCtx = { kind: PayResult['kind']; title: string; amount: number; gatewayIfFree: PayResult['gateway']; landed: (j: any) => boolean };
+const errOf = (e: any) => String((e && e.message) || e || '').slice(0, 140);
+// Cashfree: the native sheet first, then Cashfree's page inside the app (the native SDK refuses some installs)
+async function cashfreeAny(sessionId: string, orderId: string) {
+  if (CASHFREE_AVAILABLE) {
+    try { await cashfreeCheckout(sessionId, orderId); return }
+    catch (e: any) { if (e && e.cancelled) throw e }
+  }
+  if (!PAYWEB_AVAILABLE) throw Object.assign(new Error('payment'), { failed: true });
+  await cashfreeWebCheckout(sessionId, orderId);
+}
+async function payWith13(endpoint: string, body: object, c: PayCtx, force?: 'cashfree'): Promise<PayResult> {
+  const base = { kind: c.kind, title: c.title, amount: c.amount, at: nowIST() };
+  const again = (how?: 'cashfree') => () => { closePage(); payWith13(endpoint, body, c, how).then(finishPay).catch(e => toast(errOf(e) || "That didn't go through.")) };
+  let j: any = await server!.call(endpoint, { ...body, rzp: true, ...(force ? { gateway: force } : {}) });   // throws: nothing was charged
+  const ids = (x: any) => ({ orderId: x.orderId ? String(x.orderId) : undefined, bookingId: x.bookingId ? String(x.bookingId) : undefined });
+  if (j.paid === true) return { ...base, ...ids(j), status: 'paid', gateway: c.gatewayIfFree, ref: j.ref };
+  if (j.gateway === 'razorpay' && j.razorpay && PAYWEB_AVAILABLE) {
+    let r;
+    try { r = await razorpayCheckout(j.razorpay as RzpOpen) }
+    catch (e: any) {
+      if (e && e.cancelled) return { ...base, ...ids(j), status: 'cancelled', gateway: 'Razorpay', retry: again(), backup: again('cashfree') };
+      if (!(e && e.unavailable)) return { ...base, ...ids(j), status: 'failed', gateway: 'Razorpay', message: errOf(e) ? errOf(e) + '. No money was taken.' : undefined, retry: again(), backup: again('cashfree') };
+      r = null;   // Razorpay's page did not load: same order on Cashfree
+    }
+    if (r) {
+      try {
+        const k: any = await server!.call('wd-rzp-confirm', { orderId: j.orderId, ...r });
+        return { ...base, ...ids(j), ...ids(k), status: k.paid ? 'paid' : 'pending', gateway: 'Razorpay', ref: r.razorpay_payment_id };
+      } catch (e: any) {
+        // the payment went through on Razorpay but we could not confirm it yet: Razorpay's webhook will
+        return { ...base, ...ids(j), status: 'pending', gateway: 'Razorpay', ref: r.razorpay_payment_id, message: 'Your payment reached Razorpay. We are confirming it, this can take a few minutes. You will not be charged twice.' };
+      }
+    }
+    j = await server!.call(endpoint, { ...body, rzp: true, gateway: 'cashfree' });
+    if (j.paid === true) return { ...base, ...ids(j), status: 'paid', gateway: c.gatewayIfFree };
+  }
+  if (!j.paymentSessionId) throw new Error("Couldn't start the payment. Nothing was charged.");
+  try { await cashfreeAny(String(j.paymentSessionId), String(j.orderId || '')) }
+  catch (e: any) {
+    if (e && e.cancelled) return { ...base, ...ids(j), status: 'cancelled', gateway: 'Cashfree', retry: again() };
+    return { ...base, ...ids(j), status: 'failed', gateway: 'Cashfree', message: "The payment page didn't open. No money was taken.", retry: again() };
+  }
+  return { ...base, ...ids(j), status: 'pending', gateway: 'Cashfree' };
+}
+// show the result; a pending one turns paid when the server's write reaches the phone (up to 3 minutes)
+let PAY_CTX: Record<string, PayCtx> = {};
+function finishPay(r: PayResult) {
+  showPayResult(r);
+  if (r.status !== 'pending') return;
+  const ctx = PAY_CTX[r.kind];
+  (async () => {
+    for (let i = 0; i < 90; i++) {
+      await wait(2000);
+      if (LAST_PAY !== r) return;
+      if (ctx && ctx.landed(r)) { LAST_PAY = { ...r, status: 'paid', message: undefined }; commit(); haptic(); return }
+    }
+  })();
+}
+/** what a cancelled or failed booking payment leaves behind on the phone, so Bookings shows it */
+function noteAttempt(r: PayResult, job: Omit<Job, 'pay' | 'status' | 'id'>) {
+  if (r.status !== 'cancelled' && r.status !== 'failed') return;
+  const p = px(), id = r.bookingId || r.orderId || newId('x');
+  p.attempts = [{ ...job, id, status: 'cancelled', pay: r.status, payVia: r.gateway, orderId: r.orderId } as Job, ...(p.attempts || []).filter(a => a.id !== id)].slice(0, 20);
+  commit();
+}
 export const UPCOMING: JobStatus[] = ['upcoming', 'assigned', 'on_the_way', 'in_progress'];
 export function bookingsView() {
-  const jobs = S.acct ? px().jobs : [];
+  const real = S.acct ? px().jobs : [], tried = S.acct ? (px().attempts || []).filter(a => !real.some(j => j.id === a.id)) : [];
+  const jobs = [...real, ...tried];
   const upcoming = jobs.filter(j => UPCOMING.includes(j.status)).sort((a, b) => (a.date + a.slot).localeCompare(b.date + b.slot));
   const previous = jobs.filter(j => !UPCOMING.includes(j.status)).sort((a, b) => (b.date + b.slot).localeCompare(a.date + a.slot));
   return { upcoming, previous };
 }
-export const jobOf = (id: string): Job | null => (S.acct ? px().jobs.find(j => j.id === id) || null : null);
+export const jobOf = (id: string): Job | null => (S.acct ? px().jobs.find(j => j.id === id) || (px().attempts || []).find(j => j.id === id) || null : null);
 /** "Interior Cleaning and 2 more" */
 export const jobTitle = (j: Job) => (j.lines[0] ? j.lines[0].name : 'Car wash') + (j.lines.length > 1 ? ` and ${j.lines.length - 1} more` : '');
 export const jobWhen = (j: Job) => (j.slot ? whenText({ date: j.date, slot: j.slot }) : fmt(j.date, { weekday: 'short', day: 'numeric', month: 'short' }) + (j.mode === 'instant' ? ' · Instant' : ''));
@@ -672,15 +761,7 @@ export function deletionBlockers(): string[] {
 }
 
 /* ---- checkout plumbing (Cashfree session from n8n) ---- */
-async function openCheckout(sessionId: string, orderId: string) {
-  try { await cashfreeCheckout(sessionId, orderId) }
-  catch (e: any) {
-    if (e && e.cancelled) throw new Error('Payment cancelled. Nothing was charged.');
-    try { await Linking.openURL('https://washingdaddy.com/pay/go/?s=' + encodeURIComponent(sessionId)) }
-    catch (e2) { throw new Error(`Payment didn't go through. Nothing was charged. (checkout: ${String(e && e.message || e).slice(0, 80)})`) }
-    toast('Finish the payment in your browser, then come back here.');
-  }
-}
+
 /* ---- demo money (preview + test login): the same rules n8n runs, applied on the phone ---- */
 function demoLedger(kind: LedgerRow['kind'], amt: number, note: string, bucket: 'cash' | 'promo') {
   const w = px().wallet, days = bucket === 'promo' ? WALLET.promoExpiryDays : WALLET.cashExpiryDays;
@@ -703,7 +784,15 @@ function fromOndemand(id: string, d: any): Job {
   return { id, mode: d.mode || (d.slot ? 'scheduled' : 'instant'), status: jobStatus(d), date: d.date || '', slot: d.slot || '', lines, total: +(d.total ?? d.price) || 0, saved: +d.saved || 0,
     mins: lines.reduce((a, l) => a + l.mins * l.q, 0), addressId: d.address_id || undefined, pay: d.refunded ? 'refunded' : d.pass_id ? 'pass' : d.paid ? 'paid' : 'pay_on_arrival', payVia: d.pay_via || undefined,
     coupon: d.coupon || null, washer: d.washer_id ? { name: d.washer_name || d.washer_id, rating: +d.washer_rating || 0, jobs: +d.washer_jobs || 0, photo: d.washer_photo || null } : null,
-    stars: r ? r.stars : undefined, review: r ? r.review : undefined, createdAt: d.created_at || '' };
+    stars: r ? r.stars : undefined, review: r ? r.review : undefined, createdAt: d.created_at || '',
+    payRef: d.gateway_ref || d.pay_ref || undefined, orderId: d.pay_ref || undefined, eta: d.eta || etaFrom(d.mode, d.created_at) };
+}
+// instant: a washer within 1 km reaches the car in 15 minutes
+export const ETA_MIN = 15;
+function etaFrom(mode: any, created: any): string | undefined {
+  if (mode !== 'instant' || !created) return undefined;
+  const t = Date.parse(String(created).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(created)) ? '' : '+05:30'));
+  return Number.isFinite(t) ? new Date(t + ETA_MIN * 60000).toISOString() : undefined;
 }
 function watchMoney() {
   stop(moneyUnsubs); if (!DB || !AUTH || !realAcct() || !AUTH.phone()) return;
@@ -756,7 +845,7 @@ const PX_ACTS = {
   /** Books the cart in its mode (instant / scheduled / recurring). Real: n8n wd-booking-create prices it, applies
    *  coupon, wallet and pass server-side, writes ondemand/{id}, and returns a Cashfree session for what is left.
    *  -> { id, paid, pending }: pending = paid online, the booking confirms when Cashfree's webhook lands. */
-  async placeOrder(via = 'UPI'): Promise<{ id: string; paid: boolean; pending: boolean }> {
+  async placeOrder(via = 'UPI'): Promise<{ id: string; paid: boolean; pending: boolean; shown?: boolean }> {
     const mode = cartMode(), { lines } = svcLines(), b = bill(), a = selectedAddress();
     if (!lines.length) throw new Error('Add a service first.');
     const gone = lines.find(l => unavailable(l.id) || (!svcOf(l.id) && !packInfo(l.id))); if (gone) throw new Error(`${gone.name}: ${unavailable(gone.id) || 'not available right now'}. Remove it to continue.`);
@@ -766,11 +855,17 @@ const PX_ACTS = {
     if (mode === 'recurring' && !S.recur) throw new Error('Pick how often and a time slot.');
     if (!a) throw new Error('Add the address where your car is parked.');
     if (b.couponError) throw new Error(b.couponError);
+    const title = jobTitlePlain(lines), snap = { mode, date: mode === 'scheduled' ? S.when!.date : mode === 'recurring' ? S.recur!.start : iso(TODAY), slot: mode === 'scheduled' ? S.when!.slot : mode === 'recurring' ? S.recur!.slot : '',
+      lines: lines.map(l => ({ key: l.key, id: l.id, name: l.name, q: l.q, price: l.price, mrp: l.mrp, mins: l.mins, variant: l.variant })), total: b.total, saved: b.saved, mins: b.mins, addressId: a.id,
+      coupon: b.coupon ? b.coupon.code : null, washer: null, createdAt: nowIST() };
+    const clearCart = () => { S.svc = {}; S.coupon = null; S.when = null; S.useWallet = false; S.usePass = false; if (pendingRef()) setPendingRef(''); commit() };
     if (moneyLive()) {
-      let j: any;
+      const ctx: PayCtx = PAY_CTX.booking = { kind: 'booking', title, amount: b.toPay, gatewayIfFree: b.walletUse ? 'WD Money' : 'WD Pass',
+        landed: r => px().jobs.some(x => x.id === r.bookingId) };
+      let r: PayResult;
       try {
-        j = await server!.call('wd-booking-create', { mode, lines: lines.map(l => ({ id: l.id, variant: l.variant || null, q: l.q })), when: mode === 'scheduled' ? S.when : null, recur: mode === 'recurring' ? S.recur : null,
-          coupon: S.coupon, useWallet: S.useWallet, usePass: S.usePass, addressId: a.id, name: A().name || '', car: (() => { try { const c = car(); return { name: c.name, reg: c.plate } } catch (e) { return null } })(), ref: pendingRef() || null, via, shownTotal: b.total });
+        r = await payWith13('wd-booking-create', { mode, lines: lines.map(l => ({ id: l.id, variant: l.variant || null, q: l.q })), when: mode === 'scheduled' ? S.when : null, recur: mode === 'recurring' ? S.recur : null,
+          coupon: S.coupon, useWallet: S.useWallet, usePass: S.usePass, addressId: a.id, name: A().name || '', car: (() => { try { const c = car(); return { name: c.name, reg: c.plate } } catch (e) { return null } })(), ref: pendingRef() || null, via, shownTotal: b.total }, ctx);
       } catch (e: any) {
         // Until wd-booking-create is live, only what the old path can really book goes through it: ONE instant pack on an
         // ACTIVE account (the rules refuse every other ondemand write from the phone). Never charge for anything else.
@@ -781,9 +876,9 @@ const PX_ACTS = {
         }
         throw e;
       }
-      if (j.paymentSessionId) await openCheckout(j.paymentSessionId, j.orderId || '');
-      S.svc = {}; S.coupon = null; S.when = null; S.useWallet = false; S.usePass = false; if (pendingRef()) setPendingRef(''); commit();
-      return { id: String(j.bookingId || ''), paid: !!j.paid || !!j.paymentSessionId, pending: !!j.paymentSessionId };
+      if (r.status === 'paid' || r.status === 'pending') clearCart(); else noteAttempt(r, snap);
+      finishPay(r);
+      return { id: r.bookingId || '', paid: r.status === 'paid', pending: r.status === 'pending', shown: true };
     }
     await wait(900);
     const p = px(), id = newId('j');
@@ -792,9 +887,11 @@ const PX_ACTS = {
     if (b.coupon) p.usedCoupons.push(b.coupon.code);
     p.jobs.unshift({ id, mode, status: 'upcoming', date: mode === 'scheduled' ? S.when!.date : mode === 'recurring' ? S.recur!.start : iso(TODAY), slot: mode === 'scheduled' ? S.when!.slot : mode === 'recurring' ? S.recur!.slot : '',
       recur: mode === 'recurring' ? S.recur!.freq : undefined, lines: lines.map(l => ({ key: l.key, id: l.id, name: l.name, q: l.q, price: l.price, mrp: l.mrp, mins: l.mins, variant: l.variant })),
-      total: b.total, saved: b.saved, mins: b.mins, addressId: a.id, pay: b.toPay === 0 && b.passCover ? 'pass' : 'paid', payVia: b.toPay === 0 ? (b.walletUse ? WALLET.name : 'WD Pass is') : via, coupon: b.coupon ? b.coupon.code : null, washer: null, createdAt: nowIST() });
-    S.svc = {}; S.coupon = null; S.when = null; S.useWallet = false; S.usePass = false; commit();
-    return { id, paid: true, pending: false };
+      total: b.total, saved: b.saved, mins: b.mins, addressId: a.id, pay: b.toPay === 0 && b.passCover ? 'pass' : 'paid', payVia: b.toPay === 0 ? (b.walletUse ? WALLET.name : 'WD Pass is') : 'Razorpay · ' + via, coupon: b.coupon ? b.coupon.code : null, washer: null, createdAt: nowIST(),
+      orderId: 'WDB' + id.slice(1).toUpperCase(), payRef: b.toPay ? 'pay_demo' + id.slice(-6) : undefined, eta: mode === 'instant' ? new Date(Date.now() + ETA_MIN * 60000).toISOString() : undefined });
+    clearCart();
+    finishPay({ status: 'paid', kind: 'booking', title, amount: b.toPay, gateway: b.toPay ? 'Razorpay' : b.walletUse ? 'WD Money' : 'WD Pass', ref: b.toPay ? 'pay_demo' + id.slice(-6) : undefined, orderId: 'WDB' + id.slice(1).toUpperCase(), bookingId: id, at: nowIST() });
+    return { id, paid: true, pending: false, shown: true };
   },
   /** cancel an upcoming booking; refund goes to WD Money (demo) or per policy (n8n wd-booking-cancel) */
   async cancelJob(id: string) {
@@ -873,12 +970,18 @@ const PX_ACTS = {
 
   /* --- wallet --- */
   /** add money: Cashfree for amt, n8n credits amt (cash) + 5% cashback (promo) when the payment clears */
-  async topUp(amt: number, via = 'UPI'): Promise<{ pending: boolean }> {
+  async topUp(amt: number, via = 'UPI'): Promise<{ pending: boolean; shown?: boolean }> {
     if (!feature('wallet') || !feature('topup')) throw off('Adding money is');
     const err = topUpCheck(amt); if (err) throw new Error(err);
-    if (moneyLive()) { const j = await server!.call('wd-wallet-topup', { amount: amt, via, name: S.acct ? A().name : '' }); if (j.paymentSessionId) await openCheckout(j.paymentSessionId, j.orderId || ''); return { pending: true } }
+    if (moneyLive()) {
+      const was = wallet().balance;
+      const r = await payWith13('wd-wallet-topup', { amount: amt, via, name: S.acct ? A().name : '' }, PAY_CTX.wallet = { kind: 'wallet', title: `Add ${fmtR(amt)} to ${WALLET.name}`, amount: amt, gatewayIfFree: 'WD Money', landed: () => wallet().balance > was });
+      finishPay(r); return { pending: r.status === 'pending', shown: true };
+    }
     await wait(1000); demoLedger('topup', amt, 'Added to wallet', 'cash'); const bonus = topUpBonus(amt); if (bonus) demoLedger('cashback', bonus, `${WALLET.cashbackPct}% cashback on top-up`, 'promo');
-    commit(); haptic(); return { pending: false };
+    commit(); haptic();
+    finishPay({ status: 'paid', kind: 'wallet', title: `Add ${fmtR(amt)} to ${WALLET.name}`, amount: amt, gateway: 'Razorpay', ref: 'pay_demo' + Date.now().toString(36).slice(-6), orderId: newId('WDW').toUpperCase(), at: nowIST() });
+    return { pending: false, shown: true };
   },
   /** gift card: n8n checks the code, marks it used and credits WD Money. Demo: any 'WD' + 6-12 letters/digits = ₹100 */
   async claimGift(code: string): Promise<number> {
@@ -891,12 +994,19 @@ const PX_ACTS = {
   },
 
   /* --- WD Pass --- */
-  async buyPass(id?: string, via = 'UPI'): Promise<{ pending: boolean }> {
+  async buyPass(id?: string, via = 'UPI'): Promise<{ pending: boolean; shown?: boolean }> {
     if (!feature('pass') || !passPlan(id)) throw off('WD Pass is'); const q = passQuote(id); if (activePass()) throw new Error('You already have an active pass.');
-    if (moneyLive()) { const j = await server!.call('wd-pass-buy', { plan: q.plan.id, via, useWallet: false, name: S.acct ? A().name : '' }); if (j.paymentSessionId) await openCheckout(j.paymentSessionId, j.orderId || ''); return { pending: !!j.paymentSessionId } }
+    const title = `${q.plan.name} · ${q.plan.visits} visits`;
+    if (moneyLive()) {
+      const r = await payWith13('wd-pass-buy', { plan: q.plan.id, via, useWallet: false, name: S.acct ? A().name : '' }, PAY_CTX.pass = { kind: 'pass', title, amount: q.total, gatewayIfFree: 'WD Money',
+        landed: r => px().passes.some(p => p.id === 'P' + r.orderId) });
+      finishPay(r); return { pending: r.status === 'pending', shown: true };
+    }
     await wait(1000);
     px().passes.unshift({ id: newId('P'), plan: q.plan.id, visitsTotal: q.plan.visits, visitsLeft: q.plan.visits, boughtAt: nowIST(), validTill: iso(addDays(TODAY, q.plan.days)), status: 'active' });
-    commit(); confetti(); return { pending: false };
+    commit();
+    finishPay({ status: 'paid', kind: 'pass', title, amount: q.total, gateway: 'Razorpay', ref: 'pay_demo' + Date.now().toString(36).slice(-6), orderId: newId('WDP').toUpperCase(), at: nowIST() });
+    return { pending: false, shown: true };
   },
 
   /* --- referral --- */

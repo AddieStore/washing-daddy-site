@@ -11,6 +11,7 @@ import { DAY, NIGHT, ThemeContext, InkContext } from './src/theme';
 import { boot, useApp, S } from './src/state';
 import { ToastHost, SheetHost, ConfettiHost } from './src/ui/hosts';
 import Main from './src/screens/Main';
+import { PayWebHost } from './src/backend/payweb';
 import Auth from './src/screens/Auth';
 import { Splash } from './src/ui/motion';
 
@@ -37,6 +38,7 @@ export default function App() {
             <SheetHost />
             <ConfettiHost />
             <ToastHost />
+            <PayWebHost />
           </View>
         </InkContext.Provider>
       </ThemeContext.Provider>
