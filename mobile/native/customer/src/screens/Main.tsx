@@ -136,12 +136,17 @@ export default function Main() {
   const [primer, setPrimer] = useState(false);
   useEffect(() => { needsPrimer().then(setPrimer) }, []);
   const key = tab === 'home' || tab === 'live' ? tab : tab + ':' + ui.tabNonce;
+  // Keep Home and Washes mounted once visited: re-mounting the heavy Home screen on every tap of its tab was the lag.
+  // Hidden ones use display:none (no layout, no paint, state and scroll position kept). Other tabs mount fresh as before.
+  const kept = useRef<Set<Tab>>(new Set()); if (tab === 'home' || tab === 'live') kept.current.add(tab);
   const tabCover = useCover(coverOf(ui.pages[0]?.k)), mt = appCfg().maintenance;
   if (mt.on) return <Maintenance message={mt.message} />;
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <Reanimated.View style={[{ flex: 1, backgroundColor: T.bg }, tabCover.st]}>
-        <Animated.View key={key} style={{ flex: 1, opacity: fade }}><Screen /></Animated.View>
+        {(['home', 'live'] as Tab[]).filter(k => kept.current.has(k)).map(k => { const S2 = SCREEN[k], on = k === tab;
+          return <Animated.View key={k} style={on ? { flex: 1, opacity: fade } : { display: 'none' }}><S2 /></Animated.View> })}
+        {tab !== 'home' && tab !== 'live' ? <Animated.View key={key} style={{ flex: 1, opacity: fade }}><Screen /></Animated.View> : null}
         <TabBar />
       </Reanimated.View>
       <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#0B0614' }, tabCover.dim]} />

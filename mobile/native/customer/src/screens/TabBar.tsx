@@ -1,6 +1,6 @@
 // Bottom tab bar, ported from the Partner app (washer app/(tabs)/_layout.tsx): white bar with a top hairline and an upward shadow,
-// Home · Washes · [raised round violet "Book" button] · Money · Profile. The selected tab is a violet-tint pill with the icon and
-// label side by side; the cell widens on a spring (reanimated). The centre button opens "Book a wash": Instant or Schedule.
+// Home · Washes · [raised round violet "Book" button] · Money · Profile. The selected tab gets a violet-tint pill behind its icon;
+// all cells stay the same width so nothing shifts. The centre button opens "Book a wash": Instant or Schedule.
 // Also hosts the one-time splash/location loader overlay (Main renders the bar after the screen).
 import React, { useEffect } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
@@ -33,25 +33,27 @@ function TabCell({ t, label, Ic, on, liveNow }: { t: Tab; label: string; Ic: IC;
   const T = useTheme(), rm = useReducedMotion();
   const sel = useSharedValue(on ? 1 : 0), press = useSharedValue(1);
   useEffect(() => { sel.value = rm ? (on ? 1 : 0) : withSpring(on ? 1 : 0, { damping: 15, stiffness: 190, mass: 0.8 }); }, [on, rm]);
-  const cell = useAnimatedStyle(() => ({ flex: 1 + 0.55 * sel.value }));
-  const pill = useAnimatedStyle(() => ({ opacity: sel.value, transform: [{ scaleX: 0.55 + 0.45 * sel.value }, { scaleY: 0.8 + 0.2 * sel.value }] }));
+  // Every cell keeps the same width and the same icon-over-label layout whether selected or not, so nothing in the bar shifts
+  // when you switch tabs (the old version widened the chosen cell and flipped it to a side-by-side row, which made the
+  // spacing jump). Selection is only the tinted pill behind the icon plus the label colour.
+  const pill = useAnimatedStyle(() => ({ opacity: sel.value, transform: [{ scaleX: 0.6 + 0.4 * sel.value }] }));
   const sc = useAnimatedStyle(() => ({ transform: [{ scale: press.value }] }));
   const col = on ? (T.day ? C.violet : '#CDB6FF') : T.card.fg3;
   return (
-    <Reanimated.View style={[{ minHeight: 54, justifyContent: 'center' }, cell]}>
-      <Pressable accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={label} onPress={() => go(t)}
-        onPressIn={() => { if (!rm) press.value = withSpring(0.9, SPRING.press) }} onPressOut={() => { press.value = rm ? 1 : withSpring(1, SPRING.release) }}
+    <View style={{ flex: 1, minHeight: 54 }}>
+      <Pressable accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={label} onPress={() => go(t)} hitSlop={{ top: 8, bottom: 8 }}
+        onPressIn={() => { if (!rm) press.value = withSpring(0.92, SPRING.press) }} onPressOut={() => { press.value = rm ? 1 : withSpring(1, SPRING.release) }}
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Reanimated.View style={[on ? s.pillOn : s.pillOff, sc]}>
-          <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: 24, backgroundColor: T.day ? 'rgba(84,9,218,0.11)' : 'rgba(139,92,246,0.26)' }, pill]} />
-          <View>
-            <Ic size={on ? 24 : 23} color={col} strokeWidth={on ? 2 : 1.6} />
-            {t === 'live' && liveNow ? <View style={{ position: 'absolute', top: -6, right: -8 }}><Pulse color={C.green} size={5} /></View> : null}
+        <Reanimated.View style={[s.cellIn, sc]}>
+          <View style={s.icWrap}>
+            <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: 16, backgroundColor: T.day ? 'rgba(84,9,218,0.11)' : 'rgba(139,92,246,0.26)' }, pill]} />
+            <Ic size={22} color={col} strokeWidth={on ? 2 : 1.6} />
+            {t === 'live' && liveNow ? <View style={{ position: 'absolute', top: 2, right: 12 }}><Pulse color={C.green} size={5} /></View> : null}
           </View>
-          <Txt weight={on ? 600 : 500} size={on ? 12 : 10} numberOfLines={1} color={col} style={{ lineHeight: on ? 16 : 14 }}>{label}</Txt>
+          <Txt weight={on ? 600 : 500} size={11} numberOfLines={1} color={col} style={{ lineHeight: 14 }}>{label}</Txt>
         </Reanimated.View>
       </Pressable>
-    </Reanimated.View>
+    </View>
   );
 }
 
@@ -126,8 +128,8 @@ const s = StyleSheet.create({
     width: '100%', maxWidth: 520, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 4, paddingHorizontal: 6,
     borderTopWidth: 1, shadowColor: '#1A1033', shadowRadius: 12, shadowOffset: { width: 0, height: -3 }, elevation: 10,
   },
-  pillOn: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 44, paddingHorizontal: 12, borderRadius: 22 },
-  pillOff: { alignItems: 'center', gap: 1, height: 44, justifyContent: 'center', paddingHorizontal: 6 },
+  cellIn: { alignItems: 'center', gap: 3 },
+  icWrap: { width: 56, height: 30, alignItems: 'center', justifyContent: 'center' },
   fabWrap: { position: 'absolute', alignSelf: 'center', alignItems: 'center' },
   fab: {
     width: 62, height: 62, borderRadius: 31, borderWidth: 4, borderColor: '#fff', backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center',
