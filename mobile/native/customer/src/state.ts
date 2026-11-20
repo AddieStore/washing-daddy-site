@@ -22,7 +22,7 @@ import { backend } from './backend/firebase';
 import { cashfreeCheckout, CASHFREE_AVAILABLE } from './backend/cashfree';
 import type { Db, Unsub } from './backend/types';
 import { TODAY, refreshToday, iso, parse, addDays, fmt, inr, nowIST, hm, ampm, t2m, m2t, wait, istNow } from './data/dates';
-import { PLANS, PRODUCTS, SERVICES, CAR_SERVICES, WASHER_FOR, AREA_COORDS, PlanId, HIDDEN_FROM_NEW, DEFAULT_PLAN,
+import { AREAS, PLANS, PRODUCTS, SERVICES, CAR_SERVICES, WASHER_FOR, AREA_COORDS, PlanId, HIDDEN_FROM_NEW, DEFAULT_PLAN,
   CartMode, VariantId, VARIANTS, DEFAULT_VARIANT, variantPrice, packInfo, RecurId, RECURRING, FEES, DayPart, DAY_PARTS, SLOT_CFG, PART_SURCHARGE,
   SLOT_SURCHARGE, INSTANT_HOURS, Coupon, COUPONS, WALLET, PASS_PLANS, REFERRAL, AddressLabel, SUPPORT, showPhone } from './data/reference';
 import { startConfig, onConfigChange, subscribeCoupons, overlayForPreview, appCfg, feature, unavailable, Features, UiButton } from './data/config';
@@ -513,6 +513,14 @@ export const slotSurcharge = (date: string, t: string, part: DayPart = partOf(t)
 export const whenText = (w: When = S.when) => (w ? `${fmt(w.date, { weekday: 'short', day: 'numeric', month: 'short' })}, ${/^\d\d:\d\d$/.test(w.slot) ? slotLabel(w.slot) : w.slot}` : 'Instant · 45-60 min');
 
 /* ---- addresses ---- */
+/** which of our served areas an address belongs to (for the washer); anything else keeps the map's locality line */
+export function areaFor(text: string): string {
+  const flat = (x: string) => (x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const t = flat(text);
+  // 'GH-9 Paschim Vihar' matches on "gh9"; the others on their whole name ("meerabagh", "guruhariapartments", ...)
+  const hit = AREAS.find(a => { const gh = /^GH-\d+/i.exec(a); return t.includes(flat(gh ? gh[0] : a)) });
+  return hit || ((text || '').split(',').map(x => x.trim()).filter(Boolean).slice(-3, -1).join(', ') || 'New area');
+}
 let HERE: { lat: number; lng: number } | null = null;
 export const here = () => HERE;
 export const addresses = (): Address[] => (S.acct ? px().addresses : []);
@@ -939,20 +947,34 @@ export const act = {
     S.session = { token, phone: phone10, real: REAL }; S.acct = customer; S.carIdx = 0; S.px = REAL ? emptyPX() : demoPX(); enter(false); return 'in';
   },
   // new customer: customers/{+91number}, status 'new' until the owner checks the car and activates it
-  async signup(s: { name: string; area: string; model: string; plate: string; plan: PlanId }) {
+  /** New customer, after the OTP. `mode` is what they picked on "How should we wash?": 'instant' (one-time / instant service, no plan
+   *  yet; lands on Home in instant mode) or 'monthly' (a plan; the car starts as 'new' until the first payment). `address` is the
+   *  exact spot from the search box or the map pin; it becomes the first saved address and gives the car its parking line. */
+  async signup(s: { name: string; model: string; plate: string; mode: 'instant' | 'monthly'; plan?: PlanId | null;
+    address: { flat: string; street: string; area: string; lat: number; lng: number } }) {
     const p = pendingSignup; if (!p) throw new Error('Sign in again to continue.');
-    if (HIDDEN_FROM_NEW.includes(s.plan)) s = { ...s, plan: DEFAULT_PLAN };
-    const w = WASHER_FOR(s.area), plate = s.plate.trim().toUpperCase();
-    const car0 = { id: 'c0', name: s.model, make: '', plate, plan: s.plan, washer: w, parking: s.area + ', parking spot to be confirmed', window: 'Before 7:30 AM', keys: "I'll unlock it" };
+    const ad = s.address;
+    if (!ad || !(ad.flat || '').trim()) throw new Error('Add your flat or house number.');
+    if (!Number.isFinite(ad.lat) || !Number.isFinite(ad.lng)) throw new Error('Pick your location on the map.');
+    const monthly = s.mode === 'monthly';
+    let plan: PlanId = (monthly && s.plan) ? s.plan : DEFAULT_PLAN;
+    if (HIDDEN_FROM_NEW.includes(plan)) plan = DEFAULT_PLAN;
+    const area = areaFor(ad.area + ' ' + ad.street), w = WASHER_FOR(area), plate = s.plate.trim().toUpperCase().replace(/\s+/g, '');
+    const spot = [ad.flat.trim(), ad.street.trim()].filter(Boolean).join(', ');
+    const car0 = { id: 'c0', name: s.model, make: '', plate, plan, washer: w, parking: spot || (area + ', parking spot to be confirmed'), window: 'Before 7:30 AM', keys: "I'll unlock it" };
+    const addr = { flat: ad.flat.trim().slice(0, 120), street: (ad.street || '').trim().slice(0, 120), area: (ad.area || '').trim().slice(0, 160), lat: ad.lat, lng: ad.lng };
     if (DB && AUTH) {
-      try { await DB.doc('customers/' + AUTH.phone()).set({ phone: AUTH.phone(), name: s.name, area: s.area, status: 'new', cars: [car0], regs: [regOf(car0)], since: fmt(TODAY, { month: 'long', year: 'numeric' }), created_at: nowIST(), updated_at: nowIST() }) }
+      try { await DB.doc('customers/' + AUTH.phone()).set({ phone: AUTH.phone(), name: s.name, area, mode: s.mode, address: addr, status: 'new', cars: [car0], regs: [regOf(car0)], since: fmt(TODAY, { month: 'long', year: 'numeric' }), created_at: nowIST(), updated_at: nowIST() }) }
       catch (e) { console.warn(e); throw new Error("Couldn't save your sign-up. Check your signal and try again.") }
     } else await wait(800);
     S.session = { token: p.token, phone: p.phone, real: REAL };
-    S.acct = { name: s.name, phone: p.phone, since: fmt(TODAY, { month: 'long', year: 'numeric' }), area: s.area, prefs: { photo: true, pay: true, drops: true },
+    S.acct = { name: s.name, phone: p.phone, since: fmt(TODAY, { month: 'long', year: 'numeric' }), area, mode: s.mode, prefs: { photo: true, pay: true, drops: true },
       cars: [{ ...car0, id: REAL ? 'c0' : 'c' + Date.now(), img: null, till: null, status: 'new', doneAt: null, mins: 0, streak: 0, washes: 0, paused: null, note: null, rating: 0 }],
       payments: [], orders: [], requests: [], bookings: [] };
     S.carIdx = 0; S.px = emptyPX(); pendingSignup = null; enter(true);
+    // first saved address = the signup spot (quietly; saveAddress toasts, so keep the welcome toast on top by doing it after)
+    try { await act.saveAddress({ label: 'Home' as AddressLabel, ...addr, receiver: { self: true } }) } catch (e) { console.warn('signup address', e) }
+    if (!monthly) { try { act.setCartMode('instant') } catch (e) {} }
   },
   async resendOtp(phone10: string) { await act.sendOtp(phone10); toast('New code sent') },
   /** "Skip" on sign-in: straight into the app as a guest. Anything that needs an account sends them back to log in (see GUEST_BLOCKED). */
