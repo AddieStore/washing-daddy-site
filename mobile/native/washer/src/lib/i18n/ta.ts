@@ -790,4 +790,10 @@ Object.assign(T, {
   "Internet nahi hai. Net dekh ke dobara try karo.": "இன்டர்நெட் இல்லை. நெட் பார்த்து மீண்டும் முயற்சிக்கவும்.",
   "PIN galat hai. Test mein 1234 daalo.": "PIN தவறு. டெஸ்டில் 1234 உள்ளிடுங்கள்.",
   "Login nahi hua. Dobara try karo.": "லாகின் ஆகவில்லை. மீண்டும் முயற்சிக்கவும்.",
+  "Customer se 4-digit code lo": "வாடிக்கையாளரிடம் 4 இலக்க குறியீடு வாங்கு",
+  "Customer ke app mein start code dikhta hai. Woh code yahan daalo.": "வாடிக்கையாளரின் ஆப்பில் தொடக்கக் குறியீடு தெரியும். அதை இங்கே உள்ளிடு.",
+  "Galat code. Customer se dobara poochho.": "தவறான குறியீடு. வாடிக்கையாளரிடம் மீண்டும் கேள்.",
+  "Internet nahi hai. Dobara try karo.": "இணையம் இல்லை. மீண்டும் முயற்சி செய்.",
+  "Pahunch ke customer se start code lo": "போய்ச் சேர்ந்ததும் வாடிக்கையாளரிடம் தொடக்கக் குறியீடு வாங்கு",
+  "Start code": "தொடக்கக் குறியீடு",
 });

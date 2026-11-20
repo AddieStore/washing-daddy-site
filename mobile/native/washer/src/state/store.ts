@@ -601,7 +601,27 @@ export const act = {
   },
   exClaim(id: string) { Sync.extraSet(id, { washer_id: me().id, ...washerIdent() }); ui.haptic([20, 40, 20]); ui.toast(t('Kaam mila! Shuru karo.')) },
   exOnWay(id: string) { Sync.extraSet(id, { status: 'on_the_way', on_the_way_at: isoIST(), ...washerIdent() }); ui.haptic([20, 40, 20]); ui.toast(t('Customer ko bata diya: aap raaste mein ho')) },
-  exStart(id: string) { Sync.extraSet(id, { status: 'doing', started_at: isoIST() }); ui.haptic([20, 40, 20]); ui.toast(t('Shuru. Ab kaam ki photo lo')) },
+  // the customer's 4-digit start code is checked by the Firestore rules (the washer cannot read it): no optimistic update
+  async exStartWithCode(id: string, code: string): Promise<'ok' | 'wrong' | 'offline'> {
+    const j = Extra.byId(id); if (!j) return 'offline';
+    const ok = () => { Object.assign(j, { status: 'doing', started_at: isoIST() }); emit(); ui.haptic([20, 40, 20]); ui.toast(t('Shuru. Ab kaam ki photo lo')); return 'ok' as const };
+    if (MODE === 'demo') {
+      if (code !== '1234') { ui.haptic([60, 40, 60]); return 'wrong' }
+      return ok();
+    }
+    try {
+      // with no signal Firestore keeps the write waiting instead of failing: give up on the screen after 15 s
+      const w = db.doc('ondemand/' + id).update({ status: 'doing', started_at: isoIST(), start_code: code, updated_at: isoIST() });
+      const sent = w.then(() => 'done'); sent.catch(() => {});   // a late refusal must not become an unhandled rejection
+      const r = await Promise.race([sent, new Promise(res => setTimeout(() => res('slow'), 15000))]);
+      if (r === 'slow') return 'offline';
+      return ok();
+    } catch (e: any) {
+      const m = String((e && e.code) || '') + ' ' + String((e && e.message) || '');
+      if (/permission/i.test(m) || e?.code === 'invalid_argument') { ui.haptic([60, 40, 60]); return 'wrong' }
+      console.warn(e); return 'offline';
+    }
+  },
   exNeedPhoto() { ui.toast(t('Pehle kaam ki photo lo, phir kaam band hoga')); ui.haptic(14) },
   async exPhoto(id: string, url: string) { await Sync.extraSet(id, { photo: url, photo_at: isoIST() }); ui.toast(t('Photo lag gayi. Ab kaam khatam karo')) },
   exDone(id: string) {

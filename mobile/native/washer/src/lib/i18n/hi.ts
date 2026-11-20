@@ -795,6 +795,12 @@ Object.assign(HI, {
   "Internet nahi hai. Net dekh ke dobara try karo.": "इंटरनेट नहीं है। नेट देखकर दोबारा कोशिश करो।",
   "PIN galat hai. Test mein 1234 daalo.": "PIN गलत है। टेस्ट में 1234 डालो।",
   "Login nahi hua. Dobara try karo.": "लॉगिन नहीं हुआ। दोबारा कोशिश करो।",
+  "Customer se 4-digit code lo": "कस्टमर से 4-अंक का कोड लो",
+  "Customer ke app mein start code dikhta hai. Woh code yahan daalo.": "कस्टमर के ऐप में स्टार्ट कोड दिखता है. वो कोड यहाँ डालो.",
+  "Galat code. Customer se dobara poochho.": "गलत कोड. कस्टमर से दोबारा पूछो.",
+  "Internet nahi hai. Dobara try karo.": "इंटरनेट नहीं है. दोबारा कोशिश करो.",
+  "Pahunch ke customer se start code lo": "पहुँच के कस्टमर से स्टार्ट कोड लो",
+  "Start code": "स्टार्ट कोड",
 });
 
 export { HI as T, HI_PATTERNS as P };
