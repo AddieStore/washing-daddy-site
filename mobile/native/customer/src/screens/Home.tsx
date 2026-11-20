@@ -12,7 +12,7 @@ export const BTN_ICON: Record<string, (p: { size?: number; color?: string; strok
   gift: Gift, star: Star, zap: Zap, phone: Phone, whatsapp: WhatsApp, info: Info, shield: Shield, car: CarIc, wallet: Wallet, calendar: Calendar, pin: Pin, help: HelpIc, clock: Clock, cart: CartIc, bell: Bell, heart: Heart,
 };
 import { IMG, RATIO } from '../img';
-import { CAR_SERVICES, PACKS, TRUST, SHOW_RATINGS, REFERRAL, packInfo } from '../data/reference';
+import { CAR_SERVICES, PACKS, TRUST, SHOW_RATINGS, REFERRAL, packInfo, fromPrice } from '../data/reference';
 import { GenericArt } from '../art/generic';
 import { ampm } from '../data/dates';
 import {
@@ -27,7 +27,7 @@ import { SvcArt, PausedVeil } from '../pages/parts';
 import { artFor, ArtBoundary } from '../art';
 import { onGridJump } from './TabBar';
 import { Laurel } from '../ui/art2';
-import { SheetTitle } from '../ui/hosts';
+import { SheetTitle, closeSheet } from '../ui/hosts';
 import { openAddressPicker } from '../sheets/address';
 import { openPassPromo } from '../sheets/money';
 
@@ -206,7 +206,7 @@ function Hero({ W }: { W: number }) {
 }
 
 /* ---------- Instant / Schedule cards: overlap the hero, big glyph bottom-right (Pronto) ---------- */
-function Glyph({ kind, idle }: { kind: 'zap' | 'cal'; idle?: boolean }) {
+function Glyph({ kind, idle }: { kind: 'zap' | 'cal' | 'plan'; idle?: boolean }) {
   const a = idle ? '#C9C9D1' : '#7C3AED', b = idle ? '#A3A3AD' : '#4C0BC4', id = 'g' + kind + (idle ? 'i' : '');
   return (
     <Svg width={56} height={56} viewBox="0 0 56 56">
@@ -214,20 +214,59 @@ function Glyph({ kind, idle }: { kind: 'zap' | 'cal'; idle?: boolean }) {
       <SvgCircle cx={30} cy={30} r={24} fill={idle ? '#F1F1F4' : '#EFE7FF'} />
       {kind === 'zap'
         ? <Path d="M31 9 L15 32 h12 l-3 16 l17-24 h-12 z" fill={`url(#${id})`} stroke="#fff" strokeWidth={2} strokeLinejoin="round" />
+        : kind === 'plan'
+        ? <><Path d="M14 18 a4 4 0 0 1 4-4 h22 a4 4 0 0 1 4 4 v24 a4 4 0 0 1-4 4 H18 a4 4 0 0 1-4-4z" fill={`url(#${id})`} /><Path d="M14 23 h30" stroke="#fff" strokeWidth={2} /><Path d="M21 11 v6 M37 11 v6" stroke={b} strokeWidth={3} strokeLinecap="round" />
+          <Path d="M29 27 l2.2 4.6 l5 .7 l-3.6 3.5 l.9 5 l-4.5-2.4 l-4.5 2.4 l.9-5 l-3.6-3.5 l5-.7z" fill="#FFD166" /></>
         : <><Path d="M14 18 a4 4 0 0 1 4-4 h22 a4 4 0 0 1 4 4 v24 a4 4 0 0 1-4 4 H18 a4 4 0 0 1-4-4z" fill={`url(#${id})`} /><Path d="M14 23 h30" stroke="#fff" strokeWidth={2} /><Path d="M21 11 v6 M37 11 v6" stroke={b} strokeWidth={3} strokeLinecap="round" />
           <Path d="M22 34 l5 5 l9-10" stroke="#fff" strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" /></>}
     </Svg>
   );
 }
+// one row of the "Instant service" chooser; rows fade and rise in one after the other
+function ChooseRow({ i, icon, title, sub, tag, dim, onPress }: { i: number; icon: ReactNode; title: string; sub: string; tag?: string; dim?: boolean; onPress: () => void }) {
+  return (
+    <FadeUp index={i + 1} distance={14}>
+      <Pressable3 label={title + '. ' + sub} onPress={onPress} style={{ minHeight: 72, borderRadius: 16, backgroundColor: dim ? '#F7F7F8' : '#fff', borderWidth: 1, borderColor: dim ? L.line : 'rgba(84,9,218,0.22)', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: dim ? '#EDEDF0' : L.tint, alignItems: 'center', justifyContent: 'center' }}>{icon}</View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Txt weight={600} size={15} color={dim ? L.mut : L.ink} style={{ lineHeight: 20 }}>{title}</Txt>
+            {tag ? <View style={{ backgroundColor: L.accent, borderRadius: 6, paddingHorizontal: 6, height: 18, justifyContent: 'center' }}><Txt weight={600} size={10} color="#fff" style={{ lineHeight: 14 }}>{tag}</Txt></View> : null}
+          </View>
+          <Txt size={12} color={L.mut} style={{ lineHeight: 16, marginTop: 2 }}>{sub}</Txt>
+        </View>
+        <Chev size={18} color={L.mut} strokeWidth={1.5} />
+      </Pressable3>
+    </FadeUp>
+  );
+}
+function InstantChooser({ onNow, canNow, canLater }: { onNow: () => void; canNow: boolean; canLater: boolean }) {
+  const st = instantStatus(), open = st.open;
+  const later = () => { closeSheet(); try { act.setCartMode('scheduled') } catch (e: any) { toast(e?.message || 'Scheduling is not available right now'); return } openPage({ k: 'schedule' }) };
+  const now = () => {
+    if (!open) { toast(st.reason === 'busy' ? st.label : 'Instant service is closed. ' + st.label + (canLater ? ' Schedule for later instead' : '')); return }
+    closeSheet(); onNow();
+  };
+  return (
+    <View>
+      <SheetTitle>Instant service</SheetTitle>
+      <View style={{ gap: 10, marginTop: 8, paddingBottom: 8 }}>
+        {canNow ? <ChooseRow i={0} dim={!open} icon={<Zap size={22} color={open ? L.accent : L.mut} strokeWidth={1.6} />} title="Now" sub={st.label} onPress={now} /> : null}
+        {canLater ? <ChooseRow i={1} tag={!open ? 'Suggested' : undefined} icon={<Calendar size={22} color={L.accent} strokeWidth={1.6} />} title="Schedule for later" sub="Pick a day and a time slot" onPress={later} /> : null}
+      </View>
+    </View>
+  );
+}
 function Entry({ onInstant }: { onInstant: () => void }) {
-  const st = instantStatus(), idle = !st.open, showI = feature('instant'), showS = feature('scheduled');
-  if (!section('instantCards') || (!showI && !showS)) return <View style={{ height: 8 }} />;
+  const st = instantStatus(), idle = !st.open, showI = feature('instant'), showS = feature('scheduled'), showP = feature('plans');
+  if (!section('instantCards') || (!showI && !showS && !showP)) return <View style={{ height: 8 }} />;
   const box = { height: 120, borderRadius: 18, backgroundColor: '#fff', padding: 14, overflow: 'hidden' as const, ...shadow, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } };
+  const openChooser = () => openSheet(<InstantChooser onNow={onInstant} canNow={showI} canLater={showS} />);
   return (
     <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: -72 }}>
-      {showI ? <FadeUp index={0} style={{ flex: 1 }}>
-        <Pressable3 label={'Get instant service. ' + st.label} onPress={() => { if (st.open) onInstant(); else toast(st.reason === 'busy' ? st.label : 'Instant service is closed. ' + st.label + ' or schedule for later') }} style={box}>
-          <Txt weight={600} size={15} color={idle ? L.mut : L.ink} style={{ lineHeight: 20, width: '78%' }}>Get Instant Service</Txt>
+      {showI || showS ? <FadeUp index={0} style={{ flex: 1 }}>
+        <Pressable3 label={'Instant service. Choose now or schedule for later. ' + st.label} onPress={openChooser} style={box}>
+          <Txt weight={600} size={15} color={idle && !showS ? L.mut : L.ink} style={{ lineHeight: 20, width: '78%' }}>Instant Service</Txt>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
             {st.open ? <Pulse color={L.pos} size={6} /> : null}
             <Txt size={12} color={st.open ? L.pos : L.mut} numberOfLines={2} style={{ lineHeight: 16, flexShrink: 1, width: '62%' }}>{st.label}</Txt>
@@ -235,11 +274,11 @@ function Entry({ onInstant }: { onInstant: () => void }) {
           <View style={{ position: 'absolute', right: 4, bottom: 4 }}><Glyph kind="zap" idle={idle} /></View>
         </Pressable3>
       </FadeUp> : null}
-      {showS ? <FadeUp index={1} style={{ flex: 1 }}>
-        <Pressable3 label="Schedule for later. Pick a slot" onPress={() => openPage({ k: 'schedule' })} style={box}>
-          <Txt weight={600} size={15} color={L.ink} style={{ lineHeight: 20, width: '78%' }}>Schedule for Later</Txt>
-          <View style={{ alignSelf: 'flex-start', marginTop: 8, borderWidth: 1, borderColor: 'rgba(84,9,218,0.35)', backgroundColor: L.tint, borderRadius: 8, paddingHorizontal: 8, height: 24, justifyContent: 'center' }}><Txt weight={600} size={11} color={L.accent} style={{ lineHeight: 14 }}>Pick a slot</Txt></View>
-          <View style={{ position: 'absolute', right: 4, bottom: 4 }}><Glyph kind="cal" /></View>
+      {showP ? <FadeUp index={1} style={{ flex: 1 }}>
+        <Pressable3 label={`Monthly plans. Daily wash from ${inr(fromPrice())} a month`} onPress={() => go('plan')} style={box}>
+          <Txt weight={600} size={15} color={L.ink} style={{ lineHeight: 20, width: '78%' }}>Monthly Plans</Txt>
+          <Txt size={12} color={L.accent} numberOfLines={2} style={{ lineHeight: 16, marginTop: 4, width: '62%' }}>Daily wash from <Txt weight={600} size={12} color={L.accent} style={TNUM}>{inr(fromPrice())}</Txt>/mo</Txt>
+          <View style={{ position: 'absolute', right: 4, bottom: 4 }}><Glyph kind="plan" /></View>
         </Pressable3>
       </FadeUp> : null}
     </View>

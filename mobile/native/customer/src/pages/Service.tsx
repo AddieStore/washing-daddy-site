@@ -6,7 +6,7 @@ import { View, Animated, Pressable, Share, Image, Platform, useWindowDimensions 
 import { Txt, useInsets } from '../ui/kit';
 import { Check, Close, Chev, Clock, Shield } from '../ui/icons';
 import { IMG, RATIO } from '../img';
-import { useApp, act, svcQty, svcOf, lineKey, closePage, openPage, unavailable } from '../state';
+import { useApp, act, svcQty, svcOf, lineKey, closePage, openPage, unavailable, svcLines } from '../state';
 import { CAR_SERVICES, PACKS, SVC_PHOTO, SHOW_RATINGS, TRUST, VARIANTS, variantPrice, variantsFor, packInfo, type VariantId } from '../data/reference';
 import { PageBar } from './Stub';
 import { Laurel } from '../ui/art2';
@@ -28,6 +28,30 @@ const FAQ_FOR = (name: string, pack: boolean): [string, string][] => [
   [pack ? 'What if I want to add more?' : `Is ${name} safe for my paint?`, pack ? 'You can add any service to the same visit. Your washer does them all in one go.' : 'Yes. We use pH-balanced products and clean microfibre, and never dry-wipe a dusty car.'],
   ['What if I am not happy?', 'Tell us from the Washes tab within 24 hours and we will redo it or refund you to WD Money.'],
 ];
+
+/* "In your cart" strip: shown when this service is already in the cart; quantity + a way back */
+function InCart({ id, fromCart }: { id: string; fromCart: boolean }) {
+  const L = svcLines().lines.filter(l => l.id === id), q = L.reduce((a, l) => a + l.q, 0), tot = L.reduce((a, l) => a + l.total, 0);
+  if (!q) return null;
+  const det = L.map(l => (l.variantLabel ? l.variantLabel + ' x' : 'x') + l.q).join(' · ');
+  return (
+    <FadeUp distance={10} style={{ marginTop: 16, backgroundColor: 'rgba(84,9,218,0.07)', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: G.violet, alignItems: 'center', justifyContent: 'center' }}><Check size={18} color="#fff" strokeWidth={2.2} /></View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Txt weight={600} size={14} color={G.violet}>{q} in your cart</Txt>
+        <Txt size={12} color={G.sub} numberOfLines={1} style={{ marginTop: 1 }}>{det} · ₹{tot}</Txt>
+      </View>
+      <Tap label="Back to cart" onPress={() => (fromCart ? closePage() : openPage({ k: 'cart' }))} style={{ height: 38, paddingHorizontal: 14, borderRadius: 12, backgroundColor: G.violet, alignItems: 'center', justifyContent: 'center' }}>
+        <Txt weight={600} size={13} color="#fff">{fromCart ? 'Back to cart' : 'View cart'}</Txt>
+      </Tap>
+    </FadeUp>
+  );
+}
+
+/* "What you get" summary chips */
+function GetChip({ big, small }: { big: string; small: string }) {
+  return <View style={{ flex: 1, backgroundColor: '#F6F2FF', borderRadius: 14, paddingVertical: 12, alignItems: 'center' }}><Txt weight={700} size={18} color={G.violet} style={TNUM}>{big}</Txt><Txt size={11} color={G.sub} style={{ marginTop: 1 }}>{small}</Txt></View>;
+}
 
 function Skeleton() {
   return (
@@ -111,6 +135,7 @@ function Variant({ id, v, base, w }: { id: string; v: (typeof VARIANTS)[number];
 
 export default function Service({ id }: { id?: string }) {
   useApp();
+  const app = useApp(), fromCart = app.pages.length > 1 && app.pages[app.pages.length - 2]?.k === 'cart';
   const ins = useInsets(), { width } = useWindowDimensions(), W = Math.min(width, 520);
   const [org] = useState(() => takeOrigin(id || 'ext')), skel = useSkeleton(org ? 0 : 380), rm = useReducedMotion();
   const y = useRef(new Animated.Value(0)).current;
@@ -179,6 +204,7 @@ export default function Service({ id }: { id?: string }) {
                 {SHOW_RATINGS ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Txt weight={500} size={13} style={TNUM}>{'★ ' + rating.toFixed(1)}</Txt><Txt size={13} color={G.mute}>({count} ratings)</Txt></View> : null}
               </View>
               <Txt size={14} color={G.sub} style={{ marginTop: 10, lineHeight: 20 }}>{blurb}</Txt>
+              <InCart id={sid} fromCart={fromCart} />
 
               {gallery ? (
                 <View style={{ marginTop: 20 }}>
@@ -236,21 +262,27 @@ export default function Service({ id }: { id?: string }) {
             </Animated.ScrollView>
 
             <View style={{ paddingHorizontal: 16 }}>
-              <Txt weight={500} size={18} style={{ marginTop: 32 }}>How is the service done</Txt>
+              <Txt weight={700} size={20} style={{ marginTop: 32 }}>What you get</Txt>
+              <FadeUp distance={10} style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                <GetChip big={(svc ? svc.mins : pack!.mins) + ''} small="minutes" />
+                <GetChip big={included.length + ''} small="included" />
+                <GetChip big={steps.length + ''} small="steps" />
+              </FadeUp>
+              <Txt weight={500} size={18} style={{ marginTop: 28 }}>How is the service done</Txt>
               <View style={{ marginTop: 16, gap: 16 }}>
                 {steps.map(([t, s], i) => (
-                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                  <FadeUp key={i} index={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                     <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}>
                       <Txt weight={500} size={17} color={G.violet} style={TNUM}>{i + 1}</Txt>
                     </View>
                     <View style={{ flex: 1 }}><Txt weight={500} size={15}>{t}</Txt><Txt size={13} color={G.sub} style={{ marginTop: 2, lineHeight: 20 }}>{s}</Txt></View>
-                  </View>
+                  </FadeUp>
                 ))}
               </View>
 
               <Txt weight={500} size={18} style={{ marginTop: 32 }}>Included in service</Txt>
               <View style={{ marginTop: 8 }}>
-                {included.map(x => <View key={x} style={{ flexDirection: 'row', gap: 12, alignItems: 'center', minHeight: 40 }}><View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(22,163,74,.12)', alignItems: 'center', justifyContent: 'center' }}><Check size={14} color={G.pos} strokeWidth={2} /></View><Txt size={14} color={G.sub} style={{ flex: 1 }}>{x}</Txt></View>)}
+                {included.map((x, i) => <FadeUp key={x} index={i} distance={12} style={{ flexDirection: 'row', gap: 12, alignItems: 'center', minHeight: 40 }}><View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(22,163,74,.12)', alignItems: 'center', justifyContent: 'center' }}><Check size={14} color={G.pos} strokeWidth={2} /></View><Txt size={14} color={G.sub} style={{ flex: 1 }}>{x}</Txt></FadeUp>)}
               </View>
               <Txt weight={500} size={18} style={{ marginTop: 24 }}>Excluded from service</Txt>
               <View style={{ marginTop: 8 }}>

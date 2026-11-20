@@ -4,11 +4,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Pressable, ScrollView, Animated, Easing, Platform, useWindowDimensions } from 'react-native';
 import { Txt } from '../ui/kit';
-import { Sun, Moon, Sunrise, Check } from '../ui/icons';
+import { Sun, Moon, Sunrise, Check, Chev } from '../ui/icons';
 import { SheetTitle, SheetSub } from '../ui/hosts';
 import { Shimmer } from '../ui/motion';
 import {
-  useApp, act, openSheet, closeSheet, toast, when, recur, bill, slotDays, partsFor, slotsFor, slotLabel, whenText, svcLines, cartMode,
+  useApp, act, openSheet, closeSheet, openPage, toast, when, recur, bill, slotDays, partsFor, slotsFor, slotLabel, whenText, svcLines, cartMode,
 } from '../state';
 import { DAY_PARTS, RECURRING, ARRIVAL_WINDOW_MIN, SOLD_OUT_TEXT, type DayPart, type RecurId } from '../data/reference';
 import { G, PrimaryBtn, Tap, Price, TNUM, inr } from '../pages/parts';
@@ -219,11 +219,23 @@ export function openRecurSheet() { openSheet(<RecurSheet />) }
 /* ---------- Cart "To pay": bill details ---------- */
 function BillSheet() {
   useApp();
-  const b = bill(), { count, mins } = svcLines();
+  const b = bill(), { count, mins, lines } = svcLines();
   return (
     <View>
       <SheetTitle>Bill details</SheetTitle>
       <SheetSub>{count} {count === 1 ? 'service' : 'services'} · {mins} mins{b.mode === 'recurring' && b.perMonth ? ' · about ' + b.perMonth.visits + ' visits a month' : ''}</SheetSub>
+      <View style={{ gap: 4, marginBottom: 16 }}>
+        {lines.map(l => (
+          <Tap key={l.key} label={`${l.name}. See what you get`} scaleTo={0.97} onPress={() => { closeSheet(); openPage({ k: 'svc', id: l.id }) }} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#F6F2FF' }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Txt weight={500} size={14} numberOfLines={1}>{l.name}{l.variantLabel ? ' · ' + l.variantLabel : ''}</Txt>
+              <Txt size={12} color={G.mute}>x{l.q} · {l.mins * l.q} mins</Txt>
+            </View>
+            <Price v={l.total} size={14} />
+            <Chev size={16} color={G.mute} strokeWidth={1.5} />
+          </Tap>
+        ))}
+      </View>
       <View style={{ gap: 12 }}>
         {b.rows.map((r, i) => {
           const big = r.k === 'total' || r.k === 'topay', col = r.tone === 'pos' ? G.pos : r.tone === 'mute' ? G.mute : G.ink;
