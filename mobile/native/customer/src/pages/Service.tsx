@@ -7,7 +7,7 @@ import { Txt, useInsets } from '../ui/kit';
 import { Check, Close, Chev, Clock, Shield } from '../ui/icons';
 import { IMG, RATIO } from '../img';
 import { useApp, act, svcQty, svcOf, lineKey, closePage, openPage, unavailable } from '../state';
-import { CAR_SERVICES, PACKS, SHOW_RATINGS, TRUST, VARIANTS, variantPrice, variantsFor, packInfo, type VariantId } from '../data/reference';
+import { CAR_SERVICES, PACKS, SVC_PHOTO, SHOW_RATINGS, TRUST, VARIANTS, variantPrice, variantsFor, packInfo, type VariantId } from '../data/reference';
 import { PageBar } from './Stub';
 import { Laurel } from '../ui/art2';
 import { CartBar, Shimmer, useSkeleton, FadeUp, takeOrigin, flyFrom, AddButton } from '../ui/motion';
@@ -57,6 +57,13 @@ function HeroArt({ id, size, top, W, org, rm }: { id: string; size: number; top:
       <SvcArt id={id} size={size} radius={24} />
     </Reanimated.View>
   );
+}
+/* photo hero: the washer photo fills the upper half edge to edge; eases in from a slight zoom */
+function PhotoHero({ id, W, H, rm }: { id: string; W: number; H: number; rm: boolean }) {
+  const p = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { if (!rm) p.value = withTiming(1, { duration: 380 }) }, []);
+  const st = useAnimatedStyle(() => ({ opacity: 0.4 + 0.6 * p.value, transform: [{ scale: 1.06 - 0.06 * p.value }] }));
+  return <Reanimated.View style={[{ position: 'absolute', left: 0, top: 0, width: W, height: H }, st]}><SvcArt id={id} size={W} h={H} radius={0} photo /></Reanimated.View>;
 }
 function HeroTitle({ name, chip, rm, delay }: { name: string; chip: string; rm: boolean; delay: number }) {
   const v = useSharedValue(rm ? 1 : 0);
@@ -122,9 +129,10 @@ export default function Service({ id }: { id?: string }) {
   const vw = Math.floor((W - 32 - 16) / 3), ART_S = Math.min(Math.round(W * 0.5), 210);
   const gw = Math.floor((W - 32 - 12) / 2 * 0.62);   // small: about 60% of half the page width
 
-  const heroY = y.interpolate({ inputRange: [-HERO_H, 0, HERO_H], outputRange: [-HERO_H / 2, 0, HERO_H * 0.45], extrapolate: 'clamp' });
-  const heroS = y.interpolate({ inputRange: [-HERO_H, 0], outputRange: [1.6, 1], extrapolate: 'clamp' });
-  const bar = y.interpolate({ inputRange: [HERO_H - 120, HERO_H - 60], outputRange: [0, 1], extrapolate: 'clamp' });
+  const hasPhoto = !!(svc?.photo || SVC_PHOTO[sid]), { height: WH } = useWindowDimensions(), PH = Math.round(WH * 0.5), HH = hasPhoto ? PH : HERO_H;
+  const heroY = y.interpolate({ inputRange: [-HH, 0, HH], outputRange: [-HH / 2, 0, HH * 0.45], extrapolate: 'clamp' });
+  const heroS = y.interpolate({ inputRange: [-HH, 0], outputRange: [1.6, 1], extrapolate: 'clamp' });
+  const bar = y.interpolate({ inputRange: [HH - 120, HH - 60], outputRange: [0, 1], extrapolate: 'clamp' });
   const hasBar = true;
   const tint = svc?.tint || '#F3EEFD';
   const onScroll = Animated.event([{ nativeEvent: { contentOffset: { y } } }], { useNativeDriver: ND });
@@ -142,6 +150,13 @@ export default function Service({ id }: { id?: string }) {
       <Animated.ScrollView showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={onScroll} contentContainerStyle={{ paddingBottom: 140 }}>
         {skel ? <Skeleton /> : (
           <>
+            {hasPhoto ? (
+              <View style={{ height: HH, overflow: 'hidden', backgroundColor: '#1A1033' }}>
+                <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, transform: [{ translateY: heroY }, { scale: heroS }] }}>
+                  <PhotoHero id={sid} W={W} H={HH} rm={rm} />
+                </Animated.View>
+              </View>
+            ) : (
             <View style={{ height: HERO_H, overflow: 'hidden' }}>
               <LinearGradient colors={['#6A1BF2', '#5409DA', '#33058F']} start={{ x: 0, y: 0 }} end={{ x: 0.8, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
               <View style={{ position: 'absolute', right: -60, top: -40, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,255,255,0.07)' }} />
@@ -151,7 +166,14 @@ export default function Service({ id }: { id?: string }) {
                 <HeroTitle name={name} chip={svc ? svc.cat + ' · ' + svc.mins + ' mins' : 'Wash pack · ' + pack!.mins + ' mins'} rm={rm} delay={org ? 160 : 0} />
               </Animated.View>
             </View>
+            )}
             <FadeUp delay={org ? 200 : 60} style={{ marginTop: -24, backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 20, paddingHorizontal: 16 }}>
+              {hasPhoto ? <View style={{ marginBottom: 12 }}>
+                <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, height: 24, backgroundColor: 'rgba(84,9,218,0.08)' }}>
+                  <Clock size={12} color={G.violet} strokeWidth={1.8} /><Txt weight={600} size={11} color={G.violet} style={{ letterSpacing: 0.6 }}>{(svc ? svc.cat + ' · ' + svc.mins + ' mins' : 'Wash pack · ' + pack!.mins + ' mins').toUpperCase()}</Txt>
+                </View>
+                <Txt weight={800} size={26} numberOfLines={2} style={{ marginTop: 8, lineHeight: 32, letterSpacing: -0.5 }}>{name}</Txt>
+              </View> : null}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 {svc ? <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}><Price v={svc.price} size={20} weight={600} />{svc.mrp > svc.price ? <Price v={svc.mrp} size={13} weight={400} strike /> : null}{svc.mrp > svc.price ? <View style={{ backgroundColor: 'rgba(22,163,74,0.12)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}><Txt weight={600} size={11} color={G.pos}>{Math.round((1 - svc.price / svc.mrp) * 100)}% off</Txt></View> : null}</View> : null}
                 {SHOW_RATINGS ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Txt weight={500} size={13} style={TNUM}>{'★ ' + rating.toFixed(1)}</Txt><Txt size={13} color={G.mute}>({count} ratings)</Txt></View> : null}
@@ -262,6 +284,7 @@ export default function Service({ id }: { id?: string }) {
       {/* floating back + share; a white bar with the name fades in once the hero has scrolled away */}
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: ins.top + 64, backgroundColor: '#fff', opacity: bar, borderBottomWidth: 1, borderBottomColor: G.line }} />
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 64, right: 64, top: ins.top + 12, height: 40, justifyContent: 'center', opacity: bar }}><Txt weight={500} size={16} numberOfLines={1} style={{ textAlign: 'center' }}>{name}</Txt></Animated.View>
+      {hasPhoto && !skel ? <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: ins.top + 84, opacity: bar.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }}><LinearGradient colors={['rgba(0,0,0,0.45)', 'rgba(0,0,0,0)']} style={{ flex: 1 }} /></Animated.View> : null}
       <View style={{ position: 'absolute', left: 16, right: 16, top: ins.top + 12, flexDirection: 'row', justifyContent: 'space-between' }}>
         <BackCircle onPress={closePage} /><ShareCircle onPress={share} />
       </View>

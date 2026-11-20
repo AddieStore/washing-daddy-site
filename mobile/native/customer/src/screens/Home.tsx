@@ -12,7 +12,7 @@ export const BTN_ICON: Record<string, (p: { size?: number; color?: string; strok
   gift: Gift, star: Star, zap: Zap, phone: Phone, whatsapp: WhatsApp, info: Info, shield: Shield, car: CarIc, wallet: Wallet, calendar: Calendar, pin: Pin, help: HelpIc, clock: Clock, cart: CartIc, bell: Bell, heart: Heart,
 };
 import { IMG, RATIO } from '../img';
-import { CAR_SERVICES, PACKS, SVC_PHOTO, TRUST, SHOW_RATINGS, REFERRAL, packInfo } from '../data/reference';
+import { CAR_SERVICES, PACKS, TRUST, SHOW_RATINGS, REFERRAL, packInfo } from '../data/reference';
 import { GenericArt } from '../art/generic';
 import { ampm } from '../data/dates';
 import {
@@ -27,7 +27,7 @@ import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient as SvgLG, Stop } f
 import { SvcArt, PausedVeil } from '../pages/parts';
 import { artFor, ArtBoundary } from '../art';
 import { onGridJump } from './TabBar';
-import { Skyline, Laurel } from '../ui/art2';
+import { Laurel } from '../ui/art2';
 import { SheetTitle } from '../ui/hosts';
 import { openAddressPicker } from '../sheets/address';
 import { openPassPromo } from '../sheets/money';
@@ -36,7 +36,7 @@ import { openPassPromo } from '../sheets/money';
 const Pressable3 = ({ label, ...p }: React.ComponentProps<typeof P3> & { label?: string }) => <P3 scaleTo={0.96} accessibilityRole="button" accessibilityLabel={label} {...p} />;
 
 /* ---------- local tokens ---------- */
-const L = { bg: '#FFFFFF', ink: '#171717', sec: '#525252', mut: '#737373', line: 'rgba(23,23,23,0.08)', raised: '#F4F4F5', accent: '#5409DA', pos: '#16a34a', tint: 'rgba(84,9,218,0.08)' };
+const L = { bg: '#F6F2FF', ink: '#171717', sec: '#525252', mut: '#737373', line: 'rgba(23,23,23,0.08)', raised: '#F4F4F5', accent: '#5409DA', pos: '#16a34a', tint: 'rgba(84,9,218,0.08)' };
 const SIDE = 16, GAP = 12;
 const EASE = Easing.bezier(0.22, 1, 0.36, 1);
 const ND = Platform.OS !== 'web';
@@ -147,7 +147,7 @@ function Header({ y }: { y: Animated.Value }) {
   const light = y.interpolate({ inputRange: [30, 90], outputRange: [1, 0], extrapolate: 'clamp' });
   return (
     <View style={{ position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30, paddingTop: top }}>
-      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#fff', opacity: bg, borderBottomWidth: 1, borderBottomColor: L.line }} />
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#F6F2FF', opacity: bg, borderBottomWidth: 1, borderBottomColor: L.line }} />
       <Animated.View pointerEvents={scrolled ? 'none' : 'auto'} style={{ opacity: light }}><HeaderContent dark={false} /></Animated.View>
       <Animated.View pointerEvents={scrolled ? 'auto' : 'none'} style={{ position: 'absolute', left: 0, right: 0, top: top, opacity: bg }}><HeaderContent dark /></Animated.View>
     </View>
@@ -197,7 +197,7 @@ function Hero({ W }: { W: number }) {
     <View style={{ paddingTop: top + 8, paddingBottom: on ? 92 : 72, paddingHorizontal: SIDE, overflow: 'hidden' }}>
       <LinearGradient colors={th.bg} start={{ x: 0, y: 0 }} end={{ x: 0.9, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       {dots.map(([x, yy, sz, o], i) => <View key={i} style={{ position: 'absolute', left: (x as number) * W - (sz as number) / 2, top: top + (yy as number) - 40, width: sz as number, height: sz as number, borderRadius: (sz as number) / 2, backgroundColor: '#fff', opacity: o as number }} />)}
-      {on ? <Float style={{ position: 'absolute', right: -8, bottom: 52, width: 158, height: 158 }}>{artFor('pack-exclusive') ? <SvcArt id="exclusive" size={158} noPhoto /> : <Image source={IMG['r3d-pack-exclusive']} resizeMode="contain" style={{ width: 158, height: 158 }} />}</Float> : null}
+      {on ? <Float style={{ position: 'absolute', right: -8, bottom: 52, width: 158, height: 158 }}>{artFor('pack-exclusive') ? <SvcArt id="exclusive" size={158} /> : <Image source={IMG['r3d-pack-exclusive']} resizeMode="contain" style={{ width: 158, height: 158 }} />}</Float> : null}
       {on ? <View style={{ maxWidth: Math.min(W * 0.68, 300), minHeight: 112 }}>
         <HeroText title={cfg.heroTitle} sub={cfg.heroSub} accent={th.accent} />
       </View> : null}
@@ -256,7 +256,7 @@ function PackCard({ id }: { id: string }) {
     <View style={{ width: 168 }}>
       <Pressable3 label={p.name} onPress={() => setOrigin(id, ref, () => openPage({ k: 'svc', id }))}>
         <View ref={ref} style={{ width: 168, height: 128, borderRadius: 18, overflow: 'hidden', backgroundColor: '#F1EBFD', alignItems: 'center', justifyContent: 'center' }}>
-          {SVC_PHOTO[id] ? <SvcArt id={id} size={168} h={128} radius={0} /> : <SvcArt id={id} size={120} />}
+          <SvcArt id={id} size={120} />
           {paused ? <PausedVeil note={paused} /> : null}
         </View>
         {p.tag ? <View style={{ position: 'absolute', left: 0, top: 10, backgroundColor: isNew ? '#E5484D' : L.accent, borderTopRightRadius: 8, borderBottomRightRadius: 8, paddingHorizontal: 8, height: 20, justifyContent: 'center' }}><Txt weight={600} size={10} color="#fff" style={{ lineHeight: 14, letterSpacing: 0.6 }}>{isNew ? 'NEW' : p.tag}</Txt></View> : null}
@@ -331,7 +331,7 @@ function SvcTile({ s: sv, w }: { s: (typeof CAR_SERVICES)[number]; w: number }) 
     <View style={{ width: w, height: tileH(w) }}>
       <Pressable3 label={`${sv.name}, ${inr(sv.price)}`} onPress={() => setOrigin(sv.id, ref, () => openPage({ k: 'svc', id: sv.id }))}>
         <View ref={ref} style={{ width: w, height: w, borderRadius: 16, overflow: 'hidden', backgroundColor: sv.tint || L.raised, alignItems: 'center', justifyContent: 'center' }}>
-          {SVC_PHOTO[sv.id] ? <SvcArt id={sv.id} size={w} radius={0} /> : <SvcArt id={sv.id} size={Math.round(w * 0.9)} />}
+          <SvcArt id={sv.id} size={Math.round(w * 0.9)} />
           {sv.badge && !paused ? <View style={{ position: 'absolute', top: 6, left: 6, backgroundColor: String(sv.badge).toUpperCase() === 'NEW' ? '#E5484D' : L.accent, borderRadius: 6, paddingHorizontal: 5, height: 16, justifyContent: 'center' }}><Txt weight={600} size={9} color="#fff" style={{ lineHeight: 12, letterSpacing: 0.5 }}>{String(sv.badge).toUpperCase()}</Txt></View> : null}
           {paused ? <PausedVeil note={paused} compact /> : null}
           {SHOW_RATINGS && !sv.badge ? (
@@ -393,7 +393,7 @@ function Badge({ label, value }: { label: string; value: string }) {
   );
 }
 function Trust({ W }: { W: number }) {
-  const sw = Math.min(W, 520), cw = Math.min(250, W * 0.7), stats = !!(TRUST.cars || TRUST.rating), h = appCfg().home;
+  const stats = !!(TRUST.cars || TRUST.rating), h = appCfg().home;
   if (!section('trust')) return null;
   return (
     <View style={{ marginTop: 32, alignItems: 'center' }}>
@@ -406,10 +406,6 @@ function Trust({ W }: { W: number }) {
       ) : (
         h.trustSub ? <Txt size={13} color={L.mut} style={{ marginTop: 8, textAlign: 'center', width: 260, lineHeight: 18 }}>{h.trustSub}</Txt> : null
       )}
-      <View style={{ width: sw, height: 300, marginTop: 16, alignItems: 'center', justifyContent: 'flex-end' }}>
-        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}><Skyline width={sw} height={240} /></View>
-        <Image source={IMG.washerCut} resizeMode="contain" style={{ width: cw, height: cw / RATIO.washerCut }} />
-      </View>
     </View>
   );
 }

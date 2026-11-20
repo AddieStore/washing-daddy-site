@@ -324,7 +324,7 @@ export function Field({ label, style, boxStyle, onFocus, onBlur, ...p }: TextInp
       {label ? <Eyebrow style={{ marginBottom: SP.s }}>{label}</Eyebrow> : null}
       <TextInput placeholderTextColor={ink.fg3} {...p}
         onFocus={e => { setF(true); onFocus?.(e); }} onBlur={e => { setF(false); onBlur?.(e); }}
-        style={[{ backgroundColor: T.day ? C.tint : 'rgba(255,255,255,.06)', borderWidth: f ? 1.5 : 1, borderColor: f ? C.violet : 'transparent', borderRadius: R.ctl, minHeight: 48, paddingVertical: 12, paddingHorizontal: SP.l, fontFamily: F.b500, fontSize: 15, color: ink.fg } as TextStyle, style]} />
+        style={[{ backgroundColor: T.day ? (f ? '#fff' : C.canvas) : 'rgba(255,255,255,.06)', borderWidth: f ? 1.5 : 1, borderColor: f ? C.violet : 'transparent', borderRadius: R.ctl, minHeight: 48, paddingVertical: 12, paddingHorizontal: SP.l, fontFamily: F.b500, fontSize: 15, color: ink.fg } as TextStyle, style]} />
     </View>
   );
 }

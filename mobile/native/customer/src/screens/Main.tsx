@@ -100,7 +100,7 @@ function Pushed({ p, depth, cover }: { p: NonNullable<Page>; depth: number; cove
   const rm = useReduceMotion(), c = useCover(cover);
   return (
     <Reanimated.View entering={rm ? undefined : enterOf(p.k)} exiting={rm ? undefined : exitOf(p.k)} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 10 + depth, backgroundColor: '#000' }}>
-      <Reanimated.View style={[{ flex: 1, backgroundColor: '#FFFFFF' }, c.st]}>
+      <Reanimated.View style={[{ flex: 1, backgroundColor: '#F6F2FF' }, c.st]}>
         <PageView p={p} />
       </Reanimated.View>
       <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#0B0614' }, c.dim]} />

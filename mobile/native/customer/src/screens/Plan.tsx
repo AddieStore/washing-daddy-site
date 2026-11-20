@@ -128,7 +128,7 @@ export default function Plan() {
   const pz = !!c.paused && c.paused.to >= iso(TODAY), cp = canPause(c);
   const pays = a.payments.slice().sort((x, y) => y.d.localeCompare(x.d));
   return (
-    <View style={{ flex: 1, backgroundColor: C.white }}>
+    <View style={{ flex: 1, backgroundColor: C.canvas }}>
       <ScrollView ref={sc} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 0 }}>
         <View style={{ paddingTop: top, paddingHorizontal: 16, height: top + 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Txt weight={500} size={24} color={INK}>Plans</Txt>
@@ -196,7 +196,7 @@ export default function Plan() {
             </View>
           )) : <View style={{ padding: 16, paddingTop: 0 }}><Txt weight={500} size={14} color={INK}>No payments yet</Txt><Txt size={12} color={MUTED}>Your first receipt shows up here</Txt></View>}
         </Card>
-        <Footer bg={C.white} />
+        <Footer bg={C.canvas} />
       </ScrollView>
     </View>
   );
