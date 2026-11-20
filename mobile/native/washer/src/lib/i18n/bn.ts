@@ -1,5 +1,7 @@
 // Bengali mode (বাংলা). Keys are the Hinglish text the app is written in.
 export const T: Record<string, string> = {
+  "Customer ko bata diya: aap raaste mein ho": "কাস্টমারকে জানানো হয়েছে: আপনি রওনা দিয়েছেন",
+  "Nikal gaya, raaste mein hoon": "রওনা দিয়েছি, রাস্তায় আছি",
   "Aap online ho":"আপনি অনলাইনে আছেন",
   "Aap offline ho":"আপনি অফলাইনে আছেন",
   "Naye extra kaam aapko dikhenge":"নতুন এক্সট্রা কাজ আপনি দেখতে পাবেন",

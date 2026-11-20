@@ -11,7 +11,7 @@ import { backend, type Data, type DbError, type Unsub } from '../backend';
 import { isoIST, dateIST, addDaysStr, daysInMonth } from '../lib/time';
 import { PLAN, TASK, tasksFor, normReg, isPlan, type TaskKey } from '../lib/schedule';
 import {
-  WASHERS, PHONE_TO_WASHER, DEMO_ROSTER, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
+  WASHERS, ensureRound, PHONE_TO_WASHER, DEMO_ROSTER, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
   type Car, type Wash, type Req, type Job, type WasherDoc, type KitItem, type KitKind, type WasherInfo, type Photo,
 } from '../lib/data';
 import { setLang, t } from '../lib/i18n';
@@ -103,6 +103,9 @@ export function emit() {
 }
 const subscribe = (f: () => void) => { listeners.add(f); return () => { listeners.delete(f) } };
 export const useStore = () => useSyncExternalStore(subscribe, () => version, () => version);
+
+const washerIdent = () => { const ph = (me().phone || '').replace(/\D/g, '').slice(-10); return { washer_name: me().name, washer_phone: ph ? '+91' + ph : '' } };
+let lastJobLoc: Record<string, number> = {};
 
 /* ---------------- who is signed in ---------------- */
 export const me = (): WasherInfo => {
@@ -596,7 +599,8 @@ export const act = {
     S.online = !isOnline(); save(); ui.haptic(S.online ? [10, 30, 10] : 12);
     ui.toast(t(S.online ? 'Aap online ho. Naye kaam aayenge' : 'Aap offline ho. Naye kaam nahi aayenge')); emit();
   },
-  exClaim(id: string) { Sync.extraSet(id, { washer_id: me().id }); ui.haptic([20, 40, 20]); ui.toast(t('Kaam mila! Shuru karo.')) },
+  exClaim(id: string) { Sync.extraSet(id, { washer_id: me().id, ...washerIdent() }); ui.haptic([20, 40, 20]); ui.toast(t('Kaam mila! Shuru karo.')) },
+  exOnWay(id: string) { Sync.extraSet(id, { status: 'on_the_way', on_the_way_at: isoIST(), ...washerIdent() }); ui.haptic([20, 40, 20]); ui.toast(t('Customer ko bata diya: aap raaste mein ho')) },
   exStart(id: string) { Sync.extraSet(id, { status: 'doing', started_at: isoIST() }); ui.haptic([20, 40, 20]); ui.toast(t('Shuru. Ab kaam ki photo lo')) },
   exNeedPhoto() { ui.toast(t('Pehle kaam ki photo lo, phir kaam band hoga')); ui.haptic(14) },
   async exPhoto(id: string, url: string) { await Sync.extraSet(id, { photo: url, photo_at: isoIST() }); ui.toast(t('Photo lag gayi. Ab kaam khatam karo')) },
@@ -606,7 +610,7 @@ export const act = {
     Sync.extraSet(id, { status: 'done', finished_at: isoIST() }); ui.haptic([20, 40, 20, 40, 60]); ui.confetti(.6);
     ui.toast(t(`Ho gaya. Aapke ₹${Math.round(Money.share(j.price))}`));
   },
-  alertAccept() { const j = view.jobAlert; if (j && !j.washer_id) Sync.extraSet(j.id, { washer_id: me().id }); view.jobAlert = null; emit() },
+  alertAccept() { const j = view.jobAlert; if (j && !j.washer_id) Sync.extraSet(j.id, { washer_id: me().id, ...washerIdent() }); view.jobAlert = null; emit() },
   // only decline an already-assigned job; an unassigned booking is just dismissed
   alertPass() { const j = view.jobAlert; if (j && j.washer_id) Sync.extraSet(j.id, { status: 'declined', declined_at: isoIST() }); view.jobAlert = null; emit() },
   // the washer's own reminder photo of a car on his round (kept on this phone only, one per car, replaced on retake)
@@ -810,13 +814,15 @@ export async function uploadDoc(kind: DocKind, mime: string, name: string, data:
 }
 export const clothesHave = () => Kit.items.filter(i => i.kind === 'clothes').reduce((n, i) => n + i.qty, 0);
 
+// the saved session's round, re-made from the session for a round added in the dashboard (data.ts ensureRound)
+const sessionRound = () => { const x = S.session; return !!x && !!x.washerId && (!!WASHERS[x.washerId] || (!!x.real && ensureRound(x.washerId, { name: x.name, phone: x.phone, since: x.since }))) };
 function stopWatch() { if (meUnsub) { try { meUnsub() } catch (e) { } meUnsub = null } }
 function applyWasher(v: WasherDoc | null): AuthStep {
   Kit.profile = v; if (v) watchKit();
   if (!v) return 'join';
   if (v.status === 'blocked') return 'blocked';
   if (v.status !== 'approved') return 'wait';
-  if (!v.route_id || !WASHERS[v.route_id]) return 'noround';
+  if (!v.route_id || !ensureRound(v.route_id, { name: v.name, phone: v.phone, area: v.area, since: String(v.decided_at || v.created_at || '2026').slice(0, 4) })) return 'noround';
   const was = S.session?.real && S.session.washerId;
   S.session = { ...(S.session || {}), real: true, washerId: v.route_id, name: v.name, phone: (auth.phone() || '').slice(-10), since: String(v.decided_at || v.created_at || '2026').slice(0, 4), at: S.session?.at || isoIST() };
   save();
@@ -858,6 +864,13 @@ async function startGps() {
     gpsSub = await Location.watchPositionAsync({ accuracy: Location.Accuracy.High, timeInterval: 30000, distanceInterval: 25 }, pos => {
       const { latitude: lat, longitude: lng, accuracy } = pos.coords;
       db.doc('locations/' + me().id).set({ lat, lng, accuracy, washer_id: me().id, updated_at: isoIST() }).catch(e => console.warn('gps write', e));
+      // jobs on the way: the customer's map reads the position straight off the booking, at most every 30 s per job
+      const now = Date.now();
+      for (const j of Extra.open()) {
+        if (j.status !== 'on_the_way' || j.washer_id !== me().id || now - (lastJobLoc[j.id] || 0) < 30000) continue;
+        lastJobLoc[j.id] = now;
+        db.doc('ondemand/' + j.id).update({ washer_lat: lat, washer_lng: lng, washer_loc_at: isoIST() }).catch(e => console.warn('gps job write', e));
+      }
     });
   } catch (e) { console.warn('gps', e) }
 }
@@ -909,11 +922,11 @@ export async function boot() {
     if (S.session && !S.session.real) { S.session = null; save() }
     const phone = await auth.ready();
     if (S.session && (!phone || phone.slice(-10) !== S.session.phone)) { S.session = null; save() }
-    if (S.session && WASHERS[S.session.washerId || '']) { enterApp(); watchMe() }
+    if (S.session && sessionRound()) { enterApp(); watchMe() }
     else if (phone && !isOnboarded()) startOnboarding(afterRealLogin);   // the app was closed half-way through onboarding
     else if (phone) { try { await afterRealLogin() } catch (e) { view.authStep = 'phone' } }
     else view.authStep = 'phone';
-  } else if (S.session && WASHERS[S.session.washerId || '']) enterApp();
+  } else if (S.session && sessionRound()) enterApp();
   else view.authStep = 'phone';
   emit();
   // keep sending what is waiting; a new day starts a new round

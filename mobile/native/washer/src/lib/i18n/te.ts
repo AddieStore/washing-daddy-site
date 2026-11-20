@@ -1,5 +1,7 @@
 // Telugu mode. Keys are the Hinglish text the app is written in (same keys as hi.ts).
 export const T: Record<string, string> = {
+  "Customer ko bata diya: aap raaste mein ho": "కస్టమర్‌కు చెప్పాము: మీరు దారిలో ఉన్నారు",
+  "Nikal gaya, raaste mein hoon": "బయలుదేరాను, దారిలో ఉన్నాను",
   "Aap online ho": "మీరు ఆన్‌లైన్‌లో ఉన్నారు",
   "Aap offline ho": "మీరు ఆఫ్‌లైన్‌లో ఉన్నారు",
   "Naye extra kaam aapko dikhenge": "కొత్త ఎక్స్ట్రా పనులు మీకు కనిపిస్తాయి",

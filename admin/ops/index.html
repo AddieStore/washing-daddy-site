@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#5409DA">
+<meta name="color-scheme" content="light dark">
+<title>WD Operations</title>
+<link rel="icon" type="image/png" href="/washer/favicon.png">
+<link rel="apple-touch-icon" href="/washer/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="ops.css">
+</head>
+<body>
+<div id="gate" class="gate" hidden><div class="gate-box" id="gateBox"></div></div>
+
+<div id="app" class="app" hidden>
+  <div id="demoBar" class="demo-bar" hidden>Demo: sample data, nothing is saved</div>
+  <header class="hdr"><div class="hdr-in">
+    <div class="logo" id="hLogo" aria-hidden="true"></div>
+    <div class="grow"><h1>WD Operations</h1><small>Washing Daddy live desk</small></div>
+    <div class="status" id="status" role="status" aria-live="polite"><i></i><span>Live</span></div>
+    <div class="hdr-acts">
+      <button class="hbtn" id="bSound" type="button"></button>
+      <button class="hbtn" id="bNotif" type="button"></button>
+      <a class="hbtn" id="bBack" href="../app/">Prices &amp; services</a>
+      <span class="who" id="who"></span>
+    </div>
+  </div></header>
+  <nav class="bar" id="bar" aria-label="Sections"></nav>
+  <main id="main" tabindex="-1"></main>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true"></div>
+<div class="dlg" id="dlg" hidden></div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="core.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>

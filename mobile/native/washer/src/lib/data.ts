@@ -26,6 +26,7 @@ export type Job = {
   id: string; washer_id?: string; status?: string; service?: string; price?: number; car?: string; reg?: string;
   area?: string; customer_name?: string; phone?: string; note?: string; lat?: number; lng?: number; date?: string;
   created_at?: string; started_at?: string; finished_at?: string; photo?: string; photo_at?: string;
+  on_the_way_at?: string; washer_name?: string; washer_phone?: string; washer_lat?: number; washer_lng?: number; washer_loc_at?: string;
 };
 export type WasherDoc = { phone: string; name: string; area?: string; status: 'pending' | 'approved' | 'blocked'; route_id?: string; created_at?: string; decided_at?: string;
   // set by an admin only (the rules stop the washer writing them); the washer app only shows them
@@ -42,6 +43,13 @@ export const WASHERS: Record<string, WasherInfo> = {
   chotte: { id: 'chotte', name: 'Chotte', phone: '9000000001', areas: 'GH-9 · GH-6 Paschim Vihar', img: 'washer', since: '2024', lifetime: 4180, rating: 4.9 },
   shahrukh: { id: 'shahrukh', name: 'Shahrukh', phone: '9000000002', areas: 'GH-14 · Meera Bagh · Sundar Vihar', img: null, since: '2025', lifetime: 2240, rating: 4.8 },
 };
+// A round the owner created in the operations dashboard (admin/ops) is not in the list above: the app makes its entry
+// from the washers/{phone} doc so a new washer can sign in on day one. Fixed ids above keep their photo and history.
+export function ensureRound(id: string, v: { name?: string; phone?: string; area?: string; since?: string }): boolean {
+  if (!id || !/^[a-z0-9][a-z0-9-]{1,30}$/.test(id)) return false;
+  if (!WASHERS[id]) WASHERS[id] = { id, name: (v.name || id).slice(0, 60), phone: String(v.phone || '').replace(/\D/g, '').slice(-10), areas: (v.area || '').slice(0, 80), img: null, since: v.since || '2026', lifetime: 0, rating: '–' };
+  return true;
+}
 export const PHONE_TO_WASHER: Record<string, string> = Object.fromEntries(Object.values(WASHERS).map(w => [w.phone, w.id]));
 
 export const OWNER_PHONE = '+917701808924';

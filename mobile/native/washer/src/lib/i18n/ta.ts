@@ -1,5 +1,7 @@
 // Tamil mode. Keys are the Hinglish text the app is written in; values are Tamil.
 export const T: Record<string, string> = {
+  "Customer ko bata diya: aap raaste mein ho": "வாடிக்கையாளருக்கு தெரிவிக்கப்பட்டது: நீங்கள் வழியில் உள்ளீர்கள்",
+  "Nikal gaya, raaste mein hoon": "புறப்பட்டேன், வழியில் இருக்கிறேன்",
   "Aap online ho":"நீங்கள் ஆன்லைனில் இருக்கிறீர்கள்",
   "Aap offline ho":"நீங்கள் ஆஃப்லைனில் இருக்கிறீர்கள்",
   "Naye extra kaam aapko dikhenge":"புதிய எக்ஸ்ட்ரா வேலைகள் உங்களுக்குத் தெரியும்",
