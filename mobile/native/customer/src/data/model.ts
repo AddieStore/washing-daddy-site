@@ -21,7 +21,7 @@ export type Account = {
   credit?: number;   // Referral Credit in rupees from wd-pay-lookup, read-only
   first?: string; last?: string; email?: string;   // Edit profile (Pronto); name stays the display name = first + ' ' + last
 };
-export type Session = { token: string; phone: string; real: boolean };
+export type Session = { token: string; phone: string; real: boolean; guest?: boolean };
 
 export const DEMO_PHONE = '9876504210';
 

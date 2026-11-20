@@ -18,8 +18,7 @@ import { ampm } from '../data/dates';
 import {
   useApp, A, car, doc, act, go, openPage, openSheet, toast, svcQty, svcLines, liveHead, activeStage, chipText,
   homeConfig, instantStatus, selectedAddress, addrName, wallet, activePass, REAL,
-  appCfg, feature, section, uiButtons, serviceCats, unavailable, configLoading, UiButton,
-} from '../state';
+  appCfg, feature, section, uiButtons, serviceCats, unavailable, configLoading, UiButton, isGuest } from '../state';
 import { Pressable3 as P3, FadeUp, AddButton, CartBar, Shimmer, useSkeleton, loaderPending, setOrigin, SPRING, TAB_BAR_H } from '../ui/motion';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, withRepeat, withSequence, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -412,6 +411,7 @@ function Trust({ W }: { W: number }) {
 
 /* ---------- floating "washer assigned" mini card (only when the cart is empty) ---------- */
 function Assigned() {
+  if (isGuest()) return null;
   let c: any, d: any, a: any, live = false, h: any;
   try { c = car(); d = doc(c); a = A(); live = !!activeStage(d); h = liveHead(c) } catch (e) { return null }
   const up = a.bookings.filter((b: any) => b.carId === c.id).slice(-1)[0], fin = d.status === 'done';
