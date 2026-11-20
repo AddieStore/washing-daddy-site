@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, ScrollView, TextInput, RefreshControl } from 'react-native';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
+import { Footer } from '../ui/Footer';
 import { Info, Gift, Chev, Zap, Check, Wallet as WalletIc, Receipt } from '../ui/icons';
 import { useApp, wallet, act, topUpBonus, topUpCheck, openPage, toast, confetti, feature } from '../state';
 import { WALLET } from '../data/reference';
@@ -10,7 +11,6 @@ import { G, Tap, PrimaryBtn, TNUM, PAGE_BG, card } from './parts';
 import { CountUp, FadeUp } from '../ui/motion';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PageBar } from './Stub';
-import { TAB_H } from '../screens/TabBar';
 import { openGiftCard, openWalletInfo, Skel, useSkeleton, Sec, Bullets, V, V_SOFT, V_LINE, rs } from '../sheets/money';
 
 const KIND: Record<string, string> = { topup: 'Added to wallet', cashback: 'Cashback', gift: 'Gift card', referral: 'Referral reward', promo: 'Promotional credit', payment: 'Paid for booking', refund: 'Refund', expiry: 'Expired' };
@@ -48,7 +48,7 @@ export default function Money({ tab }: { tab?: boolean }) {
     <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
       {tab ? <View style={{ paddingTop: ins.top + 16, paddingHorizontal: 16, paddingBottom: 8 }}><Txt weight={600} size={22}>{WALLET.name}</Txt></View> : <PageBar title={WALLET.name} />}
       {load ? <Loading /> : (
-        <ScrollView refreshControl={<RefreshControl refreshing={ref} onRefresh={refresh} tintColor={V} colors={[V]} />} contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: (tab ? TAB_H : 0) + ins.bottom + 32 }} showsVerticalScrollIndicator={false}>
+        <ScrollView refreshControl={<RefreshControl refreshing={ref} onRefresh={refresh} tintColor={V} colors={[V]} />} contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: tab ? 0 : ins.bottom + 32 }} showsVerticalScrollIndicator={false}>
           {/* balance */}
           <FadeUp index={0}><View style={{ borderRadius: 22, padding: 20, overflow: 'hidden', shadowColor: V, shadowOpacity: 0.3, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 }}>
             <LinearGradient colors={['#6A1BF2', '#5409DA', '#36058F']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
@@ -147,6 +147,7 @@ export default function Money({ tab }: { tab?: boolean }) {
             <Txt weight={500} size={17} style={{ marginBottom: 14 }}>Using your balance</Txt>
             <Bullets items={WALLET.rules} />
           </Sec>
+          {tab ? <Footer bg={PAGE_BG} bleed={16} /> : null}
         </ScrollView>
       )}
     </View>

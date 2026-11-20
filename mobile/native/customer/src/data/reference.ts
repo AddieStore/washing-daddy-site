@@ -212,6 +212,16 @@ export const CAR_SERVICES: CarService[] = [
     steps: [['Prep', 'Paint cleaned and degreased'], ['Coat', 'Teflon layer applied panel by panel'], ['Cure', 'Left to cure, buffed']],
     included: ['Full body'], excluded: ['Paint correction'] },
 ];
+// Real photos of our washer doing each job (img.ts 'svc-*'). A service or pack id listed here shows the photo instead of the drawn art;
+// a live-config `photo` URL still wins. Ids without a fitting photo keep their drawing.
+const _P = (k: string) => 'svc-' + k;
+export const SVC_PHOTO: Record<string, string> = {
+  ext: _P('pressure-wash'), foam: _P('foam-wash'), int: _P('interior-spray'), vac: _P('vacuum-rear'), engine: _P('engine-spray'), tyre: _P('tyre-rim'),
+  glass: _P('glass'), dash: _P('dashboard'), seat: _P('seat-shampoo'), odour: _P('interior-spray'), ceramic: _P('polish-bonnet'), wax: _P('hand-dry'),
+  alloy: _P('tyre-rim'), roof: _P('glass'), tar: _P('hand-dry'), rain: _P('glass'), liner: _P('roof-liner'), boot: _P('boot-vacuum'),
+  mats: _P('floor-mat'), touch: _P('interior-spray'), battery: _P('engine-battery'),
+  wash: _P('pressure-wash'), deep: _P('vacuum-rear'), exclusive: _P('polish-bonnet'),
+};
 // "Wash Packs" carousel: the combos n8n already prices, so these can be paid online.
 export type PackDef = { id: string; tag: string; img: string; mins: number; sub: string; name?: string; price?: number; mrp?: number; status?: LiveStatus; pausedNote?: string; art?: ArtSpec; blurb?: string; steps?: [string, string][]; included?: string[]; excluded?: string[]; faqs?: [string, string][] };
 export const PACKS: PackDef[] = [

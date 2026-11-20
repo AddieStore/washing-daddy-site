@@ -49,6 +49,22 @@ export const IMG = {
   'r3d-pack-deep': require('../assets/img/r3d-pack-deep.webp'),
   'r3d-pack-exclusive': require('../assets/img/r3d-pack-exclusive.webp'),
   washerCut: require('../assets/img/washer-cut.webp'),
+  // Ravi's real photos of our washer doing each job (portrait); see SVC_PHOTO in data/reference.ts
+  'svc-hand-dry': require('../assets/img/svc-hand-dry.webp'),
+  'svc-foam-wash': require('../assets/img/svc-foam-wash.webp'),
+  'svc-vacuum-rear': require('../assets/img/svc-vacuum-rear.webp'),
+  'svc-roof-liner': require('../assets/img/svc-roof-liner.webp'),
+  'svc-pressure-wash': require('../assets/img/svc-pressure-wash.webp'),
+  'svc-dashboard': require('../assets/img/svc-dashboard.webp'),
+  'svc-polish-bonnet': require('../assets/img/svc-polish-bonnet.webp'),
+  'svc-interior-spray': require('../assets/img/svc-interior-spray.webp'),
+  'svc-engine-battery': require('../assets/img/svc-engine-battery.webp'),
+  'svc-seat-shampoo': require('../assets/img/svc-seat-shampoo.webp'),
+  'svc-boot-vacuum': require('../assets/img/svc-boot-vacuum.webp'),
+  'svc-tyre-rim': require('../assets/img/svc-tyre-rim.webp'),
+  'svc-glass': require('../assets/img/svc-glass.webp'),
+  'svc-floor-mat': require('../assets/img/svc-floor-mat.webp'),
+  'svc-engine-spray': require('../assets/img/svc-engine-spray.webp'),
 } satisfies Record<string, ImageSourcePropType>;
 
 export type ImgKey = keyof typeof IMG;
@@ -59,7 +75,7 @@ export const src = (v: ImgKey | string | null | undefined): ImageSourcePropType 
 export const RATIO: Record<ImgKey, number> = {
   scorpio: 1100 / 652, civic: 1000 / 469, washer: 512 / 520, proof: 900 / 675, logo: 260 / 157, trust: 400 / 470,
   authphoto: 420 / 525, slide0: .8, slide1: .8, slide2: .8, slide3: .8, slide4: .8, slide5: .8, slide6: 1,
-  'after': 520/520, 'before': 520/520, 'bmw-front': 470/588, 'foam': 470/588, 'gh9': 470/588, 'guy': 380/309, 'hero-shirt': 470/588, 'i8': 470/588, 'kit': 470/588, 'pochaa': 470/588, 'poster-trust': 520/611, 'red-foam': 470/588, 'shirt-999': 470/588, 'spray': 470/588, 'thar': 470/588, 'wheel': 470/588, 'wipe': 470/588, 'r3d-ext': 1, 'r3d-foam': 1, 'r3d-int': 1, 'r3d-vac': 1, 'r3d-engine': 1, 'r3d-tyre': 1, 'r3d-glass': 1, 'r3d-dash': 1, 'r3d-seat': 1, 'r3d-odour': 1, 'r3d-ceramic': 1, 'r3d-under': 1, 'r3d-pack-wash': 1, 'r3d-pack-deep': 1, 'r3d-pack-exclusive': 1, washerCut: 380 / 309,
+  'after': 520/520, 'before': 520/520, 'bmw-front': 470/588, 'foam': 470/588, 'gh9': 470/588, 'guy': 380/309, 'hero-shirt': 470/588, 'i8': 470/588, 'kit': 470/588, 'pochaa': 470/588, 'poster-trust': 520/611, 'red-foam': 470/588, 'shirt-999': 470/588, 'spray': 470/588, 'thar': 470/588, 'wheel': 470/588, 'wipe': 470/588, 'r3d-ext': 1, 'r3d-foam': 1, 'r3d-int': 1, 'r3d-vac': 1, 'r3d-engine': 1, 'r3d-tyre': 1, 'r3d-glass': 1, 'r3d-dash': 1, 'r3d-seat': 1, 'r3d-odour': 1, 'r3d-ceramic': 1, 'r3d-under': 1, 'r3d-pack-wash': 1, 'r3d-pack-deep': 1, 'r3d-pack-exclusive': 1, washerCut: 380 / 309, 'svc-hand-dry': 720 / 1291, 'svc-foam-wash': 600 / 1067, 'svc-vacuum-rear': 720 / 1291, 'svc-roof-liner': 720 / 1291, 'svc-pressure-wash': 720 / 1291, 'svc-dashboard': 720 / 1291, 'svc-polish-bonnet': 720 / 1291, 'svc-interior-spray': 720 / 1291, 'svc-engine-battery': 720 / 1291, 'svc-seat-shampoo': 720 / 1291, 'svc-boot-vacuum': 720 / 1291, 'svc-tyre-rim': 720 / 1291, 'svc-glass': 720 / 1291, 'svc-floor-mat': 720 / 1291, 'svc-engine-spray': 720 / 1291,
 };
 
 // Background cut-out of a car photo (Android ML Kit). A file:// PNG with transparency, or null on any failure.

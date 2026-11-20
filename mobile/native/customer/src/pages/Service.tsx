@@ -54,7 +54,7 @@ function HeroArt({ id, size, top, W, org, rm }: { id: string; size: number; top:
   return (
     <Reanimated.View style={[{ position: 'absolute', left: cx - size / 2, top, width: size, height: size, alignItems: 'center', justifyContent: 'center' }, st]}>
       <View style={{ position: 'absolute', width: size * 0.92, height: size * 0.92, borderRadius: size, backgroundColor: 'rgba(255,255,255,0.12)' }} />
-      <SvcArt id={id} size={size} />
+      <SvcArt id={id} size={size} radius={24} />
     </Reanimated.View>
   );
 }

@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
 import { C, F, SP, InkContext, creamInk } from '../theme';
-import { Chips, Field, Opt, Txt, useInsets, PAD } from '../ui/kit';
+import { Chips, Field, Txt, useInsets, PAD } from '../ui/kit';
+import { Pressable3, FadeUp } from '../ui/motion';
 import { Back, Check } from '../ui/icons';
 import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp, legalPages } from '../state';
 import { openLegalSheet } from '../pages/LegalDoc';
@@ -19,20 +20,20 @@ const NUM = { fontVariant: ['tabular-nums'] } as const;
 function Err({ text }: { text: string }) {
   return text ? <Txt weight={500} size={13} color={L.red} style={{ marginBottom: SP.m, lineHeight: 18 }}>{text}</Txt> : null;
 }
-const H2 = ({ children }: { children: string }) => <Txt weight={500} size={24} color={L.ink} style={{ lineHeight: 32, textAlign: 'center' }}>{children}</Txt>;
-const P = ({ children, left }: { children: React.ReactNode; left?: boolean }) => <Txt size={14} color={L.grey} style={{ marginTop: SP.s, marginBottom: SP.xl, lineHeight: 20, textAlign: left ? 'left' : 'center' }}>{children}</Txt>;
-const Hint = ({ children }: { children: React.ReactNode }) => <Txt size={12} color={L.muted} style={{ marginTop: SP.l, lineHeight: 16, textAlign: 'center' }}>{children}</Txt>;
+const H2 = ({ children }: { children: string }) => <Txt weight={500} size={24} color={L.ink} style={{ lineHeight: 32 }}>{children}</Txt>;
+const P = ({ children, left }: { children: React.ReactNode; left?: boolean }) => <Txt size={14} color={L.grey} style={{ marginTop: SP.s, marginBottom: SP.xl, lineHeight: 20, textAlign: left === false ? 'center' : 'left' }}>{children}</Txt>;
+const Hint = ({ children }: { children: React.ReactNode }) => <Txt size={12} color={L.muted} style={{ marginTop: SP.l, lineHeight: 16, padding: SP.m, borderRadius: 10, backgroundColor: L.raised, overflow: 'hidden' }}>{children}</Txt>;
 const B = ({ children }: { children: React.ReactNode }) => <Txt weight={500} size={12} color={L.ink}>{children}</Txt>;
 function Link({ label, onPress, disabled, style }: { label: string; onPress: () => void; disabled?: boolean; style?: any }) {
-  return <Pressable onPress={onPress} disabled={disabled} hitSlop={{ top: 14, bottom: 14, left: 10, right: 10 }} style={style}><Txt weight={500} size={14} color={disabled ? L.muted : L.violet}>{label}</Txt></Pressable>;
+  return <Pressable3 onPress={onPress} disabled={disabled} haptics={false} scaleTo={0.97} hitSlop={{ top: 14, bottom: 14, left: 10, right: 10 }} style={style}><Txt weight={500} size={14} color={disabled ? L.muted : L.violet}>{label}</Txt></Pressable3>;
 };
 // full-width accent button, grey while it cannot be used
 function Cta({ label, onPress, disabled, busy, style }: { label: string; onPress?: () => void; disabled?: boolean; busy?: string | boolean; style?: any }) {
   const off = !!disabled || !!busy;
   return (
-    <Pressable onPress={onPress} disabled={off} accessibilityRole="button" style={({ pressed }) => [{ minHeight: 48, borderRadius: 10, backgroundColor: disabled ? L.off : L.violet, alignItems: 'center', justifyContent: 'center', opacity: busy ? 0.8 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }, style]}>
+    <Pressable3 onPress={onPress} disabled={off} accessibilityRole="button" style={[{ minHeight: 48, borderRadius: 10, backgroundColor: disabled ? L.off : L.violet, alignItems: 'center', justifyContent: 'center', opacity: busy ? 0.8 : 1 }, style]}>
       <Txt weight={500} size={15} color={disabled ? L.muted : '#fff'}>{typeof busy === 'string' ? busy : label}</Txt>
-    </Pressable>
+    </Pressable3>
   );
 }
 const StepDots = ({ n }: { n: 1 | 2 }) => (
@@ -45,21 +46,16 @@ const BackBtn = ({ onPress }: { onPress: () => void }) => (
     <Back size={24} color={L.ink} strokeWidth={1.5} />
   </Pressable>
 );
-const PHOTOS = ['slide0', 'slide1', 'slide2', 'slide3', 'slide4', 'slide5', 'slide6'] as const;
-// two rows of photo tiles bleeding off the sides
-function Bubbles({ W }: { W: number }) {
-  const h = 104, rows = [[0, 1, 2, 3], [4, 5, 6, 0]], ws = [[96, 148, 128, 120], [140, 108, 148, 100]], off = [-32, -72];
+const PHOTOS = ['slide0', 'slide1', 'slide2'] as const;
+// one clean strip of three photos in rounded tiles, like the Home hero art
+function Strip({ W }: { W: number }) {
+  const gap = 8, w = (W - PAD * 2 - gap * 2) / 3;
   return (
-    <View style={{ width: W, marginTop: SP.xl, height: h * 2 + 12, overflow: 'hidden' }}>
-      {rows.map((r, ri) => (
-        <View key={ri} style={{ flexDirection: 'row', gap: 12, marginLeft: off[ri], marginTop: ri ? 12 : 0, width: W * 2 }}>
-          {r.map((k, i) => <Image key={i} source={src(PHOTOS[k])!} resizeMode="cover" style={{ width: ws[ri][i], height: h, borderRadius: 14 }} />)}
-        </View>
-      ))}
-    </View>
+    <FadeUp delay={120} style={{ flexDirection: 'row', gap, paddingHorizontal: PAD, marginTop: SP.xl }}>
+      {PHOTOS.map((k, i) => <Image key={k} source={src(k)!} resizeMode="cover" style={{ width: w, height: i === 1 ? 148 : 120, alignSelf: 'center', borderRadius: 14, backgroundColor: L.raised }} />)}
+    </FadeUp>
   );
 }
-
 export default function Auth() {
   const ins = useInsets(), win = useWindowDimensions(), W = Math.min(win.width, 440);
   const [step, setStep] = useState<Step>('phone');
@@ -171,17 +167,17 @@ export default function Auth() {
   /* ---------- the card ---------- */
   const six = OTP_N > 4;
   const phoneField = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, borderRadius: 10, borderWidth: 1, borderColor: phone ? L.violet : L.line, backgroundColor: '#fff', paddingHorizontal: SP.l }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, borderRadius: 12, borderWidth: phone ? 1.5 : 1, borderColor: phone ? L.violet : 'transparent', backgroundColor: L.raised, paddingHorizontal: SP.l }}>
       <Txt weight={500} size={15} color={L.ink} style={NUM}>+91</Txt>
       <TextInput value={shown} onChangeText={onPhone} onFocus={toCard} onSubmitEditing={sendCode} inputMode="numeric" keyboardType="number-pad" maxLength={16} autoComplete="tel-national" textContentType="telephoneNumber"
         placeholder="Enter mobile number" placeholderTextColor={L.muted} accessibilityLabel="Mobile number"
-        style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontSize: 15, color: L.ink, paddingVertical: 12, fontVariant: ['tabular-nums'], outlineStyle: 'none' } as any} />
+        style={{ flex: 1, minWidth: 0, fontFamily: F.b500, fontSize: 15, color: L.ink, paddingVertical: 12, fontVariant: ['tabular-nums'], outlineStyle: 'none' } as any} />
     </View>
   );
   let card;
   if (step === 'phone') card = (
     <>
-      <Txt weight={500} size={22} color={L.ink} style={{ marginBottom: SP.l }}>Log in or sign up</Txt>
+      <Txt weight={500} size={18} color={L.ink} style={{ marginBottom: SP.m }}>Log in or sign up</Txt>
       {phoneField}
       <Pressable onPress={() => setWa(!wa)} accessibilityRole="checkbox" accessibilityState={{ checked: wa }} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: SP.m, minHeight: 36 }}>
         <View style={{ width: 20, height: 20, borderRadius: 4, backgroundColor: wa ? L.violet : '#fff', borderWidth: wa ? 0 : 1, borderColor: L.line, alignItems: 'center', justifyContent: 'center' }}>{wa ? <Check size={14} color="#fff" strokeWidth={2} /> : null}</View>
@@ -203,7 +199,7 @@ export default function Auth() {
   );
   else if (step === 'otp') card = (
     <>
-      <Txt weight={500} size={24} color={L.ink} style={[{ lineHeight: 32, marginTop: SP.l }, NUM]}>Enter the OTP sent to{'\n'}+91 {fmtPhone(phone)}</Txt>
+      <Txt weight={500} size={24} color={L.ink} style={[{ lineHeight: 32, marginTop: SP.s }, NUM]}>Enter the OTP sent to{'\n'}+91 {fmtPhone(phone)}</Txt>
       <Link label="Change number" onPress={() => { setStep('phone'); setErr('') }} style={{ alignSelf: 'flex-start', marginTop: SP.s, marginBottom: SP.xl }} />
       <Animated.View style={{ flexDirection: 'row', gap: six ? 8 : 12, justifyContent: 'space-between', marginBottom: SP.l, transform: [{ translateX: shake }] }}>
         {code.map((d, i) => (
@@ -211,7 +207,7 @@ export default function Auth() {
             onKeyPress={e => { if (e.nativeEvent.key === 'Backspace' && !d && i > 0) { const c = code.slice(); c[i - 1] = ''; setCode(c); boxes.current[i - 1]?.focus() } }}
             inputMode="numeric" keyboardType="number-pad" textContentType={i ? undefined : 'oneTimeCode'} autoComplete={i ? 'off' : 'sms-otp'} maxLength={OTP_N} selectTextOnFocus editable={!busy}
             accessibilityLabel={`Digit ${i + 1}`}
-            style={{ flex: 1, maxWidth: 56, aspectRatio: 1, textAlign: 'center', padding: 0, fontFamily: F.b500, fontSize: six ? 20 : 24, color: L.ink, fontVariant: ['tabular-nums'], backgroundColor: '#fff', borderWidth: 1, borderColor: foc === i || d ? L.violet : L.line, borderRadius: 10, outlineStyle: 'none' } as any} />
+            style={{ flex: 1, maxWidth: 56, aspectRatio: 1, textAlign: 'center', padding: 0, fontFamily: F.b500, fontSize: six ? 20 : 24, color: L.ink, fontVariant: ['tabular-nums'], backgroundColor: L.raised, borderWidth: foc === i || d ? 1.5 : 1, borderColor: foc === i || d ? L.violet : 'transparent', borderRadius: 12, outlineStyle: 'none' } as any} />
         ))}
       </Animated.View>
       <Err text={err} />
@@ -244,10 +240,23 @@ export default function Auth() {
       <StepDots n={2} />
       <H2>{`Pick a plan for your ${su.model}`}</H2>
       <P>Pay after the first wash. Change any time. WD Pro and above can pause up to a week a month</P>
-      {sellablePlans().map(p => (
-        <Opt key={p.id} on={su.plan === p.id} onPress={() => setSu({ ...su, plan: p.id })} title={p.name} price={inr(p.price)}
-          text={p.rows.slice(1, 4).map(r => r[0] + ' ' + r[1].toLowerCase()).join(' · ')} />
-      ))}
+      {sellablePlans().map(p => {
+        const on = su.plan === p.id;
+        return (
+          <Pressable3 key={p.id} onPress={() => setSu({ ...su, plan: p.id })} accessibilityRole="button" accessibilityState={{ selected: on }} style={{ marginBottom: SP.m }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, padding: SP.l, borderRadius: 14, borderWidth: on ? 1.5 : 1, borderColor: on ? L.violet : L.hair, backgroundColor: on ? '#fff' : L.raised }}>
+              <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: on ? L.violet : L.muted, alignItems: 'center', justifyContent: 'center' }}>
+                {on ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: L.violet }} /> : null}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Txt weight={500} size={15} color={L.ink}>{p.name}</Txt>
+                <Txt size={12} color={L.muted} style={{ marginTop: 2, lineHeight: 16 }}>{p.rows.filter(r => r[1] !== '—').slice(0, 2).map(r => r[1] + ' ' + r[0].toLowerCase()).join(' · ')}</Txt>
+              </View>
+              <Txt weight={500} size={15} color={L.ink} style={NUM}>{inr(p.price)}</Txt>
+            </View>
+          </Pressable3>
+        );
+      })}
       <Err text={err} />
       <Cta label="Start tomorrow morning" busy={busy ? 'Setting up…' : false} onPress={finish} style={{ marginTop: SP.s }} />
       <Link label="Back" onPress={() => setStep('about')} style={{ alignSelf: 'center', marginTop: SP.l }} />
@@ -256,10 +265,13 @@ export default function Auth() {
 
   /* ---------- the header block (phone step) / plain bar (other steps) ---------- */
   const hero = (
-    <View style={{ paddingTop: ins.top + SP.l, paddingHorizontal: PAD }}>
-      <Image source={src('logo')!} resizeMode="contain" accessibilityLabel="Washing Daddy" style={{ width: 96, height: 96 / RATIO.logo }} />
-      <Txt weight={500} size={28} color={L.ink} style={{ lineHeight: 36, marginTop: SP.xl, maxWidth: 320 }}>A washer at your car, every morning</Txt>
-      <Txt size={14} color={L.grey} style={{ lineHeight: 20, marginTop: SP.s, maxWidth: 320 }}>A washer comes to where your car is parked. No pocha, only pressure wash.</Txt>
+    <View style={{ paddingTop: ins.top + SP.l }}>
+      <FadeUp style={{ paddingHorizontal: PAD }}>
+        <Image source={src('logo')!} resizeMode="contain" accessibilityLabel="Washing Daddy" style={{ width: 88, height: 88 / RATIO.logo }} />
+        <Txt weight={500} size={28} color={L.ink} style={{ lineHeight: 36, marginTop: SP.xl, maxWidth: 320 }}>A washer at your car, every morning</Txt>
+        <Txt size={14} color={L.grey} style={{ lineHeight: 20, marginTop: SP.s, maxWidth: 320 }}>A washer comes to where your car is parked. No pocha, only pressure wash.</Txt>
+      </FadeUp>
+      <Strip W={W} />
     </View>
   );
   const bar = (
@@ -275,8 +287,8 @@ export default function Auth() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center', paddingBottom: SP.xl + Math.max(ins.bottom, SP.s) }}>
             <View style={{ width: W }}>
-              {step === 'phone' ? <>{hero}<Bubbles W={W} /></> : bar}
-              <View onLayout={e => { cardY.current = e.nativeEvent.layout.y }} style={{ paddingHorizontal: PAD, marginTop: step === 'phone' ? SP.xl : SP.l }}>{card}</View>
+              {step === 'phone' ? <>{hero}</> : bar}
+              <View onLayout={e => { cardY.current = e.nativeEvent.layout.y }} style={{ paddingHorizontal: PAD, marginTop: step === 'phone' ? SP.xl : SP.s }}><FadeUp key={step}>{card}</FadeUp></View>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>

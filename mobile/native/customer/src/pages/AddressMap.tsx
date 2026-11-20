@@ -40,13 +40,16 @@ export default function AddressMap({ id }: { id?: string }) {
   const [me, setMe] = useState<{ lat: number; lng: number } | null>(h0), [locating, setLocating] = useState(false), [typed, setTyped] = useState(''), [sug, setSug] = useState<Suggestion[]>([]), [searching, setSearching] = useState(false);
   const lift = useRef(new Animated.Value(0)).current, flow = useRef(mapFlow.onPick ? { ...mapFlow } : null).current;
   const to = (v: number) => Animated.timing(lift, { toValue: v, duration: 180, easing: EASE, useNativeDriver: ND }).start();
+  const movingRef = useRef(true), settled = useRef<{ lat: number; lng: number } | null>(null);
   useEffect(() => () => { live.current = false }, []);
 
-  const onMoveStart = () => { setMoving(true); to(1) };
+  const onMoveStart = () => { if (movingRef.current) return; movingRef.current = true; setMoving(true); to(1) };
   /** the map came to rest: name the point under the pin (Google Geocoding), falling back to the saved-address name */
   const onSettle = (p: { lat: number; lng: number }) => {
-    cRef.current = p; const n = ++seq.current; setMoving(true);
-    reverseGeocode(p.lat, p.lng).then(r => { if (!live.current || n !== seq.current) return; setPl(r || place(p.lat, p.lng)); setMoving(false); to(0) });
+    // the map reports 'idle' again for tiny shifts and for its own re-layout: ignore anything under ~2 m so the pin and card do not flicker
+    if (settled.current && distance(p.lat, p.lng, settled.current.lat, settled.current.lng) < 2) return;
+    settled.current = p; cRef.current = p; const n = ++seq.current; movingRef.current = true; setMoving(true);
+    reverseGeocode(p.lat, p.lng).then(r => { if (!live.current || n !== seq.current) return; setPl(r || place(p.lat, p.lng)); movingRef.current = false; setMoving(false); to(0) });
   };
   const jump = (p: { lat: number; lng: number }, zoomed = false) => { if (UNAVAILABLE) { cRef.current = p; return } onMoveStart(); map.current?.flyTo(p, zoomed) };
 

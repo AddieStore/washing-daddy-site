@@ -37,6 +37,7 @@ import About from '../pages/About';
 import Bookings from '../pages/Bookings';
 import Booking from '../pages/Booking';
 import Rate from '../pages/Rate';
+import Permissions, { needsPrimer } from './Permissions';
 
 const CURVE = Easing.bezier(0.22, 1, 0.36, 1);
 function useReduceMotion() {
@@ -132,6 +133,8 @@ export default function Main() {
     const s = BackHandler.addEventListener('hardwareBackPress', () => { if (ui.pages.length) { closePage(); return true } return false });
     return () => s.remove();
   }, [ui.pages.length]);
+  const [primer, setPrimer] = useState(false);
+  useEffect(() => { needsPrimer().then(setPrimer) }, []);
   const key = tab === 'home' || tab === 'live' ? tab : tab + ':' + ui.tabNonce;
   const tabCover = useCover(coverOf(ui.pages[0]?.k)), mt = appCfg().maintenance;
   if (mt.on) return <Maintenance message={mt.message} />;
@@ -144,6 +147,7 @@ export default function Main() {
       <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#0B0614' }, tabCover.dim]} />
       {ui.pages.map((p, i) => p && <Pushed key={i + ':' + p.k + ('id' in p && p.id ? p.id : '')} p={p} depth={i} cover={coverOf(ui.pages[i + 1]?.k)} />)}
       <FlyHost />
+      {primer ? <Permissions onDone={() => setPrimer(false)} /> : null}
     </View>
   );
 }

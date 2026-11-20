@@ -5,6 +5,7 @@ import { View, Image, Pressable, ScrollView, RefreshControl, Animated, Easing, P
 import Svg, { Rect, Path, Circle as SCircle } from 'react-native-svg';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
+import { Footer } from '../ui/Footer';
 import { Back, Help as HelpIc, Pin } from '../ui/icons';
 import { FadeUp } from '../ui/motion';
 import { feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
@@ -134,7 +135,7 @@ export function BookingsBody({ tab: isTab }: { tab?: boolean }) {
           <HelpIc size={18} color={G.mute} strokeWidth={1.5} /><Txt weight={500} size={14}>Help</Txt>
         </Tap>
       </View>
-      <ScrollView ref={ref} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.violet} colors={[C.violet]} />} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: isTab ? 128 : 48 }}>
+      <ScrollView ref={ref} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.violet} colors={[C.violet]} />} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: isTab ? 0 : 48 }}>
         <SegSwitch value={seg} onChange={setSeg} />
         {loading ? <ListSkeleton /> : list.length ? (
           <View style={{ marginTop: 8 }}>
@@ -157,6 +158,7 @@ export function BookingsBody({ tab: isTab }: { tab?: boolean }) {
             <Txt size={13} color={G.sub} style={{ marginTop: 4, textAlign: 'center', lineHeight: 19 }}>{seg === 'up' ? 'Book a car wash from Home and it shows up here.' : 'Your finished washes show up here.'}</Txt>
           </View></FadeUp>
         )}
+        {isTab ? <Footer bg={PAGE_BG} bleed={16} /> : null}
       </ScrollView>
     </View>
   );
