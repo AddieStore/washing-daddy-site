@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Pressable, ScrollView } from 'react-native';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
+import { Footer } from '../ui/Footer';
 import { Pressable3, FadeUp } from '../ui/motion';
 import { Help, Info, Gift, Chev, Clock, Camera, Pause } from '../ui/icons';
 import { PLANS, sellablePlans } from '../data/reference';
@@ -128,7 +129,7 @@ export default function Plan() {
   const pays = a.payments.slice().sort((x, y) => y.d.localeCompare(x.d));
   return (
     <View style={{ flex: 1, backgroundColor: C.white }}>
-      <ScrollView ref={sc} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 128 }}>
+      <ScrollView ref={sc} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 0 }}>
         <View style={{ paddingTop: top, paddingHorizontal: 16, height: top + 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Txt weight={500} size={24} color={INK}>Plans</Txt>
           <Pressable3 onPress={() => sheets.help()} accessibilityRole="button" accessibilityLabel="Plan questions" style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: RAISED, alignItems: 'center', justifyContent: 'center' }}><Help size={18} color={MUTED} strokeWidth={1.5} /></Pressable3>
@@ -195,6 +196,7 @@ export default function Plan() {
             </View>
           )) : <View style={{ padding: 16, paddingTop: 0 }}><Txt weight={500} size={14} color={INK}>No payments yet</Txt><Txt size={12} color={MUTED}>Your first receipt shows up here</Txt></View>}
         </Card>
+        <Footer bg={C.white} />
       </ScrollView>
     </View>
   );

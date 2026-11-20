@@ -5,13 +5,14 @@ import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { View, Image, Pressable, Animated, Easing, ScrollView, Text, RefreshControl, AccessibilityInfo, Platform, useWindowDimensions } from 'react-native';
 import { C, SP, Theme, useTheme } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
+import { Footer } from '../ui/Footer';
 import { Chev, User, Zap, Calendar, Wallet, Gift, Star, Plan as PlanIc, Store as StoreIc, Clock, Phone, WhatsApp, Info, Shield, Car as CarIc, Pin, Help as HelpIc, Cart as CartIc, Bell, Heart } from '../ui/icons';
 // icon names a custom button may use (CONFIG-CONTRACT.md, ui_buttons.icon)
 export const BTN_ICON: Record<string, (p: { size?: number; color?: string; strokeWidth?: number }) => React.ReactElement> = {
   gift: Gift, star: Star, zap: Zap, phone: Phone, whatsapp: WhatsApp, info: Info, shield: Shield, car: CarIc, wallet: Wallet, calendar: Calendar, pin: Pin, help: HelpIc, clock: Clock, cart: CartIc, bell: Bell, heart: Heart,
 };
 import { IMG, RATIO } from '../img';
-import { CAR_SERVICES, PACKS, TRUST, SHOW_RATINGS, REFERRAL, packInfo } from '../data/reference';
+import { CAR_SERVICES, PACKS, SVC_PHOTO, TRUST, SHOW_RATINGS, REFERRAL, packInfo } from '../data/reference';
 import { GenericArt } from '../art/generic';
 import { ampm } from '../data/dates';
 import {
@@ -196,7 +197,7 @@ function Hero({ W }: { W: number }) {
     <View style={{ paddingTop: top + 8, paddingBottom: on ? 92 : 72, paddingHorizontal: SIDE, overflow: 'hidden' }}>
       <LinearGradient colors={th.bg} start={{ x: 0, y: 0 }} end={{ x: 0.9, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       {dots.map(([x, yy, sz, o], i) => <View key={i} style={{ position: 'absolute', left: (x as number) * W - (sz as number) / 2, top: top + (yy as number) - 40, width: sz as number, height: sz as number, borderRadius: (sz as number) / 2, backgroundColor: '#fff', opacity: o as number }} />)}
-      {on ? <Float style={{ position: 'absolute', right: -8, bottom: 52, width: 158, height: 158 }}>{artFor('pack-exclusive') ? <SvcArt id="exclusive" size={158} /> : <Image source={IMG['r3d-pack-exclusive']} resizeMode="contain" style={{ width: 158, height: 158 }} />}</Float> : null}
+      {on ? <Float style={{ position: 'absolute', right: -8, bottom: 52, width: 158, height: 158 }}>{artFor('pack-exclusive') ? <SvcArt id="exclusive" size={158} noPhoto /> : <Image source={IMG['r3d-pack-exclusive']} resizeMode="contain" style={{ width: 158, height: 158 }} />}</Float> : null}
       {on ? <View style={{ maxWidth: Math.min(W * 0.68, 300), minHeight: 112 }}>
         <HeroText title={cfg.heroTitle} sub={cfg.heroSub} accent={th.accent} />
       </View> : null}
@@ -255,7 +256,7 @@ function PackCard({ id }: { id: string }) {
     <View style={{ width: 168 }}>
       <Pressable3 label={p.name} onPress={() => setOrigin(id, ref, () => openPage({ k: 'svc', id }))}>
         <View ref={ref} style={{ width: 168, height: 128, borderRadius: 18, overflow: 'hidden', backgroundColor: '#F1EBFD', alignItems: 'center', justifyContent: 'center' }}>
-          <SvcArt id={id} size={120} />
+          {SVC_PHOTO[id] ? <SvcArt id={id} size={168} h={128} radius={0} /> : <SvcArt id={id} size={120} />}
           {paused ? <PausedVeil note={paused} /> : null}
         </View>
         {p.tag ? <View style={{ position: 'absolute', left: 0, top: 10, backgroundColor: isNew ? '#E5484D' : L.accent, borderTopRightRadius: 8, borderBottomRightRadius: 8, paddingHorizontal: 8, height: 20, justifyContent: 'center' }}><Txt weight={600} size={10} color="#fff" style={{ lineHeight: 14, letterSpacing: 0.6 }}>{isNew ? 'NEW' : p.tag}</Txt></View> : null}
@@ -330,7 +331,7 @@ function SvcTile({ s: sv, w }: { s: (typeof CAR_SERVICES)[number]; w: number }) 
     <View style={{ width: w, height: tileH(w) }}>
       <Pressable3 label={`${sv.name}, ${inr(sv.price)}`} onPress={() => setOrigin(sv.id, ref, () => openPage({ k: 'svc', id: sv.id }))}>
         <View ref={ref} style={{ width: w, height: w, borderRadius: 16, overflow: 'hidden', backgroundColor: sv.tint || L.raised, alignItems: 'center', justifyContent: 'center' }}>
-          <SvcArt id={sv.id} size={Math.round(w * 0.9)} />
+          {SVC_PHOTO[sv.id] ? <SvcArt id={sv.id} size={w} radius={0} /> : <SvcArt id={sv.id} size={Math.round(w * 0.9)} />}
           {sv.badge && !paused ? <View style={{ position: 'absolute', top: 6, left: 6, backgroundColor: String(sv.badge).toUpperCase() === 'NEW' ? '#E5484D' : L.accent, borderRadius: 6, paddingHorizontal: 5, height: 16, justifyContent: 'center' }}><Txt weight={600} size={9} color="#fff" style={{ lineHeight: 12, letterSpacing: 0.5 }}>{String(sv.badge).toUpperCase()}</Txt></View> : null}
           {paused ? <PausedVeil note={paused} compact /> : null}
           {SHOW_RATINGS && !sv.badge ? (
@@ -492,7 +493,7 @@ export default function Home() {
     <View style={{ flex: 1, backgroundColor: L.bg, alignItems: 'center' }}>
       <Animated.ScrollView style={{ width: '100%', maxWidth: 520 }} ref={ref} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={onScroll} bounces
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={'#fff'} colors={[L.accent]} progressViewOffset={Math.max(ins.top, 24) + 56} />}
-        contentContainerStyle={{ paddingBottom: barB + (cart ? 100 : 40) }}>
+        contentContainerStyle={{ paddingBottom: cart ? 64 : 0 }}>
         <Hero W={W} />
         <Entry onInstant={() => { try { act.setCartMode('instant') } catch (e) {} ref.current?.scrollTo({ y: Math.max(0, gridY.current - 90), animated: true }) }} />
         <Assigned />
@@ -504,6 +505,7 @@ export default function Home() {
         <Grid W={W} skel={skel} onLayoutY={v => { gridY.current = v }} />
         <Buttons placement="home_bottom" />
         <Trust W={W} />
+        <Footer bg={L.bg} />
       </Animated.ScrollView>
       <Header y={y} />
       {cart ? <CartBar aboveTabs /> : null}

@@ -4,6 +4,7 @@ import { View, ScrollView, Pressable } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
+import { Footer } from '../ui/Footer';
 import { Back, Chev, Plan, Wallet, Help, Gift, Pin, Info, Shield, Logout, Car, Cart } from '../ui/icons';
 import { useApp, profile, fmtPhone, openPage, closePage, go, wallet, passView, feature } from '../state';
 import { Buttons } from './Home';
@@ -32,7 +33,7 @@ export default function Profile() {
   );
   return (
     <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: pushed ? 40 : 110 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: pushed ? 40 : 0 }}>
         <View style={{ paddingTop: ins.top + 8, paddingHorizontal: 16, paddingBottom: 56, overflow: 'hidden' }}>
           <LinearGradient colors={['#6A1BF2', '#5409DA', '#36058F']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
           <View style={{ position: 'absolute', right: -50, top: -30, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.07)' }} />
@@ -89,6 +90,7 @@ export default function Profile() {
 
           <Txt size={12} color={G.mute} style={{ textAlign: 'center', marginTop: 32, letterSpacing: 0.6 }}>APP VERSION: 2.0.0</Txt>
         </View>
+        {pushed ? null : <Footer bg={PAGE_BG} />}
       </ScrollView>
     </View>
   );

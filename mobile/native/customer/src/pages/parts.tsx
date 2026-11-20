@@ -7,9 +7,9 @@ import { GenericArt } from '../art/generic';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Back, Check, Plus, Share as ShareIc } from '../ui/icons';
-import { src } from '../img';
+import { src, RATIO, type ImgKey } from '../img';
 import { svcOf, haptic } from '../state';
-import { PACKS, type ArtSpec } from '../data/reference';
+import { PACKS, SVC_PHOTO, type ArtSpec } from '../data/reference';
 
 const ND = Platform.OS !== 'web';
 export const EASE = Easing.bezier(0.22, 1, 0.36, 1);
@@ -60,8 +60,15 @@ function specOf(id: string): { art?: ArtSpec; photo?: string } | null {
 /** Service art at a fixed size. Live catalogue: art.key = a built-in drawing; no key -> photo if given, else the generic
  *  drawing (art/generic.tsx) from art.icon + art.accent in the same style, so dashboard-added services look like the rest.
  *  Ids without a spec: the drawing for the id, else the 3D render / photo. */
-export function SvcArt({ id, size, cover }: { id: string; size: number; cover?: boolean }) {
+export function SvcArt({ id, size, cover, h, radius = 12, noPhoto }: { id: string; size: number; cover?: boolean; h?: number; radius?: number; noPhoto?: boolean }) {
   const spec = specOf(id);
+  if (size > 0 && !noPhoto && spec && spec.photo) { const H = h || size; return <Image source={{ uri: spec.photo }} resizeMode="cover" style={{ width: size, height: H, borderRadius: radius }} />; }
+  const pk = size > 0 && !noPhoto ? SVC_PHOTO[id] : undefined;
+  if (pk && pk in RATIO) {
+    // real photo of our washer (portrait): fill the box, biased to the top so the face and hands stay in frame
+    const H = h || size, ih = Math.max(H, size / RATIO[pk as ImgKey]);
+    return <View style={{ width: size, height: H, borderRadius: radius, overflow: 'hidden' }}><Image source={src(pk) as any} resizeMode="cover" style={{ position: 'absolute', left: 0, top: -(ih - H) * 0.22, width: size, height: ih }} /></View>;
+  }
   if (spec && spec.art && size > 0) {
     const Key = spec.art.key ? artFor(spec.art.key) : null;
     if (!Key && spec.photo) return <Image source={{ uri: spec.photo }} resizeMode="cover" style={{ width: size, height: size, borderRadius: 12 }} />;

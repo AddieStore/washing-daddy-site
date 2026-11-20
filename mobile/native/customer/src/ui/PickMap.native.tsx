@@ -21,7 +21,7 @@ window.initMap=function(){
   map.addListener('idle',function(){var c=map.getCenter();post({t:'idle',lat:c.lat(),lng:c.lng()})});
   post({t:'ready'});
 };
-window.fly=function(la,ln,z){if(!map)return;post({t:'move'});map.panTo({lat:la,lng:ln});if(z)map.setZoom(17)};
+window.fly=function(la,ln,z){if(!map)return;var c=map.getCenter(),same=Math.abs(c.lat()-la)<0.00002&&Math.abs(c.lng()-ln)<0.00002&&(!z||map.getZoom()==17);if(same){post({t:'idle',lat:c.lat(),lng:c.lng()});return}post({t:'move'});map.panTo({lat:la,lng:ln});if(z)map.setZoom(17)};
 window.me=function(la,ln){if(!map)return;var p={lat:la,lng:ln};if(!dot){dot=new google.maps.Marker({position:p,map:map,clickable:false,zIndex:1,icon:{path:google.maps.SymbolPath.CIRCLE,scale:8,fillColor:'#2F6BFF',fillOpacity:1,strokeColor:'#fff',strokeWeight:3}})}else dot.setPosition(p)};
 </script>
 <script async src="https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=initMap&loading=async" onerror="post({t:'fail',why:'net'})"></script>
@@ -39,7 +39,7 @@ export function PickMap({ start, onMoveStart, onSettle, me, ref }: PickMapProps)
   return (
     <View style={{ flex: 1, backgroundColor: '#F4F4F5' }}>
       <WebView ref={web} style={{ flex: 1, backgroundColor: '#F4F4F5' }} source={source}
-        originWhitelist={['*']} javaScriptEnabled domStorageEnabled setSupportMultipleWindows={false} overScrollMode="never"
+        androidLayerType="hardware" cacheEnabled originWhitelist={['*']} javaScriptEnabled domStorageEnabled setSupportMultipleWindows={false} overScrollMode="never"
         scrollEnabled={false} bounces={false} showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false}
         onMessage={e => {
           let m: any; try { m = JSON.parse(e.nativeEvent.data) } catch { return }

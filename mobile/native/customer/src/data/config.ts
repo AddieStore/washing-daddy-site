@@ -168,7 +168,9 @@ function apply() {
   }));
   fill(R.CATS, ['All', ...Array.from(new Set(R.PRODUCTS.map(p => p.cat)))]);
   // monthly plans: catalogue plan docs override the built-in plans by id; with none, the built-in plans stay (existing cars need them)
-  const planDocs = cat.filter(d => d.kind === 'plan');
+  // only Washing Daddy's own five plans: stray plan docs (old tests, unknown ids) never reach the app
+  const OWN = BUILTIN_PLANS.map(p => p.id as string);
+  const planDocs = cat.filter(d => d.kind === 'plan' && OWN.includes(d.id));
   if (planDocs.length) {
     const plans = BUILTIN_PLANS.map(p => ({ ...p })) as R.Plan[];
     planDocs.forEach(d => {
