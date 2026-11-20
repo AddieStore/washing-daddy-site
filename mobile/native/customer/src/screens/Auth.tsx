@@ -1,6 +1,6 @@
 /* Sign-in poster and flow: phone -> code -> (new numbers) about -> plan. Ported from renderAuth() in customer/index.html. */
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
+import { Animated, Dimensions, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
 import { C, F, SP, InkContext, creamInk } from '../theme';
 import Reanimated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { Field, Txt, useInsets, PAD } from '../ui/kit';
@@ -94,13 +94,17 @@ export default function Auth() {
   const [kb, setKb] = useState(0);
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', e => {
-      const cover = Math.max(0, Math.round(win.height - e.endCoordinates.screenY));
-      setKb(Platform.OS === 'android' ? cover : 0);
-      setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 60);
+      // read the window size after the keyboard is out: when Android did resize the window, the keyboard covers nothing
+      // and we add nothing (adding it anyway is what pushed the screen too far up in build 23)
+      setTimeout(() => {
+        const cover = Math.max(0, Math.round(Dimensions.get('window').height - e.endCoordinates.screenY));
+        setKb(Platform.OS === 'android' ? Math.min(cover, e.endCoordinates.height) : 0);
+        setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 40);
+      }, 120);
     });
     const hide = Keyboard.addListener('keyboardDidHide', () => setKb(0));
     return () => { show.remove(); hide.remove() };
-  }, [win.height]);
+  }, []);
 
   // Android: never restyle or scroll the page while a field is gaining focus. A focus-time re-layout made the keyboard open and close at once on
   // build 21 (phone step). The window resizes for the keyboard by itself; only the longer sign-up steps nudge the sheet up, after the keyboard is out.
