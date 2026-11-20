@@ -208,6 +208,8 @@ async function signedIn(u) {
   let first = true;
   unsubs.push(db.collection('washers').onSnapshot(sn => {
     W = sn.docs.map(d => ({ id: d.id, ...d.data() }));
+    // rounds made in the operations dashboard (admin/ops) are real rounds too
+    W.forEach(w => { if (w.route_id && !ROUNDS[w.route_id]) ROUNDS[w.route_id] = `${w.name || w.route_id}'s round${w.area ? ' · ' + w.area : ''}` });
     if (first) { first = false; $('#gate').hidden = true; $('#app').hidden = false }
     render();
   }, e => {

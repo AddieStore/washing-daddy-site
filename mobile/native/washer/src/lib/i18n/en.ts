@@ -1,5 +1,7 @@
 // English mode. The app is written in Hinglish; t() swaps in plain English when the washer picks English.
 export const T: Record<string, string> = {
+  'Customer ko bata diya: aap raaste mein ho': 'Customer told: you are on the way',
+  'Nikal gaya, raaste mein hoon': 'Left, on my way',
   "Aap online ho":"You are online",
   "Aap offline ho":"You are offline",
   "Naye extra kaam aapko dikhenge":"You will see new extra jobs",

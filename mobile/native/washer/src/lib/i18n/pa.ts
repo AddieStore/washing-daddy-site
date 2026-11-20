@@ -1,5 +1,7 @@
 // Punjabi (Gurmukhi) mode. Same keys and patterns as hi.ts.
 export const T: Record<string, string> = {
+  "Customer ko bata diya: aap raaste mein ho": "ਗਾਹਕ ਨੂੰ ਦੱਸ ਦਿੱਤਾ: ਤੁਸੀਂ ਰਾਹ ਵਿੱਚ ਹੋ",
+  "Nikal gaya, raaste mein hoon": "ਨਿਕਲ ਗਿਆ, ਰਾਹ ਵਿੱਚ ਹਾਂ",
   "Aap online ho": "ਤੁਸੀਂ ਆਨਲਾਈਨ ਹੋ",
   "Aap offline ho": "ਤੁਸੀਂ ਆਫ਼ਲਾਈਨ ਹੋ",
   "Naye extra kaam aapko dikhenge": "ਨਵੇਂ ਐਕਸਟਰਾ ਕੰਮ ਤੁਹਾਨੂੰ ਦਿਸਣਗੇ",

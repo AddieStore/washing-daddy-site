@@ -2,6 +2,8 @@
 // Car names, plates, plans, areas and people's names are data and never pass through t().
 // The table is the web app's own (washer/index.html), so both say the same words.
 export const HI: Record<string, string> = {
+  "Customer ko bata diya: aap raaste mein ho": "ग्राहक को बता दिया: आप रास्ते में हो",
+  "Nikal gaya, raaste mein hoon": "निकल गया, रास्ते में हूँ",
   "Aap online ho":"आप ऑनलाइन हो",
   "Aap offline ho":"आप ऑफ़लाइन हो",
   "Naye extra kaam aapko dikhenge":"नए एक्स्ट्रा काम आपको दिखेंगे",

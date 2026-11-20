@@ -61,8 +61,20 @@ function JobCard({ j }: { j: Job }) {
           <Button variant="ghost" label={t('Kaam khatam karo')} style={{ marginTop: 10, opacity: 0.55 }} onPress={() => act.exNeedPhoto()} />
         </>
       );
+  } else if (j.status === 'on_the_way') {
+    action = (
+      <>
+        <DemoNote>{t('Raaste mein')}</DemoNote>
+        <Button variant="violet" label={t('Shuru karo')} onPress={() => act.exStart(j.id)} />
+      </>
+    );
   } else {
-    action = <Button variant="violet" label={t('Shuru karo')} onPress={() => act.exStart(j.id)} />;
+    action = (
+      <>
+        <Button variant="violet" label={t('Nikal gaya, raaste mein hoon')} onPress={() => act.exOnWay(j.id)} />
+        <Button variant="ghost" label={t('Shuru karo')} style={{ marginTop: 10 }} onPress={() => act.exStart(j.id)} />
+      </>
+    );
   }
 
   return (

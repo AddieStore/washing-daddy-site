@@ -1,5 +1,7 @@
 // Gujarati mode. Same keys as hi.ts (the Hinglish text the app is written in), values in Gujarati.
 export const T: Record<string, string> = {
+  "Customer ko bata diya: aap raaste mein ho": "ગ્રાહકને જણાવ્યું: તમે રસ્તામાં છો",
+  "Nikal gaya, raaste mein hoon": "નીકળી ગયો, રસ્તામાં છું",
   "Aap online ho":"તમે ઓનલાઇન છો",
   "Aap offline ho":"તમે ઓફલાઇન છો",
   "Naye extra kaam aapko dikhenge":"નવા એક્સ્ટ્રા કામ તમને દેખાશે",
