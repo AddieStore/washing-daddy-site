@@ -7,6 +7,8 @@ import { View, Pressable, Platform, TextInput, Keyboard } from 'react-native';
 import { Txt, useInsets } from '../ui/kit';
 import { Locate, Pin } from '../ui/icons';
 import { MapPin, LocatePill, FarNote } from '../ui/mapparts';
+import { Pressable3 } from '../ui/motion';
+import { SERVICE_AREAS, areaAt } from '../data/areas';
 import { FadeUp } from '../ui/motion';
 import { C } from '../theme';
 import { act, useApp, addressOf, addresses, selectedAddress, here, openPage, closePage, toast, distance, A } from '../state';
@@ -84,7 +86,8 @@ export default function AddressMap({ id }: { id?: string }) {
     mapFlow.viaMap = true; setBusy(false); openPage({ k: 'addressForm', id, lat: p.lat, lng: p.lng, area });
   };
   const far = me && !moving ? distance(me.lat, me.lng, cRef.current.lat, cRef.current.lng) : null;
-  const card = { flexDirection: 'row', gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(84,9,218,0.25)', backgroundColor: 'rgba(84,9,218,0.04)' } as const;
+  const zone = !moving && !UNAVAILABLE ? areaAt(cRef.current.lat, cRef.current.lng) : null, outside = !moving && !UNAVAILABLE && !zone;
+  const farOn = far != null && far > 300;
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <PageBar title="Confirm your location" onBack={() => { mapFlow.onPick = null; mapFlow.seed = null; closePage() }} />
@@ -97,15 +100,20 @@ export default function AddressMap({ id }: { id?: string }) {
           </View>
         ) : (
           <>
-            <PickMap ref={map} start={start} me={me} onMoveStart={onMoveStart} onSettle={onSettle} />
-            <MapPin moving={moving} title={pl.title} />
-            <LocatePill onPress={() => locate()} busy={locating} style={{ bottom: 36 }} />
+            <PickMap ref={map} start={start} me={me} areas={SERVICE_AREAS} onMoveStart={onMoveStart} onSettle={onSettle} />
+            <MapPin moving={moving} title={pl.title} off={outside} />
+            <LocatePill onPress={() => locate()} busy={locating} style={{ bottom: farOn ? 66 : 32 }} />
+            <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 20 }}><FarNote meters={far} /></View>
           </>
         )}
         <View style={{ position: 'absolute', left: 16, right: 16, top: 12 }}>
           <View style={{ shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 3, backgroundColor: '#fff', borderRadius: 12 }}>
             <SearchBox value={q} onChange={setQ} placeholder="Search saved address or a new location" />
           </View>
+          {!UNAVAILABLE && !q.trim() ? <Pressable3 onPress={() => map.current?.showAreas()} scaleTo={0.96} style={{ alignSelf: 'flex-start', marginTop: 8, height: 30, paddingHorizontal: 10, borderRadius: 15, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', gap: 6, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, shadowOffset: { width: 0, height: 1 }, elevation: 2 }}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, borderColor: C.violet, backgroundColor: 'rgba(84,9,218,0.12)' }} />
+            <Txt weight={500} size={12} color={G.ink}>Where we wash</Txt>
+          </Pressable3> : null}
           {rows.length || searching ? <View style={{ marginTop: 8, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: G.line, overflow: 'hidden', elevation: 4 }}>
             {rows.map((r, i) => <Pressable key={r.key} onPress={r.go} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: pressed ? G.raised : '#fff', borderTopWidth: i ? 1 : 0, borderTopColor: G.line })}>
               <Pin size={18} color={r.saved ? C.violet : G.mute} strokeWidth={1.5} />
@@ -117,17 +125,23 @@ export default function AddressMap({ id }: { id?: string }) {
         </View>
       </View>
       <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, marginTop: -20, padding: 16, paddingBottom: Math.max(ins.bottom, 12) + 8, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: -4 }, elevation: 8 }}>
-        <FarNote meters={far} />
-        <Txt size={12} color={G.mute} style={{ marginBottom: 8 }}>{UNAVAILABLE ? 'Your address' : 'Map location'}</Txt>
-        <View style={card}>
-          <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(84,9,218,0.1)', alignItems: 'center', justifyContent: 'center' }}><Locate size={20} color={C.violet} strokeWidth={1.5} /></View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            {UNAVAILABLE ? <TextInput value={typed} onChangeText={setTyped} placeholder="Area, street or landmark" placeholderTextColor={G.mute} multiline maxLength={160} style={{ fontFamily: 'Poppins_400Regular', fontSize: 14, color: G.ink, minHeight: 40, paddingVertical: 4 }} />
-              : moving ? <View style={{ gap: 8 }}><Shimmer w={90} h={14} /><Shimmer h={12} /></View> : <><Txt weight={500} size={15} numberOfLines={1}>{pl.title}</Txt><Txt size={13} color={G.sub} numberOfLines={2} style={{ marginTop: 2 }}>{pl.sub}</Txt></>}
-            <Txt size={12} color={C.violet} style={{ marginTop: 6 }}>Add details about your flat on next step</Txt>
+        {UNAVAILABLE ? <>
+          <Txt size={12} color={G.mute} style={{ marginBottom: 8 }}>Your address</Txt>
+          <TextInput value={typed} onChangeText={setTyped} placeholder="Area, street or landmark" placeholderTextColor={G.mute} multiline maxLength={160} style={{ fontFamily: 'Poppins_400Regular', fontSize: 14, color: G.ink, minHeight: 44, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#F4F4F5' }} />
+        </> : <>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pin size={14} color={C.violet} strokeWidth={2} /><Txt weight={600} size={12} color={C.violet}>Confirm location</Txt>
           </View>
-        </View>
-        <PrimaryBtn label={flow?.onPick ? 'Confirm location' : 'Confirm and add details'} onPress={confirm} busy={busy} disabled={UNAVAILABLE ? typed.trim().length < 3 : moving} style={{ marginTop: 16 }} />
+          <View style={{ minHeight: 46, marginTop: 8, justifyContent: 'center' }}>
+            {moving ? <View style={{ gap: 8 }}><Shimmer w={'45%'} h={14} /><Shimmer w={'75%'} h={10} /></View>
+              : <><Txt weight={600} size={16} numberOfLines={1}>{pl.title}</Txt><Txt size={13} color={G.sub} numberOfLines={2} style={{ marginTop: 2, lineHeight: 18 }}>{pl.sub}</Txt></>}
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, opacity: moving ? 0 : 1 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: zone ? '#16a34a' : '#A3A3AB' }} />
+            <Txt size={12} color={zone ? '#15803d' : G.sub} style={{ flex: 1 }}>{zone ? `We wash cars here · ${zone.name}` : 'We are not in this area yet. We are adding new areas every month.'}</Txt>
+          </View>
+        </>}
+        <PrimaryBtn label={flow?.onPick ? 'Confirm location' : 'Confirm and add details'} onPress={confirm} busy={busy} disabled={UNAVAILABLE ? typed.trim().length < 3 : moving} style={{ marginTop: 14 }} />
       </View>
     </View>
   );

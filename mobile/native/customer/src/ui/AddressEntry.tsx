@@ -7,6 +7,7 @@ import { C, F, SP } from '../theme';
 import { Txt, useInsets } from './kit';
 import { Pressable3, FadeUp } from './motion';
 import { MapPin, LocatePill } from './mapparts';
+import { SERVICE_AREAS } from '../data/areas';
 import { Back, Check, Locate, Pin, Search } from './icons';
 import { PickMap, type PickMapRef } from './PickMap';
 import { act, here, distance } from '../state';
@@ -58,7 +59,7 @@ function MapModal({ visible, start, onClose, onConfirm }: { visible: boolean; st
             </View>
           ) : (
             <>
-              <PickMap ref={map} start={start} me={me} onMoveStart={onMoveStart} onSettle={onSettle} />
+              <PickMap ref={map} areas={SERVICE_AREAS} start={start} me={me} onMoveStart={onMoveStart} onSettle={onSettle} />
               <MapPin moving={moving} title={pl.title} />
               <LocatePill onPress={locate} busy={locating} label="Use my location" style={{ bottom: 40 }} />
             </>
