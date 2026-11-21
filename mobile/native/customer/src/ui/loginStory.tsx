@@ -24,22 +24,22 @@ const SLIDES = [
 const TONES = [0, 0, 1, 2, 2, 3];
 
 /* ------------------------------------------------------------------ motion helpers */
-function useLoop(ms: number, rest = 0.5, delay = 0) {
+export function useLoop(ms: number, rest = 0.5, delay = 0) {
   const rm = useReducedMotion(), v = useSharedValue(rm ? rest : 0);
   useEffect(() => { if (!rm) v.value = withDelay(delay, withRepeat(withTiming(1, { duration: ms, easing: Easing.linear }), -1, false)) }, [rm]);
   return v;
 }
-function usePulse(ms: number, delay = 0) {
+export function usePulse(ms: number, delay = 0) {
   const rm = useReducedMotion(), v = useSharedValue(0);
   useEffect(() => { if (!rm) v.value = withDelay(delay, withRepeat(withSequence(withTiming(1, { duration: ms, easing: Easing.inOut(Easing.sin) }), withTiming(0, { duration: ms, easing: Easing.inOut(Easing.sin) })), -1, false)) }, [rm]);
   return v;
 }
-function usePop(delay = 0, soft = false) {
+export function usePop(delay = 0, soft = false) {
   const rm = useReducedMotion(), v = useSharedValue(rm ? 1 : 0);
   useEffect(() => { if (!rm) v.value = withDelay(delay, soft ? withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) }) : withSpring(1, { damping: 12, stiffness: 130 })) }, [rm]);
   return v;
 }
-const abs = (x: number, y: number, extra?: object) => ({ position: 'absolute' as const, left: x, top: y, ...extra });
+export const abs = (x: number, y: number, extra?: object) => ({ position: 'absolute' as const, left: x, top: y, ...extra });
 
 /* ------------------------------------------------------------------ background: sky, sun, city layers, ground */
 function seeded(n: number) { let s = n * 9301 + 49297; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280 } }
@@ -67,7 +67,7 @@ function Star({ x, y, d }: { x: number; y: number; d: number }) {
   return <Animated.View style={[abs(x, y, { width: 3, height: 3, borderRadius: 2, backgroundColor: '#fff' }), st]} />;
 }
 /** tone 0 = night, 1 = dawn, 2 = morning, 3 = bright day: the sun climbs and the sky warms as the story goes */
-function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: number; road?: boolean }) {
+export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: number; road?: boolean }) {
   const sky = [['rgba(58,5,153,0)', '#4B12C9', '#6A2BF0'], ['rgba(84,9,218,0)', '#7A3AF2', '#FF9E7A'], ['rgba(110,40,235,0)', '#8E55F5', '#FFC08A'], ['rgba(130,70,245,0)', '#A97BFF', '#FFE2A8']][tone];
   const sunY = [H - 40, H - 70, H - 105, H - 140][tone], sunC = ['#CDB8FF', '#FFC58A', '#FFD470', '#FFE49A'][tone];
   const glow = usePulse(2400);
@@ -98,7 +98,7 @@ function Cloud({ x, y, w, d }: { x: number; y: number; w: number; d: number }) {
 
 /* ------------------------------------------------------------------ the car */
 const FOAM: [number, number, number][] = [[0.36, 0.1, 17], [0.48, 0.02, 21], [0.6, 0.06, 18], [0.7, 0.2, 14], [0.2, 0.42, 16], [0.84, 0.46, 14], [0.5, 0.36, 22], [0.34, 0.56, 15], [0.66, 0.52, 17], [0.12, 0.5, 11]];
-function Car({ w, foam, shine, body = '#FFFFFF' }: { w: number; foam?: boolean; shine?: boolean; body?: string }) {
+export function Car({ w, foam, shine, body = '#FFFFFF' }: { w: number; foam?: boolean; shine?: boolean; body?: string }) {
   const h = w * 90 / 220;
   return (
     <View style={{ width: w, height: h }}>
@@ -124,13 +124,13 @@ function Blob({ x, y, r, d }: { x: number; y: number; r: number; d: number }) {
 /* ------------------------------------------------------------------ characters */
 type Pose = 'gun' | 'wave' | 'phone' | 'thumb' | 'give';
 type PersonLook = { shirt: string; pants: string; skin: string; hair?: string; cap?: boolean; badge?: boolean };
-const WASHER: PersonLook = { shirt: '#5409DA', pants: '#2B1B66', skin: '#E7A57A', cap: true, badge: true };
-const CUSTOMER: PersonLook = { shirt: '#FF7A6B', pants: '#2F3A66', skin: '#B9784A', hair: '#1A1033' };
+export const WASHER: PersonLook = { shirt: '#5409DA', pants: '#2B1B66', skin: '#E7A57A', cap: true, badge: true };
+export const CUSTOMER: PersonLook = { shirt: '#FF7A6B', pants: '#2F3A66', skin: '#B9784A', hair: '#1A1033' };
 const ARM: Record<Pose, { box: [number, number]; pivot: [number, number]; at: [number, number] }> = {
   gun: { box: [86, 60], pivot: [8, 8], at: [66, 52] }, wave: { box: [50, 90], pivot: [8, 80], at: [66, -18] },
   phone: { box: [60, 60], pivot: [8, 8], at: [66, 52] }, give: { box: [60, 60], pivot: [8, 8], at: [66, 52] }, thumb: { box: [50, 60], pivot: [8, 8], at: [66, 52] },
 };
-function Person({ look, pose, h = 160, delay = 0 }: { look: PersonLook; pose: Pose; h?: number; delay?: number }) {
+export function Person({ look, pose, h = 160, delay = 0 }: { look: PersonLook; pose: Pose; h?: number; delay?: number }) {
   const k = h / 160, sway = usePulse(1100, delay), swing = usePulse(pose === 'wave' ? 380 : 700, delay), blink = usePulse(1800);
   const a = ARM[pose], deg = pose === 'wave' ? [-14, 14] : pose === 'gun' ? [-6, 6] : [-3, 3];
   const bodySt = useAnimatedStyle(() => ({ transform: [{ translateY: sway.value * -2 }] }));
@@ -173,14 +173,14 @@ function Card({ x, y, delay, children, w = 168 }: { x: number; y: number; delay:
   return <Animated.View style={[abs(x, y, { width: w, borderRadius: 16, backgroundColor: '#fff', padding: 10, shadowColor: '#1A0A4D', shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6 }), st]}>{children}</Animated.View>;
 }
 const Tick = ({ s = 18 }: { s?: number }) => <View style={{ width: s, height: s, borderRadius: s / 2, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' }}><Svg width={s * 0.62} height={s * 0.62} viewBox="0 0 14 14"><Path d="M2.5 7.5 L5.5 10.5 L11.5 4" stroke="#fff" strokeWidth={2.6} fill="none" strokeLinecap="round" strokeLinejoin="round" /></Svg></View>;
-function Pin({ size = 34 }: { size?: number }) {
+export function Pin({ size = 34 }: { size?: number }) {
   return <Svg width={size} height={size * 1.25} viewBox="0 0 32 40"><Path d="M16 38 C16 38 4 24 4 15 A12 12 0 0 1 28 15 C28 24 16 38 16 38Z" fill={SAFF} /><Circle cx={16} cy={15} r={5} fill="#3A0599" /></Svg>;
 }
-function Sparkle({ x, y, s, delay }: { x: number; y: number; s: number; delay: number }) {
+export function Sparkle({ x, y, s, delay }: { x: number; y: number; s: number; delay: number }) {
   const p = usePulse(650, delay), st = useAnimatedStyle(() => ({ opacity: 0.2 + p.value * 0.8, transform: [{ scale: 0.4 + p.value * 0.8 }, { rotate: p.value * 45 + 'deg' }] }));
   return <Animated.View style={[abs(x, y, { width: s, height: s }), st]}><Svg width={s} height={s} viewBox="0 0 20 20"><Path d="M10 0 L12.4 7.6 L20 10 L12.4 12.4 L10 20 L7.6 12.4 L0 10 L7.6 7.6Z" fill="#fff" /></Svg></Animated.View>;
 }
-function Drop({ x, y, dx, dy, ms, delay, r = 4 }: { x: number; y: number; dx: number; dy: number; ms: number; delay: number; r?: number }) {
+export function Drop({ x, y, dx, dy, ms, delay, r = 4 }: { x: number; y: number; dx: number; dy: number; ms: number; delay: number; r?: number }) {
   const p = useLoop(ms, 0.5, delay), st = useAnimatedStyle(() => ({ opacity: interpolate(p.value, [0, 0.12, 0.85, 1], [0, 1, 1, 0]), transform: [{ translateX: p.value * dx }, { translateY: p.value * dy + p.value * p.value * 10 }] }));
   return <Animated.View style={[abs(x, y, { width: r * 2, height: r * 1.4, borderRadius: r, backgroundColor: '#BFE6FF' }), st]} />;
 }

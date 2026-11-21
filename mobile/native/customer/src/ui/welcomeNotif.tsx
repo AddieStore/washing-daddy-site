@@ -1,7 +1,7 @@
 /* Welcome flow, after the code: a short "Setting things up for you…" screen and the notifications primer (a lock-screen mock with three
    notification cards that float in one by one and then keep bobbing). Own artwork only. */
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming,
 } from 'react-native-reanimated';
@@ -11,21 +11,30 @@ import { Txt, useInsets, PAD } from './kit';
 import { Pressable3, FadeUp, SPRING } from './motion';
 import { Car, Gift, Check, Bell, Zap } from './icons';
 import { Cta } from './welcome';
+import { Backdrop, Car as StoryCar, Person, WASHER, Sparkle, useLoop, usePop } from './loginStory';
 
 const INK = '#1A1033', SEC = '#4F4766', DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-/** soft lilac page with a violet arc that spins */
+/** "Setting things up": the WD Partner waves hello next to a car that shines, over a waking city */
 export function SetupScreen() {
-  const rm = useReducedMotion(), r = useSharedValue(0);
-  useEffect(() => { if (!rm) r.value = withRepeat(withTiming(360, { duration: 900, easing: Easing.linear }), -1, false); }, [rm]);
-  const spin = useAnimatedStyle(() => ({ transform: [{ rotate: r.value + 'deg' }] }));
+  const { width: W, height: H } = useWindowDimensions(), car = usePop(200, true), dots = useLoop(1200);
+  const cSt = useAnimatedStyle(() => ({ opacity: car.value, transform: [{ translateY: (1 - car.value) * 20 }] }));
+  const dot = (i: number) => useAnimatedStyle(() => ({ opacity: 0.3 + 0.7 * Math.max(0, 1 - Math.abs(((dots.value * 3) % 3) - i)), transform: [{ scale: 0.8 + 0.4 * Math.max(0, 1 - Math.abs(((dots.value * 3) % 3) - i)) }] }));
+  const d0 = dot(0), d1 = dot(1), d2 = dot(2), s = Math.min(1.25, W / 360), base = H * 0.64;
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.canvas }}>
-      <View style={{ position: 'absolute', width: 340, height: 340, borderRadius: 170, backgroundColor: 'rgba(84,9,218,0.05)' }} />
-      <View style={{ position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(84,9,218,0.06)' }} />
-      <Animated.View style={[{ width: 48, height: 48, borderRadius: 24, borderWidth: 4, borderColor: 'rgba(84,9,218,0.14)', borderTopColor: C.violet }, spin]} />
-      <FadeUp delay={120}><Txt weight={500} size={15} color={SEC} style={{ marginTop: SP.xl }}>Setting things up for you…</Txt></FadeUp>
+    <View style={{ flex: 1, backgroundColor: '#4B12C9', overflow: 'hidden' }}>
+      <View style={{ position: 'absolute', left: 0, top: 0, width: W, height: H }}><Backdrop W={W} H={H} tone={1} road /></View>
+      <View style={{ position: 'absolute', left: 0, right: 0, top: base - 300, alignItems: 'center' }}>
+        <Txt weight={700} size={26} color="#fff" style={{ lineHeight: 34, textAlign: 'center' }}>Setting things up for you…</Txt>
+        <Txt size={14} color="rgba(255,255,255,0.85)" style={{ marginTop: 6 }}>Getting your washers ready</Txt>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>{[d0, d1, d2].map((st, i) => <Animated.View key={i} style={[{ width: 9, height: 9, borderRadius: 5, backgroundColor: C.saffron }, st]} />)}</View>
+      </View>
+      <View style={{ position: 'absolute', left: 0, right: 0, top: H - 36 - 160 * s, height: 160 * s, transform: [{ scale: 1 }] }}>
+        <View style={{ position: 'absolute', left: W * 0.5 - 150 * s, top: 0 }}><Person look={WASHER} pose="wave" h={160 * s} /></View>
+        <Animated.View style={[{ position: 'absolute', left: W * 0.5 - 40 * s, top: 160 * s - 96 * s * 0.9 }, cSt]}><StoryCar w={220 * s * 0.9} shine /></Animated.View>
+        <Sparkle x={W * 0.5 + 10} y={30} s={20} delay={0} /><Sparkle x={W * 0.5 + 120 * s} y={50} s={14} delay={400} />
+      </View>
     </View>
   );
 }
