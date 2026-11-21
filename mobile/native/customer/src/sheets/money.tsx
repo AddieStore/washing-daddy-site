@@ -58,7 +58,7 @@ function GiftBody() {
       <SheetTitle>Claim a gift card</SheetTitle>
       <SheetSub>Enter gift card details to claim.</SheetSub>
       <TextInput value={code} onChangeText={t => { setCode(t.toUpperCase().replace(/[^A-Z0-9]/g, '')); setErr('') }} autoCapitalize="characters" autoCorrect={false} placeholder="Gift card code" placeholderTextColor={G.mute} maxLength={16}
-        style={{ height: 52, borderRadius: 12, backgroundColor: G.raised, paddingHorizontal: 16, fontSize: 16, color: G.ink, letterSpacing: 1, borderWidth: 1.5, borderColor: err ? C.red : 'transparent' } as any} />
+        style={{ height: 52, borderRadius: 12, backgroundColor: G.raised, paddingHorizontal: 16, fontSize: 16, color: G.ink, letterSpacing: 1, borderWidth: 1.5, borderColor: err ? C.red : 'transparent', includeFontPadding: false, textAlignVertical: 'center', paddingVertical: 0 } as any} />
       {err ? <Txt size={13} color={C.red} style={{ marginTop: 8 }}>{err}</Txt> : null}
       <PrimaryBtn label="Claim" busy={busy} disabled={code.length < 8} onPress={claim} style={{ marginTop: 16 }} />
     </>

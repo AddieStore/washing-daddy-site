@@ -42,7 +42,7 @@ export default function DeleteAccount() {
           <Txt weight={500} size={22} style={{ lineHeight: 30 }}>Tell us why you are leaving</Txt>
           <Txt size={14} color={G.sub} style={{ marginTop: 6, lineHeight: 20 }}>Optional, but it helps us get better. We remove your data within 30 days of the request.</Txt>
           <TextInput value={why} onChangeText={setWhy} multiline maxLength={300} placeholder="Your reason" placeholderTextColor={G.mute} accessibilityLabel="Reason"
-            style={[{ marginTop: 16, minHeight: 96, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(23,23,23,0.16)', padding: 14, fontFamily: 'Poppins_400Regular', fontSize: 15, color: G.ink, textAlignVertical: 'top' }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]} />
+            style={[{ marginTop: 16, minHeight: 96, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(23,23,23,0.16)', padding: 14, fontFamily: 'Poppins_400Regular', fontSize: 15, lineHeight: 22, includeFontPadding: false, color: G.ink, textAlignVertical: 'top' }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]} />
           {blockers.length ? <View style={{ marginTop: 20, padding: 16, borderRadius: 14, backgroundColor: '#FEF2F2', gap: 6 }}>{blockers.map(b => <Txt key={b} size={14} color={G.neg}>{b}</Txt>)}</View> : null}
           <Pressable onPress={() => setSure(!sure)} style={{ flexDirection: 'row', gap: 12, alignItems: 'center', marginTop: 24 }}>
             <View style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 1.5, borderColor: sure ? G.neg : '#A1A1AA', backgroundColor: sure ? G.neg : '#fff', alignItems: 'center', justifyContent: 'center' }}>{sure ? <Check size={16} color="#fff" strokeWidth={2} /> : null}</View>
