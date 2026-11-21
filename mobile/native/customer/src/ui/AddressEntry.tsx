@@ -2,10 +2,12 @@
    address page uses), then flat + street fields. Inline only: sign-up runs outside the Main navigator, so no openPage. Inputs use static styles
    (never restyle on focus: that made the Android keyboard close on build 21). */
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Keyboard, Modal, Platform, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Modal, Platform, Pressable, TextInput, View } from 'react-native';
 import { C, F, SP } from '../theme';
 import { Txt, useInsets } from './kit';
 import { Pressable3, FadeUp } from './motion';
+import { MapPin, LocatePill } from './mapparts';
+import { SERVICE_AREAS } from '../data/areas';
 import { Back, Check, Locate, Pin, Search } from './icons';
 import { PickMap, type PickMapRef } from './PickMap';
 import { act, here, distance } from '../state';
@@ -17,7 +19,6 @@ export const addrLocated = (a: AddrDraft | null | undefined) => !!a && Number.is
 
 const K = { ink: '#1A1033', grey: '#4F4766', muted: '#6B6483', line: 'rgba(84,9,218,0.16)', raised: C.canvas, violet: C.violet, ok: '#16a34a' };
 const UNAVAILABLE = Platform.OS !== 'web' && !hasKey;
-const EASE = Easing.bezier(0.22, 1, 0.36, 1);
 const DEFAULT_START = { lat: 28.668, lng: 77.0989 };
 const inputBox = { borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(84,9,218,0.14)', backgroundColor: K.raised, paddingHorizontal: SP.l } as const;
 const inputText = { fontFamily: F.b500, fontSize: 15, lineHeight: 22, color: K.ink, paddingTop: 13, paddingBottom: 13, includeFontPadding: false, textAlignVertical: 'center', outlineStyle: 'none' } as any;
@@ -30,15 +31,13 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 function MapModal({ visible, start, onClose, onConfirm }: { visible: boolean; start: { lat: number; lng: number }; onClose: () => void; onConfirm: (p: { lat: number; lng: number }, pl: Place) => void }) {
   const ins = useInsets(), map = useRef<PickMapRef>(null), cRef = useRef(start), seq = useRef(0), live = useRef(true), settled = useRef<{ lat: number; lng: number } | null>(null);
   const [moving, setMoving] = useState(true), [pl, setPl] = useState<Place>({ title: 'Pinned location', sub: '' }), [me, setMe] = useState(here()), [locating, setLocating] = useState(false), [typed, setTyped] = useState('');
-  const lift = useRef(new Animated.Value(0)).current, movingRef = useRef(true);
-  const ND = Platform.OS !== 'web';
-  const to = (v: number) => Animated.timing(lift, { toValue: v, duration: 180, easing: EASE, useNativeDriver: ND }).start();
+  const movingRef = useRef(true);
   useEffect(() => { live.current = true; return () => { live.current = false } }, []);
-  const onMoveStart = () => { if (movingRef.current) return; movingRef.current = true; setMoving(true); to(1) };
+  const onMoveStart = () => { if (movingRef.current) return; movingRef.current = true; setMoving(true) };
   const onSettle = (p: { lat: number; lng: number }) => {
     if (settled.current && distance(p.lat, p.lng, settled.current.lat, settled.current.lng) < 2) return;
     settled.current = p; cRef.current = p; const n = ++seq.current; movingRef.current = true; setMoving(true);
-    reverseGeocode(p.lat, p.lng).then(r => { if (!live.current || n !== seq.current) return; setPl(r || { title: 'Pinned location', sub: `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}` }); movingRef.current = false; setMoving(false); to(0) });
+    reverseGeocode(p.lat, p.lng).then(r => { if (!live.current || n !== seq.current) return; setPl(r || { title: 'Pinned location', sub: `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}` }); movingRef.current = false; setMoving(false) });
   };
   const jump = (p: { lat: number; lng: number }, zoomed = false) => { if (UNAVAILABLE) { cRef.current = p; return } onMoveStart(); map.current?.flyTo(p, zoomed) };
   const locate = async () => {
@@ -47,7 +46,6 @@ function MapModal({ visible, start, onClose, onConfirm }: { visible: boolean; st
     finally { if (live.current) setLocating(false) }
   };
   useEffect(() => { if (visible && !UNAVAILABLE) locate() }, [visible]);   // eslint-disable-line
-  const pinY = lift.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
   const ok = UNAVAILABLE ? typed.trim().length >= 3 : !moving;
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
@@ -61,21 +59,9 @@ function MapModal({ visible, start, onClose, onConfirm }: { visible: boolean; st
             </View>
           ) : (
             <>
-              <PickMap ref={map} start={start} me={me} onMoveStart={onMoveStart} onSettle={onSettle} />
-              <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-                <View style={{ position: 'absolute', left: '50%', marginLeft: -12, top: '50%', marginTop: -3, width: 24, height: 8, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.18)' }} />
-                <Animated.View style={{ position: 'absolute', left: '50%', marginLeft: -90, width: 180, bottom: '50%', marginBottom: -3, alignItems: 'center', transform: [{ translateY: pinY }] }}>
-                  <View style={{ backgroundColor: '#171717', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', maxWidth: 190 }}>
-                    <Txt size={12} color="#fff">Washer will arrive here</Txt>
-                    {moving ? <Txt size={12} color="rgba(255,255,255,0.7)">Locating…</Txt> : <Txt weight={500} size={12} color="#fff" numberOfLines={1}>{pl.title}</Txt>}
-                  </View>
-                  <View style={{ width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 7, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#171717' }} />
-                  <Pin size={40} color={K.violet} />
-                </Animated.View>
-              </View>
-              <Pressable onPress={locate} accessibilityLabel="Current location" style={({ pressed }) => ({ position: 'absolute', left: '50%', marginLeft: -85, bottom: 36, width: 170, height: 42, borderRadius: 21, backgroundColor: '#fff', borderWidth: 1, borderColor: K.violet, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, transform: [{ scale: pressed ? 0.98 : 1 }] })}>
-                <Locate size={18} color={K.violet} /><Txt weight={500} size={14} color={K.violet}>{locating ? 'Finding you…' : 'Use my location'}</Txt>
-              </Pressable>
+              <PickMap ref={map} areas={SERVICE_AREAS} start={start} me={me} onMoveStart={onMoveStart} onSettle={onSettle} />
+              <MapPin moving={moving} title={pl.title} />
+              <LocatePill onPress={locate} busy={locating} label="Use my location" style={{ bottom: 40 }} />
             </>
           )}
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close map" hitSlop={8} style={{ position: 'absolute', left: 16, top: ins.top + 10, width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}>

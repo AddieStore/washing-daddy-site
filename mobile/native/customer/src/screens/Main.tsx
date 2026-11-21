@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 // The signed-in shell: the current tab's screen above the tab bar, plus full-screen pages pushed over it.
 // r5 transitions (reanimated layout animations): the service page fades in while its hero art flies up from the tapped card
 // (shared-element feel, see Service), the cart rises from the bottom like a sheet, every other page slides in from the right.
@@ -5,7 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, Easing, BackHandler, AccessibilityInfo, useWindowDimensions, StyleSheet } from 'react-native';
 import Reanimated, { FadeIn, FadeOut, SlideInRight, SlideOutRight, SlideInDown, SlideOutDown, useSharedValue, useAnimatedStyle, withSpring, withTiming, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
-import { FlyHost } from '../ui/motion';
+import { FlyHost, primerGate } from '../ui/motion';
 import { useTheme } from '../theme';
 import { useApp, closePage, Page, Tab, appCfg, feature, tabOn, act } from '../state';
 import { Txt } from '../ui/kit';
@@ -136,7 +137,7 @@ export default function Main() {
     return () => s.remove();
   }, [ui.pages.length]);
   const [primer, setPrimer] = useState(false);
-  useEffect(() => { needsPrimer().then(setPrimer) }, []);
+  useEffect(() => { needsPrimer().then(v => { primerGate.on = v; setPrimer(v) }) }, []);
   const key = tab === 'home' || tab === 'live' ? tab : tab + ':' + ui.tabNonce;
   // Keep Home and Washes mounted once visited: re-mounting the heavy Home screen on every tap of its tab was the lag.
   // Hidden ones use display:none (no layout, no paint, state and scroll position kept). Other tabs mount fresh as before.
@@ -150,11 +151,12 @@ export default function Main() {
           return <Animated.View key={k} style={on ? { flex: 1, opacity: fade } : { display: 'none' }}><S2 /></Animated.View> })}
         {tab !== 'home' && tab !== 'live' ? <Animated.View key={key} style={{ flex: 1, opacity: fade }}><Screen /></Animated.View> : null}
         <TabBar />
+        <StatusBar style={tab === 'home' && !ui.pages.length ? 'dark' : 'light'} />
       </Reanimated.View>
       <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#0B0614' }, tabCover.dim]} />
       {ui.pages.map((p, i) => p && <Pushed key={i + ':' + p.k + ('id' in p && p.id ? p.id : '')} p={p} depth={i} cover={coverOf(ui.pages[i + 1]?.k)} />)}
       <FlyHost />
-      {primer ? <Permissions onDone={() => setPrimer(false)} /> : null}
+      {primer ? <Permissions onDone={() => { primerGate.on = false; setPrimer(false) }} /> : null}
     </View>
   );
 }

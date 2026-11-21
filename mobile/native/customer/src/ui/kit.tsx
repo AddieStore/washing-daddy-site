@@ -21,11 +21,13 @@ const WF = { 400: F.body, 500: F.b500, 600: F.b600, 700: F.b700, 800: F.b800 } a
 export type TxtProps = TextProps & { weight?: 400 | 500 | 600 | 700 | 800; font?: 'body' | 'shout' | 'hero'; size?: number; color?: string; upper?: boolean };
 // r5 type scale: 400 body, 500 label, 600 title, 700 figure, 800 hero. Medium text at 17px+ is promoted to SemiBold so headings
 // carry weight (Pronto). font 'shout'/'hero' render as Bold Poppins in sentence case; `upper` is ignored; figures are tabular.
+// Tight tracking on headings: wide Poppins reads soft at large sizes; pulling it in makes titles punchy (DESIGN-REFERENCE.md).
+const track = (size: number, w: number) => size >= 28 ? { letterSpacing: -0.8 } : size >= 20 ? { letterSpacing: -0.5 } : size >= 16 && w >= 600 ? { letterSpacing: -0.3 } : size >= 14 && w >= 600 ? { letterSpacing: -0.15 } : null;
 export function Txt({ style, weight = 400, font = 'body', size = 14, color, upper: _upper, ...p }: TxtProps) {
   const ink = useInk();
   const head = font !== 'body';
   const w = head ? 700 : weight === 500 && size >= 17 ? 600 : weight;
-  return <Text {...p} style={[{ fontFamily: WF[w as 400 | 500 | 600 | 700 | 800], fontSize: size, color: color ?? ink.fg, fontVariant: ['tabular-nums'] }, head && { lineHeight: Math.round(size * 1.22) }, size >= 22 && w >= 600 ? { letterSpacing: -0.3 } : null, style, { textTransform: 'none' }]} />;
+  return <Text {...p} style={[{ fontFamily: WF[w as 400 | 500 | 600 | 700 | 800], fontSize: size, color: color ?? ink.fg, fontVariant: ['tabular-nums'] }, head && { lineHeight: Math.round(size * 1.22) }, track(size, w), style, { textTransform: 'none' }]} />;
 }
 const tShadow = (_T: Theme, _c: string, _d: number): TextStyle => ({});
 

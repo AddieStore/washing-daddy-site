@@ -6,6 +6,7 @@ import Svg, { Defs, LinearGradient, Stop, Rect, Circle, Path, Line, G as SG, Tex
 import Reanimated, { type SharedValue, useSharedValue, useAnimatedStyle, withTiming, withRepeat, cancelAnimation, useReducedMotion, Easing } from 'react-native-reanimated';
 import { C } from '../theme';
 import { Txt } from './kit';
+import { RiderArt } from './heroRide';
 
 type Status = 'upcoming' | 'assigned' | 'on_the_way' | 'in_progress' | 'done' | 'cancelled' | string;
 export type RiderTrackProps = {
@@ -17,6 +18,7 @@ export type RiderTrackProps = {
   compact?: boolean;
 };
 
+const RW = 124, RH = Math.round(RW * 204 / 290) + 2;   // washer character size on the road
 const DH = 190, ROAD_Y = 162, VIOLET = C.violet, SAFFRON = C.saffron, INK = '#2B1B4D';
 const roadY = (x: number) => ROAD_Y + 4 * Math.sin(x / 48);
 const roadSlope = (x: number) => (4 / 48) * Math.cos(x / 48);
@@ -85,45 +87,10 @@ function Rider({ t, mv }: { t: SharedValue<number>; mv: SharedValue<number> }) {
   const flag = useAnimatedStyle(() => { const s = 0.78 + 0.22 * Math.sin(t.value * Math.PI * 6); return { transform: [{ translateX: -(1 - s) * 10 }, { scaleX: s }, { skewY: `${Math.sin(t.value * Math.PI * 4) * 6}deg` }] }; });
   const lines = [0, 1, 2].map(i => useAnimatedStyle(() => { const p = (t.value * 2 + i / 3) % 1; return { opacity: (1 - p) * 0.8 * mv.value, transform: [{ translateX: -p * 30 }] }; }));
   return (
-    <View style={{ width: 76, height: 64 }}>
-      {lines.map((st, i) => <Reanimated.View key={i} style={[{ position: 'absolute', left: -14, top: 20 + i * 11, width: 16 - i * 3, height: 2.5, borderRadius: 2, backgroundColor: '#fff' }, st]} />)}
-      <Svg width={76} height={64} viewBox="0 0 76 64" style={{ position: 'absolute' }}>
-        {/* ground shadow */}
-        <Rect x={6} y={60} width={64} height={3} rx={1.5} fill="#1A1033" opacity={0.18} />
-        {/* carrier + bucket + bubbles */}
-        <Rect x={3} y={33} width={19} height={3.5} rx={1.5} fill={INK} />
-        <Path d="M5 21 L20 21 L18 33 L7 33 Z" fill="#fff" stroke={VIOLET} strokeWidth={1.8} strokeLinejoin="round" />
-        <Rect x={5} y={25} width={15} height={3} fill={SAFFRON} />
-        <Path d="M7 21 Q12.5 14 18 21" fill="none" stroke={INK} strokeWidth={1.4} />
-        <Circle cx={9} cy={18} r={2.4} fill="#fff" stroke={VIOLET} strokeWidth={1} /><Circle cx={16} cy={16} r={3} fill="#fff" stroke={VIOLET} strokeWidth={1} />
-        {/* flag pole */}
-        <Line x1={4.5} y1={33} x2={4.5} y2={2} stroke={INK} strokeWidth={1.4} strokeLinecap="round" />
-        {/* scooter body */}
-        <Path d="M14 44 Q14 34 26 34 L35 34 L37 44 Z" fill={SAFFRON} />
-        <Path d="M16 43 H52 Q54 43 54 46 Q54 49.5 51 49.5 H20 Q16 49.5 16 46 Z" fill={SAFFRON} stroke="#E5A000" strokeWidth={0.8} />
-        <Path d="M50 47 Q53 30 57 22 L62 24 Q59 36 59 47 Z" fill={SAFFRON} stroke="#E5A000" strokeWidth={0.8} strokeLinejoin="round" />
-        <Line x1={59.5} y1={46} x2={60} y2={52} stroke={INK} strokeWidth={2.4} strokeLinecap="round" />
-        <Line x1={14} y1={44} x2={14} y2={52} stroke={INK} strokeWidth={2.4} strokeLinecap="round" />
-        <Line x1={55} y1={23} x2={62} y2={20.5} stroke={INK} strokeWidth={2.6} strokeLinecap="round" />
-        <Rect x={61} y={25} width={4} height={3} rx={1.5} fill="#fff" /><Circle cx={64.5} cy={26.5} r={2.2} fill="#FFF2B8" />
-        {/* rider */}
-        <Path d="M33 38 L40 41 L38 50" fill="none" stroke={INK} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
-        <Line x1={29} y1={32} x2={36} y2={17} stroke={VIOLET} strokeWidth={10} strokeLinecap="round" />
-        <Path d="M39 19 L50 21.5 L58 21" fill="none" stroke={VIOLET} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
-        <Circle cx={58.5} cy={21.5} r={2.3} fill="#F2B88F" />
-        <Rect x={33} y={11} width={5} height={5} fill="#F2B88F" />
-        <Circle cx={38} cy={10} r={6} fill="#F2B88F" />
-        <Path d="M31.2 10.5 A7 7 0 0 1 45 9 L45 11 L38 11.4 L31.4 12 Z" fill="#fff" stroke={VIOLET} strokeWidth={1.2} strokeLinejoin="round" />
-        <Rect x={38.5} y={9.6} width={7} height={3.4} rx={1.7} fill={INK} opacity={0.85} />
-        <Rect x={29} y={26} width={6} height={4} rx={1} fill={SAFFRON} opacity={0.0} />
-      </Svg>
-      <Reanimated.View style={[{ position: 'absolute', left: 4.5, top: 1, width: 22, height: 13 }, flag]}>
-        <Svg width={22} height={13} viewBox="0 0 22 13">
-          <Path d="M0 0 H22 L18 6.5 L22 13 H0 Z" fill={VIOLET} />
-          <SText x={2.5} y={9} fontSize={8} fontWeight="700" fill={SAFFRON}>WD</SText>
-        </Svg>
-      </Reanimated.View>
-      <Wheel left={5} t={t} mv={mv} /><Wheel left={51} t={t} mv={mv} />
+    <View style={{ width: RW, height: RH }}>
+      {lines.map((st, i) => <Reanimated.View key={i} style={[{ position: 'absolute', left: -14, top: 34 + i * 12, width: 18 - i * 3, height: 2.5, borderRadius: 2, backgroundColor: '#fff' }, st]} />)}
+      {/* the same WD washer character as the Home hero */}
+      <View style={{ position: 'absolute', left: -10, top: 0 }}><RiderArt w={RW} spin={t} /></View>
     </View>
   );
 }
@@ -170,7 +137,7 @@ function Scene({ W, progress, status }: { W: number; progress: number; status?: 
   useEffect(() => { const m = inProg ? 0 : 1; mv.value = rm ? m : withTiming(m, { duration: 700 }); }, [inProg, rm]);
   useEffect(() => { const p = Math.min(1, Math.max(0, progress)); pg.value = rm ? p : withTiming(p, { duration: 1400, easing: Easing.inOut(Easing.cubic) }); }, [progress, rm]);
   const DW = W;
-  const START = 40, END = Math.max(START + 20, DW - 150);
+  const START = 36, END = Math.max(START + 20, DW - 82 - RW + 6);
   const carX = DW - 82, pinX = DW - 46;
 
   const road = useMemo(() => { let d = ''; for (let x = -10; x <= DW + 10; x += 10) d += `${x === -10 ? 'M' : 'L'}${x} ${roadY(x).toFixed(1)} `; return d; }, [DW]);
@@ -182,7 +149,7 @@ function Scene({ W, progress, status }: { W: number; progress: number; status?: 
   const riderSt = useAnimatedStyle(() => {
     const x = START + pg.value * (END - START);
     const bounce = -Math.abs(Math.sin(t.value * Math.PI * 4)) * 1.6 * mv.value;
-    return { transform: [{ translateX: x }, { translateY: ROAD_Y + 4 * Math.sin((x + 38) / 48) + 10 - 64 + bounce }, { rotate: `${Math.atan((4 / 48) * Math.cos((x + 38) / 48)) - Math.sin(t.value * Math.PI * 4) * 0.02 * mv.value}rad` }] };
+    return { transform: [{ translateX: x }, { translateY: ROAD_Y + 4 * Math.sin((x + 38) / 48) + 10 - RH + bounce }, { rotate: `${Math.atan((4 / 48) * Math.cos((x + 38) / 48)) - Math.sin(t.value * Math.PI * 4) * 0.02 * mv.value}rad` }] };
   });
   const sunSt = useAnimatedStyle(() => ({ transform: [{ scale: 1 + Math.sin(t.value * Math.PI * 2) * 0.05 }], opacity: 0.35 + Math.sin(t.value * Math.PI * 2) * 0.1 }));
 
@@ -225,7 +192,7 @@ function Scene({ W, progress, status }: { W: number; progress: number; status?: 
       </Svg>
       <View style={{ position: 'absolute', left: carX, top: 158 - 6, }} pointerEvents="none"><Car washing={status === 'in_progress'} t={t} /></View>
       <View style={{ position: 'absolute', left: pinX - 20, top: 84 }} pointerEvents="none"><Pin t={t} /></View>
-      <Reanimated.View style={[{ position: 'absolute', left: 0, top: 0, width: 76, height: 64 }, riderSt]} pointerEvents="none"><Rider t={t} mv={mv} /></Reanimated.View>
+      <Reanimated.View style={[{ position: 'absolute', left: 0, top: 0, width: RW, height: RH }, riderSt]} pointerEvents="none"><Rider t={t} mv={mv} /></Reanimated.View>
     </View>
   );
 }

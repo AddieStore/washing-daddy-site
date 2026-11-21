@@ -1,11 +1,13 @@
 /* Sign-in poster and flow: phone -> code -> (new numbers) about -> plan. Ported from renderAuth() in customer/index.html. */
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
+import { Animated, Dimensions, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { C, F, SP, InkContext, creamInk } from '../theme';
-import Reanimated, { FadeIn, LinearTransition } from 'react-native-reanimated';
+import Reanimated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Field, Txt, useInsets, PAD } from '../ui/kit';
-import { Pressable3, FadeUp } from '../ui/motion';
-import { BrandBg, BrandLogo, PhotoStrip, Sheet } from '../ui/Brand';
+import { Pressable3, FadeUp, Splash } from '../ui/motion';
+import { BrandBg, BrandLogo, Sheet } from '../ui/Brand';
+import { WelcomeCollage, Cta, PhoneField, OtpBox } from '../ui/welcome';
 import { Back, Check, Zap, Calendar } from '../ui/icons';
 import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp, legalPages, onAutoSignIn } from '../state';
 import { openLegalSheet } from '../pages/LegalDoc';
@@ -19,6 +21,7 @@ type Mode = 'instant' | 'monthly';
 const msg = (e: any) => (e && e.message) || "That didn't go through. Try again.";
 const L = { ink: '#1A1033', grey: '#4F4766', muted: '#6B6483', line: 'rgba(84,9,218,0.16)', hair: 'rgba(84,9,218,0.10)', raised: C.canvas, violet: C.violet, off: '#E6E0F5', red: '#dc2626', ok: '#16a34a' };
 const NUM = { fontVariant: ['tabular-nums'] } as const;
+let introDone = false;   // the violet splash cross-fades into the collage once per app start
 
 function Err({ text }: { text: string }) {
   return text ? <Txt weight={500} size={13} color={L.red} style={{ marginBottom: SP.m, lineHeight: 18 }}>{text}</Txt> : null;
@@ -28,15 +31,6 @@ const B = ({ children }: { children: React.ReactNode }) => <Txt weight={600} siz
 function Link({ label, onPress, disabled, style, color }: { label: string; onPress: () => void; disabled?: boolean; style?: any; color?: string }) {
   return <Pressable3 onPress={onPress} disabled={disabled} haptics={false} scaleTo={0.97} hitSlop={{ top: 14, bottom: 14, left: 10, right: 10 }} style={style}><Txt weight={600} size={14} color={disabled ? L.muted : color || L.violet}>{label}</Txt></Pressable3>;
 };
-// full-width brand button, soft lilac while it cannot be used
-function Cta({ label, onPress, disabled, busy, style }: { label: string; onPress?: () => void; disabled?: boolean; busy?: string | boolean; style?: any }) {
-  const off = !!disabled || !!busy;
-  return (
-    <Pressable3 onPress={onPress} disabled={off} accessibilityRole="button" style={[{ minHeight: 56, borderRadius: 16, backgroundColor: disabled ? L.off : L.violet, alignItems: 'center', justifyContent: 'center', opacity: busy ? 0.85 : 1 }, !disabled && { shadowColor: C.violet, shadowOpacity: 0.32, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4 }, style]}>
-      <Txt weight={600} size={16} color={disabled ? L.muted : '#fff'}>{typeof busy === 'string' ? busy : label}</Txt>
-    </Pressable3>
-  );
-}
 // "Step 2 of 4" with a segmented bar, on the violet top
 const StepBar = ({ n, total }: { n: number; total: number }) => (
   <View style={{ marginBottom: SP.m }}>
@@ -86,6 +80,8 @@ export default function Auth() {
   const [inv, setInv] = useState(pendingRef());   // optional invite code, prefilled from a link the friend sent
   const [showInv, setShowInv] = useState(!!pendingRef()), [tapped, setTapped] = useState(false);
   const { v: appV } = useApp();
+  const [intro, setIntro] = useState(!introDone), intro0 = useRef(!introDone).current;
+  useEffect(() => { introDone = true; setIntro(false) }, []);
   const boxes = useRef<({ focus: () => void } | null)[]>([]);
   const shake = useRef(new Animated.Value(0)).current;
   const scroll = useRef<any>(null);
@@ -215,15 +211,7 @@ export default function Auth() {
 
   /* ---------- the sheet content ---------- */
   const six = OTP_N > 4;
-  const phoneField = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, borderRadius: 16, borderWidth: 1.5, borderColor: phone ? L.violet : 'rgba(84,9,218,0.18)', backgroundColor: L.raised, paddingHorizontal: SP.l }}>
-      <Txt weight={500} size={20} color={L.ink} style={[NUM, { lineHeight: 26, includeFontPadding: false } as any]}>+91</Txt>
-      <View style={{ width: 1, height: 24, backgroundColor: L.line }} />
-      <TextInput value={shown} onChangeText={onPhone} onSubmitEditing={sendCode} inputMode="numeric" keyboardType="number-pad" maxLength={16} autoComplete="tel-national" textContentType="telephoneNumber"
-        placeholder="Mobile number" placeholderTextColor={L.muted} accessibilityLabel="Mobile number"
-        style={{ flex: 1, minWidth: 0, fontFamily: F.b500, fontSize: 20, letterSpacing: 0.4, color: L.ink, lineHeight: 26, paddingTop: 17, paddingBottom: 17, includeFontPadding: false, textAlignVertical: 'center', fontVariant: ['tabular-nums'], outlineStyle: 'none' } as any} />
-    </View>
-  );
+  const phoneField = <PhoneField value={shown} onChangeText={onPhone} onSubmit={sendCode} valid={phoneOk} />;
   let card;
   if (step === 'phone') card = (
     <>
@@ -251,16 +239,12 @@ export default function Auth() {
   else if (step === 'otp') card = (
     <>
       <Animated.View style={{ flexDirection: 'row', gap: six ? 8 : 12, justifyContent: 'space-between', marginTop: SP.s, marginBottom: SP.l, transform: [{ translateX: shake }] }}>
-        {code.map((d, i) => {
-          const on = foc === i;
-          return (
-            <TextInput key={i} ref={(r: any) => { boxes.current[i] = r }} value={d} onChangeText={t => onBox(i, t)} onFocus={() => { setFoc(i); toCard() }} onBlur={() => setFoc(-1)}
-              onKeyPress={e => { if (e.nativeEvent.key === 'Backspace' && !d && i > 0) { const c = code.slice(); c[i - 1] = ''; setCode(c); boxes.current[i - 1]?.focus() } }}
-              inputMode="numeric" keyboardType="number-pad" textContentType={i ? undefined : 'oneTimeCode'} autoComplete={i ? 'off' : 'sms-otp'} maxLength={OTP_N} selectTextOnFocus editable={!busy}
-              accessibilityLabel={`Digit ${i + 1}`}
-              style={[{ flex: 1, maxWidth: 64, height: 68, textAlign: 'center', padding: 0, fontFamily: F.b600, fontSize: six ? 26 : 30, color: L.ink, fontVariant: ['tabular-nums'], backgroundColor: L.raised, borderWidth: 1.5, borderColor: on || d ? L.violet : 'rgba(84,9,218,0.18)', borderRadius: 16, outlineStyle: 'none' } as any]} />
-          );
-        })}
+        {code.map((d, i) => (
+          <OtpBox key={i} inputRef={(r: any) => { boxes.current[i] = r }} value={d} focused={foc === i} small={six} onChangeText={t => onBox(i, t)} onFocus={() => { setFoc(i); toCard() }} onBlur={() => setFoc(-1)}
+            onKeyPress={e => { if (e.nativeEvent.key === 'Backspace' && !d && i > 0) { const c = code.slice(); c[i - 1] = ''; setCode(c); boxes.current[i - 1]?.focus() } }}
+            inputMode="numeric" keyboardType="number-pad" textContentType={i ? undefined : 'oneTimeCode'} autoComplete={i ? 'off' : 'sms-otp'} maxLength={OTP_N} selectTextOnFocus editable={!busy}
+            accessibilityLabel={`Digit ${i + 1}`} />
+        ))}
       </Animated.View>
       <Err text={err} />
       {busy ? <Txt weight={600} size={13} color={L.violet} style={{ textAlign: 'center' }}>Checking…</Txt> : null}
@@ -356,7 +340,6 @@ export default function Auth() {
         <Txt weight={700} size={32} color="#fff" style={{ lineHeight: 40, marginTop: SP.l }}>Your car, washed{'\n'}<Txt weight={700} size={32} color={C.saffron}>every morning.</Txt></Txt>
         <Txt size={15} color="rgba(255,255,255,0.86)" style={{ lineHeight: 22, marginTop: SP.s, maxWidth: 330 }}>A washer comes to where it's parked. Pressure wash only, no pocha.</Txt>
       </FadeUp>
-      <View style={{ marginTop: SP.l, marginBottom: SP.m }}><PhotoStrip width={W} h={150} /></View>
     </View>
   );
   else top = (
@@ -384,11 +367,18 @@ export default function Auth() {
     <InkContext.Provider value={creamInk}>
       <View style={{ flex: 1, backgroundColor: C.brandDeep }}>
         <BrandBg />
+        {step === 'phone' ? (
+          <Reanimated.View key="collage" pointerEvents="none" entering={FadeIn.duration(420)} exiting={FadeOut.duration(260)} style={StyleSheet.absoluteFill}>
+            <WelcomeCollage intro={intro0} />
+            <LinearGradient pointerEvents="none" colors={['rgba(58,5,153,0.9)', 'rgba(70,8,184,0.62)', 'rgba(84,9,218,0.2)', 'rgba(84,9,218,0.04)']} locations={[0, 0.26, 0.5, 1]} style={StyleSheet.absoluteFill} />
+          </Reanimated.View>
+        ) : null}
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: kb }}>
             <View style={{ width: W, flexGrow: 1 }}>
               {top}
-              <Sheet style={{ marginTop: SP.s, flexGrow: 1 }}>
+              {step === 'phone' ? <View style={{ flex: 1, minHeight: 56 }} /> : null}
+              <Sheet delay={intro ? 1100 : 140} style={step === 'phone' ? { marginTop: SP.s } : { marginTop: SP.s, flexGrow: 1 }}>
                 <View style={{ paddingHorizontal: PAD + 4, paddingTop: SP.xl, paddingBottom: SP.xl + Math.max(ins.bottom, SP.s) }}>
                   <FadeUp key={step} distance={10} duration={260}>{card}</FadeUp>
                 </View>
@@ -396,6 +386,7 @@ export default function Auth() {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+        {intro ? <Reanimated.View pointerEvents="none" exiting={FadeOut.delay(300).duration(500)} style={[StyleSheet.absoluteFill, { zIndex: 50 }]}><Splash still /></Reanimated.View> : null}
       </View>
     </InkContext.Provider>
   );

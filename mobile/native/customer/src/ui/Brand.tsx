@@ -20,9 +20,9 @@ export function BrandBg() {
 }
 
 /** white bottom sheet that rises into place once */
-export function Sheet({ children, style, onLayout }: { children: ReactNode; style?: StyleProp<ViewStyle>; onLayout?: (e: any) => void }) {
+export function Sheet({ children, style, onLayout, delay = 140 }: { children: ReactNode; style?: StyleProp<ViewStyle>; onLayout?: (e: any) => void; delay?: number }) {
   return (
-    <FadeUp distance={56} delay={140} duration={380} style={[{ backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, shadowColor: '#1A0650', shadowOpacity: 0.28, shadowRadius: 24, shadowOffset: { width: 0, height: -8 }, elevation: 12 }, style]}>
+    <FadeUp distance={56} delay={delay} duration={380} style={[{ backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, shadowColor: '#1A0650', shadowOpacity: 0.28, shadowRadius: 24, shadowOffset: { width: 0, height: -8 }, elevation: 12 }, style]}>
       <View onLayout={onLayout} style={{ flexGrow: 1 }}>{children}</View>
     </FadeUp>
   );

@@ -4,7 +4,7 @@ import { View, Pressable, ScrollView } from 'react-native';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Footer } from '../ui/Footer';
-import { Pressable3, FadeUp } from '../ui/motion';
+import { Pressable3, FadeUp, CountUp } from '../ui/motion';
 import { Help, Info, Gift, Chev, Clock, Camera, Pause } from '../ui/icons';
 import { PLANS } from '../data/reference';
 import type { PlanId } from '../data/reference';
@@ -43,7 +43,7 @@ function Balance() {
           <View style={{ borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: RAISED }}><Txt weight={500} size={12} color={SEC}>{st[0]}</Txt></View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 16 }}>
-          <Txt weight={500} size={28} color={C.violet} style={TN}>{left == null ? inr(p.price) : String(left)}</Txt>
+          <CountUp to={left == null ? inr(p.price) : String(left)} duration={600} style={[TN, { fontFamily: 'Poppins_500Medium', fontSize: 28, color: C.violet }]} />
           <Txt size={14} color={SEC}>{left == null ? 'a month' : 'days left'}</Txt>
         </View>
         <Txt size={13} color={SEC} style={{ marginTop: 8, lineHeight: 20 }}>
@@ -120,7 +120,7 @@ export default function Plan() {
         </View>
         <View style={{ paddingHorizontal: 16, marginTop: 32, gap: 12 }}>
           {c.status !== 'new' && (
-            <Card style={{ padding: 16 }}>
+            <FadeUp index={2} distance={8}><Card style={{ padding: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}><Txt weight={500} size={18} color={INK}>Used this month</Txt><Txt size={12} color={MUTED}>{u.range}</Txt></View>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
                 {u.cols.map(x => (
@@ -131,9 +131,9 @@ export default function Plan() {
                   </View>
                 ))}
               </View>
-            </Card>
+            </Card></FadeUp>
           )}
-          <Card style={{ padding: 16 }}>
+          <FadeUp index={3} distance={8}><Card style={{ padding: 16 }}>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <Pause size={18} color={MUTED} strokeWidth={1.5} />
               <View style={{ flex: 1 }}>
@@ -144,11 +144,11 @@ export default function Plan() {
               </View>
             </View>
             {pz || cp ? <Ghost label={pz ? 'Resume washes now' : 'Choose dates'} onPress={() => (pz ? run(act.resume) : sheets.pause())} /> : null}
-          </Card>
+          </Card></FadeUp>
         </View>
         <View style={{ paddingHorizontal: 16, marginTop: 32, gap: 12 }}>
-          <Bullets title="How it works" items={HOW} />
-          <Bullets title="Using your plan" items={USING} />
+          <FadeUp index={4} distance={8}><Bullets title="How it works" items={HOW} /></FadeUp>
+          <FadeUp index={5} distance={8}><Bullets title="Using your plan" items={USING} /></FadeUp>
         </View>
         <Card style={{ marginHorizontal: 16, marginTop: 32, overflow: 'hidden' }}>
           <View style={{ padding: 16, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}><Txt weight={500} size={18} color={INK}>Payments</Txt>{pays.length ? <Txt size={12} color={MUTED}>{pays.length + ' receipts'}</Txt> : null}</View>

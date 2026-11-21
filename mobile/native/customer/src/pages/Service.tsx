@@ -6,7 +6,7 @@ import { View, Animated, Pressable, Share, Image, Platform, useWindowDimensions 
 import { Txt, useInsets } from '../ui/kit';
 import { Check, Close, Chev, Clock, Shield } from '../ui/icons';
 import { IMG, RATIO } from '../img';
-import { useApp, act, svcQty, svcOf, lineKey, closePage, openPage, unavailable, svcLines } from '../state';
+import { useApp, act, toast, svcQtyAll, svcQty, svcOf, lineKey, closePage, openPage, unavailable, svcLines, modeOn } from '../state';
 import { CAR_SERVICES, PACKS, SVC_PHOTO, SHOW_RATINGS, TRUST, VARIANTS, variantPrice, variantsFor, packInfo, type VariantId } from '../data/reference';
 import { PageBar } from './Stub';
 import { Laurel } from '../ui/art2';
@@ -14,6 +14,7 @@ import { CartBar, Shimmer, useSkeleton, FadeUp, takeOrigin, flyFrom, AddButton }
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming, useReducedMotion } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SvcArt } from './parts';
+import { PrimaryBtn } from './parts';
 import { G, card, imgOf, BackCircle, ShareCircle, Price, Tap, TNUM, AddBtn } from './parts';
 import { src } from '../img';
 
@@ -133,6 +134,22 @@ function Variant({ id, v, base, w }: { id: string; v: (typeof VARIANTS)[number];
   );
 }
 
+const DUAL_H = 76;
+/* sticky dual CTA: Schedule (outline) + Instant (filled); adds the first car size when nothing of this service is in the cart yet */
+function DualCta({ bottom, onGo }: { bottom: number; onGo: (m: 'instant' | 'scheduled') => void }) {
+  const rm = useReducedMotion(), v = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { if (!rm) v.value = withDelay(250, withSpring(1, { damping: 16, stiffness: 170 })) }, []);
+  const st = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ translateY: (1 - v.value) * 80 }] }));
+  const hasInstant = modeOn('instant'), hasSched = modeOn('scheduled');
+  if (!hasInstant && !hasSched) return null;
+  return (
+    <Reanimated.View style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', gap: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: G.line, paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(bottom, 12) + 4 }, st]}>
+      {hasSched ? <PrimaryBtn outline label="Schedule" onPress={() => onGo('scheduled')} style={{ flex: 1 }} /> : null}
+      {hasInstant ? <PrimaryBtn label="Instant" onPress={() => onGo('instant')} style={{ flex: 1 }} /> : null}
+    </Reanimated.View>
+  );
+}
+
 export default function Service({ id }: { id?: string }) {
   useApp();
   const app = useApp(), fromCart = app.pages.length > 1 && app.pages[app.pages.length - 2]?.k === 'cart';
@@ -159,6 +176,13 @@ export default function Service({ id }: { id?: string }) {
   const heroS = y.interpolate({ inputRange: [-HH, 0], outputRange: [1.6, 1], extrapolate: 'clamp' });
   const bar = y.interpolate({ inputRange: [HH - 120, HH - 60], outputRange: [0, 1], extrapolate: 'clamp' });
   const hasBar = true;
+  const go = (mode: 'instant' | 'scheduled') => {
+    try {
+      if (!svcQtyAll(sid)) { if (svc) act.addLine(sid, (variantsFor(svc)[0]?.id || 'hatch') as VariantId); else act.addSvc(sid) }
+      act.setCartMode(mode);
+    } catch (e: any) { toast(e?.message || 'Could not start this booking'); return }
+    fromCart ? closePage() : openPage({ k: 'cart' });
+  };
   const tint = svc?.tint || '#F3EEFD';
   const onScroll = Animated.event([{ nativeEvent: { contentOffset: { y } } }], { useNativeDriver: ND });
   const im = String(imgOf(sid)), r3d = im.startsWith('r3d');
@@ -172,7 +196,7 @@ export default function Service({ id }: { id?: string }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <Animated.ScrollView showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={onScroll} contentContainerStyle={{ paddingBottom: 140 }}>
+      <Animated.ScrollView showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={onScroll} contentContainerStyle={{ paddingBottom: 190 }}>
         {skel ? <Skeleton /> : (
           <>
             {hasPhoto ? (
@@ -320,7 +344,8 @@ export default function Service({ id }: { id?: string }) {
       <View style={{ position: 'absolute', left: 16, right: 16, top: ins.top + 12, flexDirection: 'row', justifyContent: 'space-between' }}>
         <BackCircle onPress={closePage} /><ShareCircle onPress={share} />
       </View>
-      {hasBar ? <CartBar /> : null}
+      {hasBar ? <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: DUAL_H + ins.bottom, height: 72 }}><CartBar /></View> : null}
+      {!skel && !paused ? <DualCta bottom={ins.bottom} onGo={go} /> : null}
     </View>
   );
 }
