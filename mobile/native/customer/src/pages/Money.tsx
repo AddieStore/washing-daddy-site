@@ -86,7 +86,7 @@ export default function Money({ tab }: { tab?: boolean }) {
               <Txt size={17} color={G.sub}>₹</Txt>
               <TextInput value={custom} keyboardType="number-pad" placeholder="Enter another amount" placeholderTextColor={G.mute} maxLength={5}
                 onFocus={() => setSel('custom')} onChangeText={t => { setCustom(t.replace(/[^0-9]/g, '')); setSel('custom') }}
-                style={{ flex: 1, marginLeft: 6, fontSize: 16, color: G.ink, height: 52, outlineStyle: 'none' } as any} />
+                style={{ flex: 1, marginLeft: 6, fontSize: 16, color: G.ink, height: 52, outlineStyle: 'none', includeFontPadding: false, textAlignVertical: 'center', paddingVertical: 0 } as any} />
             </View>
             {err ? <Txt size={13} color={C.red} style={{ marginTop: 6 }}>{err}</Txt> : bonus ? <Txt size={13} color={G.pos} style={{ marginTop: 6 }}>You get {rs(bonus)} as rewards.</Txt> : null}
             <PrimaryBtn label={amt ? `Add ${rs(amt)} to wallet` : 'Add to wallet'} busy={busy} disabled={!amt || !!err} onPress={add} style={{ marginTop: 14 }} />

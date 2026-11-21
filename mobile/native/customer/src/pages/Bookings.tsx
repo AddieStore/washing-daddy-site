@@ -8,7 +8,7 @@ import { Txt, useInsets } from '../ui/kit';
 import { Footer } from '../ui/Footer';
 import { Back, Help as HelpIc, Pin } from '../ui/icons';
 import { FadeUp } from '../ui/motion';
-import { JobRider, showsRider } from '../ui/JobRider';
+import { JobRider, showsRider, showsCode, StartCode } from '../ui/JobRider';
 import { feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
 import { sheets } from '../sheets';
 import { inr, fmt, iso, TODAY } from '../data/dates';
@@ -91,7 +91,7 @@ export function JobCard({ j, onPress }: { j: Job; onPress: () => void }) {
               <Stars n={j.stars || 0} size={22} gap={6} onPick={n => (canRate(j) ? openRateSheet(j.id, n) : toast('You can rate once the wash is done'))} />
             </View>
           ) : showsRider(j) ? (
-            <View style={{ marginTop: 10 }}><JobRider j={j} compact /></View>
+            <View style={{ marginTop: 10 }}><JobRider j={j} compact />{showsCode(j) ? <StartCode j={j} compact /> : null}</View>
           ) : null}
         </View>
       ) : (

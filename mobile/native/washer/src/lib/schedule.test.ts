@@ -35,7 +35,6 @@ test('per-week counts match the plan over any week', () => {
   for (const reg of ['DL4CAB2731', 'DL3CBK0419', 'HR26DK4471', 'DL1CZ4410']) {
     assert.equal(week(reg, 'std', 'interior'), 1);
     assert.equal(week(reg, 'std', 'tyre'), 2);
-    assert.equal(week(reg, 'std', 'foam'), 1);
     assert.equal(week(reg, 'pro', 'interior'), 2);
     assert.equal(week(reg, 'pro', 'tyre'), 7);
     assert.equal(week(reg, 'exc', 'foam'), 4);
@@ -49,6 +48,12 @@ test('Pro gets detailing once a month, Exclusive twice', () => {
   assert.equal(month('DL4CAB2731', 'pro'), 1);
   assert.equal(month('DL4CAB2731', 'exc'), 2);
   assert.equal(month('DL4CAB2731', 'std'), 0);
+});
+
+test('Standard gets foam once a month', () => {
+  for (const reg of ['DL4CAB2731', 'DL3CBK0419', 'HR26DK4471', 'DL1CZ4410'])
+    for (const start of ['2026-10-01', '2026-11-01', '2027-02-01'])
+      assert.equal([...Array(28)].filter((_, i) => tasksFor(reg, 'std', addDaysStr(start, i)).includes('foam')).length, 1, reg + ' ' + start);
 });
 
 test('money and time formatting', () => {

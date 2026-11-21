@@ -37,7 +37,7 @@ import type { PassPlan } from './data/reference';
 import {
   Account, Car, Session, WashDoc, DEMO_PHONE, sampleAccount, fromCustomerDoc, regOf, planOf, maskPlate, extras, weekPlan,
   LABEL, TASK_LABEL, TASK_SUB, isPaused, canPause, pauseLog, pauseFits, startOf, startTxt, makeDoc, fromContract, planTasks,
-  activeStage, chipText, hash, daysLeftOf, STAGES,
+  activeStage, chipText, hash, daysLeftOf, STAGES, foamDay,
 } from './data/model';
 import { toast, openSheet, closeSheet, sheetOpen, confetti, haptic } from './ui/hosts';
 export { toast, openSheet, closeSheet, confetti, haptic };
@@ -229,7 +229,7 @@ export function usage(c: Car = car()) {
   const pick = (k: string, fake: number) => N ? N[k] : fake;
   const cols: [string, number, number, 'violet' | 'orange' | 'sky' | 'gold' | 'mint'][] = [
     ['Pressure washes', pick('pressure', td), 30, 'violet'], ['Interior', pick('interior', Math.round(f.int * td / 7)), Math.round(f.int * 30 / 7), 'orange'],
-    ['Foam wash', pick('foam', Math.round(f.foam * td / 7)), Math.round(f.foam * 30 / 7), 'sky'],
+    ['Foam wash', pick('foam', Math.round(f.foam * td / 7) + (f.fm && foamDay(c) <= td ? f.fm : 0)), Math.round(f.foam * 30 / 7) + (f.fm || 0), 'sky'],
     f.det ? ['Detailing', pick('detailing', f.det >= 16 ? 8 : Math.floor(f.det / 2)), f.det >= 16 ? 17 : f.det, 'gold'] : ['Tyre & trim', pick('tyre', Math.min(Math.round(f.tyre * 30 / 7), Math.round(f.tyre * td / 7))), Math.round(f.tyre * 30 / 7), 'mint']];
   const range = realAcct() && c.start ? `From ${fmt(startOf(c)!, { day: 'numeric', month: 'short' })}` : `1–${td} ${fmt(TODAY, { month: 'short' })}`;
   return { range, hidden: c.status === 'new', cols: cols.map(u => ({ label: u[0], used: u[1] * used, of: u[2], color: u[3] })) };
@@ -796,6 +796,33 @@ function etaFrom(mode: any, created: any): string | undefined {
   const t = Date.parse(String(created).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(created)) ? '' : '+05:30'));
   return Number.isFinite(t) ? new Date(t + ETA_MIN * 60000).toISOString() : undefined;
 }
+/* ---- start code: jobcodes/{bookingId} = { code, phone, created_at }. The washer types it in WD Partner to start the
+   wash, so the right washer starts the right job. The phone creates it once if missing (the dashboard may too: a
+   create that loses the race is refused by the rules and the snapshot then shows the dashboard's code). ---- */
+let JOBCODES: Record<string, string> = {}, codeUnsubs: Record<string, Unsub> = {};
+const rand4 = () => {
+  const c: any = (globalThis as any).crypto;
+  if (c && typeof c.getRandomValues === 'function') { const a = new Uint32Array(1); c.getRandomValues(a); return String(a[0] % 10000).padStart(4, '0') }
+  return String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+};
+function watchCodes(jobs: Job[]) {
+  if (!DB || !AUTH || !AUTH.phone()) return;
+  const open = new Set(jobs.filter(j => UPCOMING.includes(j.status)).map(j => j.id));
+  for (const id of Object.keys(codeUnsubs)) if (!open.has(id)) { try { codeUnsubs[id]() } catch (e) {} delete codeUnsubs[id] }
+  open.forEach(id => {
+    if (codeUnsubs[id]) return;
+    let tried = false;
+    codeUnsubs[id] = DB.doc('jobcodes/' + id).onSnapshot(g => {
+      const d = g.exists ? g.data() : null;
+      if (d && /^\d{4}$/.test(String(d.code))) { if (JOBCODES[id] !== String(d.code)) { JOBCODES[id] = String(d.code); emit() } return }
+      if (tried) return; tried = true;
+      DB.doc('jobcodes/' + id).set({ code: rand4(), phone: AUTH!.phone(), created_at: nowIST() }).catch((e: any) => console.warn('jobcode', e));
+    }, () => {});
+  });
+}
+/** the 4-digit code the washer needs to start this booking (demo bookings get a fixed sample) */
+export const jobCode = (id: string): string | null => (realAcct() ? JOBCODES[id] || null : String(1000 + (Array.from(id).reduce((a, c) => a * 31 + c.charCodeAt(0), 7) % 9000)));
+
 function watchMoney() {
   stop(moneyUnsubs); if (!DB || !AUTH || !realAcct() || !AUTH.phone()) return;
   const ph = AUTH.phone()!, P = () => px(), q = (c: string, f: string) => DB.collection(c).where(f, '==', ph), warn = (w: string) => (e: any) => console.warn(w, e);
@@ -806,7 +833,8 @@ function watchMoney() {
   moneyUnsubs.push(DB.doc('referrals/' + ph).onSnapshot(g => { const d = g.exists ? g.data() : {}; P().referral = { completed: +d.completed || 0, earned: +d.earned || 0, pending: +d.pending || 0, ledger: Array.isArray(d.ledger) ? d.ledger : [] }; emit() }, warn('referral')));
   moneyUnsubs.push(q('addresses', 'phone').onSnapshot(ds => { P().addresses = ds.map(s => { const d = s.data(); return { id: s.id, label: d.label, other: d.other || undefined, flat: d.flat || '', street: d.street || '', area: d.area || '', lat: +d.lat, lng: +d.lng, receiver: d.receiver_self === false ? { self: false, name: d.receiver_name || '', phone: d.receiver_phone || '' } : { self: true } } }); if (P().addrId && !P().addresses.some(a => a.id === P().addrId)) P().addrId = null; commit() }, warn('addresses')));
   moneyUnsubs.push(q('bookingratings', 'phone').onSnapshot(ds => { RATINGS = {}; ds.forEach(s => { const d = s.data(); RATINGS[d.booking_id] = { stars: d.stars, review: d.review } }); P().jobs = P().jobs.map(j => RATINGS[j.id] ? { ...j, stars: RATINGS[j.id].stars, review: RATINGS[j.id].review } : j); emit() }, () => {}));
-  moneyUnsubs.push(q('ondemand', 'customer_id').onSnapshot(ds => { P().jobs = ds.map(s => fromOndemand(s.id, s.data())); emit() }, warn('jobs')));
+  moneyUnsubs.push(q('ondemand', 'customer_id').onSnapshot(ds => { P().jobs = ds.map(s => fromOndemand(s.id, s.data())); watchCodes(P().jobs); emit() }, warn('jobs')));
+  moneyUnsubs.push(() => { Object.values(codeUnsubs).forEach(u => { try { u() } catch (e) {} }); codeUnsubs = {}; JOBCODES = {} });
   subscribeCoupons(DB);   // public coupons -> COUPONS (data/config.ts)
 }
 

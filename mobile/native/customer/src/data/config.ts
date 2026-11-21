@@ -174,7 +174,7 @@ function apply() {
   if (planDocs.length) {
     const plans = BUILTIN_PLANS.map(p => ({ ...p })) as R.Plan[];
     planDocs.forEach(d => {
-      const f = d.f && typeof d.f === 'object' ? { int: num(d.f.int, 0), tyre: num(d.f.tyre, 0), foam: num(d.f.foam, 0), det: num(d.f.det, 0) } : undefined;
+      const f = d.f && typeof d.f === 'object' ? { int: num(d.f.int, 0), tyre: num(d.f.tyre, 0), foam: num(d.f.foam, 0), det: num(d.f.det, 0), fm: num(d.f.fm, 0) } : undefined;
       const i = plans.findIndex(p => p.id === d.id), base = i >= 0 ? plans[i] : null;
       const p: R.Plan = { id: d.id, name: str(d.name) || (base ? base.name : d.id), price: num(d.price, base ? base.price : 0), old: !!d.old, status: status(d.status),
         f: f || (base ? base.f : { int: 1, tyre: 0, foam: 0, det: 0 }), rows: pairs(d.rows).length ? pairs(d.rows) : base ? base.rows : [] };

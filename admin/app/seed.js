@@ -1574,8 +1574,9 @@ window.WD_SEED={
    "f": {
     "int": 1,
     "tyre": 2,
-    "foam": 1,
-    "det": 0
+    "foam": 0,
+    "det": 0,
+    "fm": 1
    },
    "rows": [
     {
@@ -1592,7 +1593,7 @@ window.WD_SEED={
     },
     {
      "k": "Foam wash",
-     "v": "1× / week"
+     "v": "1× / month"
     },
     {
      "k": "Detailing",
@@ -1604,7 +1605,7 @@ window.WD_SEED={
     "Pressure wash: Daily",
     "Interior: 1× / week",
     "Tyre & trim: 2× / week",
-    "Foam wash: 1× / week",
+    "Foam wash: 1× / month",
     "Detailing: —"
    ],
    "excluded": [],

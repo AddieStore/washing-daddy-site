@@ -4,9 +4,9 @@ import { dObj } from './time.ts';
 export type PlanId = 'legacy' | 'std' | 'pro' | 'exc' | 'res';
 export type TaskKey = 'pressure' | 'foam' | 'interior' | 'tyre' | 'detailing' | 'dry';
 
-export const PLAN: Record<PlanId, { name: string; f: { interior: number; tyre: number; foam: number }; det: null | 'm1' | 'm2' | 'w4' }> = {
+export const PLAN: Record<PlanId, { name: string; f: { interior: number; tyre: number; foam: number; fm?: number }; det: null | 'm1' | 'm2' | 'w4' }> = {
   legacy: { name: 'Legacy', f: { interior: 1, tyre: 0, foam: 0 }, det: null },
-  std: { name: 'WD Standard', f: { interior: 1, tyre: 2, foam: 1 }, det: null },
+  std: { name: 'WD Standard', f: { interior: 1, tyre: 2, foam: 0, fm: 1 }, det: null },
   pro: { name: 'WD Pro', f: { interior: 2, tyre: 7, foam: 2 }, det: 'm1' },
   exc: { name: 'WD Exclusive', f: { interior: 3, tyre: 7, foam: 4 }, det: 'm2' },
   res: { name: 'WD Reserve', f: { interior: 7, tyre: 7, foam: 7 }, det: 'w4' },
@@ -42,6 +42,7 @@ export function tasksFor(reg: string, plan: string, date: string): TaskKey[] {
     for (let i = 0; i < n; i++) if ((off + Math.floor(i * 7 / n)) % 7 === di) due.add(k);
   };
   spread('foam', p.f.foam, h % 7);
+  if (p.f.fm && d.getDate() === ((h >>> 12) % 28) + 1) due.add('foam'); // Standard: foam once a month
   spread('interior', p.f.interior, (h >>> 3) % 7);
   spread('tyre', p.f.tyre, (h >>> 6) % 7);
   if (p.det === 'w4') spread('detailing', 4, (h >>> 9) % 7);
