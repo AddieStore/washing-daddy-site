@@ -50,7 +50,7 @@ export function EtaChip({ label, open }: { label: string; open: boolean }) {
   const m = label.match(/(\d+)\s*(?:-|–)?\s*(\d+)?\s*min/i);
   const txt = open && m ? `${m[1]} min` : label;
   return (
-    <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, height: 24, paddingHorizontal: 8, borderRadius: 12, backgroundColor: open ? 'rgba(84,9,218,0.10)' : '#EDEDF0' }}>
+    <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, height: 24, paddingHorizontal: 8, borderRadius: 12, borderWidth: 1.5, borderColor: open ? '#5409DA' : '#D4D4D8', backgroundColor: '#fff' }}>
       <Zap size={12} color={open ? '#5409DA' : '#737373'} strokeWidth={2} />
       <Txt weight={600} size={12} color={open ? '#5409DA' : '#737373'} numberOfLines={1} style={{ lineHeight: 16, fontVariant: ['tabular-nums'] }}>{txt}</Txt>
     </View>
@@ -77,7 +77,7 @@ export function Dots({ n, active }: { n: number; active: number }) {
   return <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5, marginTop: 10 }}>{Array.from({ length: n }, (_, i) => <Dot key={i} on={i === active} />)}</View>;
 }
 
-export type Offer = { key: string; tag: string; title: string; sub: string; cta: string; colors: [string, string]; onPress: () => void; countdown?: boolean };
+export type Offer = { key: string; tag: string; title: string; sub: string; cta: string; colors: [string, string]; onPress: () => void; countdown?: boolean; art?: ReactNode };
 /** snapping offer carousel with live countdown on the first card and dots underneath */
 export function OfferCarousel({ offers }: { offers: Offer[] }) {
   const { width } = useWindowDimensions(), W = Math.min(width, 520), cw = W - 32 - 12, [i, setI] = useState(0), left = useCountdown(), rm = useReducedMotion();
@@ -95,18 +95,19 @@ export function OfferCarousel({ offers }: { offers: Offer[] }) {
       <ScrollView ref={ref} onScrollBeginDrag={() => { held.current = true }} horizontal showsHorizontalScrollIndicator={false} snapToInterval={cw + 12} snapToAlignment="start" decelerationRate="fast" onScroll={onEnd} scrollEventThrottle={32}
         contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
         {offers.map(o => (
-          <Pressable3 key={o.key} accessibilityRole="button" accessibilityLabel={o.title} onPress={o.onPress} style={{ width: cw, minHeight: 112, borderRadius: 20, overflow: 'hidden', padding: 16, justifyContent: 'space-between' }}>
-            <LinearGradient colors={o.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
-            <View style={{ position: 'absolute', right: -24, top: -34, width: 130, height: 130, borderRadius: 65, backgroundColor: 'rgba(255,255,255,0.10)' }} />
+          <Pressable3 key={o.key} accessibilityRole="button" accessibilityLabel={o.title} onPress={o.onPress} style={{ width: cw, minHeight: 128, borderRadius: 20, overflow: 'hidden', padding: 16, borderWidth: 1, borderColor: '#E9E0FB' }}>
+            {/* soft brand tint fading to white (reference: offer cards are light, colour only on the button) */}
+            <LinearGradient colors={['#EFE6FF', '#FBF8FF']} start={{ x: 0, y: 0 }} end={{ x: 0.2, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+            {o.art ? <View pointerEvents="none" style={{ position: 'absolute', right: 6, top: 0, bottom: 0, justifyContent: 'center' }}>{o.art}</View> : null}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 8, paddingHorizontal: 8, height: 22, justifyContent: 'center' }}><Txt weight={600} size={11} color="#fff" style={{ lineHeight: 15, letterSpacing: 0.5 }}>{o.tag}</Txt></View>
-              {o.countdown ? <Txt weight={600} size={12} color="#FFD166" style={{ lineHeight: 16, fontVariant: ['tabular-nums'] }}>Ends in {left}</Txt> : null}
+              <View style={{ backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 8, height: 22, justifyContent: 'center' }}><Txt weight={600} size={10} color="#5409DA" style={{ lineHeight: 14, letterSpacing: 0.6 }}>{o.tag}</Txt></View>
+              {o.countdown ? <Txt weight={600} size={12} color="#E5484D" style={{ lineHeight: 16, fontVariant: ['tabular-nums'] }}>Ends in {left}</Txt> : null}
             </View>
-            <View style={{ marginTop: 10 }}>
-              <Txt weight={600} size={17} color="#fff" style={{ lineHeight: 24 }}>{o.title}</Txt>
-              <Txt size={12} color="rgba(255,255,255,0.86)" style={{ lineHeight: 17, marginTop: 2 }}>{o.sub}</Txt>
+            <View style={{ marginTop: 10, marginRight: o.art ? 96 : 0 }}>
+              <Txt weight={700} size={18} color="#141414" style={{ lineHeight: 23 }}>{o.title}</Txt>
+              <Txt size={12} color="#7A7A80" style={{ lineHeight: 17, marginTop: 3 }}>{o.sub}</Txt>
             </View>
-            <View style={{ alignSelf: 'flex-start', marginTop: 12, backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, height: 28, justifyContent: 'center' }}><Txt weight={600} size={12} color="#5409DA" style={{ lineHeight: 16 }}>{o.cta}</Txt></View>
+            <View style={{ alignSelf: 'flex-start', marginTop: 12, backgroundColor: '#5409DA', borderRadius: 10, paddingHorizontal: 14, height: 32, justifyContent: 'center' }}><Txt weight={600} size={13} color="#fff" style={{ lineHeight: 18 }}>{o.cta}</Txt></View>
           </Pressable3>
         ))}
       </ScrollView>

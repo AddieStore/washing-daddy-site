@@ -30,13 +30,14 @@ import { Laurel } from '../ui/art2';
 import { SheetTitle, closeSheet } from '../ui/hosts';
 import { openAddressPicker } from '../sheets/address';
 import { openPassPromo } from '../sheets/money';
-import { HeroPhotos, MiniMap, EtaChip, OfferCarousel, PhotoTiles, Offer } from '../ui/home';
+import { MiniMap, EtaChip, OfferCarousel, Offer } from '../ui/home';
+import { HeroStory } from '../ui/heroStory';
 
 // label -> accessibilityLabel, press scale 0.98
 const Pressable3 = ({ label, ...p }: React.ComponentProps<typeof P3> & { label?: string }) => <P3 scaleTo={0.96} accessibilityRole="button" accessibilityLabel={label} {...p} />;
 
 /* ---------- local tokens ---------- */
-const L = { bg: '#F6F2FF', ink: '#171717', sec: '#525252', mut: '#737373', line: 'rgba(23,23,23,0.08)', raised: '#F4F4F5', accent: '#5409DA', pos: '#16a34a', tint: 'rgba(84,9,218,0.08)' };
+const L = { bg: '#F6F2FF', ink: '#141414', sec: '#55555C', mut: '#7A7A80', line: 'rgba(23,23,23,0.08)', raised: '#F4F4F5', accent: '#5409DA', pos: '#16a34a', tint: 'rgba(84,9,218,0.08)' };
 const SIDE = 16, GAP = 12;
 const EASE = Easing.bezier(0.22, 1, 0.36, 1);
 const ND = Platform.OS !== 'web';
@@ -82,7 +83,7 @@ export function Head({ title, gold, sub, right, center, style }: { title: string
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: center ? 'center' : 'space-between', gap: 12, marginBottom: SP.m }, style]}>
       <View style={{ flexShrink: 1 }}>
-        <Txt weight={500} size={center ? 24 : 18} color={col} style={{ textAlign: center ? 'center' : 'left', lineHeight: center ? 32 : 24 }}>
+        <Txt weight={700} size={center ? 24 : 20} color={col} style={{ textAlign: center ? 'center' : 'left', lineHeight: center ? 32 : 26 }}>
           {title}{gold ? <Text style={{ color: L.accent }}>{title ? ' ' : ''}{gold}</Text> : null}
         </Txt>
         {sub ? <Txt size={13} color={T.day ? L.sec : T.page.fg3} style={{ marginTop: 4, lineHeight: 20 }}>{sub}</Txt> : null}
@@ -98,13 +99,9 @@ export function LinkTxt({ label, onPress }: { label: string; onPress: () => void
 /** "◆ Title ◆" section title with the sub line under it (Pronto's Festive Packs heading) */
 function Title({ title, sub }: { title: string; sub?: string }) {
   return (
-    <View style={{ alignItems: 'center', paddingHorizontal: SIDE }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Text style={{ color: L.accent, fontSize: 10 }}>◆</Text>
-        <Txt weight={600} size={18} color={L.ink} style={{ lineHeight: 24 }}>{title}</Txt>
-        <Text style={{ color: L.accent, fontSize: 10 }}>◆</Text>
-      </View>
-      {sub ? <Txt size={13} color={L.mut} style={{ lineHeight: 18, marginTop: 2, textAlign: 'center' }}>{sub}</Txt> : null}
+    <View style={{ paddingHorizontal: SIDE }}>
+      <Txt weight={700} size={20} color={L.ink} style={{ lineHeight: 26 }}>{title}</Txt>
+      {sub ? <Txt size={13} color={L.mut} style={{ lineHeight: 18, marginTop: 2 }}>{sub}</Txt> : null}
     </View>
   );
 }
@@ -159,7 +156,7 @@ function Word({ w, i, on, color }: { w: string; i: number; on: boolean; color: s
   const rm = useReducedMotion(), v = useSharedValue(rm ? 1 : 0);
   useEffect(() => { v.value = rm ? 1 : on ? withDelay(i * 90, withSpring(1, { damping: 14, stiffness: 140 })) : withDelay(i * 40, withTiming(0, { duration: 260 })) }, [on, rm]);
   const st = useAnimatedStyle(() => ({ opacity: Math.min(1, v.value * 1.4), transform: [{ translateY: (1 - v.value) * 22 }, { rotate: `${(1 - v.value) * 4}deg` }] }));
-  return <Reanimated.Text style={[{ fontFamily: 'Poppins_800ExtraBold', fontSize: 32, lineHeight: 38, letterSpacing: -0.7, marginRight: 8, color }, st]}>{w}</Reanimated.Text>;
+  return <Reanimated.Text style={[{ fontFamily: 'Poppins_700Bold', fontSize: 28, lineHeight: 34, letterSpacing: -0.9, marginRight: 7, color }, st]}>{w}</Reanimated.Text>;
 }
 function HeroText({ title, sub, accent }: { title: string; sub: string; accent: string }) {
   const rm = useReducedMotion(), words = title.split(' ').filter(Boolean), [on, setOn] = useState(true);
@@ -175,7 +172,7 @@ function HeroText({ title, sub, accent }: { title: string; sub: string; accent: 
   return (
     <View accessible accessibilityRole="header" accessibilityLabel={title + '. ' + sub}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{words.map((w, i) => <Word key={i + w} w={w} i={i} on={on} color={i === last ? accent : '#fff'} />)}</View>
-      <Reanimated.Text style={[{ fontFamily: 'Poppins_500Medium', fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,.9)', marginTop: 6 }, subSt]}>{sub}</Reanimated.Text>
+      {sub ? <Reanimated.Text style={[{ fontFamily: 'Poppins_500Medium', fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,.9)', marginTop: 6 }, subSt]}>{sub}</Reanimated.Text> : null}
     </View>
   );
 }
@@ -191,25 +188,21 @@ function Scallop({ W, color = '#fff' }: { W: number; color?: string }) {
   return <Svg width={W} height={20} style={{ position: 'absolute', left: 0, bottom: -1 }}><Path d={d} fill={color} /></Svg>;
 }
 function Hero({ W, y }: { W: number; y: Animated.Value }) {
-  const ins = useInsets(), cfg = homeConfig(), th = HERO[cfg.heroTheme] || HERO.default, on = section('hero');
-  const { height: SH } = useWindowDimensions(), st = Math.max(ins.top, 24);
-  const body = on ? Math.round(Math.min(380, Math.max(320, SH * 0.41))) : 150, H = st + body;   // hero below the status bar: ~348 on 850, capped on tall screens
-  const OFF = 400;   // the parallax layer starts 400px above the hero so pulling down never shows a gap
+  const ins = useInsets(), cfg = homeConfig(), th = HERO[cfg.heroTheme] || HERO.default, on = section('hero'), st = Math.max(ins.top, 24);
   return (
-    <View style={{ height: H, backgroundColor: th.bg[1], overflow: 'hidden' }}>
-      {/* parallax: photos + gradients drift at 35% of the scroll and grow when you pull past the top */}
-      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -OFF, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-120, 0, 140], extrapolate: 'clamp' }) }, { scale: y.interpolate({ inputRange: [-300, 0], outputRange: [1.35, 1], extrapolate: 'clamp' }) }] }}>
-        <LinearGradient colors={th.bg} start={{ x: 0, y: 0 }} end={{ x: 0.9, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
-        <HeroPhotos opacity={1} style={{ top: OFF }} />
-        {/* top: keeps the address row readable */}
-        <LinearGradient colors={['rgba(46,5,128,0.86)', 'rgba(46,5,128,0.42)', 'rgba(46,5,128,0)']} locations={[0, 0.55, 1]} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: OFF + st + 130 }} />
-        {/* bottom: carries the headline */}
-        <LinearGradient colors={['rgba(40,4,112,0)', 'rgba(40,4,112,0.55)', 'rgba(40,4,112,0.9)']} locations={[0, 0.5, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: on ? 230 : 120 }} />
+    <View style={{ backgroundColor: th.bg[1], overflow: 'hidden', paddingTop: st + 56 }}>
+      {/* violet field; pulling down stretches it so no gap shows */}
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
+        <LinearGradient colors={['#3A06A0', '#5409DA', '#6A1BF2']} locations={[0, 0.6, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <View style={{ position: 'absolute', right: -80, bottom: 60, width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+        <View style={{ position: 'absolute', left: -60, bottom: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,186,8,0.08)' }} />
       </Animated.View>
-      {on ? <View style={{ position: 'absolute', left: SIDE, right: SIDE, bottom: 62 }}>
-        <HeroText title={cfg.heroTitle} sub={cfg.heroSub} accent={th.accent} />
+      {on ? <View style={{ paddingHorizontal: SIDE, paddingTop: 8 }}>
+        <HeroText title={cfg.heroTitle} sub="" accent={'#FFBA08'} />
+        <View style={{ marginTop: 18 }}><HeroStory /></View>
       </View> : null}
-      <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 40, backgroundColor: L.bg, borderTopLeftRadius: 32, borderTopRightRadius: 32 }} />
+      <View style={{ height: on ? 56 : 24 }} />
+      <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 28, backgroundColor: L.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28 }} />
     </View>
   );
 }
@@ -269,25 +262,38 @@ function InstantChooser({ onNow, canNow, canLater }: { onNow: () => void; canNow
 function Entry({ onInstant }: { onInstant: () => void }) {
   const st = instantStatus(), idle = !st.open, showI = feature('instant'), showS = feature('scheduled'), showP = feature('plans');
   if (!section('instantCards') || (!showI && !showS && !showP)) return <View style={{ height: 8 }} />;
-  const box = { height: 120, borderRadius: 18, backgroundColor: '#fff', padding: 14, overflow: 'hidden' as const, ...shadow, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } };
+  const { width: SW } = useWindowDimensions(), mw = SW >= 380 ? 66 : 48;
+  const box = { height: 128, borderRadius: 18, backgroundColor: '#fff', padding: 14, overflow: 'hidden' as const, borderWidth: 1, borderColor: '#ECE8F5', ...shadow, shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } };
   const openChooser = () => openSheet(<InstantChooser onNow={onInstant} canNow={showI} canLater={showS} />);
+  const TitleRow = ({ t, dim }: { t: string; dim?: boolean }) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+      <Txt weight={600} size={17} color={dim ? L.mut : L.ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ lineHeight: 22, flexShrink: 1 }}>{t}</Txt>
+      <Chev size={16} color={dim ? L.mut : L.ink} strokeWidth={2} />
+    </View>
+  );
   return (
-    <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: -26 }}>
-      {showI || showS ? <FadeUp index={0} style={{ flex: 1 }}>
-        <Pressable3 label={'Instant service. Choose now or schedule for later. ' + st.label} onPress={openChooser} style={box}>
-          <Txt weight={600} size={15} color={idle && !showS ? L.mut : L.ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={{ lineHeight: 20 }}>Instant Service</Txt>
-          <View style={{ marginTop: 6 }}><EtaChip label={st.label} open={st.open} /></View>
-          <Txt size={11} color={st.open ? L.pos : L.mut} numberOfLines={2} style={{ lineHeight: 15, marginTop: 4, width: '64%' }}>{st.open ? 'Washer nearby' : st.label}</Txt>
-          <View style={{ position: 'absolute', right: 10, bottom: 10 }}><MiniMap w={62} h={62} radius={14} /></View>
-        </Pressable3>
-      </FadeUp> : null}
-      {showP ? <FadeUp index={1} style={{ flex: 1 }}>
-        <Pressable3 label={`Monthly plans. Daily wash from ${inr(fromPrice())} a month`} onPress={() => go('plan')} style={box}>
-          <Txt weight={600} size={15} color={L.ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={{ lineHeight: 20 }}>Monthly Plans</Txt>
-          <Txt size={12} color={L.accent} numberOfLines={3} style={{ lineHeight: 16, marginTop: 4, width: '62%' }}>Daily wash from <Txt weight={600} size={12} color={L.accent} style={TNUM}>{inr(fromPrice())}</Txt>/mo</Txt>
-          <View style={{ position: 'absolute', right: 4, bottom: 4 }}><Glyph kind="plan" /></View>
-        </Pressable3>
-      </FadeUp> : null}
+    <View style={{ marginTop: -6 }}>
+      <Title title="Book a wash" />
+      <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: 12 }}>
+        {showI || showS ? <FadeUp index={0} style={{ flex: 1 }}>
+          <Pressable3 label={'Instant service. Choose now or schedule for later. ' + st.label} onPress={openChooser} style={box}>
+            <View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: mw, opacity: idle ? 0.5 : 1 }}><MiniMap w={mw} h={128} radius={0} /></View>
+            <EtaChip label={st.label} open={st.open} />
+            <View style={{ flex: 1 }} />
+            <View style={{ marginRight: mw - 14 }}><TitleRow t="Instant" dim={idle && !showS} /></View>
+            <Txt size={12} color={L.mut} numberOfLines={1} style={{ lineHeight: 16, marginTop: 2, marginRight: mw - 10 }}>{st.open ? 'Now or later' : st.label}</Txt>
+          </Pressable3>
+        </FadeUp> : null}
+        {showP ? <FadeUp index={1} style={{ flex: 1 }}>
+          <Pressable3 label={`Monthly plans. Daily wash from ${inr(fromPrice())} a month`} onPress={() => go('plan')} style={box}>
+            <View style={{ position: 'absolute', right: 6, top: 6, transform: [{ scale: 0.8 }] }}><Glyph kind="plan" /></View>
+            <View style={{ alignSelf: 'flex-start', height: 24, paddingHorizontal: 8, borderRadius: 12, backgroundColor: '#FFF4D6', justifyContent: 'center' }}><Txt weight={600} size={11} color="#8A5A00">Daily wash</Txt></View>
+            <View style={{ flex: 1 }} />
+            <TitleRow t="Monthly" />
+            <Txt size={12} color={L.mut} numberOfLines={1} style={{ lineHeight: 16, marginTop: 2 }}>from <Txt weight={600} size={12} color={L.ink} style={TNUM}>{inr(fromPrice())}</Txt>/month</Txt>
+          </Pressable3>
+        </FadeUp> : null}
+      </View>
     </View>
   );
 }
@@ -334,9 +340,9 @@ function Packs({ skel }: { skel: boolean }) {
 function Offers() {
   const offers: Offer[] = [];
   const first = PACKS[0];
-  if (section('packs') && first) offers.push({ key: 'packs', tag: 'WASH PACKS', countdown: false, title: 'Wash packs at your parking spot', sub: `${first.name} from ${inr(first.price || 0)}`, cta: 'See packs', colors: ['#6A1BF2', '#3A06A0'], onPress: () => openPage({ k: 'svc', id: first.id }) });
+  if (section('packs') && first) offers.push({ key: 'packs', tag: 'WASH PACKS', countdown: false, title: 'Wash packs at your parking spot', sub: `${first.name} from ${inr(first.price || 0)}`, cta: 'See packs', colors: ['#6A1BF2', '#3A06A0'], art: <SvcArt id={first.id} size={96} />, onPress: () => openPage({ k: 'svc', id: first.id }) });
   try { if (homeConfig().passPromo && !activePass()) offers.push({ key: 'pass', tag: 'WD PASS', title: 'Get more washes for less', sub: 'A pass of visits, valid for days, saves on every wash', cta: 'View pass', colors: ['#2A0577', '#5409DA'], onPress: () => openPassPromo() }) } catch (e) {}
-  if (feature('plans')) offers.push({ key: 'plan', tag: 'MONTHLY', title: 'A clean car every morning', sub: `Daily wash from ${inr(fromPrice())}/month`, cta: 'See plans', colors: ['#4B2BC4', '#24106E'], onPress: () => go('plan') });
+  if (feature('plans')) offers.push({ key: 'plan', tag: 'MONTHLY', title: 'A clean car every morning', sub: `Daily wash from ${inr(fromPrice())}/month`, cta: 'See plans', colors: ['#4B2BC4', '#24106E'], art: <View style={{ transform: [{ scale: 1.4 }], marginRight: 14 }}><Glyph kind="plan" /></View>, onPress: () => go('plan') });
   return <OfferCarousel offers={offers} />;
 }
 
@@ -452,7 +458,7 @@ function Trust({ W }: { W: number }) {
   if (!section('trust')) return null;
   return (
     <View style={{ marginTop: 32, alignItems: 'center' }}>
-      <Txt weight={500} size={20} color={L.ink} style={{ textAlign: 'center', lineHeight: 28, width: 260 }}>{h.trustTitle}</Txt>
+      <Txt weight={700} size={20} color={L.ink} style={{ textAlign: 'center', lineHeight: 26, width: 280 }}>{h.trustTitle}</Txt>
       {stats ? (
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 20, backgroundColor: '#fff', borderRadius: 22, paddingVertical: 14, paddingHorizontal: 8, ...shadow }}>
           {TRUST.cars ? <Badge label={TRUST.carsLabel} value={String(TRUST.cars)} /> : null}
@@ -480,7 +486,7 @@ function Assigned() {
   const subTxt = live ? chipText(c, d) : fin ? h.big + ' · WD Wash' : up ? `${up.slot} · ${up.type}` : d.notStarted ? h.big : `Today, ${ampm(d.eta) || '6:30 am'} · WD Wash`;
   return (
     <FadeUp index={2} style={{ marginHorizontal: SIDE, marginTop: 16 }}><Pressable3 label={title} onPress={() => go('live')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, paddingRight: 12, borderRadius: 18, backgroundColor: '#fff', ...shadow }}>
-      <View style={{ width: 48, height: 48, borderRadius: 12, overflow: 'hidden', backgroundColor: L.raised }}><Image source={IMG.washer} resizeMode="cover" style={{ width: 52, height: 53, marginLeft: -4 }} /></View>
+      <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#F2ECFF', alignItems: 'center', justifyContent: 'center' }}><Txt weight={700} size={18} color={L.accent}>{(w || 'W').trim().charAt(0).toUpperCase()}</Txt></View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Txt weight={600} size={14} color={L.ink} numberOfLines={1} style={{ lineHeight: 20 }}>{title}</Txt>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -558,7 +564,6 @@ export default function Home() {
         <More />
         <Grid W={W} skel={skel} onLayoutY={v => { gridY.current = v }} />
         <Buttons placement="home_bottom" />
-        {section('trust') ? <PhotoTiles title={<Title title="Fresh from our rounds" sub="Real cars, washed at the parking spot" />} /> : null}
         <Trust W={W} />
         <Footer bg={L.bg} />
       </Animated.ScrollView>
