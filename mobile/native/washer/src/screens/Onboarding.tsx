@@ -18,6 +18,8 @@ import { setupWashAlerts } from '../lib/washAlerts';
 import { t } from '../lib/i18n';
 import { LANGS } from '../lib/langs';
 import { Cta, DocsPanel, docsSummary } from './DocsUpload';
+/** Ask for 'Allow all the time' location. Off: the app only uses location while it is open (matches the manifest). */
+const BG_LOCATION = false;
 
 const SAFFRON = '#FFBA08';
 const LINE = 'rgba(84,9,218,0.18)';
@@ -288,7 +290,8 @@ function LocStep({ next }: { next: () => void }) {
       const Location = await import('expo-location');
       const p = await Location.requestForegroundPermissionsAsync();
       if (p.status !== 'granted') { setPhase('denied'); return }
-      if (Platform.OS !== 'android') { next(); return }
+      // Play release: no background location (the tracking is not built, and Play needs a declaration + video for it)
+      if (Platform.OS !== 'android' || !BG_LOCATION) { next(); return }
       const b = await Location.getBackgroundPermissionsAsync();
       if (b.status === 'granted') { next(); return }
       setPhase('bg'); askBg();
