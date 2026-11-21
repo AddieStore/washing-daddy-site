@@ -207,7 +207,7 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
     <View style={{ backgroundColor: '#F3EDFF', overflow: 'hidden', paddingTop: st + 56 }}>
       {/* light lavender field; pulling down stretches it so no gap shows */}
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
-        <LinearGradient colors={['#EDE4FF', '#F6F1FF', '#FFFFFF']} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <LinearGradient colors={['#EDE4FF', '#F4EEFF', L.bg]} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
       {on ? <>
         <View style={{ paddingHorizontal: SIDE, paddingTop: 4 }}>
