@@ -106,16 +106,26 @@ jobs:
           git commit -m "WD Partner native build error log [skip ci]" || exit 0
           git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" || true
 
+      # Play Store upload file. Like the APK it carries Expo's debug signature: strip META-INF/ANDROIDD.* and
+      # sign it with jarsigner and the release key before uploading (see mobile/store/play-release-customer.md).
+      - name: Build Play bundle
+        working-directory: mobile/native/washer/android
+        run: ./gradlew bundleRelease --no-daemon
+
       - name: Collect APK
         run: |
           mkdir -p out
           cp android/app/build/outputs/apk/release/app-release.apk out/wd-partner-unsigned.apk
+          cp android/app/build/outputs/bundle/release/app-release.aab out/wd-partner-unsigned.aab
+          ls -l out
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: wd-partner-android-unsigned
-          path: mobile/native/washer/out/wd-partner-unsigned.apk
+          path: |
+            mobile/native/washer/out/wd-partner-unsigned.apk
+            mobile/native/washer/out/wd-partner-unsigned.aab
           if-no-files-found: error
 
       - name: Commit APK back to the branch
@@ -127,6 +137,13 @@ jobs:
           # the raw APK is over GitHub's 100 MB file limit, so the branch gets a compressed copy (gunzip it before signing)
           gzip -9 -c mobile/native/washer/out/wd-partner-unsigned.apk > mobile/native/washer/out/wd-partner-unsigned.apk.gz
           git add -f mobile/native/washer/out/wd-partner-unsigned.apk.gz
+          # the bundle goes in as is when it fits under GitHub's 100 MB limit, else gzipped
+          if [ "$(stat -c %s mobile/native/washer/out/wd-partner-unsigned.aab)" -lt 95000000 ]; then
+            git add -f mobile/native/washer/out/wd-partner-unsigned.aab
+          else
+            gzip -9 -c mobile/native/washer/out/wd-partner-unsigned.aab > mobile/native/washer/out/wd-partner-unsigned.aab.gz
+            git add -f mobile/native/washer/out/wd-partner-unsigned.aab.gz
+          fi
           git diff --staged --quiet && exit 0
           # [skip ci] in the message stops this push from triggering workflows again
           git commit -m "Build WD Partner native APK [skip ci]"
