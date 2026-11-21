@@ -47,6 +47,9 @@ const Rowx = ({ icon, title, sub, onPress, last, right }: { icon: React.ReactNod
 
 /* one cart line: the left part (photo, name, price, chevron) opens the service; the stepper is a separate hit area */
 function LineRow({ l, i }: { l: ReturnType<typeof svcLines>['lines'][number]; i: number }) {
+  useApp();
+  const rcx = cartMode() === 'recurring' ? RECURRING.find(x => x.id === (recur()?.freq || 'weekly')) : null, rOff = rcx ? rcx.off : 0;
+  const shown = rOff ? Math.round(l.total * (100 - rOff) / 100) : l.total, was = rOff ? l.total : (l.mrp > l.price ? l.mrp * l.q : 0);
   return (
     <FadeUp index={i} distance={10} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <Tap label={`${l.name}${l.variantLabel ? ', ' + l.variantLabel : ''}. See what you get`} scaleTo={0.97} onPress={() => openPage({ k: 'svc', id: l.id })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0 }}>
@@ -55,8 +58,9 @@ function LineRow({ l, i }: { l: ReturnType<typeof svcLines>['lines'][number]; i:
           <Txt weight={500} size={14} numberOfLines={2} style={{ lineHeight: 20 }}>{l.name}</Txt>
           {l.variantLabel ? <Txt size={12} color={G.mute} style={{ lineHeight: 16 }}>{l.variantLabel}</Txt> : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Price v={l.total} size={14} />
-            {l.mrp > l.price ? <Price v={l.mrp * l.q} size={12} weight={400} strike /> : null}
+            <Price v={shown} size={14} />
+            {was ? <Price v={was} size={12} weight={400} strike /> : null}
+            {rOff ? <Txt size={11} weight={500} color={G.pos}>{rOff}% off · per visit</Txt> : null}
             <Txt size={12} weight={500} color={G.violet}>What you get</Txt>
           </View>
         </View>
@@ -222,7 +226,7 @@ export default function Cart() {
           <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: G.line, paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(ins.bottom, 12) + 4, flexDirection: 'row', alignItems: 'center', gap: 16, ...SHADOW_F }}>
             {payMode ? (
               <FadeUp distance={0} duration={200} style={{ flex: 1 }}><Tap label="Bill details" onPress={openBillSheet}>
-                <Txt size={12} color={G.mute}>To pay</Txt>
+                <Txt size={12} color={G.mute}>{b.perMonth ? 'To pay per visit' : 'To pay'}</Txt>
                 <CountUp to={inr(b.toPay)} duration={450} style={[TNUM, { fontFamily: 'Poppins_700Bold', fontSize: 20, color: G.ink }]} />
                 {b.saved > 0 ? <Txt weight={500} size={11} color={G.pos}>{inr(b.saved)} saved</Txt> : null}
               </Tap></FadeUp>

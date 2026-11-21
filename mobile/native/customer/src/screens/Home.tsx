@@ -37,7 +37,7 @@ import { HeroRide } from '../ui/heroRide';
 const Pressable3 = ({ label, ...p }: React.ComponentProps<typeof P3> & { label?: string }) => <P3 scaleTo={0.96} accessibilityRole="button" accessibilityLabel={label} {...p} />;
 
 /* ---------- local tokens ---------- */
-const L = { bg: '#F6F2FF', ink: '#141414', sec: '#55555C', mut: '#7A7A80', line: 'rgba(23,23,23,0.08)', raised: '#F4F4F5', accent: '#5409DA', pos: '#16a34a', tint: 'rgba(84,9,218,0.08)' };
+const L = { bg: '#FFFFFF', ink: '#141414', sec: '#55555C', mut: '#7A7A80', line: 'rgba(23,23,23,0.08)', raised: '#F4F4F5', accent: '#5409DA', pos: '#16a34a', tint: 'rgba(84,9,218,0.08)' };
 const SIDE = 16, GAP = 12;
 const EASE = Easing.bezier(0.22, 1, 0.36, 1);
 const ND = Platform.OS !== 'web';
@@ -207,14 +207,16 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
     <View style={{ backgroundColor: '#F3EDFF', overflow: 'hidden', paddingTop: st + 56 }}>
       {/* light lavender field; pulling down stretches it so no gap shows */}
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
-        <LinearGradient colors={['#EDE4FF', '#F4EEFF', L.bg]} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <LinearGradient colors={['#EDE4FF', '#F4EEFF', L.bg]} locations={[0, 0.6, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
       {on ? <>
         <View style={{ paddingHorizontal: SIDE, paddingTop: 4 }}>
           <HeroText title={cfg.heroTitle} sub={cfg.heroSub} accent={L.accent} />
           <Live />
         </View>
-        <View style={{ marginTop: 4, marginBottom: 14 }}><HeroRide width={aw} /></View>
+        <View style={{ marginTop: 4, marginBottom: 34 }}><HeroRide width={aw} /></View>
+        {/* the road and city melt into white, so there is no edge above "Book a wash" */}
+        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.9)', '#FFFFFF', '#FFFFFF']} locations={[0, 0.5, 0.75, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 60 }} />
       </> : <View style={{ height: 24 }} />}
     </View>
   );
