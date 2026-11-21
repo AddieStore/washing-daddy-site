@@ -1,9 +1,10 @@
 /* Sign-in poster and flow: phone -> code -> (new numbers) about -> plan. Ported from renderAuth() in customer/index.html. */
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { Animated, Dimensions, Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { C, F, SP, InkContext, creamInk } from '../theme';
 import Reanimated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import { Field, Txt, useInsets, PAD } from '../ui/kit';
 import { Pressable3, FadeUp, Splash } from '../ui/motion';
 import { BrandBg, BrandLogo, Sheet } from '../ui/Brand';
@@ -59,11 +60,13 @@ function ModeCard({ on, title, text, tag, icon, onPress }: { on: boolean; title:
     </Pressable3>
   );
 }
-const BackBtn = ({ onPress }: { onPress: () => void }) => (
-  <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={onPress} hitSlop={8} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
-    <Back size={22} color="#fff" strokeWidth={1.8} />
+const BackBtn = ({ onPress, light }: { onPress: () => void; light?: boolean }) => (
+  <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={onPress} hitSlop={8} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: light ? 'rgba(84,9,218,0.10)' : 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
+    <Back size={22} color={light ? C.brandTop : '#fff'} strokeWidth={1.8} />
   </Pressable>
 );
+/** the app icon, rounded, for the light login header (the cream wordmark needs a dark background) */
+const AppMark = ({ size }: { size: number }) => <Image source={require('../../assets/icon.png')} accessibilityLabel="Washing Daddy" style={{ width: size, height: size, borderRadius: size * 0.26 }} />;
 export default function Auth() {
   const ins = useInsets(), win = useWindowDimensions(), W = Math.min(win.width, 440);
   const [step, setStep] = useState<Step>('phone');
@@ -326,35 +329,36 @@ export default function Auth() {
   const goBack = () => { setErr(''); if (step === 'plan') setStep('car'); else if (step === 'car') setStep('choose'); else if (step === 'choose') setStep('about'); else setStep('phone') };
   const storyH = Math.max(140, Math.min(200, Math.round(win.height * 0.24)));
   const total = mode === 'instant' ? 3 : 4, nOf = (step === 'about' ? 1 : step === 'choose' ? 2 : step === 'car' ? 3 : 4);
-  const T1 = ({ children }: { children: React.ReactNode }) => <Txt weight={700} size={30} color="#fff" style={{ lineHeight: 38 }}>{children}</Txt>;
-  const T2 = ({ children }: { children: React.ReactNode }) => <Txt size={15} color="rgba(255,255,255,0.86)" style={{ lineHeight: 22, marginTop: SP.s }}>{children}</Txt>;
+  const light = step === 'phone' || step === 'otp';
+  const T1 = ({ children }: { children: React.ReactNode }) => <Txt weight={700} size={30} color={light ? '#1A1033' : '#fff'} style={{ lineHeight: 38 }}>{children}</Txt>;
+  const T2 = ({ children }: { children: React.ReactNode }) => <Txt size={15} color={light ? '#5B5275' : 'rgba(255,255,255,0.86)'} style={{ lineHeight: 22, marginTop: SP.s }}>{children}</Txt>;
   let top;
   if (step === 'phone') top = (
-    <View style={{ paddingTop: ins.top + SP.l }}>
+    <View style={{ paddingTop: ins.top + SP.s }}>
       <FadeUp style={{ paddingHorizontal: PAD + 4 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <BrandLogo w={96} />
+          <AppMark size={44} />
           <Pressable onPress={() => act.continueAsGuest()} accessibilityRole="button" accessibilityLabel="Skip login and look around" hitSlop={10}
-            style={({ pressed }) => ({ paddingHorizontal: 16, height: 36, borderRadius: 18, justifyContent: 'center', backgroundColor: pressed ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' })}>
-            <Txt weight={600} size={14} color="#fff">Skip</Txt>
+            style={({ pressed }) => ({ paddingHorizontal: 16, height: 36, borderRadius: 18, justifyContent: 'center', backgroundColor: pressed ? 'rgba(84,9,218,0.16)' : 'rgba(84,9,218,0.09)', borderWidth: 1, borderColor: 'rgba(84,9,218,0.18)' })}>
+            <Txt weight={600} size={14} color={C.brandTop}>Skip</Txt>
           </Pressable>
         </View>
       </FadeUp>
-      <View style={{ marginTop: SP.m }}><LoginStory W={W} H={storyH} /></View>
+      <View style={{ marginTop: 0 }}><LoginStory W={W} H={storyH + 24} /></View>
     </View>
   );
   else top = (
     <View style={{ paddingTop: ins.top + SP.m, paddingHorizontal: PAD + 4, paddingBottom: SP.xl }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SP.l }}>
-        <BackBtn onPress={goBack} />
-        <BrandLogo w={72} />
+        <BackBtn onPress={goBack} light={light} />
+        {light ? <AppMark size={36} /> : <BrandLogo w={72} />}
       </View>
       <FadeUp key={step}>
         {step === 'about' || step === 'choose' || step === 'car' || step === 'plan' ? <StepBar n={nOf} total={total} /> : null}
         {step === 'otp' ? <><T1>Enter the code</T1><T2>{`We sent a ${OTP_N}-digit code to`}</T2>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 2 }}>
-            <Txt weight={600} size={17} color="#fff" style={NUM}>+91 {fmtPhone(phone)}</Txt>
-            <Link label="Change" color={C.saffron} onPress={() => { setStep('phone'); setErr('') }} />
+            <Txt weight={600} size={17} color={light ? '#1A1033' : '#fff'} style={NUM}>+91 {fmtPhone(phone)}</Txt>
+            <Link label="Change" color={light ? C.brandTop : C.saffron} onPress={() => { setStep('phone'); setErr('') }} />
           </View><View style={{ marginTop: SP.l, marginHorizontal: -(PAD + 4) }}><LoginStory W={W} H={Math.round(storyH * 0.8)} /></View></>
           : step === 'about' ? <><T1>What should we call you?</T1><T2>Your name helps your washer say hello</T2></>
           : step === 'choose' ? <><T1>How do you want your car washed?</T1><T2>You can change this any time</T2></>
@@ -366,14 +370,15 @@ export default function Auth() {
 
   return (
     <InkContext.Provider value={creamInk}>
-      <View style={{ flex: 1, backgroundColor: C.brandDeep }}>
-        <BrandBg />
+      <View style={{ flex: 1, backgroundColor: light ? '#fff' : C.brandDeep }}>
+        <StatusBar style={light ? 'dark' : 'light'} />
+        {light ? <LinearGradient pointerEvents="none" colors={['#E2D3FF', '#E2D3FF', '#FFFFFF']} locations={[0, 0.5, 0.56]} style={StyleSheet.absoluteFill} /> : <BrandBg />}
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: kb }}>
             <View style={{ width: W, flexGrow: 1 }}>
               {top}
-              {step === 'phone' ? <View style={{ flex: 1, minHeight: 56 }} /> : null}
-              <Sheet delay={intro ? 1100 : 140} style={step === 'phone' ? { marginTop: SP.s } : { marginTop: SP.s, flexGrow: 1 }}>
+              {step === 'phone' ? <View style={{ flex: 1, minHeight: 24, backgroundColor: '#fff' }} /> : null}
+              <Sheet delay={intro ? 1100 : 140} style={[step === 'phone' || light ? { marginTop: 0, flexGrow: step === 'phone' ? 0 : 1 } : { marginTop: SP.s, flexGrow: 1 }, light ? { borderTopLeftRadius: 0, borderTopRightRadius: 0, shadowOpacity: 0, elevation: 0 } : null]}>
                 <View style={{ paddingHorizontal: PAD + 4, paddingTop: SP.xl, paddingBottom: SP.xl + Math.max(ins.bottom, SP.s) }}>
                   <FadeUp key={step} distance={10} duration={260}>{card}</FadeUp>
                 </View>
