@@ -217,11 +217,11 @@ export default function Auth() {
   const six = OTP_N > 4;
   const phoneField = (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, borderRadius: 16, borderWidth: 1.5, borderColor: phone ? L.violet : 'rgba(84,9,218,0.18)', backgroundColor: L.raised, paddingHorizontal: SP.l }}>
-      <Txt weight={600} size={18} color={L.ink} style={NUM}>+91</Txt>
+      <Txt weight={500} size={20} color={L.ink} style={[NUM, { lineHeight: 26, includeFontPadding: false } as any]}>+91</Txt>
       <View style={{ width: 1, height: 24, backgroundColor: L.line }} />
       <TextInput value={shown} onChangeText={onPhone} onSubmitEditing={sendCode} inputMode="numeric" keyboardType="number-pad" maxLength={16} autoComplete="tel-national" textContentType="telephoneNumber"
         placeholder="Mobile number" placeholderTextColor={L.muted} accessibilityLabel="Mobile number"
-        style={{ flex: 1, minWidth: 0, fontFamily: F.b500, fontSize: 20, letterSpacing: 0.4, color: L.ink, paddingVertical: 14, fontVariant: ['tabular-nums'], outlineStyle: 'none' } as any} />
+        style={{ flex: 1, minWidth: 0, fontFamily: F.b500, fontSize: 20, letterSpacing: 0.4, color: L.ink, lineHeight: 26, paddingTop: 17, paddingBottom: 17, includeFontPadding: false, textAlignVertical: 'center', fontVariant: ['tabular-nums'], outlineStyle: 'none' } as any} />
     </View>
   );
   let card;

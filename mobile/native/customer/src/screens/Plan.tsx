@@ -6,7 +6,9 @@ import { Txt, useInsets } from '../ui/kit';
 import { Footer } from '../ui/Footer';
 import { Pressable3, FadeUp } from '../ui/motion';
 import { Help, Info, Gift, Chev, Clock, Camera, Pause } from '../ui/icons';
-import { PLANS, sellablePlans } from '../data/reference';
+import { PLANS } from '../data/reference';
+import type { PlanId } from '../data/reference';
+import { PlanPicker } from '../ui/plans/PlanPicker';
 import { PAUSE_MAX, canPause, pauseLeft } from '../data/model';
 import { TODAY, fmt, iso, inr } from '../data/dates';
 import { A, car, daysLeft, planStatus, planOf, usage, act, toast, useApp, pendingRef, openPage, feature } from '../state';
@@ -61,36 +63,12 @@ function Balance() {
 }
 
 // pick a plan, then pay or switch
-function Choose() {
-  const c = car(), p = planOf(c), plans = sellablePlans();
-  const [sel, setSel] = useState(p.id);
+function Choose({ lead }: { lead?: boolean }) {
+  const c = car(), p = planOf(c);
+  const [sel, setSel] = useState<PlanId>(p.id);
   const pl = PLANS.find(x => x.id === sel) || p, cur = pl.id === p.id;
-  const label = cur ? `${c.till ? 'Pay next month' : 'Pay first month'} · ${inr(pl.price)}` : `${pl.price > p.price ? 'Upgrade to' : 'Switch to'} ${pl.name}`;
-  return (
-    <Card style={{ padding: 16 }}>
-      <Txt weight={500} size={18} color={INK}>Choose your plan</Txt>
-      <View style={{ marginTop: 12, borderRadius: 10, backgroundColor: RAISED, minHeight: 80, justifyContent: 'center', paddingHorizontal: 16 }}>
-        <Txt weight={500} size={28} color={INK} style={TN}>{inr(pl.price)}<Txt size={14} color={MUTED}>{' a month'}</Txt></Txt>
-      </View>
-      <Txt size={13} color={SEC} style={{ marginTop: 8 }}>{`${pl.name}: ${pl.rows.filter(r => r[1] !== '—').slice(0, 2).map(r => r[1] + ' ' + r[0].toLowerCase()).join(', ')}`}</Txt>
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-        {plans.map(x => {
-          const on = x.id === sel;
-          return (
-            <View key={x.id} style={{ flex: 1 }}><Pressable3 onPress={() => setSel(x.id)} accessibilityRole="button" accessibilityState={{ selected: on }}>
-              <View style={{ minHeight: 56, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.white : RAISED, borderWidth: on ? 1.5 : 1, borderColor: on ? C.violet : LINE }}>
-                <Txt size={12} color={MUTED}>{x.id === p.id ? 'Your plan' : x.name.replace('WD ', '')}</Txt>
-                <Txt weight={500} size={14} color={INK} style={TN}>{inr(x.price)}</Txt>
-              </View>
-            </Pressable3></View>
-          );
-        })}
-      </View>
-      <Pressable3 onPress={() => (cur ? sheets.payPlan() : sheets.switchPlan(pl.id))} accessibilityRole="button" style={{ marginTop: 16, minHeight: 48, borderRadius: 10, backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center' }}>
-        <Txt weight={500} size={15} color={C.white}>{label}</Txt>
-      </Pressable3>
-    </Card>
-  );
+  const label = cur ? `${c.till ? 'Pay next month' : 'Pay first month'} · ${inr(pl.price)}` : `${pl.price > p.price ? 'Upgrade to' : 'Switch to'} ${pl.name.replace('WD ', '')} · ${inr(pl.price)}`;
+  return <View>{lead ? null : <Txt weight={600} size={18} color={INK} style={{ marginBottom: 12 }}>Choose your plan</Txt>}<PlanPicker sel={sel} setSel={setSel} curId={p.id} cta={label} lead={lead} onCta={() => (cur ? sheets.payPlan() : sheets.switchPlan(pl.id))} /></View>;
 }
 
 const HOW = [
@@ -103,7 +81,6 @@ const USING = [
   'Add-on washes like foam and interior are priced separately from the Home tab.',
   'Plan fees are not refundable once a month has started, in accordance with our terms.',
 ];
-const BENEFITS: [string, string, React.ComponentType<any>][] = [['Daily wash', 'before 7:30 AM', Clock], ['Live photos', 'on every wash', Camera], ['Pause anytime', 'days get added', Pause]];
 function Bullets({ title, items }: { title: string; items: string[] }) {
   return (
     <Card style={{ padding: 16 }}>
@@ -125,32 +102,21 @@ export default function Plan() {
   const top = Math.max(ins.top, 24), sc = useRef<any>(null), first = useRef(true);
   useEffect(() => { if (first.current) { first.current = false; return } sc.current?.scrollTo({ y: 0, animated: true }); }, [tabNonce]);
   const c = car(), u = usage(c), a = A();
-  const pz = !!c.paused && c.paused.to >= iso(TODAY), cp = canPause(c);
+  const isNew = c.status === 'new', pz = !!c.paused && c.paused.to >= iso(TODAY), cp = canPause(c);
   const pays = a.payments.slice().sort((x, y) => y.d.localeCompare(x.d));
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
       <ScrollView ref={sc} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 0 }}>
-        <View style={{ paddingTop: top, paddingHorizontal: 16, height: top + 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Txt weight={500} size={24} color={INK}>Plans</Txt>
-          <Pressable3 onPress={() => sheets.help()} accessibilityRole="button" accessibilityLabel="Plan questions" style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: RAISED, alignItems: 'center', justifyContent: 'center' }}><Help size={18} color={MUTED} strokeWidth={1.5} /></Pressable3>
+        <View style={{ paddingTop: top, paddingHorizontal: 16, paddingBottom: 20 }}>
+          <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Txt weight={600} size={24} color={INK}>Plans</Txt>
+            <Pressable3 onPress={() => sheets.help()} accessibilityRole="button" accessibilityLabel="Plan questions" style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: C.white, borderWidth: 1, borderColor: LINE, alignItems: 'center', justifyContent: 'center' }}><Help size={18} color={INK} strokeWidth={1.5} /></Pressable3>
+          </View>
+          <Txt size={14} color={SEC} style={{ marginTop: 2, lineHeight: 20 }}>A daily pressure wash before 7:30 AM, with live photos. Every plan is billed monthly, per car.</Txt>
         </View>
-        <View style={{ paddingHorizontal: 16, gap: 12 }}>
-          <FadeUp duration={300} distance={8}><Balance /></FadeUp>
-          <FadeUp delay={50} duration={300} distance={8}><Choose /></FadeUp>
-          {feature('refer') ? <FadeUp delay={100} duration={300} distance={8}><Card>
-            <Pressable3 onPress={() => openPage({ k: 'refer' })} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, minHeight: 64, gap: 12 }}>
-              <Gift size={18} color={MUTED} strokeWidth={1.5} />
-              <View style={{ flex: 1 }}><Txt weight={500} size={14} color={INK}>Refer and earn ₹200</Txt><Txt size={12} color={MUTED}>Share your code, both of you save</Txt></View>
-              <Chev size={18} color={MUTED} strokeWidth={1.5} />
-            </Pressable3>
-          </Card></FadeUp> : null}
-        </View>
-        <View style={{ flexDirection: 'row', marginHorizontal: 16, marginTop: 32 }}>
-          {BENEFITS.map(([t, s, Ic], i) => (
-            <View key={t} style={{ flex: 1, alignItems: 'center', borderLeftWidth: i ? 1 : 0, borderColor: LINE, paddingHorizontal: 4 }}>
-              <Ic size={18} color={MUTED} strokeWidth={1.5} /><Txt weight={500} size={13} color={INK} style={{ marginTop: 8 }}>{t}</Txt><Txt size={12} color={MUTED}>{s}</Txt>
-            </View>
-          ))}
+        <View style={{ paddingHorizontal: 16, gap: 16 }}>
+          {isNew ? <FadeUp duration={300} distance={8}><Choose lead /></FadeUp> : <FadeUp duration={300} distance={8}><Balance /></FadeUp>}
+          {isNew ? <FadeUp delay={50} duration={300} distance={8}><Balance /></FadeUp> : <FadeUp delay={50} duration={300} distance={8}><Choose /></FadeUp>}
         </View>
         <View style={{ paddingHorizontal: 16, marginTop: 32, gap: 12 }}>
           {c.status !== 'new' && (

@@ -8,11 +8,11 @@ export type LiveStatus = 'live' | 'paused' | 'hidden';
 export type ArtSpec = { key?: string; icon?: string; tint?: string; accent?: string };
 
 export type PlanId = 'legacy' | 'std' | 'pro' | 'exc' | 'res';
-export type Plan = { id: PlanId; name: string; price: number; old?: boolean; status?: LiveStatus; f: { int: number; tyre: number; foam: number; det: number }; rows: [string, string][] };
+export type Plan = { id: PlanId; name: string; price: number; old?: boolean; status?: LiveStatus; f: { int: number; tyre: number; foam: number; det: number; fm?: number }; rows: [string, string][] };
 
 export const PLANS: Plan[] = [
   { id: 'legacy', name: 'Legacy', price: 500, old: true, f: { int: 1, tyre: 0, foam: 0, det: 0 }, rows: [['Pressure wash', 'Daily'], ['Interior', '1× / week'], ['Tyre & trim', '—'], ['Foam wash', '—'], ['Detailing', '—']] },
-  { id: 'std', name: 'WD Standard', price: 999, f: { int: 1, tyre: 2, foam: 1, det: 0 }, rows: [['Pressure wash', 'Daily'], ['Interior', '1× / week'], ['Tyre & trim', '2× / week'], ['Foam wash', '1× / week'], ['Detailing', '—']] },
+  { id: 'std', name: 'WD Standard', price: 999, f: { int: 1, tyre: 2, foam: 0, det: 0, fm: 1 }, rows: [['Pressure wash', 'Daily'], ['Interior', '1× / week'], ['Tyre & trim', '2× / week'], ['Foam wash', '1× / month'], ['Detailing', '—']] },
   { id: 'pro', name: 'WD Pro', price: 1800, f: { int: 2, tyre: 7, foam: 2, det: 1 }, rows: [['Pressure wash', 'Daily'], ['Interior', '2× / week'], ['Tyre & trim', 'Daily'], ['Foam wash', '2× / week'], ['Detailing', '1× / month']] },
   { id: 'exc', name: 'WD Exclusive', price: 2500, f: { int: 3, tyre: 7, foam: 4, det: 2 }, rows: [['Pressure wash', 'Daily'], ['Interior', '3× / week'], ['Tyre & trim', 'Daily'], ['Foam wash', '4× / week'], ['Detailing', '2× / month'], ['Car perfume', 'Free, worth ₹499'], ['On-demand wash', '1 a month']] },
   { id: 'res', name: 'WD Reserve', price: 5555, f: { int: 7, tyre: 7, foam: 7, det: 4 }, rows: [['Pressure wash', 'Daily'], ['Interior', 'Daily'], ['Tyre & trim', 'Daily'], ['Foam wash', 'Daily'], ['Detailing', '4× / month'], ['Car perfume', 'Free, worth ₹499'], ['On-demand wash', '5 a month']] },

@@ -20,7 +20,7 @@ const UNAVAILABLE = Platform.OS !== 'web' && !hasKey;
 const EASE = Easing.bezier(0.22, 1, 0.36, 1);
 const DEFAULT_START = { lat: 28.668, lng: 77.0989 };
 const inputBox = { borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(84,9,218,0.14)', backgroundColor: K.raised, paddingHorizontal: SP.l } as const;
-const inputText = { fontFamily: F.b500, fontSize: 15, color: K.ink, paddingVertical: 13, outlineStyle: 'none' } as any;
+const inputText = { fontFamily: F.b500, fontSize: 15, lineHeight: 22, color: K.ink, paddingTop: 13, paddingBottom: 13, includeFontPadding: false, textAlignVertical: 'center', outlineStyle: 'none' } as any;
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return <View style={{ marginBottom: SP.m }}><Txt weight={500} size={13} color={K.grey} style={{ marginBottom: SP.s }}>{label}</Txt>{children}</View>;
