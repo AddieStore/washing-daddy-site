@@ -1,5 +1,9 @@
 // Punjabi (Gurmukhi) mode. Same keys and patterns as hi.ts.
 export const T: Record<string, string> = {
+  "Privacy policy": "ਪ੍ਰਾਈਵੇਸੀ ਪਾਲਿਸੀ",
+  "Hum aapka data kaise rakhte hain": "ਅਸੀਂ ਤੁਹਾਡਾ ਡਾਟਾ ਕਿਵੇਂ ਰੱਖਦੇ ਹਾਂ",
+  "Account delete karwao": "ਖਾਤਾ ਡਿਲੀਟ ਕਰਵਾਓ",
+  "Manager ko email jayegi. 30 din mein account aur data hata denge.": "ਮੈਨੇਜਰ ਨੂੰ ਈਮੇਲ ਜਾਵੇਗੀ। 30 ਦਿਨਾਂ ਵਿੱਚ ਖਾਤਾ ਅਤੇ ਡਾਟਾ ਹਟਾ ਦਿਆਂਗੇ।",
   "Customer ko bata diya: aap raaste mein ho": "ਗਾਹਕ ਨੂੰ ਦੱਸ ਦਿੱਤਾ: ਤੁਸੀਂ ਰਾਹ ਵਿੱਚ ਹੋ",
   "Nikal gaya, raaste mein hoon": "ਨਿਕਲ ਗਿਆ, ਰਾਹ ਵਿੱਚ ਹਾਂ",
   "Aap online ho": "ਤੁਸੀਂ ਆਨਲਾਈਨ ਹੋ",

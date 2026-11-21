@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BarChart, Button, Card, Chip, ChipPicker, Empty, FadeUp, Field, HeroCard, ListCard, ListGroup, PillButton, PressScale, Segmented, Sparkline, StatCard, StatusPill, Tile, VioletHeader, WeekStrip, SectionTitle, Ring, AppHeader, brand, F, sheet, ui, useTheme } from '../ui';
+import { BarChart, Button, Card, Chip, ChipPicker, Cta, Empty, FadeUp, Field, HeroCard, ListCard, ListGroup, ListRow, IconTile, VioletHero, PillButton, PressScale, Segmented, Sparkline, StatCard, StatusPill, Tile, VioletHeader, WeekStrip, SectionTitle, Ring, AppHeader, brand, F, sheet, ui, useTheme } from '../ui';
 import { t } from '../lib/i18n';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -57,6 +57,15 @@ export default function Kit() {
           <ChipPicker options={['Foam', 'Interior', 'Tyre']} value="Foam" onChange={() => {}} />
           <Segmented options={[{ value: 'a', label: 'Day' }, { value: 'b', label: 'Week' }]} value="a" onChange={() => {}} />
           <Field placeholder="Field" />
+          <Field label="Vehicle number" placeholder="DL 8C AB 1234" />
+          <Cta label="Continue (Cta)" onPress={() => {}} />
+          <Cta label="Disabled Cta" disabled />
+          <ListGroup>
+            <ListRow icon="pin" tile title="Address" sub="Koregaon Park" onPress={() => {}} />
+            <ListRow icon="help" title="Help" onPress={() => {}} />
+          </ListGroup>
+          <VioletHero top={16} pad={24} rounded><Text style={{ fontFamily: F.bold, fontSize: 24, color: '#fff' }}>VioletHero</Text></VioletHero>
+          <IconTile icon="star" size={48} />
           <ListGroup>
             <ListCard plain title="MH 12 AB 1234" detail="Swift · Koregaon Park" icon="drop" chips={[{ label: '7:30' }, { label: '₹400', tone: brand.mint }]} />
             <ListCard plain title="MH 14 XY 9087" detail="Creta · Baner" icon="pin" action="chevron" onPress={() => {}} />
