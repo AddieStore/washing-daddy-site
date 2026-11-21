@@ -132,6 +132,12 @@ function apply() {
   const sur = fees.surcharge || {}, slotSur = fees.slotSurcharge && typeof fees.slotSurcharge === 'object' ? fees.slotSurcharge : B.slotSurcharge;
   fillObj(R.PART_SURCHARGE, { Morning: num(sur.morning, 0), Afternoon: num(sur.afternoon, 0), Evening: num(sur.evening, 0) });
   fillObj(R.SLOT_SURCHARGE, Object.fromEntries(Object.entries(slotSur).map(([k, v]) => [hhmm(k, k), num(v, 0)]).filter(([, v]) => v)));
+  const rec = raw.recurring && typeof raw.recurring === 'object' ? raw.recurring : {};
+  R.RECURRING.forEach(o => {
+    const d = (rec as any)[o.id] || {}, B0 = R.RECURRING_BUILTIN.find(x => x.id === o.id)!;
+    o.perMonth = Math.max(1, Math.round(num(d.visits, B0.perMonth))); o.off = Math.min(90, Math.max(0, num(d.off, B0.off)));
+    o.sub = `${o.perMonth} visits a month`;
+  });
   fillObj(R.INSTANT_HOURS, { open: APP.instant.openFrom, close: APP.instant.openTill });
   fillObj(R.SUPPORT, APP.support);
   R.REFERRAL.bannerAmt = APP.home.referAmount; R.REFERRAL.friendGets = APP.home.friendAmount;

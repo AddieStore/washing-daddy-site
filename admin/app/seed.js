@@ -55,6 +55,11 @@ window.WD_SEED={
    "referAmount": 100,
    "friendAmount": 40
   },
+  "recurring": {
+   "weekly": { "visits": 4, "off": 10 },
+   "twice": { "visits": 8, "off": 15 },
+   "alt": { "visits": 15, "off": 20 }
+  },
   "fees": {
    "visit": 0,
    "slotSurcharge": {

@@ -189,7 +189,7 @@ export default function Cart() {
                 </View>
               ) : null}
             </View>
-            {b.perMonth ? <Txt size={12} color={G.mute} style={{ marginTop: 8, marginLeft: 4 }}>About {b.perMonth.visits} visits a month, around {inr(b.perMonth.total)} a month.</Txt> : null}
+            {b.perMonth ? <Txt size={12} color={G.mute} style={{ marginTop: 8, marginLeft: 4 }}>{inr(b.total)} a visit × {b.perMonth.visits} visits = around {inr(b.perMonth.total)} a month.</Txt> : null}
 
             {together.length ? (
               <>
