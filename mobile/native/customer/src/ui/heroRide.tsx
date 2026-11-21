@@ -11,13 +11,13 @@ const VB_W = 360, VB_H = 232;
 const V = '#5409DA', V2 = '#6E2CF0', V3 = '#8A55F5', VD = '#2A0A6B', DARK = '#221838', INK = '#120B22', SKIN = '#E7A57A', SAF = '#FFBA08';
 
 /* a horizontally looping layer: draws `tile` twice and slides left by one tile forever */
-function Loop({ k, tile, ms, top, h, children, rm }: { k: number; tile: number; ms: number; top: number; h: number; children: (x0: number) => React.ReactNode; rm: boolean }) {
-  const x = useSharedValue(0);
+function Loop({ k, tile, ms, top, h, children, rm, span }: { k: number; tile: number; ms: number; top: number; h: number; children: (x0: number) => React.ReactNode; rm: boolean; span: number }) {
+  const x = useSharedValue(0), n = Math.ceil(span / (tile * k)) + 1;
   useEffect(() => { if (!rm) x.value = withRepeat(withTiming(1, { duration: ms, easing: Easing.linear }), -1, false) }, [rm]);
   const st = useAnimatedStyle(() => ({ transform: [{ translateX: -x.value * tile * k }] }));
   return (
-    <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: top * k, width: tile * 2 * k, height: h * k }, st]}>
-      <Svg width={tile * 2 * k} height={h * k} viewBox={`0 0 ${tile * 2} ${h}`}>{children(0)}{children(tile)}</Svg>
+    <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: top * k, width: tile * n * k, height: h * k }, st]}>
+      <Svg width={tile * n * k} height={h * k} viewBox={`0 0 ${tile * n} ${h}`}>{Array.from({ length: n }, (_, i) => children(i * tile))}</Svg>
     </Reanimated.View>
   );
 }
@@ -174,33 +174,33 @@ function Streak({ k, y, w, d, rm }: { k: number; y: number; w: number; d: number
 }
 
 export function HeroRide({ width }: { width: number }) {
-  const rm = !!useReducedMotion(), k = width / VB_W, H = VB_H * k;
+  const rm = !!useReducedMotion(), k = (width / VB_W) * 0.5, H = VB_H * k, RW = VB_W * k, ox = width / 2 - 158 * k;   // rider at half size, centred, always fully on screen
   const spin = useSharedValue(0), bob = useSharedValue(0), lean = useSharedValue(0), enter = useSharedValue(rm ? 1 : 0);
   useEffect(() => {
     if (rm) return;
-    enter.value = withSpring(1, { damping: 16, stiffness: 70, mass: 1 });
+    enter.value = withTiming(1, { duration: 700, easing: Easing.bezier(0.22, 1, 0.36, 1) });
     spin.value = withRepeat(withTiming(1, { duration: 520, easing: Easing.linear }), -1, false);
     bob.value = withRepeat(withSequence(withTiming(1, { duration: 200, easing: Easing.inOut(Easing.sin) }), withTiming(0, { duration: 200, easing: Easing.inOut(Easing.sin) })), -1, false);
     lean.value = withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.sin) }), -1, true);
   }, [rm]);
-  const ride = useAnimatedStyle(() => ({ transform: [
-    { translateX: (1 - enter.value) * -width * 0.9 + (20 + lean.value * 6) * k },
+  const ride = useAnimatedStyle(() => ({ opacity: enter.value, transform: [
+    { translateX: (1 - enter.value) * -40 + (lean.value * 2 - 1) * 14 * k },
   ] }));
   const body = useAnimatedStyle(() => ({ transform: [{ translateY: -1.6 * k * bob.value }, { rotate: `${-0.6 * lean.value}deg` }] }));
   return (
     <View pointerEvents="none" style={{ width, height: H, overflow: 'hidden' }} accessible accessibilityLabel="A Washing Daddy washer riding to your car with the wash kit">
-      <Loop k={k} tile={360} ms={48000} top={0} h={80} rm={rm}>{x0 => <G key={x0}><Cloud x={x0 + 40} y={40} /><Cloud x={x0 + 230} y={22} s={0.8} /><Cloud x={x0 + 300} y={64} s={0.6} /></G>}</Loop>
-      <Loop k={k} tile={360} ms={22000} top={0} h={200} rm={rm}>{x0 => <Skyline key={x0} x0={x0} />}</Loop>
+      <Loop k={k} tile={360} ms={48000} top={0} h={80} rm={rm} span={width}>{x0 => <G key={x0}><Cloud x={x0 + 40} y={40} /><Cloud x={x0 + 230} y={22} s={0.8} /><Cloud x={x0 + 300} y={64} s={0.6} /></G>}</Loop>
+      <Loop k={k} tile={360} ms={22000} top={0} h={200} rm={rm} span={width}>{x0 => <Skyline key={x0} x0={x0} />}</Loop>
       {/* road */}
-      <Svg width={width} height={H} viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ position: 'absolute', left: 0, top: 0 }}>
-        <Rect x={0} y={198} width={VB_W} height={34} fill="#ECE7F5" />
-        <Rect x={0} y={198} width={VB_W} height={2} fill="#DCD3EC" />
+      <Svg width={width} height={H} viewBox={`0 0 ${width / k} ${VB_H}`} style={{ position: 'absolute', left: 0, top: 0 }}>
+        <Rect x={0} y={198} width={width / k} height={34} fill="#ECE7F5" />
+        <Rect x={0} y={198} width={width / k} height={2} fill="#DCD3EC" />
       </Svg>
-      <Loop k={k} tile={400} ms={2100} top={0} h={200} rm={rm}>{x0 => <Street key={x0} x0={x0} />}</Loop>
-      <Loop k={k} tile={420} ms={2200} top={0} h={VB_H} rm={rm}>{x0 => <Road key={x0} x0={x0} />}</Loop>
+      <Loop k={k} tile={400} ms={2100} top={0} h={200} rm={rm} span={width}>{x0 => <Street key={x0} x0={x0} />}</Loop>
+      <Loop k={k} tile={420} ms={2200} top={0} h={VB_H} rm={rm} span={width}>{x0 => <Road key={x0} x0={x0} />}</Loop>
       {/* rider group */}
-      <Reanimated.View style={[{ position: 'absolute', left: 0, top: 0, width, height: H }, ride]}>
-        <Svg width={width} height={H} viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ position: 'absolute' }}>
+      <Reanimated.View style={[{ position: 'absolute', left: ox, top: 0, width: RW, height: H }, ride]}>
+        <Svg width={RW} height={H} viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ position: 'absolute' }}>
           <Ellipse cx={190} cy={202} rx={100} ry={5} fill="rgba(30,15,70,0.10)" />
         </Svg>
         <Streak k={k} y={70} w={28} d={0} rm={rm} />
@@ -209,8 +209,8 @@ export function HeroRide({ width }: { width: number }) {
         {[0, 1, 2].map(i => <Puff key={i} k={k} i={i} rm={rm} />)}
         <Wheel cx={118} cy={176} k={k} spin={spin} />
         <Wheel cx={270} cy={176} k={k} spin={spin} />
-        <Reanimated.View style={[{ position: 'absolute', left: 0, top: 0, width, height: H }, body]}>
-          <Svg width={width} height={H} viewBox={`0 0 ${VB_W} ${VB_H}`}><Body /></Svg>
+        <Reanimated.View style={[{ position: 'absolute', left: 0, top: 0, width: RW, height: H }, body]}>
+          <Svg width={RW} height={H} viewBox={`0 0 ${VB_W} ${VB_H}`}><Body /></Svg>
           <Flag k={k} rm={rm} />
         </Reanimated.View>
       </Reanimated.View>

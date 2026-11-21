@@ -214,7 +214,7 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
           <HeroText title={cfg.heroTitle} sub={cfg.heroSub} accent={L.accent} />
           <Live />
         </View>
-        <View style={{ marginTop: 4 }}><HeroRide width={aw} /></View>
+        <View style={{ marginTop: 4, marginBottom: 14 }}><HeroRide width={aw} /></View>
       </> : <View style={{ height: 24 }} />}
     </View>
   );
