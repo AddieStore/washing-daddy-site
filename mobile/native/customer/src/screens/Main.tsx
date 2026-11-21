@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 // The signed-in shell: the current tab's screen above the tab bar, plus full-screen pages pushed over it.
 // r5 transitions (reanimated layout animations): the service page fades in while its hero art flies up from the tapped card
 // (shared-element feel, see Service), the cart rises from the bottom like a sheet, every other page slides in from the right.
@@ -150,6 +151,7 @@ export default function Main() {
           return <Animated.View key={k} style={on ? { flex: 1, opacity: fade } : { display: 'none' }}><S2 /></Animated.View> })}
         {tab !== 'home' && tab !== 'live' ? <Animated.View key={key} style={{ flex: 1, opacity: fade }}><Screen /></Animated.View> : null}
         <TabBar />
+        <StatusBar style={tab === 'home' && !ui.pages.length ? 'dark' : 'light'} />
       </Reanimated.View>
       <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#0B0614' }, tabCover.dim]} />
       {ui.pages.map((p, i) => p && <Pushed key={i + ':' + p.k + ('id' in p && p.id ? p.id : '')} p={p} depth={i} cover={coverOf(ui.pages[i + 1]?.k)} />)}

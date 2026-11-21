@@ -31,7 +31,7 @@ import { SheetTitle, closeSheet } from '../ui/hosts';
 import { openAddressPicker } from '../sheets/address';
 import { openPassPromo } from '../sheets/money';
 import { MiniMap, EtaChip, OfferCarousel, Offer } from '../ui/home';
-import { HeroStory } from '../ui/heroStory';
+import { HeroRide } from '../ui/heroRide';
 
 // label -> accessibilityLabel, press scale 0.98
 const Pressable3 = ({ label, ...p }: React.ComponentProps<typeof P3> & { label?: string }) => <P3 scaleTo={0.96} accessibilityRole="button" accessibilityLabel={label} {...p} />;
@@ -145,7 +145,7 @@ function Header({ y }: { y: Animated.Value }) {
   return (
     <View style={{ position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30, paddingTop: top }}>
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#F6F2FF', opacity: bg, borderBottomWidth: 1, borderBottomColor: L.line }} />
-      <Animated.View pointerEvents={scrolled ? 'none' : 'auto'} style={{ opacity: light }}><HeaderContent dark={false} /></Animated.View>
+      <Animated.View pointerEvents={scrolled ? 'none' : 'auto'} style={{ opacity: light }}><HeaderContent dark /></Animated.View>
       <Animated.View pointerEvents={scrolled ? 'auto' : 'none'} style={{ position: 'absolute', left: 0, right: 0, top: top, opacity: bg }}><HeaderContent dark /></Animated.View>
     </View>
   );
@@ -171,8 +171,8 @@ function HeroText({ title, sub, accent }: { title: string; sub: string; accent: 
   const last = words.length - 1;
   return (
     <View accessible accessibilityRole="header" accessibilityLabel={title + '. ' + sub}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{words.map((w, i) => <Word key={i + w} w={w} i={i} on={on} color={i === last ? accent : '#fff'} />)}</View>
-      {sub ? <Reanimated.Text style={[{ fontFamily: 'Poppins_500Medium', fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,.9)', marginTop: 6 }, subSt]}>{sub}</Reanimated.Text> : null}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{words.map((w, i) => <Word key={i + w} w={w} i={i} on={on} color={i === last ? accent : L.ink} />)}</View>
+      {sub ? <Reanimated.Text style={[{ fontFamily: 'Poppins_500Medium', fontSize: 14, lineHeight: 20, color: L.mut, marginTop: 4 }, subSt]}>{sub}</Reanimated.Text> : null}
     </View>
   );
 }
@@ -187,22 +187,35 @@ function Scallop({ W, color = '#fff' }: { W: number; color?: string }) {
   let d = `M0 14 `; for (let i = 0; i < n; i++) d += `A${r} ${r * 0.62} 0 0 1 ${(i + 1) * 2 * r} 14 `; d += `L${W} 20 L0 20 Z`;
   return <Svg width={W} height={20} style={{ position: 'absolute', left: 0, bottom: -1 }}><Path d={d} fill={color} /></Svg>;
 }
-function Hero({ W, y }: { W: number; y: Animated.Value }) {
-  const ins = useInsets(), cfg = homeConfig(), th = HERO[cfg.heroTheme] || HERO.default, on = section('hero'), st = Math.max(ins.top, 24);
+function Live() {
+  const rm = useReducedMotion(), p = useSharedValue(0);
+  useEffect(() => { if (!rm) p.value = withRepeat(withTiming(1, { duration: 1400, easing: REasing.out(REasing.quad) }), -1, false) }, [rm]);
+  const ring = useAnimatedStyle(() => ({ opacity: 0.7 * (1 - p.value), transform: [{ scale: 1 + 1.6 * p.value }] }));
   return (
-    <View style={{ backgroundColor: th.bg[1], overflow: 'hidden', paddingTop: st + 56 }}>
-      {/* violet field; pulling down stretches it so no gap shows */}
+    <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, height: 30, paddingLeft: 10, paddingRight: 12, borderRadius: 15, backgroundColor: '#17112A', marginTop: 12 }}>
+      <View style={{ width: 8, height: 8 }}>
+        <Reanimated.View style={[{ position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' }, ring]} />
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' }} />
+      </View>
+      <Txt weight={600} size={12} color="#fff" style={{ lineHeight: 16 }}>Washers riding near you</Txt>
+    </View>
+  );
+}
+function Hero({ W, y }: { W: number; y: Animated.Value }) {
+  const ins = useInsets(), cfg = homeConfig(), on = section('hero'), st = Math.max(ins.top, 24), aw = Math.min(W, 520);
+  return (
+    <View style={{ backgroundColor: '#F3EDFF', overflow: 'hidden', paddingTop: st + 56 }}>
+      {/* light lavender field; pulling down stretches it so no gap shows */}
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
-        <LinearGradient colors={['#3A06A0', '#5409DA', '#6A1BF2']} locations={[0, 0.6, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
-        <View style={{ position: 'absolute', right: -80, bottom: 60, width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(255,255,255,0.06)' }} />
-        <View style={{ position: 'absolute', left: -60, bottom: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,186,8,0.08)' }} />
+        <LinearGradient colors={['#EDE4FF', '#F6F1FF', '#FFFFFF']} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
-      {on ? <View style={{ paddingHorizontal: SIDE, paddingTop: 8 }}>
-        <HeroText title={cfg.heroTitle} sub="" accent={'#FFBA08'} />
-        <View style={{ marginTop: 18 }}><HeroStory /></View>
-      </View> : null}
-      <View style={{ height: on ? 56 : 24 }} />
-      <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 28, backgroundColor: L.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28 }} />
+      {on ? <>
+        <View style={{ paddingHorizontal: SIDE, paddingTop: 4 }}>
+          <HeroText title={cfg.heroTitle} sub={cfg.heroSub} accent={L.accent} />
+          <Live />
+        </View>
+        <View style={{ marginTop: 4 }}><HeroRide width={aw} /></View>
+      </> : <View style={{ height: 24 }} />}
     </View>
   );
 }
@@ -551,7 +564,7 @@ export default function Home() {
   return (
     <View style={{ flex: 1, backgroundColor: L.bg, alignItems: 'center' }}>
       <Animated.ScrollView style={{ width: '100%', maxWidth: 520 }} ref={ref} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={onScroll} bounces
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={'#fff'} colors={[L.accent]} progressViewOffset={Math.max(ins.top, 24) + 56} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={L.accent} colors={[L.accent]} progressViewOffset={Math.max(ins.top, 24) + 56} />}
         contentContainerStyle={{ paddingBottom: cart ? 64 : 0 }}>
         <Hero W={W} y={y} />
         <Entry onInstant={() => { try { act.setCartMode('instant') } catch (e) {} ref.current?.scrollTo({ y: Math.max(0, gridY.current - 90), animated: true }) }} />
