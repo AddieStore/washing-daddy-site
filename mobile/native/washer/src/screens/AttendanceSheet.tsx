@@ -97,7 +97,7 @@ function AttendanceBody({ close }: { close: () => void }) {
       <SheetTitle title={t('Hazri ki photo')} sub={t('Cap aur WD T-shirt pehen kar apni photo lo')} />
       {!shot ? (
         <View>
-          <View style={{ alignItems: 'center', paddingVertical: 16, backgroundColor: c.tile2, borderRadius: 16 }}><Figure /></View>
+          <View style={{ alignItems: 'center', paddingVertical: 16, backgroundColor: c.inputBg, borderRadius: 16 }}><Figure /></View>
           <View style={{ gap: 12, marginTop: 16, marginBottom: 16 }}>
             <Tip text={t('Seedhe khade ho, chehra saaf dikhe')} />
             <Tip text={t('Cap sir par, T-shirt poori dikhe')} />

@@ -138,17 +138,19 @@ export function DayRowCard({ r, onPress }: { r: DayRow; onPress?: () => void }) 
   const skip = r.status === 'skipped', car = carBy(r.reg);
   return (
     <DashCard onPress={onPress} accessibilityLabel={`${r.plate} ${r.model}`} style={{ padding: 16, gap: 12, opacity: skip ? 0.85 : 1 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <Plate reg={r.plate} />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 17, lineHeight: 24, color: c.fg }}>{r.model}</Text>
+          <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3 }}>{r.customer || ''}</Text>
+        </View>
         <StatusPill status={r.status} label={t(STATUS[r.status])} />
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, borderRadius: 12, backgroundColor: c.bg }}>
         <CarPic reg={r.reg} w={64} h={44} size={24} radius={12}>{car ? <CarArt car={car} width={64} height={27} /> : <Text style={{ fontSize: 22 }}>🚗</Text>}</CarPic>
-        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: c.fg }}>{r.model}</Text>
-          <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3 }}>{r.customer || ''}</Text>
+        <View style={{ flex: 1, minWidth: 0, gap: 6, alignItems: 'flex-start' }}>
+          <Plate reg={r.plate} />
+          {slot ? <TimeChip text={slot} /> : null}
         </View>
-        {slot ? <TimeChip text={slot} /> : null}
       </View>
       {skip ? (
         r.skipReason ? <Text style={{ fontFamily: F.semi, fontSize: 13, color: brand.red }}>{t(r.skipReason)}</Text> : null
@@ -174,5 +176,23 @@ export function DayRowCard({ r, onPress }: { r: DayRow; onPress?: () => void }) 
         </View>
       ) : null}
     </DashCard>
+  );
+}
+
+/** Timeline entry like the customer's "My bookings": hollow violet dot + time on the left, a line down to the next card. */
+export function TimelineRow({ time, sub, last, children }: { time: string; sub?: string; last?: boolean; children?: React.ReactNode }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      <View style={{ width: 20, alignItems: 'center' }}>
+        <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: c.primary, backgroundColor: c.bg, marginTop: 2 }} />
+        {!last ? <View style={{ flex: 1, width: 2, marginTop: 4, backgroundColor: 'rgba(84,9,218,0.15)' }} /> : null}
+      </View>
+      <View style={{ flex: 1, minWidth: 0, paddingBottom: 16 }}>
+        <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 20, color: c.fg, ...TNUM }}>{time || '–'}</Text>
+        {sub ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3, marginBottom: 8 }}>{sub}</Text> : <View style={{ height: 8 }} />}
+        {children}
+      </View>
+    </View>
   );
 }

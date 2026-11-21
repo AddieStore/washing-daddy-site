@@ -1,7 +1,8 @@
 // Extra tab: on-demand jobs (from Ravi, or customer bookings anyone can claim). Port of renderExtra / #s-extra.
 import React, { useState } from 'react';
 import { ActivityIndicator, Image, Linking, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Button, DutyToggle, Footer, PullToRefresh, CallButton, DemoNote, F, Icon, Pressy, Sheet, brand, ui, useTheme } from '../../ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button, DutyToggle, Footer, PullToRefresh, CallButton, DemoNote, F, Icon, Pressy, Sheet, brand, cardShadow, ui, useTheme } from '../../ui';
 import { Extra, Money, act, isOnline, useStore } from '../../state/store';
 import { mapsOf, telOf, type Job } from '../../lib/data';
 import { rupee } from '../../lib/time';
@@ -9,7 +10,7 @@ import { takePhoto } from '../../lib/photo';
 import { t } from '../../lib/i18n';
 import { LiveSyncChip } from '../../screens/JobParts';
 import { SheetTitle } from '../../screens/sheets';
-import { FadeUp, IconTile, OnHeaderPill, PEmpty, PRow, PSection, RowsCard, TNUM, VHeader, WCard } from '../../screens/ProntoBits';
+import { Chip8, FadeUp, IconTile, PEmpty, PRow, PSection, RowsCard, TNUM, WCard, tint } from '../../screens/ProntoBits';
 
 // the customer sees a 4-digit start code in their app and tells it at the car; the server checks it
 function StartCodeSheet({ id, visible, onClose }: { id: string; visible: boolean; onClose: () => void }) {
@@ -30,22 +31,34 @@ function StartCodeSheet({ id, visible, onClose }: { id: string; visible: boolean
   return (
     <Sheet visible={visible} onClose={() => { if (!busy) onClose() }}>
       <SheetTitle title={t('Customer se 4-digit code lo')} sub={t('Customer ke app mein start code dikhta hai. Woh code yahan daalo.')} />
-      <TextInput
-        value={code}
-        onChangeText={(x) => { setCode(x.replace(/\D/g, '').slice(0, 4)); if (err) setErr('') }}
-        onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)}
-        onSubmitEditing={go}
-        autoFocus
-        keyboardType="number-pad"
-        inputMode="numeric"
-        maxLength={4}
-        editable={!busy}
-        placeholder="••••"
-        placeholderTextColor={c.fg3}
-        accessibilityLabel={t('Start code')}
-        style={[{ height: 72, borderRadius: 16, borderWidth: err ? 2 : focus ? 2 : 1, borderColor: err ? c.red : focus ? c.accent : c.line, backgroundColor: c.inputBg, color: c.fg, fontFamily: F.black, fontSize: 36, letterSpacing: 18, textAlign: 'center', paddingVertical: 0, includeFontPadding: false, fontVariant: ['tabular-nums'] }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
-      />
+      <View style={{ height: 72, marginTop: 4 }}>
+        <View pointerEvents="none" style={{ flexDirection: 'row', gap: 12, height: 72 }}>
+          {[0, 1, 2, 3].map((i) => {
+            const active = focus && !err && i === Math.min(code.length, 3);
+            return (
+              <View key={i} style={{ flex: 1, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: err || active ? 1.5 : 1, borderColor: err ? c.red : active ? c.accent : c.line, backgroundColor: active ? c.card : c.inputBg }}>
+                <Text style={{ fontFamily: F.bold, fontSize: 32, lineHeight: 40, color: c.fg, fontVariant: ['tabular-nums'] }}>{code[i] ?? ''}</Text>
+              </View>
+            );
+          })}
+        </View>
+        <TextInput
+          value={code}
+          onChangeText={(x) => { setCode(x.replace(/\D/g, '').slice(0, 4)); if (err) setErr('') }}
+          onFocus={() => setFocus(true)}
+          onBlur={() => setFocus(false)}
+          onSubmitEditing={go}
+          autoFocus
+          caretHidden
+          selection={{ start: code.length, end: code.length }}   // the input is invisible over the boxes: a tap must never put the caret mid-code
+          keyboardType="number-pad"
+          inputMode="numeric"
+          maxLength={4}
+          editable={!busy}
+          accessibilityLabel={t('Start code')}
+          style={[StyleSheet.absoluteFill, { color: 'transparent', backgroundColor: 'transparent', fontSize: 32, textAlign: 'center', opacity: 0.02 }, Platform.OS === 'web' ? ({ outlineStyle: 'none', cursor: 'text' } as any) : null]}
+        />
+      </View>
       <View accessibilityLiveRegion="polite" style={{ minHeight: 28, justifyContent: 'center', marginTop: 8 }}>
         {err ? <Text style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: c.red, textAlign: 'center' }}>{err}</Text> : null}
       </View>
@@ -126,17 +139,19 @@ function JobCard({ j }: { j: Job }) {
     );
   }
 
+  const chip = unassigned ? { label: t('Naya'), col: c.primary }
+    : j.status === 'done' ? { label: t('Ho gaya'), col: c.ok }
+    : j.status === 'on_the_way' ? { label: t('Raaste mein'), col: c.primary } : null;
   return (
     <WCard style={{ padding: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <IconTile icon="plus" tone={brand.gold} />
-        <View style={{ flex: 1, minWidth: 0, paddingTop: 6 }}>
-          <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 22, color: c.fg }}>{j.service || t('Extra kaam')}</Text>
-        </View>
-        <View style={{ alignItems: 'flex-end', flexShrink: 0, maxWidth: '45%' }}>
-          <Text numberOfLines={1} adjustsFontSizeToFit style={[TNUM, { fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: c.ok }]}>{share}</Text>
-          <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3 }}>{t('aapke')}</Text>
-        </View>
+        <Text numberOfLines={2} style={{ flex: 1, minWidth: 0, fontFamily: F.semi, fontSize: 17, lineHeight: 24, color: c.fg }}>{j.service || t('Extra kaam')}</Text>
+        {chip ? <Chip8 label={chip.label} color={chip.col} bg={tint(chip.col, 0.12)} /> : null}
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8, marginBottom: 12 }}>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={[TNUM, { fontFamily: F.bold, fontSize: 24, lineHeight: 30, color: c.ok }]}>{share}</Text>
+        <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3 }}>{t('aapke')}</Text>
       </View>
       {maps
         ? <Pressy onPress={() => open(maps)} scaleTo={0.99} accessibilityRole="link" accessibilityLabel={t('Google Maps mein kholo')}>{where}</Pressy>
@@ -157,24 +172,25 @@ function JobCard({ j }: { j: Job }) {
 
 export default function ExtraScreen() {
   useStore();
+  const insets = useSafeAreaInsets();
   const { c } = useTheme();
   const list = Extra.shown(), done = Extra.jobs.filter((j) => j.status === 'done');
   const earned = done.reduce((a, j) => a + Money.share(j.price), 0);
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
-        <VHeader pad={56}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 40 }}>
-            <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, fontFamily: F.semi, fontSize: 22, lineHeight: 28, color: '#fff' }}>{t('Extra kaam')}</Text>
+        <View style={{ paddingTop: insets.top + 16, paddingHorizontal: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44 }}>
+            <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, fontFamily: F.bold, fontSize: 28, lineHeight: 36, color: c.fg }}>{t('Extra kaam')}</Text>
             <LiveSyncChip />
           </View>
-          <View style={{ marginTop: 8 }}><OnHeaderPill><DutyToggle /></OnHeaderPill></View>
+          <View style={[{ alignSelf: 'flex-start', backgroundColor: c.card, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 2, marginTop: 8 }, cardShadow(c)]}><DutyToggle /></View>
           <FadeUp index={0} style={{ marginTop: 16 }}>
-            <Text style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.8)' }}>{t('On-demand')}</Text>
-            <Text style={{ fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: '#fff' }}>{list.length ? t(`${list.length} kaam baaki`) : t('Sab ho gaya')}</Text>
+            <Text style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: c.fg3 }}>{t('On-demand')}</Text>
+            <Text style={{ fontFamily: F.bold, fontSize: 24, lineHeight: 32, color: c.fg }}>{list.length ? t(`${list.length} kaam baaki`) : t('Sab ho gaya')}</Text>
           </FadeUp>
-        </VHeader>
-        <View style={{ paddingHorizontal: 16, marginTop: -36 }}>
+        </View>
+        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
           <View style={{ gap: 12 }}>
             {list.length
               ? list.map((j, i) => <FadeUp key={j.id} index={i + 1}><JobCard j={j} /></FadeUp>)

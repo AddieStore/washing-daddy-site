@@ -88,7 +88,7 @@ function PlaceChip() {
 function GlassBtn({ icon, label, onPress }: { icon: 'calendar' | 'bell'; label: string; onPress: () => void }) {
   return (
     <Pressy onPress={onPress} accessibilityLabel={label} scaleTo={0.92} hitSlop={4}
-      style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: GLASS, alignItems: 'center', justifyContent: 'center' }}>
+      style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: GLASS, alignItems: 'center', justifyContent: 'center' }}>
       <Icon name={icon} size={20} color="#fff" />
     </Pressy>
   );
@@ -97,26 +97,28 @@ function GlassBtn({ icon, label, onPress }: { icon: 'calendar' | 'bell'; label: 
 function RoundHeader({ top, greeting, name, avatar, verified }: { top: number; greeting: string; name: string; avatar: string | null; verified: boolean }) {
   const initial = (name.trim()[0] || '?').toUpperCase();
   return (
-    <VioletBlock style={{ paddingTop: top + 12, paddingBottom: 56, paddingHorizontal: 16 }}>
+    <VioletBlock style={{ paddingTop: top + 12, paddingBottom: 72, paddingHorizontal: 16 }}>
       <FadeUp index={0} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <DutySwitch />
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <GlassBtn icon="calendar" label={t('Round badlo')} onPress={() => router.push('/round-setup')} />
           <GlassBtn icon="bell" label={t('Madad / SOS')} onPress={openHelpSheet} />
+          <Pressy onPress={() => router.push('/profile')} accessibilityLabel={name} scaleTo={0.92} hitSlop={4}>
+            {avatar
+              ? <Image source={{ uri: avatar }} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: GLASS }} />
+              : <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: GLASS, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontFamily: F.bold, fontSize: 18, color: '#fff' }}>{initial}</Text>
+              </View>}
+          </Pressy>
         </View>
       </FadeUp>
-      <FadeUp index={1} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 }}>
-        <Pressy onPress={() => router.push('/profile')} accessibilityLabel={name} scaleTo={0.94}>
-          {avatar
-            ? <Image source={{ uri: avatar }} style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: 'rgba(255,255,255,0.7)', backgroundColor: 'rgba(255,255,255,0.2)' }} />
-            : <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: F.bold, fontSize: 22, color: '#fff' }}>{initial}</Text>
-            </View>}
+      <FadeUp index={1} style={{ marginTop: 20 }}>
+        <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)' }}>{greeting}</Text>
+        <Pressy onPress={() => router.push('/today')} accessibilityLabel={t('Aaj ka round')} scaleTo={0.98}>
+          <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, letterSpacing: -0.4, color: '#fff' }}>
+            {name}{'\n'}<Text style={{ color: '#FFD166' }}>{t('Aaj ka round')}</Text>
+          </Text>
         </Pressy>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 20, color: 'rgba(255,255,255,0.8)' }}>{greeting}</Text>
-          <Text accessibilityRole="header" numberOfLines={1} style={{ fontFamily: F.black, fontSize: 22, lineHeight: 30, letterSpacing: -0.3, color: '#fff' }}>{name}</Text>
-        </View>
       </FadeUp>
       <FadeUp index={2} style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 16 }}>
         <PlaceChip />
@@ -127,7 +129,8 @@ function RoundHeader({ top, greeting, name, avatar, verified }: { top: number; g
   );
 }
 
-function Hero({ started }: { started: boolean }) {
+/** Two big white cards that overlap the hero (customer "Instant Service / Monthly Plans"): round progress and today's earning. */
+function HeroCards({ started }: { started: boolean }) {
   const { c } = useTheme();
   const w = me(), cn = Route.counts();
   const etas = Route.etaList(), rt = route();
@@ -137,30 +140,62 @@ function Hero({ started }: { started: boolean }) {
     : left ? t(`${left} baaki · ${cn.skipped ? cn.skipped + ' skip · ' : ''}aakhri ~${hm12(last)}`)
     : t('Round poora! Shabash.');
   const title = started ? (left ? `${left} ${t('gaadi')}` : t('Round poora! Shabash.')) : `${cn.total} ${t('gaadi')}`;
+  const tile = { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' } as const;
   return (
-    <DashCard onPress={() => router.push('/today')} accessibilityLabel={title} style={{ padding: 20 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 16, color: c.fg3 }}>{t('Aaj ka round')}</Text>
-          <Text style={{ fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: c.fg, marginTop: 4, ...TNUM }}>{title}</Text>
-          {cn.total ? <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 18, color: c.fg3, marginTop: 4 }}>{sub}</Text> : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 12 }}>
-            <Text style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 20, color: c.primary, flexShrink: 1 }} numberOfLines={1}>{dayShort(DAY, isHindi())} · {w.areas.split(' · ')[0]}</Text>
-            <Icon name="arrow" size={13} color={c.primary} />
-          </View>
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      <View style={{ flex: 1, flexBasis: 0, minWidth: 0 }}><DashCard onPress={() => router.push('/today')} accessibilityLabel={title} style={{ padding: 16, minHeight: 148, borderRadius: 20 }}>
+        <Text style={{ fontFamily: F.semi, fontSize: 15, lineHeight: 22, color: c.fg, paddingRight: 44 }}>{t('Aaj ka round')}</Text>
+        <Text numberOfLines={2} style={{ fontFamily: F.bold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3, color: '#16a34a', marginTop: 2, paddingRight: 40, ...TNUM }}>{title}</Text>
+        <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, marginTop: 4 }}>{sub}</Text>
+        <View style={{ position: 'absolute', right: 12, top: 12 }}>
+          <Ring size={44} stroke={5} fraction={cn.total ? cn.done / cn.total : 0} value={cn.done} color={c.primary} track={c.soft} ink={c.fg} />
         </View>
-        <Ring size={96} stroke={12} fraction={cn.total ? cn.done / cn.total : 0} value={cn.done} label={`/ ${cn.total}`} color={c.primary} track={c.soft} ink={c.fg} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 'auto', paddingTop: 8 }}>
+          <Text style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 18, color: c.primary, flexShrink: 1 }} numberOfLines={1}>{dayShort(DAY, isHindi())} · {w.areas.split(' · ')[0]}</Text>
+        </View>
+      </DashCard></View>
+      <View style={{ flex: 1, flexBasis: 0, minWidth: 0 }}><DashCard onPress={() => router.push('/paisa' as any)} accessibilityLabel={t('Aaj ki kamai')} style={{ padding: 16, minHeight: 148, borderRadius: 20 }}>
+        <Text style={{ fontFamily: F.semi, fontSize: 15, lineHeight: 22, color: c.fg }}>{t('Aaj ki kamai')}</Text>
+        <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 24, lineHeight: 32, letterSpacing: -0.3, color: c.primary, marginTop: 2, ...TNUM }}>{rupee(Money.today())}</Text>
+        <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, marginTop: 4, paddingRight: 44, ...TNUM }}>{cn.done} / {cn.total} {t('Gaadi ho gayi')}</Text>
+        <View style={[tile, { position: 'absolute', right: 12, bottom: 12 }]}><Icon name="star" size={22} color={c.primary} /></View>
+      </DashCard></View>
+    </View>
+  );
+}
+
+/** White strip like the customer's "Chotte washed your Scorpio N": the first car before the round, the last one after. */
+function CarStrip({ started }: { started: boolean }) {
+  const { c } = useTheme();
+  const rt = route();
+  if (!rt.length) return null;
+  if (started && (Route.liveReg() || Route.nextReg())) return null;
+  const reg = started ? rt[rt.length - 1].reg : rt[0].reg;
+  const car = carBy(reg), wd = W(reg);
+  if (!car) return null;
+  return (
+    <DashCard onPress={() => { act.setCurrent(reg); router.push('/job'); }} accessibilityLabel={`${car.plate} ${car.model}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, paddingRight: 16, borderRadius: 20 }}>
+      <CarPic reg={reg} w={64} h={52} size={26} radius={12}><CarArt car={car} width={64} height={27} /></CarPic>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: c.fg }}>{car.model}</Text>
+        <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3 }}>{car.plate} · {wd && started ? t(STATUS[wd.status]) : car.house}</Text>
       </View>
+      <Icon name="arrow" size={16} color={c.fg3} />
     </DashCard>
   );
 }
 
-function Stats() {
-  const cn = Route.counts();
+/** Centred "◆ Title ◆" section header with a subtitle (customer Home). */
+function Head({ title, sub }: { title: string; sub?: string }) {
+  const { c } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', gap: 12 }}>
-      <StatCard style={{ flex: 1 }} label={t('Gaadi ho gayi')} value={cn.done} unit={`/ ${cn.total}`} icon="check" tone={brand.mint} />
-      <StatCard style={{ flex: 1 }} label={t('Aaj ki kamai')} value={rupee(Money.today())} icon="star" tone={brand.gold} />
+    <View style={{ alignItems: 'center', marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ width: 7, height: 7, backgroundColor: c.primary, transform: [{ rotate: '45deg' }] }} />
+        <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 20, lineHeight: 28, color: c.fg }}>{title}</Text>
+        <View style={{ width: 7, height: 7, backgroundColor: c.primary, transform: [{ rotate: '45deg' }] }} />
+      </View>
+      {sub ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 20, color: c.fg3, textAlign: 'center', marginTop: 2 }}>{sub}</Text> : null}
     </View>
   );
 }
@@ -294,8 +329,8 @@ function RouteList() {
   const lay = Route.layout(), placed = rt.length - lay.pool.length;
   const setup = () => router.push('/round-setup');
   return (
-    <View style={{ marginTop: 32 }}>
-      <SectionTitle title={t('Aaj ka round')} style={{ marginTop: 0, marginBottom: 12 }} />
+    <View style={{ marginTop: 36 }}>
+      <Head title={t('Aaj ka round')} sub={cn.total ? `${cn.total} ${t('gaadi')}` : undefined} />
       {!cn.total
         ? (view.bookState === 'loading'
           ? <Empty title={t('List aa rahi hai…')} text={t('Book se aaj ka round padha ja raha hai.')} />
@@ -365,10 +400,10 @@ export default function RoundScreen() {
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <RoundHeader top={insets.top} greeting={hi} name={w.name.split(' ')[0]} avatar={avatar} verified={trust.verified} />
-        <View style={[s.pad, { marginTop: -36 }]}>
-          <FadeUp index={3}><Hero started={started} /></FadeUp>
-          <FadeUp index={4} style={{ marginTop: 12 }}><Stats /></FadeUp>
-          <FadeUp index={5} style={{ marginTop: 12 }}><Week /></FadeUp>
+        <View style={[s.pad, { marginTop: -52 }]}>
+          <FadeUp index={3}><HeroCards started={started} /></FadeUp>
+          <FadeUp index={4} style={{ marginTop: 12 }}><CarStrip started={started} /></FadeUp>
+          <FadeUp index={5} style={{ marginTop: 20 }}><Week /></FadeUp>
           <FadeUp index={6} style={{ marginTop: 12 }}><RewardsMini /></FadeUp>
           {S.day?.checkin_at || !started ? <FadeUp index={7} style={{ marginTop: 12 }}><CheckInCard /></FadeUp> : null}
           <FadeUp index={8} style={{ marginTop: 12 }}><PrimaryAction started={started} /></FadeUp>

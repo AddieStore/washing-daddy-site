@@ -81,8 +81,9 @@ const base = {
 export const lightTokens: Tokens = {
   ...base,
   // Pronto look shared with the customer app (customer src/theme.ts + pages/parts.tsx): grey page, white floating cards, neutral ink ramp.
-  bg: '#F5F5F8',
-  stage: '#EFEFF1',
+  // 2026-11-21: brand canvas from the customer app (customer src/theme.ts C.canvas / C.tabBar), white cards float on it.
+  bg: '#F6F2FF',
+  stage: '#EDE5FF',
   fg: '#171717',
   fg2: '#525252',
   fg3: '#737373',
@@ -92,10 +93,10 @@ export const lightTokens: Tokens = {
   accent: '#5409DA',
   accentInk: '#FFFFFF',
   em: '#171717',
-  barBg: 'rgba(255,255,255,0.92)',
-  tabBg: '#FFFFFF',
+  barBg: 'rgba(246,242,255,0.94)',
+  tabBg: '#FBF9FF',
   sheetBg: '#FFFFFF',
-  inputBg: '#FFFFFF',
+  inputBg: '#F6F2FF',   // customer Field: canvas fill, white + violet border on focus
   ok: '#16a34a',
   dash: 'rgba(17,17,20,0.28)',
   shadow: true,

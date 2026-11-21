@@ -7,10 +7,10 @@ import { DashCard, Footer, DemoNote, Empty, F, SectionTitle, WeekStrip, useTheme
 import { DAY, MODE, useStore } from '../state/store';
 import { useDay, useDayMarks } from '../lib/history';
 import { dayStripDays } from '../lib/strip';
-import { dayLong, rupee } from '../lib/time';
+import { dayLong, hm12, rupee, short12 } from '../lib/time';
 import { isHindi, t } from '../lib/i18n';
 import { ScreenBar } from '../screens/JobParts';
-import { DayRowCard, DaySummary, FadeUp } from '../screens/DayParts';
+import { DayRowCard, DaySummary, FadeUp, TimelineRow } from '../screens/DayParts';
 
 export default function DayScreen() {
   useStore();
@@ -31,11 +31,11 @@ export default function DayScreen() {
           <>
             <DaySummary d={data} earnLabel={t('Us din ki kamai')} />
             <SectionTitle title={t('Gaadi ho gayi')} action={`${done.length}`} style={{ marginTop: 24 }} />
-            {done.length ? <View style={{ gap: 12 }}>{done.map((r, i) => <FadeUp key={r.reg} index={i + 3}><DayRowCard r={r} /></FadeUp>)}</View> : <DashCard style={{ padding: 16 }}><Text style={{ fontFamily: F.body, color: c.fg3 }}>–</Text></DashCard>}
+            {done.length ? <View>{done.map((r, i) => <FadeUp key={r.reg} index={i + 3}><TimelineRow time={r.eta ? short12(hm12(r.eta)) : ''} last={i === done.length - 1}><DayRowCard r={r} /></TimelineRow></FadeUp>)}</View> : <DashCard style={{ padding: 16 }}><Text style={{ fontFamily: F.body, color: c.fg3 }}>–</Text></DashCard>}
             {skipped.length ? (
               <>
                 <SectionTitle title={t('Skip')} action={`${skipped.length}`} style={{ marginTop: 24 }} />
-                <View style={{ gap: 12 }}>{skipped.map((r) => <DayRowCard key={r.reg} r={r} />)}</View>
+                <View>{skipped.map((r, i) => <TimelineRow key={r.reg} time={r.eta ? short12(hm12(r.eta)) : ''} last={i === skipped.length - 1}><DayRowCard r={r} /></TimelineRow>)}</View>
               </>
             ) : null}
             {data.extra ? <DemoNote>{t('Extra kaam')} {rupee(data.extra)}</DemoNote> : null}

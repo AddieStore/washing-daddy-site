@@ -1,11 +1,12 @@
 // "Change my photo": camera or gallery -> background removed + brand gold -> before/after -> Theek hai / Dobara lo.
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Text, View } from 'react-native';
-import { Button, F, brand, sheet, ui, useTheme } from '../ui';
+import { F, brand, cardBox, cardShadow, sheet, ui, useTheme } from '../ui';
 import { act } from '../state/store';
 import { t } from '../lib/i18n';
 import { makePortrait, pickRaw, type PortraitResult } from '../lib/portrait';
 import { SheetTitle } from './sheets';
+import { Cta } from './DocsUpload';
 
 /** Opens the picker (camera or gallery) and then the cut-out sheet. */
 export async function changeProfilePhoto(fromLibrary: boolean) {
@@ -20,9 +21,9 @@ export async function changeProfilePhoto(fromLibrary: boolean) {
 function Pic({ uri, label, ring }: { uri: string; label: string; ring?: boolean }) {
   const { c } = useTheme();
   return (
-    <View style={{ flex: 1, alignItems: 'center' }}>
-      <Image source={{ uri }} accessibilityLabel={label} resizeMode="cover" style={{ width: '100%', aspectRatio: 1, borderRadius: 16, backgroundColor: brand.gold, borderWidth: ring ? 3 : 0, borderColor: brand.gold }} />
-      <Text style={{ fontFamily: F.medium, fontSize: 12, color: c.fg2, marginTop: 8 }}>{label}</Text>
+    <View style={[{ flex: 1, alignItems: 'center', padding: 8, paddingBottom: 12 }, cardBox(c), cardShadow(c)]}>
+      <Image source={{ uri }} accessibilityLabel={label} resizeMode="cover" style={{ width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: brand.gold, borderWidth: ring ? 3 : 0, borderColor: brand.gold }} />
+      <Text style={{ fontFamily: F.semi, fontSize: 13, color: ring ? c.primary : c.fg2, marginTop: 8 }}>{label}</Text>
     </View>
   );
 }
@@ -45,13 +46,15 @@ function PortraitBody({ uri, fromLibrary, close }: { uri: string; fromLibrary: b
       {err ? (
         <>
           <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: c.fg2, marginBottom: 16 }}>{t(err)}</Text>
-          <Button label={t('Dobara lo')} style={{ minHeight: 52 }} onPress={again} />
+          <Cta label={t('Dobara lo')} onPress={again} />
         </>
       ) : !r ? (
         <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-          <Image source={{ uri }} resizeMode="cover" style={{ width: 150, aspectRatio: 1, borderRadius: 16, opacity: 0.55 }} />
+          <View style={{ padding: 6, borderRadius: 24, backgroundColor: 'rgba(84,9,218,0.08)' }}>
+            <Image source={{ uri }} resizeMode="cover" style={{ width: 150, aspectRatio: 1, borderRadius: 18, opacity: 0.55 }} />
+          </View>
           <ActivityIndicator color={brand.violet} style={{ marginTop: 16 }} />
-          <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.semi, fontSize: 15, color: c.fg, marginTop: 12 }}>{t('Background hata rahe hain…')}</Text>
+          <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.semi, fontSize: 16, color: c.fg, marginTop: 12 }}>{t('Background hata rahe hain…')}</Text>
         </View>
       ) : (
         <>
@@ -63,8 +66,8 @@ function PortraitBody({ uri, fromLibrary, close }: { uri: string; fromLibrary: b
             {r.cut ? t('Background hat gaya, peeche hamara golden yellow.') : t('Background hata nahi paaye, isliye photo seedhi golden yellow par lagi. Phone ke app mein background hat jata hai.')}
           </Text>
           <View style={{ gap: 12, marginTop: 24 }}>
-            <Button label={t('Theek hai')} icon="check" style={{ minHeight: 52 }} onPress={ok} />
-            <Button label={t('Dobara lo')} variant="ghost" style={{ minHeight: 52 }} onPress={again} />
+            <Cta label={t('Theek hai')} icon="check" onPress={ok} />
+            <Cta label={t('Dobara lo')} ghost onPress={again} />
           </View>
         </>
       )}
@@ -78,8 +81,8 @@ export function openPhotoChooser() {
     <View>
       <SheetTitle title={t('Profile photo badlo')} sub={t('Background apne aap hat jayega, peeche golden yellow aayega.')} />
       <View style={{ gap: 12 }}>
-        <Button label={t('Camera se lo')} icon="cam" style={{ minHeight: 52 }} onPress={() => { close(); setTimeout(() => { void changeProfilePhoto(false) }, 350) }} />
-        <Button label={t('Gallery se chuno')} variant="ghost" style={{ minHeight: 52 }} onPress={() => { close(); setTimeout(() => { void changeProfilePhoto(true) }, 350) }} />
+        <Cta label={t('Camera se lo')} icon="cam" onPress={() => { close(); setTimeout(() => { void changeProfilePhoto(false) }, 350) }} />
+        <Cta label={t('Gallery se chuno')} ghost onPress={() => { close(); setTimeout(() => { void changeProfilePhoto(true) }, 350) }} />
       </View>
     </View>
   ));

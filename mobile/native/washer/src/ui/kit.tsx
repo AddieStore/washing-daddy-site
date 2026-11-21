@@ -16,7 +16,8 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient as SvgGradient, Rect, Stop } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, IconName } from './Icons';
 import { ui } from './bus';
 import { usePressSpring } from './motion';
@@ -96,12 +97,12 @@ export function Button({
   full?: boolean;
 }) {
   const { c, dark, onViolet } = useTheme();
-  // Pronto: primary = solid violet; secondary (ghost) = white with a hairline; disabled = flat grey with grey text.
-  const v: Record<ButtonVariant, { bg: string; fg: string; line?: string }> = {
-    gold: { bg: c.primary, fg: '#fff' },
-    violet: { bg: c.primary, fg: '#fff' },
+  // Customer Cta: minHeight 56, radius 16, violet with a violet shadow; disabled = soft lilac, no shadow; secondary = white card, violet text.
+  const v: Record<ButtonVariant, { bg: string; fg: string; shadow?: boolean; card?: boolean }> = {
+    gold: { bg: c.primary, fg: '#fff', shadow: true },
+    violet: { bg: c.primary, fg: '#fff', shadow: true },
     ink: { bg: dark ? c.tile2 : '#171717', fg: '#fff' },
-    ghost: { bg: c.card, fg: c.fg, line: c.line },
+    ghost: { bg: c.card, fg: dark ? '#CDB6FF' : '#5409DA', card: true },
     mint: { bg: brand.mint, fg: '#06281D' },
     sos: { bg: '#dc2626', fg: '#fff' },
   };
@@ -110,9 +111,12 @@ export function Button({
     v.ghost = { bg: 'rgba(255,255,255,0.18)', fg: '#FFFFFF' };
   }
   const t = v[variant];
-  const bg = disabled ? (onViolet ? 'rgba(255,255,255,0.14)' : dark ? 'rgba(255,255,255,0.08)' : '#E5E5E5') : t.bg;
-  const fg = disabled ? (onViolet ? 'rgba(255,255,255,0.5)' : dark ? 'rgba(255,255,255,0.4)' : '#A3A3A3') : t.fg;
-  const line = disabled ? undefined : t.line;
+  const bg = disabled ? (onViolet ? 'rgba(255,255,255,0.14)' : dark ? 'rgba(255,255,255,0.08)' : '#E6E0F5') : t.bg;
+  const fg = disabled ? (onViolet ? 'rgba(255,255,255,0.5)' : dark ? 'rgba(255,255,255,0.4)' : '#6B6483') : t.fg;
+  const sh = !disabled && !onViolet && c.shadow
+    ? t.shadow ? ({ shadowColor: brand.violet, shadowOpacity: 0.32, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4 } as const)
+      : t.card ? cardShadow(c) : null
+    : null;
   return (
     <Pressy
       onPress={onPress}
@@ -122,12 +126,10 @@ export function Button({
         b.btn,
         {
           backgroundColor: bg,
-          minHeight: 52,
+          minHeight: 56,
           alignSelf: full ? 'stretch' : 'flex-start',
-          overflow: 'hidden',
-          borderWidth: line ? 1 : 0,
-          borderColor: line,
         },
+        sh,
         style,
       ]}
     >
@@ -141,7 +143,7 @@ export function Button({
 }
 
 const b = StyleSheet.create({
-  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14 },
+  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 16 },
   txt: { fontFamily: F.semi, textAlign: 'center', flexShrink: 1 },
 });
 
@@ -207,7 +209,7 @@ export function BigTitle({ children, em, size = 44, style }: { children?: React.
 }
 
 export type ChipTone = 'violet' | 'green' | 'grey' | 'red' | 'dark';
-/** Pronto Pill: radius 8, 12 medium text on a quiet tint. */
+/** Pronto Pill: full pill, 12 medium text on a quiet tint. */
 export function Chip({ children, icon, tone = 'violet', style }: { children?: React.ReactNode; icon?: IconName; tone?: ChipTone; style?: S<ViewStyle> }) {
   const { c, dark } = useTheme();
   const T: Record<ChipTone, [string, string]> = {
@@ -219,7 +221,7 @@ export function Chip({ children, icon, tone = 'violet', style }: { children?: Re
   };
   const [bg, fg] = T[tone];
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 28, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, backgroundColor: bg }, style]}>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 28, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: bg }, style]}>
       {icon ? <Icon name={icon} size={14} color={fg} /> : null}
       <Text style={{ fontFamily: F.medium, fontSize: 12, color: fg }}>{children}</Text>
     </View>
@@ -241,7 +243,7 @@ export function StatusPill({ status, label, style }: { status: StatusKey | strin
   };
   const [bg, fg] = map[status] ?? map.scheduled;
   return (
-    <View style={[{ alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center', paddingHorizontal: 8, borderRadius: 8, backgroundColor: bg }, style]}>
+    <View style={[{ alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center', paddingHorizontal: 10, borderRadius: 999, backgroundColor: bg }, style]}>
       <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: fg }}>{label}</Text>
     </View>
   );
@@ -276,7 +278,7 @@ export function XChip({ kind, label, small, style }: { kind?: XKind | string; la
   };
   const t = (kind && map[kind]) || { bg: c.tile2, fg: c.fg };
   return (
-    <View style={[{ alignSelf: 'flex-start', paddingVertical: small ? 2 : 4, paddingHorizontal: small ? 7 : 8, borderRadius: 8, backgroundColor: t.bg }, style]}>
+    <View style={[{ alignSelf: 'flex-start', paddingVertical: small ? 2 : 4, paddingHorizontal: small ? 8 : 10, borderRadius: 999, backgroundColor: t.bg }, style]}>
       <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: small ? 11 : 12, color: t.fg }}>{label}</Text>
     </View>
   );
@@ -473,7 +475,7 @@ export function Segmented<T extends string | number = string>({
             accessibilityRole="radio"
             accessibilityLabel={o.label}
             accessibilityState={{ selected: on }}
-            style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: R.button, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.primary : c.card, borderWidth: on ? 0 : 1, borderColor: c.line }}
+            style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: R.button, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.primary : c.card, ...(on ? null : cardShadow(c)) }}
           >
             <Text style={{ fontFamily: F.medium, fontSize: 14, color: on ? '#fff' : c.fg }}>{o.label}</Text>
           </Pressy>
@@ -494,7 +496,7 @@ export function ChipPicker<T extends string | number = string>({
   onChange: (v: T) => void;
   style?: S<ViewStyle>;
 }) {
-  const { c } = useTheme();
+  const { c, dark } = useTheme();
   return (
     <View style={[{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 }, style]}>
       {options.map((o) => {
@@ -507,7 +509,7 @@ export function ChipPicker<T extends string | number = string>({
             accessibilityRole="radio"
             accessibilityState={{ selected: on }}
             accessibilityLabel={opt.label}
-            style={{ minHeight: 40, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, borderWidth: on ? 1.5 : 1, borderColor: on ? c.primary : c.line, backgroundColor: on ? c.card : c.card, alignItems: 'center', justifyContent: 'center' }}
+            style={{ minHeight: 40, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1.5, borderColor: on ? c.primary : 'transparent', backgroundColor: on ? (dark ? 'rgba(122,66,240,0.22)' : 'rgba(84,9,218,0.08)') : c.card, ...(on ? null : cardShadow(c)), alignItems: 'center', justifyContent: 'center' }}
           >
             <Text style={{ fontFamily: F.medium, fontSize: 14, color: on ? c.primary : c.fg }}>{opt.label}</Text>
           </Pressy>
@@ -517,10 +519,11 @@ export function ChipPicker<T extends string | number = string>({
   );
 }
 
-export function Field({ big = true, style, onFocus, onBlur, multiline, ...rest }: TextInputProps & { big?: boolean }) {
-  const { c } = useTheme();
+/** Customer Field: optional label ON TOP of the box (12.5/500 muted), typed text inside the box below it. Canvas fill, white + 1.5 violet border on focus. */
+export function Field({ big = true, style, onFocus, onBlur, multiline, label, boxStyle, ...rest }: TextInputProps & { big?: boolean; label?: string; boxStyle?: S<ViewStyle> }) {
+  const { c, dark } = useTheme();
   const [focus, setFocus] = useState(false);
-  return (
+  const input = (
     <TextInput
       placeholderTextColor={c.fg3}
       multiline={multiline}
@@ -531,9 +534,9 @@ export function Field({ big = true, style, onFocus, onBlur, multiline, ...rest }
         {
           width: '100%',
           borderRadius: R.input,
-          borderWidth: focus ? 1.5 : 1,
-          borderColor: focus ? c.accent : c.line,
-          backgroundColor: c.inputBg,
+          borderWidth: 1.5,
+          borderColor: focus ? c.accent : 'transparent',
+          backgroundColor: focus ? (dark ? c.card : '#FFFFFF') : c.inputBg,
           color: c.fg,
           fontFamily: F.medium,
           fontSize: big && !multiline ? 16 : 15,
@@ -546,6 +549,13 @@ export function Field({ big = true, style, onFocus, onBlur, multiline, ...rest }
         style,
       ]}
     />
+  );
+  if (!label) return input;
+  return (
+    <View style={boxStyle}>
+      <Text style={{ fontFamily: F.medium, fontSize: 12.5, lineHeight: 18, color: c.fg3, marginBottom: 6 }}>{label}</Text>
+      {input}
+    </View>
   );
 }
 
@@ -847,3 +857,103 @@ export function SlideToConfirm({
     </Pressable>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Customer-style building blocks (2026-11 redesign)                   */
+/* ------------------------------------------------------------------ */
+/** Customer Auth Cta: full-width violet button (minHeight 56, radius 16, violet shadow). Disabled = soft lilac. `busy` (string) replaces the label and blocks taps. */
+export function Cta({ label, onPress, disabled, busy, style }: { label: string; onPress?: () => void; disabled?: boolean; busy?: string | boolean; style?: S<ViewStyle> }) {
+  const { c, dark, onViolet } = useTheme();
+  const off = !!disabled || !!busy;
+  const bg = disabled ? (onViolet ? 'rgba(255,255,255,0.14)' : dark ? 'rgba(255,255,255,0.08)' : '#E6E0F5') : onViolet ? '#FFFFFF' : c.primary;
+  const fg = disabled ? (onViolet ? 'rgba(255,255,255,0.5)' : dark ? 'rgba(255,255,255,0.4)' : '#6B6483') : onViolet ? '#5409DA' : '#fff';
+  const txt = typeof busy === 'string' ? busy : label;
+  return (
+    <Pressy
+      onPress={onPress}
+      disabled={off}
+      accessibilityLabel={label}
+      style={[
+        { minHeight: 56, borderRadius: 16, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', paddingHorizontal: 16, opacity: busy ? 0.85 : 1 },
+        !disabled && !onViolet && c.shadow ? { shadowColor: brand.violet, shadowOpacity: 0.32, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4 } : null,
+        style,
+      ]}
+    >
+      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 16, color: fg }}>{txt}</Text>
+    </Pressy>
+  );
+}
+
+export const VIOLET_GRAD = ['#6A1BF2', '#5409DA', '#36058F'] as const;
+/**
+ * Customer violet hero block: diagonal gradient #6A1BF2 > #5409DA > #36058F, a faint white circle top-right, children on top.
+ * `top` handles the status-bar inset (default safe-area top + 8; pass a number to override, 0 for none).
+ * `pad` = bottom padding (use 56 and a -40 marginTop on the next card to overlap). `rounded` rounds the bottom corners (24).
+ */
+export function VioletHero({ children, pad = 56, top, rounded, style }: { children?: React.ReactNode; pad?: number; top?: number; rounded?: boolean; style?: S<ViewStyle> }) {
+  const insets = useSafeAreaInsets();
+  const [box, setBox] = useState({ w: 390, h: 220 });
+  const id = 'vhero' + React.useId().replace(/[^a-zA-Z0-9]/g, '');
+  return (
+    <View
+      onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+      style={[{ overflow: 'hidden', backgroundColor: '#5409DA', paddingTop: top ?? insets.top + 8, paddingHorizontal: 16, paddingBottom: pad }, rounded ? { borderBottomLeftRadius: 24, borderBottomRightRadius: 24 } : null, style]}
+    >
+      <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Defs>
+          <SvgGradient id={id} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={VIOLET_GRAD[0]} />
+            <Stop offset="0.5" stopColor={VIOLET_GRAD[1]} />
+            <Stop offset="1" stopColor={VIOLET_GRAD[2]} />
+          </SvgGradient>
+        </Defs>
+        <Rect x={0} y={0} width={box.w} height={box.h} fill={`url(#${id})`} />
+        <Circle cx={box.w - 50} cy={70} r={100} fill="#fff" fillOpacity={0.07} />
+      </Svg>
+      {children}
+    </View>
+  );
+}
+
+/** 36-48 square tile, radius 12, violet 8% fill, violet icon (or any `tone` colour, or custom children). */
+export function IconTile({ icon, tone, size = 36, children, style }: { icon?: IconName; tone?: string; size?: number; children?: React.ReactNode; style?: S<ViewStyle> }) {
+  const { c, dark } = useTheme();
+  const col = tone ?? c.primary;
+  let bg = dark ? 'rgba(122,66,240,0.2)' : 'rgba(84,9,218,0.08)';
+  const m = tone ? /^#([0-9a-f]{6})$/i.exec(tone) : null;
+  if (m) { const n = parseInt(m[1], 16); bg = `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${dark ? 0.2 : 0.12})`; }
+  return (
+    <View style={[{ width: size, height: size, borderRadius: size >= 44 ? 16 : 12, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }, style]}>
+      {children ?? (icon ? <Icon name={icon} size={Math.round(size * 0.52)} color={col} /> : null)}
+    </View>
+  );
+}
+
+/**
+ * Customer ListRow: 56px+, icon (grey line icon, or a violet IconTile with `tile`), 15/500 title, 13 sub, optional `right`,
+ * chevron when pressable. Hairline under the row only when `divider` (or `last={false}`); ListGroup (ui/dash) already draws hairlines between its children.
+ */
+export function ListRow({ icon, tile, tone, title, sub, right, onPress, last, divider, danger, chevron = true, label, style }: {
+  icon?: IconName; tile?: boolean; tone?: string; title: string; sub?: string; right?: React.ReactNode; onPress?: () => void;
+  last?: boolean; divider?: boolean; danger?: boolean; chevron?: boolean; label?: string; style?: S<ViewStyle>;
+}) {
+  const { c } = useTheme();
+  const lead = icon ? (tile ? <IconTile icon={icon} tone={tone} /> : <View style={{ width: 24, alignItems: 'center' }}><Icon name={icon} size={18} color={danger ? brand.red : tone ?? c.fg3} /></View>) : null;
+  const body = (
+    <>
+      {lead}
+      <View style={{ flex: 1, minWidth: 0, paddingVertical: 10 }}>
+        <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 22, color: danger ? brand.red : c.fg }}>{title}</Text>
+        {sub ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3, marginTop: 2 }}>{sub}</Text> : null}
+      </View>
+      {right}
+      {onPress && chevron ? <Icon name="chevron" size={18} color={c.fg3} /> : null}
+    </>
+  );
+  const st: S<ViewStyle> = [{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, minHeight: 56, borderBottomWidth: divider || last === false ? 1 : 0, borderBottomColor: c.line }, style];
+  if (onPress) return <Pressy onPress={onPress} scaleTo={0.985} accessibilityLabel={label ?? title} style={st}>{body}</Pressy>;
+  return <View style={st}>{body}</View>;
+}
+
+/** Alias names. */
+export const PrimaryButton = Cta;

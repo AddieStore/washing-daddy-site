@@ -46,6 +46,7 @@ export default function JobAlert() {
           opacity: a, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }],
         }}
       >
+        <View style={{ width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: -12, marginBottom: 16, backgroundColor: c.fg3, opacity: 0.4 }} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start', backgroundColor: 'rgba(84,9,218,0.08)', borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12, marginBottom: 16 }}>
           <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }} />
           <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.primary }}>{t('⚡ Naya kaam aaya!')}</Text>

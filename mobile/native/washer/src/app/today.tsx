@@ -7,10 +7,10 @@ import { DashCard, Footer, Empty, F, SectionTitle, useTheme } from '../ui';
 import { DAY, act, useStore } from '../state/store';
 import { todayData } from '../lib/history';
 import { usePlaces, useMyPos } from '../lib/places';
-import { dayLong } from '../lib/time';
+import { dayLong, hm12, short12 } from '../lib/time';
 import { isHindi, t } from '../lib/i18n';
 import { ScreenBar } from '../screens/JobParts';
-import { DayRowCard, DaySummary, FadeUp, TNUM } from '../screens/DayParts';
+import { DayRowCard, DaySummary, FadeUp, TNUM, TimelineRow } from '../screens/DayParts';
 import MapView from '../screens/MapView';
 import { Button } from '../ui';
 
@@ -28,7 +28,13 @@ export default function TodayScreen() {
         <DaySummary d={d} earnLabel={t('Aaj ki kamai')} />
         <SectionTitle title={t('Gaadiyon ki list')} action={`${d.rows.length}`} style={{ marginTop: 24 }} />
         {d.rows.length
-          ? <View style={{ gap: 12 }}>{d.rows.map((r, i) => <FadeUp key={r.reg} index={i + 3}><DayRowCard r={r} onPress={() => { act.setCurrent(r.reg); router.push('/job'); }} /></FadeUp>)}</View>
+          ? <View>{d.rows.map((r, i) => (
+            <FadeUp key={r.reg} index={i + 3}>
+              <TimelineRow time={r.eta ? short12(hm12(r.eta)) : ''} last={i === d.rows.length - 1}>
+                <DayRowCard r={r} onPress={() => { act.setCurrent(r.reg); router.push('/job'); }} />
+              </TimelineRow>
+            </FadeUp>
+          ))}</View>
           : <Empty title={t('Koi gaadi nahi')} text={t('Book mein aaj aapke naam koi active gaadi nahi hai.')} />}
         {places.length ? (
           <>
