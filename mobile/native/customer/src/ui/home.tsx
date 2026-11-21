@@ -137,9 +137,9 @@ export function PhotoTiles({ title, children }: { title?: ReactNode; children?: 
   );
 }
 
-/** hero photos: cross-fade every ~3s (400ms) with a slow 1.0 -> 1.06 zoom, behind the violet wash */
-const HERO_PICS: (keyof typeof IMG)[] = ['slide1', 'slide2', 'slide4', 'slide0'];
-export function HeroPhotos({ opacity = 0.24, style }: { opacity?: number; style?: any }) {
+/** hero photos: cross-fade every ~3s (400ms) with a slow 1.0 -> 1.06 zoom, under a light violet gradient (top + bottom only) */
+const HERO_PICS: (keyof typeof IMG)[] = ['red-foam', 'slide1', 'slide0'];
+export function HeroPhotos({ opacity = 1, style }: { opacity?: number; style?: any }) {
   const rm = useReducedMotion(), [a, setA] = useState(0), z = useSharedValue(0);
   useEffect(() => {
     if (rm) return;

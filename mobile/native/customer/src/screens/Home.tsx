@@ -159,7 +159,7 @@ function Word({ w, i, on, color }: { w: string; i: number; on: boolean; color: s
   const rm = useReducedMotion(), v = useSharedValue(rm ? 1 : 0);
   useEffect(() => { v.value = rm ? 1 : on ? withDelay(i * 90, withSpring(1, { damping: 14, stiffness: 140 })) : withDelay(i * 40, withTiming(0, { duration: 260 })) }, [on, rm]);
   const st = useAnimatedStyle(() => ({ opacity: Math.min(1, v.value * 1.4), transform: [{ translateY: (1 - v.value) * 22 }, { rotate: `${(1 - v.value) * 4}deg` }] }));
-  return <Reanimated.Text style={[{ fontFamily: 'Poppins_800ExtraBold', fontSize: 29, lineHeight: 35, letterSpacing: -0.6, marginRight: 7, color }, st]}>{w}</Reanimated.Text>;
+  return <Reanimated.Text style={[{ fontFamily: 'Poppins_800ExtraBold', fontSize: 32, lineHeight: 38, letterSpacing: -0.7, marginRight: 8, color }, st]}>{w}</Reanimated.Text>;
 }
 function HeroText({ title, sub, accent }: { title: string; sub: string; accent: string }) {
   const rm = useReducedMotion(), words = title.split(' ').filter(Boolean), [on, setOn] = useState(true);
@@ -175,7 +175,7 @@ function HeroText({ title, sub, accent }: { title: string; sub: string; accent: 
   return (
     <View accessible accessibilityRole="header" accessibilityLabel={title + '. ' + sub}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{words.map((w, i) => <Word key={i + w} w={w} i={i} on={on} color={i === last ? accent : '#fff'} />)}</View>
-      <Reanimated.Text style={[{ fontFamily: 'Poppins_500Medium', fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,.86)', marginTop: 8 }, subSt]}>{sub}</Reanimated.Text>
+      <Reanimated.Text style={[{ fontFamily: 'Poppins_500Medium', fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,.9)', marginTop: 6 }, subSt]}>{sub}</Reanimated.Text>
     </View>
   );
 }
@@ -191,22 +191,25 @@ function Scallop({ W, color = '#fff' }: { W: number; color?: string }) {
   return <Svg width={W} height={20} style={{ position: 'absolute', left: 0, bottom: -1 }}><Path d={d} fill={color} /></Svg>;
 }
 function Hero({ W, y }: { W: number; y: Animated.Value }) {
-  const ins = useInsets(), cfg = homeConfig(), th = HERO[cfg.heroTheme] || HERO.default, top = Math.max(ins.top, 24) + 56, on = section('hero');
-  const dots = [[0.62, 40, 90, 0.10], [0.86, 130, 60, 0.12], [0.5, 190, 40, 0.08], [0.74, 215, 24, 0.12], [0.08, 215, 56, 0.07]];
+  const ins = useInsets(), cfg = homeConfig(), th = HERO[cfg.heroTheme] || HERO.default, on = section('hero');
+  const { height: SH } = useWindowDimensions(), st = Math.max(ins.top, 24);
+  const body = on ? Math.round(Math.min(380, Math.max(320, SH * 0.41))) : 150, H = st + body;   // hero below the status bar: ~348 on 850, capped on tall screens
+  const OFF = 400;   // the parallax layer starts 400px above the hero so pulling down never shows a gap
   return (
-    <View style={{ paddingTop: top + 8, paddingBottom: on ? 92 : 72, paddingHorizontal: SIDE, overflow: 'hidden' }}>
-      {/* parallax: the photo + gradient drift down at 35% of the scroll and grow when you pull past the top */}
-      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-120, 0, 140], extrapolate: 'clamp' }) }, { scale: y.interpolate({ inputRange: [-300, 0], outputRange: [1.35, 1], extrapolate: 'clamp' }) }] }}>
+    <View style={{ height: H, backgroundColor: th.bg[1], overflow: 'hidden' }}>
+      {/* parallax: photos + gradients drift at 35% of the scroll and grow when you pull past the top */}
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -OFF, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-120, 0, 140], extrapolate: 'clamp' }) }, { scale: y.interpolate({ inputRange: [-300, 0], outputRange: [1.35, 1], extrapolate: 'clamp' }) }] }}>
         <LinearGradient colors={th.bg} start={{ x: 0, y: 0 }} end={{ x: 0.9, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
-        <HeroPhotos opacity={0.26} style={{ top: 400 }} />
-        <LinearGradient colors={['rgba(84,9,218,0.92)', 'rgba(84,9,218,0.15)', 'rgba(58,6,160,0.75)']} locations={[0.4, 0.62, 1]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <HeroPhotos opacity={1} style={{ top: OFF }} />
+        {/* top: keeps the address row readable */}
+        <LinearGradient colors={['rgba(46,5,128,0.86)', 'rgba(46,5,128,0.42)', 'rgba(46,5,128,0)']} locations={[0, 0.55, 1]} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: OFF + st + 130 }} />
+        {/* bottom: carries the headline */}
+        <LinearGradient colors={['rgba(40,4,112,0)', 'rgba(40,4,112,0.55)', 'rgba(40,4,112,0.9)']} locations={[0, 0.5, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: on ? 230 : 120 }} />
       </Animated.View>
-      {dots.map(([x, yy, sz, o], i) => <View key={i} style={{ position: 'absolute', left: (x as number) * W - (sz as number) / 2, top: top + (yy as number) - 40, width: sz as number, height: sz as number, borderRadius: (sz as number) / 2, backgroundColor: '#fff', opacity: o as number }} />)}
-      {on ? <Float style={{ position: 'absolute', right: -8, bottom: 52, width: 158, height: 158 }}>{artFor('pack-exclusive') ? <SvcArt id="exclusive" size={158} /> : <Image source={IMG['r3d-pack-exclusive']} resizeMode="contain" style={{ width: 158, height: 158 }} />}</Float> : null}
-      {on ? <View style={{ maxWidth: Math.min(W * 0.68, 300), minHeight: 112 }}>
+      {on ? <View style={{ position: 'absolute', left: SIDE, right: SIDE, bottom: 62 }}>
         <HeroText title={cfg.heroTitle} sub={cfg.heroSub} accent={th.accent} />
       </View> : null}
-      <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 28, backgroundColor: L.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24 }} />
+      <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 40, backgroundColor: L.bg, borderTopLeftRadius: 32, borderTopRightRadius: 32 }} />
     </View>
   );
 }
@@ -269,10 +272,10 @@ function Entry({ onInstant }: { onInstant: () => void }) {
   const box = { height: 120, borderRadius: 18, backgroundColor: '#fff', padding: 14, overflow: 'hidden' as const, ...shadow, shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } };
   const openChooser = () => openSheet(<InstantChooser onNow={onInstant} canNow={showI} canLater={showS} />);
   return (
-    <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: -72 }}>
+    <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: -26 }}>
       {showI || showS ? <FadeUp index={0} style={{ flex: 1 }}>
         <Pressable3 label={'Instant service. Choose now or schedule for later. ' + st.label} onPress={openChooser} style={box}>
-          <Txt weight={600} size={15} color={idle && !showS ? L.mut : L.ink} style={{ lineHeight: 20, width: '78%' }}>Instant Service</Txt>
+          <Txt weight={600} size={15} color={idle && !showS ? L.mut : L.ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={{ lineHeight: 20 }}>Instant Service</Txt>
           <View style={{ marginTop: 6 }}><EtaChip label={st.label} open={st.open} /></View>
           <Txt size={11} color={st.open ? L.pos : L.mut} numberOfLines={2} style={{ lineHeight: 15, marginTop: 4, width: '64%' }}>{st.open ? 'Washer nearby' : st.label}</Txt>
           <View style={{ position: 'absolute', right: 10, bottom: 10 }}><MiniMap w={62} h={62} radius={14} /></View>
@@ -280,8 +283,8 @@ function Entry({ onInstant }: { onInstant: () => void }) {
       </FadeUp> : null}
       {showP ? <FadeUp index={1} style={{ flex: 1 }}>
         <Pressable3 label={`Monthly plans. Daily wash from ${inr(fromPrice())} a month`} onPress={() => go('plan')} style={box}>
-          <Txt weight={600} size={15} color={L.ink} style={{ lineHeight: 20, width: '78%' }}>Monthly Plans</Txt>
-          <Txt size={12} color={L.accent} numberOfLines={2} style={{ lineHeight: 16, marginTop: 4, width: '62%' }}>Daily wash from <Txt weight={600} size={12} color={L.accent} style={TNUM}>{inr(fromPrice())}</Txt>/mo</Txt>
+          <Txt weight={600} size={15} color={L.ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={{ lineHeight: 20 }}>Monthly Plans</Txt>
+          <Txt size={12} color={L.accent} numberOfLines={3} style={{ lineHeight: 16, marginTop: 4, width: '62%' }}>Daily wash from <Txt weight={600} size={12} color={L.accent} style={TNUM}>{inr(fromPrice())}</Txt>/mo</Txt>
           <View style={{ position: 'absolute', right: 4, bottom: 4 }}><Glyph kind="plan" /></View>
         </Pressable3>
       </FadeUp> : null}
