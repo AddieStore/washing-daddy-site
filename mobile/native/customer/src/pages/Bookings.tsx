@@ -7,7 +7,7 @@ import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Footer } from '../ui/Footer';
 import { Back, Help as HelpIc, Pin } from '../ui/icons';
-import { FadeUp } from '../ui/motion';
+import { FadeUp, Shimmer } from '../ui/motion';
 import { JobRider, showsRider, showsCode, StartCode } from '../ui/JobRider';
 import { feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
 import { sheets } from '../sheets';
@@ -24,11 +24,7 @@ export const ACTIVE: Job['status'][] = ['assigned', 'on_the_way', 'in_progress']
 export const trackable = (j: Job) => ACTIVE.includes(j.status) || (j.mode === 'instant' && j.status === 'upcoming');
 
 /* ---------- skeleton (opacity pulse while the list loads) ---------- */
-function Bone({ w, h, r = 8, style }: { w?: number | string; h: number; r?: number; style?: any }) {
-  const v = useRef(new Animated.Value(0.5)).current;
-  useEffect(() => { const a = Animated.loop(Animated.sequence([Animated.timing(v, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: ND }), Animated.timing(v, { toValue: 0.5, duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: ND })])); a.start(); return () => a.stop(); }, []);
-  return <Animated.View style={[{ width: w as any, height: h, borderRadius: r, backgroundColor: '#EDEDEF', opacity: v }, style]} />;
-}
+function Bone({ w, h, r = 8, style }: { w?: number | string; h: number; r?: number; style?: any }) { return <Shimmer width={w} height={h} radius={r} style={style} /> }
 export function ListSkeleton() {
   return (
     <View style={{ gap: 16, marginTop: 20 }}>

@@ -2,13 +2,14 @@
 import React, { useRef, useState } from 'react';
 import { View, ScrollView, Pressable, Platform, KeyboardAvoidingView } from 'react-native';
 import { Txt, useInsets } from '../ui/kit';
-import { Pin, Home, Phone, User } from '../ui/icons';
+import { Pin, Phone } from '../ui/icons';
 import { C } from '../theme';
 import { act, useApp, addressOf, profile, closePage, openPage, toast, fmtPhone } from '../state';
 import type { AddressLabel } from '../state';
 import { PageBar } from './Stub';
 import { G, PrimaryBtn } from './parts';
-import { FloatField } from './ProfileEdit';
+import { GlowField, SaveChip, labelIcon } from '../ui/mapparts';
+import { FadeUp } from '../ui/motion';
 import { mapFlow } from './AddressMap';
 
 export default function AddressForm({ id, lat, lng, area }: { id?: string; lat?: number; lng?: number; area?: string }) {
@@ -27,10 +28,6 @@ export default function AddressForm({ id, lat, lng, area }: { id?: string; lat?:
       closePage(); if (viaMap) closePage();
     } catch (e: any) { toast(e.message); setBusy(false) }
   };
-  const Chip = ({ l }: { l: AddressLabel }) => { const on = label === l, I = l === 'Home' ? Home : l === 'Other' ? Pin : User; return (
-    <Pressable onPress={() => setLabel(l)} style={({ pressed }) => ({ height: 40, paddingHorizontal: 14, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: on ? C.violet : G.line, backgroundColor: on ? 'rgba(84,9,218,0.06)' : '#fff', transform: [{ scale: pressed ? 0.98 : 1 }] })}>
-      <I size={16} color={on ? C.violet : G.mute} strokeWidth={1.5} /><Txt weight={on ? 500 : 400} size={14} color={on ? C.violet : G.ink}>{l}</Txt>
-    </Pressable>) };
   const seg = (on: boolean, text: string, f: () => void) => <Pressable onPress={f} style={{ flex: 1, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.violet : 'transparent' }}><Txt weight={500} size={14} color={on ? '#fff' : G.sub}>{text}</Txt></Pressable>;
   return (
     <View style={{ flex: 1, backgroundColor: G.raised }}>
@@ -38,9 +35,8 @@ export default function AddressForm({ id, lat, lng, area }: { id?: string; lat?:
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
           <View style={{ backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: G.line, padding: 16 }}>
-            <FloatField label="Flat, floor and building*" value={flat} onChange={setFlat} maxLength={120} />
-            <Txt size={12} color={G.mute} style={{ marginTop: -10, marginBottom: 16 }}>Example: B-204, 2nd floor, Sunder Enclave</Txt>
-            <FloatField label="Street or landmark (recommended)" value={street} onChange={setStreet} maxLength={120} />
+            <GlowField label="Flat, floor and building*" value={flat} onChange={setFlat} maxLength={120} hint="Example: B-204, 2nd floor, Sunder Enclave" />
+            <GlowField label="Street or landmark (recommended)" value={street} onChange={setStreet} maxLength={120} />
             <Txt size={12} color={G.mute} style={{ marginBottom: 6 }}>Map location</Txt>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 10, backgroundColor: G.raised }}>
               <Txt size={13} color={G.ink} numberOfLines={3} style={{ flex: 1, lineHeight: 18 }}>{pos.area || (Number.isFinite(pos.lat) ? `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}` : 'Not set yet')}</Txt>
@@ -51,8 +47,8 @@ export default function AddressForm({ id, lat, lng, area }: { id?: string; lat?:
 
           <View style={{ backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: G.line, padding: 16, marginTop: 12 }}>
             <Txt weight={500} size={14} style={{ marginBottom: 12 }}>Save address as</Txt>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{labels.map(l => <Chip key={l} l={l} />)}</View>
-            {label === 'Other' ? <View style={{ marginTop: 16 }}><FloatField label="Name this address*" value={other} onChange={setOther} maxLength={30} /></View> : null}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{labels.map(l => <SaveChip key={l} label={l} on={label === l} onPress={() => setLabel(l)} icon={labelIcon(l, label === l ? C.violet : G.mute)} />)}</View>
+            {label === 'Other' ? <FadeUp distance={8} style={{ marginTop: 16 }}><GlowField label="Name this address*" value={other} onChange={setOther} maxLength={30} /></FadeUp> : null}
           </View>
 
           <View style={{ backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: G.line, padding: 16, marginTop: 12 }}>
@@ -60,12 +56,12 @@ export default function AddressForm({ id, lat, lng, area }: { id?: string; lat?:
             <Txt size={12} color={G.mute} style={{ marginTop: 2, marginBottom: 12 }}>Our washer will reach out to the receiver on this number.</Txt>
             <View style={{ flexDirection: 'row', padding: 4, borderRadius: 12, backgroundColor: G.raised, marginBottom: 16 }}>{seg(self, 'For myself', () => setSelf(true))}{seg(!self, 'For someone else', () => setSelf(false))}</View>
             {self ? <>
-              <FloatField label="Receiver's phone number" value={fmtPhone(me.phone)} prefix="+91" readOnly />
-              <FloatField label="Receiver's name" value={me.first + (me.last ? ' ' + me.last : '')} readOnly />
+              <GlowField label="Receiver's phone number" value={fmtPhone(me.phone)} prefix="+91" readOnly />
+              <GlowField label="Receiver's name" value={me.first + (me.last ? ' ' + me.last : '')} readOnly />
             </> : <>
-              <FloatField label="Receiver's phone number*" value={rp} onChange={v => setRp(v.replace(/\D/g, '').slice(0, 10))} prefix="+91" keyboardType="phone-pad" maxLength={10}
+              <GlowField label="Receiver's phone number*" value={rp} onChange={v => setRp(v.replace(/\D/g, '').slice(0, 10))} prefix="+91" keyboardType="phone-pad" maxLength={10}
                 right={<Pressable accessibilityLabel="Pick from contacts" hitSlop={8} onPress={() => toast('Contacts picker arrives in the next app update. Type the number for now.')} style={{ marginLeft: 8 }}><Phone size={20} color={G.mute} strokeWidth={1.5} /></Pressable>} />
-              <FloatField label="Receiver's name*" value={rn} onChange={setRn} maxLength={60} autoCapitalize="words" />
+              <GlowField label="Receiver's name*" value={rn} onChange={setRn} maxLength={60} autoCapitalize="words" />
             </>}
           </View>
         </ScrollView>

@@ -14,6 +14,9 @@ import { openAddressPicker } from '../sheets/address';
 import { openSlotSheet, openRecurSheet, openBillSheet } from '../sheets/slot';
 import { PageBar } from './Stub';
 import { CountUp, FadeUp } from '../ui/motion';
+import { CartCoach, SavingsStrip, Policies } from '../ui/bookKit';
+import { ARRIVAL_WINDOW_MIN } from '../data/reference';
+import { POLICY } from '../sheets/bookings';
 import { G, card, Photo, AddBtn, PrimaryBtn, SuccessTick, Price, TNUM, SHADOW_F, PAGE_BG, inr, Tap } from './parts';
 
 const ND = Platform.OS !== 'web';
@@ -35,11 +38,11 @@ function Modes({ mode }: { mode: CartMode }) {
 }
 
 const Rowx = ({ icon, title, sub, onPress, last, right }: { icon: React.ReactNode; title: string; sub: string; onPress: () => void; last?: boolean; right?: React.ReactNode }) => (
-  <Pressable accessibilityRole="button" onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: last ? 0 : 1, borderBottomColor: G.line }}>
+  <Tap onPress={onPress} scaleTo={0.985} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: last ? 0 : 1, borderBottomColor: G.line }}>
     <View style={{ width: 24, alignItems: 'center' }}>{icon}</View>
     <View style={{ flex: 1, minWidth: 0 }}><Txt weight={500} size={15} numberOfLines={1}>{title}</Txt><Txt size={13} color={G.mute} numberOfLines={2} style={{ marginTop: 2, lineHeight: 18 }}>{sub}</Txt></View>
     {right}<Chev size={16} color={G.mute} strokeWidth={1.5} />
-  </Pressable>
+  </Tap>
 );
 
 /* one cart line: the left part (photo, name, price, chevron) opens the service; the stepper is a separate hit area */
@@ -73,6 +76,7 @@ export default function Cart() {
   const needSlot = mode === 'scheduled' && !w, needRecur = mode === 'recurring' && !rc, instantShut = mode === 'instant' && !st.open;
   const contact = addr ? (addr.receiver.self ? `${pr.first || 'You'}${pr.last ? ' ' + pr.last : ''}, ${fmtPhone(pr.phone || '')}` : receiverText(addr.receiver)) : '';
   const cta = needSlot ? 'Select time slot' : needRecur ? 'Set repeat plan' : instantShut ? 'Instant is closed' : 'Pay ' + inr(b.toPay);
+  const payMode = !needSlot && !needRecur && !instantShut;
   const press = async () => {
     if (needSlot) return openSlotSheet();
     if (needRecur) return openRecurSheet();
@@ -94,7 +98,7 @@ export default function Cart() {
         </View>
       ) : (
         <>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 148 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 160 }}>
             {CART_MODES.filter(m => modeOn(m.id)).length > 1 ? <Modes mode={mode} /> : null}
             <Txt size={12} color={G.mute} style={{ marginTop: 8, textAlign: 'center' }}>{CART_MODES.find(m => m.id === mode)?.sub}</Txt>
 
@@ -105,6 +109,7 @@ export default function Cart() {
               </View>
             ) : null}
 
+            <SavingsStrip amount={b.saved} style={{ marginTop: 14 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 20, marginBottom: 8 }}>
               <Txt weight={500} size={17}>Review booking</Txt><Txt size={13} color={G.mute}>{count} {count === 1 ? 'service' : 'services'} · {mins} mins</Txt>
             </View>
@@ -207,10 +212,24 @@ export default function Cart() {
                 <View style={{ flex: 1 }}><Txt weight={500} size={14}>Cancel for free before the washer leaves</Txt><Txt size={13} color={G.sub} style={{ marginTop: 2, lineHeight: 20 }}>Cancel from the Washes tab. Refunds go to WD Money.</Txt></View>
               </View>
             ) : null}
+            <Txt weight={500} size={17} style={{ marginTop: 24, marginBottom: 8 }}>Policies</Txt>
+            <Policies items={[
+              ['Cancellation and refunds', POLICY + ' Refunds go to WD Money.'],
+              ['When your washer arrives', mode === 'instant' ? 'Instant washes usually start within 45 to 60 minutes of booking.' : `Washers arrive within ${ARRIVAL_WINDOW_MIN} minutes of the slot you choose.`],
+              ['What the washer needs', 'Leave the car where it is, unlocked or with keys shared in the booking. Water and power are brought by the washer.'],
+            ]} />
           </ScrollView>
-          <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: G.line, padding: 16, paddingBottom: Math.max(ins.bottom, 12) + 4, ...SHADOW_F }}>
-            <PrimaryBtn label={cta} onPress={press} busy={busy} disabled={instantShut} />
+          <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: G.line, paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(ins.bottom, 12) + 4, flexDirection: 'row', alignItems: 'center', gap: 16, ...SHADOW_F }}>
+            {payMode ? (
+              <FadeUp distance={0} duration={200} style={{ flex: 1 }}><Tap label="Bill details" onPress={openBillSheet}>
+                <Txt size={12} color={G.mute}>To pay</Txt>
+                <CountUp to={inr(b.toPay)} duration={450} style={[TNUM, { fontFamily: 'Poppins_700Bold', fontSize: 20, color: G.ink }]} />
+                {b.saved > 0 ? <Txt weight={500} size={11} color={G.pos}>{inr(b.saved)} saved</Txt> : null}
+              </Tap></FadeUp>
+            ) : null}
+            <PrimaryBtn label={payMode ? 'Pay now' : cta} onPress={press} busy={busy} disabled={instantShut} style={payMode ? { width: 170 } : { flex: 1 }} />
           </View>
+          <CartCoach top={ins.top + 120} />
         </>
       )}
       {ok ? <SuccessTick title="Booking confirmed" sub={ok.pending ? 'We will confirm as soon as the payment clears' : ok.paid ? 'Payment received. Your washer is on the way' : mode === 'instant' ? 'Your washer is on the way' : 'We will send your washer at the chosen time'} onDone={() => { go('live') }} /> : null}

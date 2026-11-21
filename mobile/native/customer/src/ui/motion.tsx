@@ -31,6 +31,8 @@ export const SPRING = {
   page: { damping: 26, stiffness: 240, mass: 0.9, overshootClamping: true },
 } as const;
 export const useRM = () => useReducedMotion();
+/** true while the first-run welcome primer covers the app; Home holds its promo popup until it is false */
+export const primerGate = { on: false };
 
 /* ---------- Pressable3: spring press scale on every tappable card, light haptic ---------- */
 export function Pressable3({ children, style, onPress, scaleTo = 0.96, haptics = true, disabled, ...rest }:
@@ -291,12 +293,18 @@ export function SuccessTick({ size = 96, color = C.green, tickColor = color, onD
 
 /* ---------- Splash + location loader (Pronto f_004/f_005): wordmark on violet, cross-fade to a pulsing pin "Fetching location..." ---------- */
 let loaderShown = false;
+/** when the location loader mounted (ms epoch, 0 = not yet); the welcome flow waits for it to fade before its own spinner screen */
+export let loaderT0 = 0;
 export const loaderPending = () => !loaderShown;
-export function Splash({ children }: { children?: ReactNode }) {
+export function Splash({ children, still }: { children?: ReactNode; still?: boolean }) {
+  const rm = useReducedMotion(), a = useSharedValue(rm || still ? 1 : 0), t = useSharedValue(rm || still ? 1 : 0);
+  useEffect(() => { if (rm || still) return; a.value = withTiming(1, { duration: 520, easing: R_EASE }); t.value = withDelay(260, withTiming(1, { duration: 520, easing: R_EASE })); }, []);
+  const w = useAnimatedStyle(() => ({ opacity: a.value, transform: [{ scale: 0.94 + 0.06 * a.value }] }));
+  const g = useAnimatedStyle(() => ({ opacity: t.value, transform: [{ translateY: (1 - t.value) * 6 }] }));
   return (
     <View style={{ flex: 1, backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontFamily: F.b500, fontSize: 34, letterSpacing: 0.5, color: '#fff' }}>Washing Daddy</Text>
-      <Text style={{ fontFamily: F.body, fontSize: 13, color: 'rgba(255,255,255,.75)', marginTop: 6 }}>Car wash at your parking spot</Text>
+      <Reanimated.Text style={[{ fontFamily: F.b600, fontSize: 34, letterSpacing: 0.4, color: '#fff' }, w]}>Washing Daddy</Reanimated.Text>
+      <Reanimated.Text style={[{ fontFamily: F.body, fontSize: 13, color: 'rgba(255,255,255,.75)', marginTop: 6 }, g]}>Car wash at your parking spot</Reanimated.Text>
       {children}
     </View>
   );
@@ -315,7 +323,7 @@ export function LocationLoader({ place }: { place?: string }) {
   const o = useRef(new A(1)).current, x = useRef(new A(0)).current, ring = useRef(new A(0)).current, wm = useRef(new A(1)).current;
   useEffect(() => {
     if (!show) return;
-    loaderShown = true;
+    loaderShown = true; loaderT0 = Date.now();
     const loop = Animated.loop(Animated.timing(ring, { toValue: 1, duration: 1300, easing: Easing.out(Easing.quad), useNativeDriver: ND }));
     loop.start();
     const t1 = setTimeout(() => { setStage(1); Animated.timing(wm, { toValue: 0, duration: 350, easing: EASE_OUT, useNativeDriver: ND }).start(); Animated.timing(x, { toValue: 1, duration: 350, easing: EASE_OUT, useNativeDriver: ND }).start() }, 750);

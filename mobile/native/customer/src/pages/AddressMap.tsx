@@ -3,9 +3,11 @@
 // The map itself is src/ui/PickMap.native.tsx (react-native-maps, Google) / PickMap.web.tsx (stand-in streets in the preview). Without
 // GOOGLE_MAPS_API_KEY at build time the phone shows "Map unavailable" and the address is typed instead.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Animated, Easing, Pressable, Platform, TextInput, Keyboard } from 'react-native';
+import { View, Pressable, Platform, TextInput, Keyboard } from 'react-native';
 import { Txt, useInsets } from '../ui/kit';
 import { Locate, Pin } from '../ui/icons';
+import { MapPin, LocatePill, FarNote } from '../ui/mapparts';
+import { FadeUp } from '../ui/motion';
 import { C } from '../theme';
 import { act, useApp, addressOf, addresses, selectedAddress, here, openPage, closePage, toast, distance, A } from '../state';
 import { PageBar } from './Stub';
@@ -14,7 +16,6 @@ import { SearchBox, Shimmer } from '../sheets/address';
 import { PickMap, type PickMapRef } from '../ui/PickMap';
 import { hasKey, reverseGeocode, autocomplete, placeLocation, newSession, type Suggestion, type Place } from '../geo';
 
-const ND = Platform.OS !== 'web', EASE = Easing.bezier(0.22, 1, 0.36, 1);
 const UNAVAILABLE = Platform.OS !== 'web' && !hasKey;
 
 /** Pages talk to each other here: AddressForm's "Change location" sets onPick; the map then hands the pin back instead of opening the form. */
@@ -38,18 +39,17 @@ export default function AddressMap({ id }: { id?: string }) {
   const cRef = useRef(start), map = useRef<PickMapRef>(null), seq = useRef(0), live = useRef(true);
   const [moving, setMoving] = useState(true), [pl, setPl] = useState<Place>(() => place(start.lat, start.lng)), [busy, setBusy] = useState(false), [q, setQ] = useState('');
   const [me, setMe] = useState<{ lat: number; lng: number } | null>(h0), [locating, setLocating] = useState(false), [typed, setTyped] = useState(''), [sug, setSug] = useState<Suggestion[]>([]), [searching, setSearching] = useState(false);
-  const lift = useRef(new Animated.Value(0)).current, flow = useRef(mapFlow.onPick ? { ...mapFlow } : null).current;
-  const to = (v: number) => Animated.timing(lift, { toValue: v, duration: 180, easing: EASE, useNativeDriver: ND }).start();
+  const flow = useRef(mapFlow.onPick ? { ...mapFlow } : null).current;
   const movingRef = useRef(true), settled = useRef<{ lat: number; lng: number } | null>(null);
   useEffect(() => () => { live.current = false }, []);
 
-  const onMoveStart = () => { if (movingRef.current) return; movingRef.current = true; setMoving(true); to(1) };
+  const onMoveStart = () => { if (movingRef.current) return; movingRef.current = true; setMoving(true) };
   /** the map came to rest: name the point under the pin (Google Geocoding), falling back to the saved-address name */
   const onSettle = (p: { lat: number; lng: number }) => {
     // the map reports 'idle' again for tiny shifts and for its own re-layout: ignore anything under ~2 m so the pin and card do not flicker
     if (settled.current && distance(p.lat, p.lng, settled.current.lat, settled.current.lng) < 2) return;
     settled.current = p; cRef.current = p; const n = ++seq.current; movingRef.current = true; setMoving(true);
-    reverseGeocode(p.lat, p.lng).then(r => { if (!live.current || n !== seq.current) return; setPl(r || place(p.lat, p.lng)); movingRef.current = false; setMoving(false); to(0) });
+    reverseGeocode(p.lat, p.lng).then(r => { if (!live.current || n !== seq.current) return; setPl(r || place(p.lat, p.lng)); movingRef.current = false; setMoving(false) });
   };
   const jump = (p: { lat: number; lng: number }, zoomed = false) => { if (UNAVAILABLE) { cRef.current = p; return } onMoveStart(); map.current?.flyTo(p, zoomed) };
 
@@ -83,7 +83,7 @@ export default function AddressMap({ id }: { id?: string }) {
     if (flow?.onPick) { flow.onPick(p.lat, p.lng, area); mapFlow.onPick = null; mapFlow.seed = null; closePage(); return }
     mapFlow.viaMap = true; setBusy(false); openPage({ k: 'addressForm', id, lat: p.lat, lng: p.lng, area });
   };
-  const pinY = lift.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
+  const far = me && !moving ? distance(me.lat, me.lng, cRef.current.lat, cRef.current.lng) : null;
   const card = { flexDirection: 'row', gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(84,9,218,0.25)', backgroundColor: 'rgba(84,9,218,0.04)' } as const;
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -98,20 +98,8 @@ export default function AddressMap({ id }: { id?: string }) {
         ) : (
           <>
             <PickMap ref={map} start={start} me={me} onMoveStart={onMoveStart} onSettle={onSettle} />
-            <View pointerEvents="none" style={{ position: 'absolute', inset: 0 }}>
-              <View style={{ position: 'absolute', left: '50%', marginLeft: -12, top: '50%', marginTop: -3, width: 24, height: 8, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.18)' }} />
-              <Animated.View style={{ position: 'absolute', left: '50%', marginLeft: -90, width: 180, bottom: '50%', marginBottom: -3, alignItems: 'center', transform: [{ translateY: pinY }] }}>
-                <View style={{ backgroundColor: '#171717', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center', maxWidth: 190 }}>
-                  <Txt size={12} color="#fff">Washer will arrive here</Txt>
-                  {moving ? <Txt size={12} color="rgba(255,255,255,0.7)">Locating…</Txt> : <Txt weight={500} size={12} color="#fff" numberOfLines={1}>{pl.title}</Txt>}
-                </View>
-                <View style={{ width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 7, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#171717' }} />
-                <Pin size={40} color={C.violet} strokeWidth={1.5} />
-              </Animated.View>
-            </View>
-            <Pressable onPress={() => locate()} accessibilityLabel="Current location" style={({ pressed }) => ({ position: 'absolute', left: '50%', marginLeft: -80, bottom: 28, width: 160, height: 40, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: C.violet, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, transform: [{ scale: pressed ? 0.98 : 1 }] })}>
-              <Locate size={18} color={C.violet} strokeWidth={1.5} /><Txt weight={500} size={14} color={C.violet}>{locating ? 'Finding you…' : 'Current location'}</Txt>
-            </Pressable>
+            <MapPin moving={moving} title={pl.title} />
+            <LocatePill onPress={() => locate()} busy={locating} style={{ bottom: 36 }} />
           </>
         )}
         <View style={{ position: 'absolute', left: 16, right: 16, top: 12 }}>
@@ -129,6 +117,7 @@ export default function AddressMap({ id }: { id?: string }) {
         </View>
       </View>
       <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, marginTop: -20, padding: 16, paddingBottom: Math.max(ins.bottom, 12) + 8, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: -4 }, elevation: 8 }}>
+        <FarNote meters={far} />
         <Txt size={12} color={G.mute} style={{ marginBottom: 8 }}>{UNAVAILABLE ? 'Your address' : 'Map location'}</Txt>
         <View style={card}>
           <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(84,9,218,0.1)', alignItems: 'center', justifyContent: 'center' }}><Locate size={20} color={C.violet} strokeWidth={1.5} /></View>

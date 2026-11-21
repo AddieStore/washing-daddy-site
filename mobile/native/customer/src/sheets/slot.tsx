@@ -7,6 +7,7 @@ import { Txt } from '../ui/kit';
 import { Sun, Moon, Sunrise, Check, Chev } from '../ui/icons';
 import { SheetTitle, SheetSub } from '../ui/hosts';
 import { Shimmer } from '../ui/motion';
+import { PopPress, OfferStrip } from '../ui/bookKit';
 import {
   useApp, act, openSheet, closeSheet, openPage, toast, when, recur, bill, slotDays, partsFor, slotsFor, slotLabel, whenText, svcLines, cartMode,
 } from '../state';
@@ -38,11 +39,11 @@ export function DayChips({ date, onPick, pad = 16 }: { date: string; onPick: (d:
       {days.map(d => {
         const on = d.date === date;
         return (
-          <Pressable key={d.date} disabled={d.disabled} accessibilityRole="button" accessibilityState={{ selected: on, disabled: d.disabled }} accessibilityLabel={d.label + (d.soldOut ? ', fully booked' : '')} onPress={() => onPick(d.date)}
+          <PopPress key={d.date} disabled={d.disabled} accessibilityRole="button" accessibilityState={{ selected: on, disabled: d.disabled }} accessibilityLabel={d.label + (d.soldOut ? ', fully booked' : '')} onPress={() => onPick(d.date)}
             style={{ minWidth: 92, height: 44, paddingHorizontal: 14, borderRadius: 10, borderWidth: on ? 1.5 : 1, borderColor: on ? G.violet : G.line, backgroundColor: on ? 'rgba(84,9,218,0.07)' : '#fff', alignItems: 'center', justifyContent: 'center' }}>
             <Txt weight={on ? 500 : 400} size={14} color={d.disabled ? '#B4B4BA' : on ? G.violet : G.ink} style={{ lineHeight: 18 }}>{d.label}</Txt>
             {d.soldOut && !d.disabled ? <Txt size={10} color={G.neg} style={{ lineHeight: 12 }}>Fully booked</Txt> : null}
-          </Pressable>
+          </PopPress>
         );
       })}
     </ScrollView>
@@ -98,12 +99,12 @@ export function SlotGrid({ date, part, slot, onPick, innerW }: { date: string; p
       {list.map(s => {
         const on = s.t === slot, off = !s.ok;
         return (
-          <Pressable key={s.t} disabled={off} accessibilityRole="button" accessibilityState={{ selected: on, disabled: off }} accessibilityLabel={s.label + (s.surcharge ? ', plus ' + inr(s.surcharge) : '') + (s.soldOut ? ', sold out' : s.past ? ', not available' : '')} onPress={() => onPick(s.t)}
+          <PopPress key={s.t} disabled={off} accessibilityRole="button" accessibilityState={{ selected: on, disabled: off }} accessibilityLabel={s.label + (s.surcharge ? ', plus ' + inr(s.surcharge) : '') + (s.soldOut ? ', sold out' : s.past ? ', not available' : '')} onPress={() => onPick(s.t)}
             style={{ width: cw, height: 52, borderRadius: 10, borderWidth: on ? 1.5 : 1, borderColor: on ? G.violet : G.line, backgroundColor: on ? 'rgba(84,9,218,0.07)' : off ? '#FAFAFB' : '#fff', alignItems: 'center', justifyContent: 'center' }}>
             <Txt weight={on ? 500 : 400} size={13} color={off ? '#B4B4BA' : on ? G.violet : G.ink} style={{ lineHeight: 18, textDecorationLine: s.soldOut ? 'line-through' : 'none', ...TNUM }}>{s.label}</Txt>
             {s.surcharge && !off ? <Txt weight={500} size={11} color={ORANGE} style={{ lineHeight: 14, ...TNUM }}>{'+' + inr(s.surcharge)}</Txt> : null}
             {s.soldOut ? <Txt size={10} color="#B4B4BA" style={{ lineHeight: 12 }}>Sold out</Txt> : null}
-          </Pressable>
+          </PopPress>
         );
       })}
     </View>
@@ -155,7 +156,8 @@ function SlotSheet() {
       <SheetTitle>Schedule for later</SheetTitle>
       <View style={{ marginHorizontal: -16 }}><View style={{ height: 8 }} /></View>
       <View style={{ marginTop: 12 }}><SlotPicker value={v} onChange={setV} innerW={W - 32} chipsPad={0} /></View>
-      <View style={{ marginTop: 16 }}><PrimaryBtn label="Confirm time" disabled={!v.slot} onPress={confirm} /></View>
+      <OfferStrip style={{ marginTop: 16 }} />
+      <View style={{ marginTop: 12 }}><PrimaryBtn label="Confirm time" disabled={!v.slot} onPress={confirm} /></View>
     </View>
   );
 }
@@ -180,20 +182,20 @@ function RecurSheet() {
       <SheetSub>Same slot, lower price per wash. Cancel anytime.</SheetSub>
       <View style={{ gap: 8 }}>
         {RECURRING.map(o => { const on = o.id === freq; return (
-          <Pressable key={o.id} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => { setFreq(o.id); setDow(d => (o.id === 'weekly' ? d.slice(0, 1) : d)) }} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: on ? 1.5 : 1, borderColor: on ? G.violet : G.line, padding: 12, backgroundColor: on ? 'rgba(84,9,218,0.05)' : '#fff' }}>
+          <PopPress key={o.id} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => { setFreq(o.id); setDow(d => (o.id === 'weekly' ? d.slice(0, 1) : d)) }} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: on ? 1.5 : 1, borderColor: on ? G.violet : G.line, padding: 12, backgroundColor: on ? 'rgba(84,9,218,0.05)' : '#fff' }}>
             <View style={{ flex: 1 }}><Txt weight={500} size={15}>{o.label}</Txt><Txt size={12} color={G.mute}>{o.sub}</Txt></View>
             <View style={{ backgroundColor: 'rgba(22,163,74,.12)', borderRadius: 6, paddingHorizontal: 8, height: 22, justifyContent: 'center' }}><Txt weight={500} size={11} color={G.pos}>{o.off}% off</Txt></View>
             <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: on ? 6 : 1.5, borderColor: on ? G.violet : '#C7C7CC' }} />
-          </Pressable>) })}
+          </PopPress>) })}
       </View>
       {need ? (
         <>
           <Txt weight={500} size={13} color={G.mute} style={{ marginTop: 20, marginBottom: 8 }}>{need === 1 ? 'Which day?' : 'Which ' + need + ' days?'}</Txt>
           <View style={{ flexDirection: 'row', gap: 6 }}>
             {[1, 2, 3, 4, 5, 6, 0].map(d => { const on = dow.includes(d); return (
-              <Pressable key={d} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => toggle(d)} style={{ flex: 1, height: 40, borderRadius: 10, borderWidth: on ? 1.5 : 1, borderColor: on ? G.violet : G.line, backgroundColor: on ? 'rgba(84,9,218,0.07)' : '#fff', alignItems: 'center', justifyContent: 'center' }}>
+              <PopPress key={d} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => toggle(d)} style={{ flex: 1, height: 40, borderRadius: 10, borderWidth: on ? 1.5 : 1, borderColor: on ? G.violet : G.line, backgroundColor: on ? 'rgba(84,9,218,0.07)' : '#fff', alignItems: 'center', justifyContent: 'center' }}>
                 <Txt weight={on ? 500 : 400} size={12} color={on ? G.violet : G.ink}>{DOW[d]}</Txt>
-              </Pressable>) })}
+              </PopPress>) })}
           </View>
         </>
       ) : <Txt size={13} color={G.sub} style={{ marginTop: 16 }}>Your washer comes every other day.</Txt>}
@@ -203,14 +205,15 @@ function RecurSheet() {
       {times.length ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {times.map(s => { const on = s.t === slot; return (
-            <Pressable key={s.t} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setSlot(s.t)} style={{ width: cw, height: 44, borderRadius: 10, borderWidth: on ? 1.5 : 1, borderColor: on ? G.violet : G.line, backgroundColor: on ? 'rgba(84,9,218,0.07)' : '#fff', alignItems: 'center', justifyContent: 'center' }}>
+            <PopPress key={s.t} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setSlot(s.t)} style={{ width: cw, height: 44, borderRadius: 10, borderWidth: on ? 1.5 : 1, borderColor: on ? G.violet : G.line, backgroundColor: on ? 'rgba(84,9,218,0.07)' : '#fff', alignItems: 'center', justifyContent: 'center' }}>
               <Txt weight={on ? 500 : 400} size={12} color={on ? G.violet : G.ink} style={TNUM}>{s.label}</Txt>
               {s.surcharge ? <Txt weight={500} size={10} color={ORANGE} style={{ lineHeight: 12 }}>{'+' + inr(s.surcharge)}</Txt> : null}
-            </Pressable>) })}
+            </PopPress>) })}
         </View>
       ) : <Txt size={13} color={G.sub}>{SOLD_OUT_TEXT}</Txt>}
       <Txt size={12} color={G.mute} style={{ marginTop: 14, lineHeight: 18 }}>About {rc.perMonth} visits a month. Washers arrive within {ARRIVAL_WINDOW_MIN} minutes of the time.</Txt>
-      <View style={{ marginTop: 16 }}><PrimaryBtn label="Confirm plan" disabled={!ok} onPress={confirm} /></View>
+      <OfferStrip style={{ marginTop: 16 }} />
+      <View style={{ marginTop: 12 }}><PrimaryBtn label="Confirm plan" disabled={!ok} onPress={confirm} /></View>
     </View>
   );
 }
