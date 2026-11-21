@@ -217,3 +217,19 @@ export function HeroRide({ width }: { width: number }) {
     </View>
   );
 }
+
+/* The same washer character on his own (no street), for the live tracking screens and map marker.
+   `w` is the drawn width; height is w * 204 / 290. Pass a 0..1 looping `spin` to turn the wheels. */
+export function RiderArt({ w, spin }: { w: number; spin?: SharedValue<number> }) {
+  const rm = !!useReducedMotion(), k = w / 290, s0 = useSharedValue(0);
+  return (
+    <View pointerEvents="none" style={{ width: w, height: 204 * k }}>
+      <View style={{ position: 'absolute', left: -10 * k, top: 0, width: VB_W * k, height: VB_H * k }}>
+        <Wheel cx={118} cy={176} k={k} spin={spin || s0} />
+        <Wheel cx={270} cy={176} k={k} spin={spin || s0} />
+        <Svg width={VB_W * k} height={VB_H * k} viewBox={`0 0 ${VB_W} ${VB_H}`}><Body /></Svg>
+        <Flag k={k} rm={rm || w < 120} />
+      </View>
+    </View>
+  );
+}
