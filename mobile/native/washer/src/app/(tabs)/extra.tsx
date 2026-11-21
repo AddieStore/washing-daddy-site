@@ -1,20 +1,68 @@
 // Extra tab: on-demand jobs (from Ravi, or customer bookings anyone can claim). Port of renderExtra / #s-extra.
 import React, { useState } from 'react';
-import { Image, Linking, StyleSheet, Text, View } from 'react-native';
-import { Button, DutyToggle, Footer, PullToRefresh, CallButton, DemoNote, F, Icon, Pressy, brand, ui, useTheme } from '../../ui';
+import { ActivityIndicator, Image, Linking, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Button, DutyToggle, Footer, PullToRefresh, CallButton, DemoNote, F, Icon, Pressy, Sheet, brand, ui, useTheme } from '../../ui';
 import { Extra, Money, act, isOnline, useStore } from '../../state/store';
 import { mapsOf, telOf, type Job } from '../../lib/data';
 import { rupee } from '../../lib/time';
 import { takePhoto } from '../../lib/photo';
 import { t } from '../../lib/i18n';
 import { LiveSyncChip } from '../../screens/JobParts';
+import { SheetTitle } from '../../screens/sheets';
 import { FadeUp, IconTile, OnHeaderPill, PEmpty, PRow, PSection, RowsCard, TNUM, VHeader, WCard } from '../../screens/ProntoBits';
+
+// the customer sees a 4-digit start code in their app and tells it at the car; the server checks it
+function StartCodeSheet({ id, visible, onClose }: { id: string; visible: boolean; onClose: () => void }) {
+  const { c } = useTheme();
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [focus, setFocus] = useState(false);
+  React.useEffect(() => { if (visible) { setCode(''); setErr(''); setBusy(false) } }, [visible]);
+  const go = async () => {
+    if (busy || code.length !== 4) return;
+    setBusy(true); setErr('');
+    const r = await act.exStartWithCode(id, code);
+    setBusy(false);
+    if (r === 'ok') onClose();
+    else setErr(r === 'wrong' ? t('Galat code. Customer se dobara poochho.') : t('Internet nahi hai. Dobara try karo.'));
+  };
+  return (
+    <Sheet visible={visible} onClose={() => { if (!busy) onClose() }}>
+      <SheetTitle title={t('Customer se 4-digit code lo')} sub={t('Customer ke app mein start code dikhta hai. Woh code yahan daalo.')} />
+      <TextInput
+        value={code}
+        onChangeText={(x) => { setCode(x.replace(/\D/g, '').slice(0, 4)); if (err) setErr('') }}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
+        onSubmitEditing={go}
+        autoFocus
+        keyboardType="number-pad"
+        inputMode="numeric"
+        maxLength={4}
+        editable={!busy}
+        placeholder="••••"
+        placeholderTextColor={c.fg3}
+        accessibilityLabel={t('Start code')}
+        style={[{ height: 72, borderRadius: 16, borderWidth: err ? 2 : focus ? 2 : 1, borderColor: err ? c.red : focus ? c.accent : c.line, backgroundColor: c.inputBg, color: c.fg, fontFamily: F.black, fontSize: 36, letterSpacing: 18, textAlign: 'center', paddingVertical: 0, includeFontPadding: false, fontVariant: ['tabular-nums'] }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
+      />
+      <View accessibilityLiveRegion="polite" style={{ minHeight: 28, justifyContent: 'center', marginTop: 8 }}>
+        {err ? <Text style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: c.red, textAlign: 'center' }}>{err}</Text> : null}
+      </View>
+      <View style={{ marginTop: 8 }}>
+        <Button variant="violet" label={t('Shuru karo')} disabled={code.length !== 4 || busy} onPress={go} />
+        {busy ? <ActivityIndicator color={c.primary} style={{ marginTop: 10 }} /> : null}
+      </View>
+    </Sheet>
+  );
+}
 
 const open = (url: string) => { void Linking.openURL(url).catch(() => {}); };
 
 function JobCard({ j }: { j: Job }) {
   const { c } = useTheme();
   const [busy, setBusy] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
   const shot = !!j.photo, unassigned = !j.washer_id;
   const maps = mapsOf(j), tel = telOf(j.phone);
   const share = rupee(Money.share(j.price));
@@ -65,14 +113,15 @@ function JobCard({ j }: { j: Job }) {
     action = (
       <>
         <DemoNote>{t('Raaste mein')}</DemoNote>
-        <Button variant="violet" label={t('Shuru karo')} onPress={() => act.exStart(j.id)} />
+        <DemoNote>{t('Pahunch ke customer se start code lo')}</DemoNote>
+        <Button variant="violet" label={t('Shuru karo')} onPress={() => setCodeOpen(true)} />
       </>
     );
   } else {
     action = (
       <>
         <Button variant="violet" label={t('Nikal gaya, raaste mein hoon')} onPress={() => act.exOnWay(j.id)} />
-        <Button variant="ghost" label={t('Shuru karo')} style={{ marginTop: 10 }} onPress={() => act.exStart(j.id)} />
+        <Button variant="ghost" label={t('Shuru karo')} style={{ marginTop: 10 }} onPress={() => setCodeOpen(true)} />
       </>
     );
   }
@@ -101,6 +150,7 @@ function JobCard({ j }: { j: Job }) {
         </View>
       ) : null}
       {action}
+      <StartCodeSheet id={j.id} visible={codeOpen} onClose={() => setCodeOpen(false)} />
     </WCard>
   );
 }
