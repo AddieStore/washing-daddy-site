@@ -73,7 +73,9 @@ export function weekPlan(c: Car) {
 }
 // Pro/Exclusive detailing falls on fixed days of the month (sync-contract.md)
 export function detDays(c: Car) { const f = planOf(c).f; if (!f.det || f.det >= 16) return []; const d = ((hash(regOf(c)) >>> 9) % 28), gap = Math.floor(28 / f.det); return Array.from({ length: f.det }, (_, i) => (d + i * gap) % 28 + 1) }
-export function extras(c: Car, dt: Date): Extra[] { const k = [...weekPlan(c)[dayKey(dt)]]; if (detDays(c).includes(dt.getDate())) k.push('det'); return k }
+// Standard's foam wash is once a month (f.fm), on a fixed day of the month; must match the washer app's tasksFor
+export const foamDay = (c: Car) => (planOf(c).f.fm ? ((hash(regOf(c)) >>> 12) % 28) + 1 : 0);
+export function extras(c: Car, dt: Date): Extra[] { const k = [...weekPlan(c)[dayKey(dt)]]; if (foamDay(c) === dt.getDate() && !k.includes('foam')) k.push('foam'); if (detDays(c).includes(dt.getDate())) k.push('det'); return k }
 export const LABEL: Record<Extra, string> = { foam: 'Foam wash', int: 'Interior cleaning', tyre: 'Tyre & trim polish', det: 'Detailing' };
 
 /* ---------- pausing: a WD Pro (and up) perk, at most PAUSE_MAX days in any calendar month ---------- */

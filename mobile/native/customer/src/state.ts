@@ -37,7 +37,7 @@ import type { PassPlan } from './data/reference';
 import {
   Account, Car, Session, WashDoc, DEMO_PHONE, sampleAccount, fromCustomerDoc, regOf, planOf, maskPlate, extras, weekPlan,
   LABEL, TASK_LABEL, TASK_SUB, isPaused, canPause, pauseLog, pauseFits, startOf, startTxt, makeDoc, fromContract, planTasks,
-  activeStage, chipText, hash, daysLeftOf, STAGES,
+  activeStage, chipText, hash, daysLeftOf, STAGES, foamDay,
 } from './data/model';
 import { toast, openSheet, closeSheet, sheetOpen, confetti, haptic } from './ui/hosts';
 export { toast, openSheet, closeSheet, confetti, haptic };
@@ -229,7 +229,7 @@ export function usage(c: Car = car()) {
   const pick = (k: string, fake: number) => N ? N[k] : fake;
   const cols: [string, number, number, 'violet' | 'orange' | 'sky' | 'gold' | 'mint'][] = [
     ['Pressure washes', pick('pressure', td), 30, 'violet'], ['Interior', pick('interior', Math.round(f.int * td / 7)), Math.round(f.int * 30 / 7), 'orange'],
-    ['Foam wash', pick('foam', Math.round(f.foam * td / 7)), Math.round(f.foam * 30 / 7), 'sky'],
+    ['Foam wash', pick('foam', Math.round(f.foam * td / 7) + (f.fm && foamDay(c) <= td ? f.fm : 0)), Math.round(f.foam * 30 / 7) + (f.fm || 0), 'sky'],
     f.det ? ['Detailing', pick('detailing', f.det >= 16 ? 8 : Math.floor(f.det / 2)), f.det >= 16 ? 17 : f.det, 'gold'] : ['Tyre & trim', pick('tyre', Math.min(Math.round(f.tyre * 30 / 7), Math.round(f.tyre * td / 7))), Math.round(f.tyre * 30 / 7), 'mint']];
   const range = realAcct() && c.start ? `From ${fmt(startOf(c)!, { day: 'numeric', month: 'short' })}` : `1–${td} ${fmt(TODAY, { month: 'short' })}`;
   return { range, hidden: c.status === 'new', cols: cols.map(u => ({ label: u[0], used: u[1] * used, of: u[2], color: u[3] })) };

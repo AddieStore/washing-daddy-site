@@ -9,7 +9,6 @@ import { Help, Info, Gift, Chev, Clock, Camera, Pause } from '../ui/icons';
 import { PLANS } from '../data/reference';
 import type { PlanId } from '../data/reference';
 import { PlanPicker } from '../ui/plans/PlanPicker';
-import { LinearGradient } from 'expo-linear-gradient';
 import { PAUSE_MAX, canPause, pauseLeft } from '../data/model';
 import { TODAY, fmt, iso, inr } from '../data/dates';
 import { A, car, daysLeft, planStatus, planOf, usage, act, toast, useApp, pendingRef, openPage, feature } from '../state';
@@ -108,15 +107,14 @@ export default function Plan() {
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
       <ScrollView ref={sc} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 0 }}>
-        <LinearGradient colors={[C.brandTop, '#4608B8', C.brandDeep]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ paddingTop: top, paddingHorizontal: 16, paddingBottom: 56 }}>
+        <View style={{ paddingTop: top, paddingHorizontal: 16, paddingBottom: 20 }}>
           <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Txt weight={600} size={24} color={C.white}>Plans</Txt>
-            <Pressable3 onPress={() => sheets.help()} accessibilityRole="button" accessibilityLabel="Plan questions" style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}><Help size={18} color={C.white} strokeWidth={1.5} /></Pressable3>
+            <Txt weight={600} size={24} color={INK}>Plans</Txt>
+            <Pressable3 onPress={() => sheets.help()} accessibilityRole="button" accessibilityLabel="Plan questions" style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: C.white, borderWidth: 1, borderColor: LINE, alignItems: 'center', justifyContent: 'center' }}><Help size={18} color={INK} strokeWidth={1.5} /></Pressable3>
           </View>
-          <Txt weight={700} size={22} color={C.white} style={{ marginTop: 4, lineHeight: 28 }}>A spotless car, every morning.</Txt>
-          <Txt size={14} color="rgba(255,255,255,0.82)" style={{ marginTop: 6, lineHeight: 20 }}>A daily pressure wash before 7:30 AM, with live photos. Pick Standard or Pro.</Txt>
-        </LinearGradient>
-        <View style={{ paddingHorizontal: 16, marginTop: -36, gap: 16 }}>
+          <Txt size={14} color={SEC} style={{ marginTop: 2, lineHeight: 20 }}>A daily pressure wash before 7:30 AM, with live photos. Every plan is billed monthly, per car.</Txt>
+        </View>
+        <View style={{ paddingHorizontal: 16, gap: 16 }}>
           {isNew ? <FadeUp duration={300} distance={8}><Choose lead /></FadeUp> : <FadeUp duration={300} distance={8}><Balance /></FadeUp>}
           {isNew ? <FadeUp delay={50} duration={300} distance={8}><Balance /></FadeUp> : <FadeUp delay={50} duration={300} distance={8}><Choose /></FadeUp>}
         </View>
