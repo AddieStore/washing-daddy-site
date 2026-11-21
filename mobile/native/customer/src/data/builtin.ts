@@ -4,7 +4,7 @@
 //   2. the app's offline fallback (first launch with no network and no cached config) and the web preview.
 // Pure data: imports only the reference tables (no React Native), so the seed script can load it in Node.
 import { CAR_SERVICES, PACKS, SERVICES, PACK_MRP, PRODUCTS, PLANS, HIDDEN_FROM_NEW, PASS_PLANS, COUPONS, FEES, SLOT_SURCHARGE,
-  INSTANT_HOURS, DAY_PARTS, SLOT_STEP_MIN, SLOT_DAYS, SLOT_CUTOFF_MIN, REFERRAL, SUPPORT_PHONE, VARIANTS } from './reference';
+  INSTANT_HOURS, DAY_PARTS, SLOT_STEP_MIN, SLOT_DAYS, SLOT_CUTOFF_MIN, REFERRAL, SUPPORT_PHONE, VARIANTS, RECURRING } from './reference';
 import { LEGAL_DOCS, LEGAL_ORDER } from './legal';
 import { HELP_TOPICS } from './help';
 
@@ -85,6 +85,7 @@ export function builtinDocs(): BuiltinDocs {
       trustSub: 'Verified washers from your own society, with photo proof after every wash' },
     fees: { convenience: FEES.convenienceFee, convenienceBelow: FEES.convenienceFreeAbove, gstPct: FEES.gstPct, visit: FEES.visitFee,
       surcharge: { morning: 0, afternoon: 0, evening: 0 }, slotSurcharge: { ...SLOT_SURCHARGE } },
+    recurring: Object.fromEntries(RECURRING.map(r => [r.id, { visits: r.perMonth, off: r.off }])),
     support: { whatsapp: SUPPORT_PHONE, phone: SUPPORT_PHONE, email: 'hello@washingdaddy.com' },
   };
   return {

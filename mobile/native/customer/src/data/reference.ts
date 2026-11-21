@@ -286,6 +286,8 @@ export const RECURRING: { id: RecurId; label: string; sub: string; perMonth: num
   { id: 'alt', label: 'Alternate days', sub: '15 visits a month', perMonth: 15, off: 20 },
 ];
 
+export const RECURRING_BUILTIN = RECURRING.map(x => ({ ...x }));   // untouched copy, for live-config fallback
+
 /* ---- fees and tax (display; server prices) ---- */
 export const FEES = { gstPct: 5, visitFee: 0, convenienceFee: 19, convenienceFreeAbove: 299, instantFee: 0 };
 /** flat surcharge per day part (appcfg fees.surcharge), on top of SLOT_SURCHARGE */
