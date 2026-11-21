@@ -7,6 +7,7 @@ import { useApp, passView, passQuote, act, closePage, toast, confetti, haptic, o
 import { G, Tap, PrimaryBtn, TNUM, inr } from './parts';
 import { openPassBreakup, Skel, useSkeleton, V, V_SOFT, V_LINE, rs } from '../sheets/money';
 import { PageBar } from './Stub';
+import { FadeUp, CountUp, Pressable3 } from '../ui/motion';
 
 const ICONS = [WalletIc, Zap, Clock];
 const day = (iso: string) => { const d = new Date(iso); return isNaN(+d) ? iso : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) };
@@ -76,10 +77,10 @@ export default function Pass({ id }: { id?: string }) {
           <Txt weight={500} size={12} color={V} style={{ textAlign: 'center', letterSpacing: 3, marginTop: 28, marginBottom: 12 }}>◆  BENEFITS  ◆</Txt>
           <View style={{ marginHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: G.line, paddingHorizontal: 14 }}>
             {p.benefits.map(([a, b], i) => { const I = ICONS[i % 3]; return (
-              <View key={a} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, borderTopWidth: i ? 1 : 0, borderTopColor: G.line, borderStyle: 'dashed' }}>
+              <FadeUp key={a} index={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, borderTopWidth: i ? 1 : 0, borderTopColor: G.line, borderStyle: 'dashed' }}>
                 <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: V_SOFT, alignItems: 'center', justifyContent: 'center' }}><I size={22} color={V} strokeWidth={1.5} /></View>
                 <View style={{ flex: 1 }}><Txt weight={500} size={15}>{a}</Txt><Txt size={13} color={G.sub} style={{ marginTop: 2, lineHeight: 18 }}>{b}</Txt></View>
-              </View>
+              </FadeUp>
             ); })}
           </View>
 
@@ -96,13 +97,13 @@ export default function Pass({ id }: { id?: string }) {
           <Txt weight={500} size={18} style={{ marginHorizontal: 16, marginTop: 28, marginBottom: 12 }}>Frequently asked questions</Txt>
           <View style={{ marginHorizontal: 16, gap: 8 }}>
             {p.faqs.map(([qq, a], i) => (
-              <Pressable key={qq} onPress={() => { haptic(); setFaq(faq === i ? -1 : i) }} style={{ backgroundColor: '#F6F3FD', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14 }}>
+              <Pressable3 key={qq} haptics={false} scaleTo={0.985} onPress={() => { haptic(); setFaq(faq === i ? -1 : i) }} style={{ backgroundColor: '#F6F3FD', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Txt weight={500} size={14} style={{ flex: 1, lineHeight: 20 }}>{qq}</Txt>
                   <View style={{ transform: [{ rotate: faq === i ? '-90deg' : '90deg' }] }}><Chev size={16} color={G.mute} strokeWidth={1.5} /></View>
                 </View>
-                {faq === i ? <Txt size={14} color={G.sub} style={{ marginTop: 8, lineHeight: 20 }}>{a}</Txt> : null}
-              </Pressable>
+                {faq === i ? <FadeUp distance={4} duration={200}><Txt size={14} color={G.sub} style={{ marginTop: 8, lineHeight: 20 }}>{a}</Txt></FadeUp> : null}
+              </Pressable3>
             ))}
           </View>
 
@@ -121,7 +122,7 @@ export default function Pass({ id }: { id?: string }) {
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: G.line, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + ins.bottom, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Pressable accessibilityLabel="Price breakup" onPress={() => openPassBreakup(p.id)} style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Txt size={13} color={G.sub}>Total amount</Txt><View style={{ transform: [{ rotate: '90deg' }] }}><Chev size={14} color={G.sub} strokeWidth={1.5} /></View></View>
-            <Txt weight={600} size={20} style={TNUM}>{rs(q.total)}</Txt>
+            <CountUp to={rs(q.total)} duration={500} style={[TNUM, { fontFamily: 'Poppins_600SemiBold', fontSize: 20, color: G.ink }]} />
           </Pressable>
           {active || done ? <PrimaryBtn label="Pass active" disabled style={{ width: 170 }} /> : <PrimaryBtn label={`Pay ${rs(q.total)}`} busy={busy} onPress={pay} style={{ width: 170 }} />}
         </View>

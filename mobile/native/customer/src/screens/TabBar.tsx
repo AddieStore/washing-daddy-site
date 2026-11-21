@@ -1,10 +1,9 @@
-// Bottom tab bar, ported from the Partner app (washer app/(tabs)/_layout.tsx): white bar with a top hairline and an upward shadow,
-// Home · Washes · [raised round violet "Book" button] · Money · Profile. The selected tab gets a violet-tint pill behind its icon;
-// all cells stay the same width so nothing shifts. The centre button opens "Book a wash": Instant or Schedule.
+// Floating tab bar: a detached white capsule with a soft shadow. Home · Washes · [raised round violet "Book" button] · Money · Profile.
+// The active tab is a violet pill that SLIDES between cells on a spring (icon + label turn white); all cells stay the same width. The centre button opens "Book a wash": Instant or Schedule.
 // Also hosts the one-time splash/location loader overlay (Main renders the bar after the screen).
 import React, { useEffect } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
-import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, useReducedMotion } from 'react-native-reanimated';
+import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, useReducedMotion } from 'react-native-reanimated';
 import { C, useTheme } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Home, Live, Wallet, User, Plus, Zap, Calendar, Chev } from '../ui/icons';
@@ -21,7 +20,7 @@ export const TAB_ITEMS: { tab: Tab; label: string; off: IC; on: IC }[] = [
 ];
 /** tabs the live config keeps (appcfg tabs.* and features.wallet) */
 const shown = () => TAB_ITEMS.filter(x => x.tab === 'home' || (x.tab === 'live' ? tabOn('washes') : x.tab === 'money' ? tabOn('money') : tabOn('profile')));
-const MID = 76;   // gap in the bar under the raised centre button
+const MID = 76, BAR_H = 56, PADX = 8;   // gap in the bar under the raised centre button
 /** Height of the bar without the bottom inset; screens keep their scroll padding >= this + inset. */
 export const TAB_H = TAB_BAR_H;
 
@@ -31,30 +30,37 @@ export const onGridJump = (f: (() => void) | null) => { gridJump = f };
 
 function TabCell({ t, label, Ic, on, liveNow }: { t: Tab; label: string; Ic: IC; on: boolean; liveNow: boolean }) {
   const T = useTheme(), rm = useReducedMotion();
-  const sel = useSharedValue(on ? 1 : 0), press = useSharedValue(1);
-  useEffect(() => { sel.value = rm ? (on ? 1 : 0) : withSpring(on ? 1 : 0, { damping: 15, stiffness: 190, mass: 0.8 }); }, [on, rm]);
-  // Every cell keeps the same width and the same icon-over-label layout whether selected or not, so nothing in the bar shifts
-  // when you switch tabs (the old version widened the chosen cell and flipped it to a side-by-side row, which made the
-  // spacing jump). Selection is only the tinted pill behind the icon plus the label colour.
-  const pill = useAnimatedStyle(() => ({ opacity: sel.value, transform: [{ scaleX: 0.6 + 0.4 * sel.value }] }));
+  const press = useSharedValue(1);
+  // The active pill is ONE shared view in the bar that slides between cells; the cell only recolours its icon + label (white on the pill)
   const sc = useAnimatedStyle(() => ({ transform: [{ scale: press.value }] }));
-  const col = on ? (T.day ? C.violet : '#CDB6FF') : T.card.fg3;
+  const col = on ? '#FFFFFF' : T.card.fg3;
   return (
-    <View style={{ flex: 1, minHeight: 54 }}>
+    <View style={{ flex: 1, height: BAR_H }}>
       <Pressable accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={label} onPress={() => go(t)} hitSlop={{ top: 8, bottom: 8 }}
-        onPressIn={() => { if (!rm) press.value = withSpring(0.92, SPRING.press) }} onPressOut={() => { press.value = rm ? 1 : withSpring(1, SPRING.release) }}
+        onPressIn={() => { if (!rm) press.value = withSpring(0.9, SPRING.press) }} onPressOut={() => { press.value = rm ? 1 : withSpring(1, SPRING.release) }}
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <Reanimated.View style={[s.cellIn, sc]}>
           <View style={s.icWrap}>
-            <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: 16, backgroundColor: T.day ? 'rgba(84,9,218,0.11)' : 'rgba(139,92,246,0.26)' }, pill]} />
-            <Ic size={22} color={col} strokeWidth={on ? 2 : 1.6} />
-            {t === 'live' && liveNow ? <View style={{ position: 'absolute', top: 2, right: 12 }}><Pulse color={C.green} size={5} /></View> : null}
+            <Ic size={21} color={col} strokeWidth={on ? 2 : 1.6} />
+            {t === 'live' && liveNow ? <View style={{ position: 'absolute', top: -2, right: 4 }}><Pulse color={C.green} size={5} /></View> : null}
           </View>
-          <Txt weight={on ? 600 : 500} size={11} numberOfLines={1} color={col} style={{ lineHeight: 14 }}>{label}</Txt>
+          <Txt weight={on ? 600 : 500} size={10.5} numberOfLines={1} color={col} style={{ lineHeight: 13 }}>{label}</Txt>
         </Reanimated.View>
       </Pressable>
     </View>
   );
+}
+
+/** the violet pill behind the active tab: springs to the cell's x (a little overshoot), no pill when the tab is not in the bar */
+function SlidePill({ x, w, show }: { x: number; w: number; show: boolean }) {
+  const rm = useReducedMotion(), px = useSharedValue(x), o = useSharedValue(show ? 1 : 0), first = React.useRef(true);
+  useEffect(() => {
+    if (first.current || rm) { px.value = x; first.current = false } else px.value = withSpring(x, { damping: 18, stiffness: 220, mass: 0.7 });
+    o.value = rm ? (show ? 1 : 0) : withTiming(show ? 1 : 0, { duration: 160 });
+  }, [x, show, rm]);
+  const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateX: px.value }] }));
+  if (!w) return null;
+  return <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 6, width: w, height: BAR_H - 12, borderRadius: (BAR_H - 12) / 2, backgroundColor: C.violet, shadowColor: C.violet, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }, st]} />;
 }
 
 /* "Book a wash" sheet behind the centre button */
@@ -107,15 +113,20 @@ export default function TabBar() {
   try { const a = selectedAddress(); place = a ? addrName(a) + ' · ' + (a.area || '').split(',')[0] : '' } catch (e) {}
   const pb = Math.max(ins.bottom, 0), items = shown(), half = Math.ceil(items.length / 2), LEFT = items.slice(0, half), RIGHT = items.slice(half), fab = feature('instant') || feature('scheduled');
   const cell = (x: (typeof TAB_ITEMS)[number]) => <TabCell key={x.tab} t={x.tab} label={x.label} Ic={x.off} on={x.tab === ui.tab} liveNow={!!liveNow} />;
+  const [bw, setBw] = React.useState(0);
+  const cur = items.findIndex(x => x.tab === ui.tab), cellW = bw ? (bw - PADX * 2 - (fab ? MID : 0)) / Math.max(1, items.length) : 0;
+  const px = (i: number) => PADX + i * cellW + (fab && i >= half ? MID : 0);
   return (
     <>
-      <View pointerEvents="box-none" style={s.outer}>
-        <View style={[s.bar, { backgroundColor: T.tabBg, borderTopColor: T.day ? C.hairViolet : T.page.line, height: TAB_H + pb, paddingBottom: 4 + pb, shadowOpacity: T.day ? 0.07 : 0 }]}>
+      <View pointerEvents="box-none" style={[s.outer, { bottom: pb + 8 }]}>
+        {/* floating capsule: solid surface (no translucency over elevation), soft shadow, detached from the screen edges */}
+        <View onLayout={e => setBw(e.nativeEvent.layout.width)} style={[s.bar, { backgroundColor: T.day ? '#FFFFFF' : T.tabBg, shadowOpacity: T.day ? 0.16 : 0.4, borderColor: T.day ? C.hairViolet : T.page.line }]}>
+          <SlidePill x={px(Math.max(0, cur)) + 4} w={Math.max(0, cellW - 8)} show={cur >= 0 && !!cellW} />
           {LEFT.map(cell)}
           {fab ? <View style={{ width: MID }} /> : null}
           {RIGHT.map(cell)}
         </View>
-        {fab ? <CentreButton bottom={pb + 20} /> : null}
+        {fab ? <CentreButton bottom={BAR_H - 31 + 2} /> : null}
       </View>
       <LocationLoader place={place} />
     </>
@@ -123,13 +134,13 @@ export default function TabBar() {
 }
 
 const s = StyleSheet.create({
-  outer: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center' },
+  outer: { position: 'absolute', left: 16, right: 16, alignSelf: 'center', alignItems: 'center' },
   bar: {
-    width: '100%', maxWidth: 520, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 4, paddingHorizontal: 6,
-    borderTopWidth: 1, shadowColor: '#1A1033', shadowRadius: 12, shadowOffset: { width: 0, height: -3 }, elevation: 10,
+    width: '100%', maxWidth: 420, height: BAR_H, borderRadius: BAR_H / 2, flexDirection: 'row', alignItems: 'center', paddingHorizontal: PADX, borderWidth: 1,
+    shadowColor: '#1A1033', shadowRadius: 22, shadowOffset: { width: 0, height: 8 }, elevation: 10,
   },
-  cellIn: { alignItems: 'center', gap: 3 },
-  icWrap: { width: 56, height: 30, alignItems: 'center', justifyContent: 'center' },
+  cellIn: { alignItems: 'center', gap: 1 },
+  icWrap: { width: 40, height: 24, alignItems: 'center', justifyContent: 'center' },
   fabWrap: { position: 'absolute', alignSelf: 'center', alignItems: 'center' },
   fab: {
     width: 62, height: 62, borderRadius: 31, borderWidth: 4, borderColor: '#fff', backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center',

@@ -66,7 +66,7 @@ export default function Money({ tab }: { tab?: boolean }) {
           </View></FadeUp>
 
           {/* top-up */}
-          {feature('topup') ? <Sec>
+          {feature('topup') ? <FadeUp index={1}><Sec>
             <Txt weight={500} size={17}>Add money</Txt>
             <Txt size={13} color={G.mute} style={{ marginTop: 2 }}>Get {WALLET.cashbackPct}% cashback as rewards on every top-up.</Txt>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
@@ -86,18 +86,18 @@ export default function Money({ tab }: { tab?: boolean }) {
               <Txt size={17} color={G.sub}>₹</Txt>
               <TextInput value={custom} keyboardType="number-pad" placeholder="Enter another amount" placeholderTextColor={G.mute} maxLength={5}
                 onFocus={() => setSel('custom')} onChangeText={t => { setCustom(t.replace(/[^0-9]/g, '')); setSel('custom') }}
-                style={{ flex: 1, marginLeft: 6, fontSize: 16, color: G.ink, height: 52, outlineStyle: 'none' } as any} />
+                style={{ flex: 1, marginLeft: 6, fontSize: 16, color: G.ink, height: 52, outlineStyle: 'none', includeFontPadding: false, textAlignVertical: 'center', paddingVertical: 0 } as any} />
             </View>
             {err ? <Txt size={13} color={C.red} style={{ marginTop: 6 }}>{err}</Txt> : bonus ? <Txt size={13} color={G.pos} style={{ marginTop: 6 }}>You get {rs(bonus)} as rewards.</Txt> : null}
             <PrimaryBtn label={amt ? `Add ${rs(amt)} to wallet` : 'Add to wallet'} busy={busy} disabled={!amt || !!err} onPress={add} style={{ marginTop: 14 }} />
-          </Sec> : null}
+          </Sec></FadeUp> : null}
 
           {/* gift card */}
-          {feature('giftcard') ? <Tap label="Claim a gift card" onPress={openGiftCard} style={card({ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
+          {feature('giftcard') ? <FadeUp index={2}><Tap label="Claim a gift card" onPress={openGiftCard} style={card({ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
             <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: V_SOFT, alignItems: 'center', justifyContent: 'center' }}><Gift size={22} color={V} strokeWidth={1.5} /></View>
             <View style={{ flex: 1 }}><Txt weight={500} size={15}>Claim a gift card</Txt><Txt size={13} color={G.mute} style={{ marginTop: 2 }}>Enter gift card details to claim</Txt></View>
             <Chev size={18} color={G.mute} strokeWidth={1.5} />
-          </Tap> : null}
+          </Tap></FadeUp> : null}
 
           {/* benefits */}
           <View style={{ flexDirection: 'row' }}>
@@ -111,22 +111,22 @@ export default function Money({ tab }: { tab?: boolean }) {
           </View>
 
           {/* transactions */}
-          <Sec>
+          <FadeUp index={3}><Sec>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Txt weight={500} size={17}>Transactions</Txt>
               <Tap label="My refunds" onPress={() => openPage({ k: 'refunds' })} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Receipt size={16} color={V} strokeWidth={1.5} /><Txt weight={500} size={13} color={V}>My refunds</Txt></Tap>
             </View>
             {rows.length === 0 ? <Txt size={14} color={G.mute} style={{ paddingVertical: 24, textAlign: 'center' }}>No transactions yet. Add money to get started.</Txt> : rows.map((l, i) => (
-              <View key={l.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: G.line, marginTop: i ? 0 : 8 }}>
+              <FadeUp key={l.id} index={i} distance={8} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: G.line, marginTop: i ? 0 : 8 }}>
                 <View style={{ flex: 1, paddingRight: 8 }}>
                   <Txt weight={500} size={14} numberOfLines={1}>{l.note || KIND[l.kind]}</Txt>
                   <Txt size={12} color={G.mute} style={{ marginTop: 2 }}>{(l.note && l.note !== KIND[l.kind]) ? KIND[l.kind] + ' · ' : ''}{day(l.at)}{l.expires && l.amt > 0 ? ` · expires ${day(l.expires)}` : ''}</Txt>
                 </View>
                 <Txt weight={500} size={15} color={l.amt >= 0 ? G.pos : G.ink} style={TNUM}>{l.amt >= 0 ? '+' : '−'}{rs(Math.abs(l.amt))}</Txt>
-              </View>
+              </FadeUp>
             ))}
             {!all && w.ledger.length > 6 ? <Tap label="See all" onPress={() => setAll(true)} style={{ alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: G.line }}><Txt weight={500} size={14} color={V}>See all {w.ledger.length} transactions</Txt></Tap> : null}
-          </Sec>
+          </Sec></FadeUp>
 
           {/* how it works */}
           <Sec>

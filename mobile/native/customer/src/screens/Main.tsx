@@ -5,7 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, Easing, BackHandler, AccessibilityInfo, useWindowDimensions, StyleSheet } from 'react-native';
 import Reanimated, { FadeIn, FadeOut, SlideInRight, SlideOutRight, SlideInDown, SlideOutDown, useSharedValue, useAnimatedStyle, withSpring, withTiming, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
-import { FlyHost } from '../ui/motion';
+import { FlyHost, primerGate } from '../ui/motion';
 import { useTheme } from '../theme';
 import { useApp, closePage, Page, Tab, appCfg, feature, tabOn, act } from '../state';
 import { Txt } from '../ui/kit';
@@ -136,7 +136,7 @@ export default function Main() {
     return () => s.remove();
   }, [ui.pages.length]);
   const [primer, setPrimer] = useState(false);
-  useEffect(() => { needsPrimer().then(setPrimer) }, []);
+  useEffect(() => { needsPrimer().then(v => { primerGate.on = v; setPrimer(v) }) }, []);
   const key = tab === 'home' || tab === 'live' ? tab : tab + ':' + ui.tabNonce;
   // Keep Home and Washes mounted once visited: re-mounting the heavy Home screen on every tap of its tab was the lag.
   // Hidden ones use display:none (no layout, no paint, state and scroll position kept). Other tabs mount fresh as before.
@@ -154,7 +154,7 @@ export default function Main() {
       <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#0B0614' }, tabCover.dim]} />
       {ui.pages.map((p, i) => p && <Pushed key={i + ':' + p.k + ('id' in p && p.id ? p.id : '')} p={p} depth={i} cover={coverOf(ui.pages[i + 1]?.k)} />)}
       <FlyHost />
-      {primer ? <Permissions onDone={() => setPrimer(false)} /> : null}
+      {primer ? <Permissions onDone={() => { primerGate.on = false; setPrimer(false) }} /> : null}
     </View>
   );
 }

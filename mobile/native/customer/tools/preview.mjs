@@ -6,11 +6,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const dist = path.join(root, 'dist-web');
-const out = path.join(root, 'dist-preview');
+// PREVIEW_DIR=/some/dir lets parallel workers build without clobbering each other (dist-web + dist-preview go inside it)
+const base = process.env.PREVIEW_DIR || root;
+const dist = path.join(base, 'dist-web');
+const out = path.join(base, 'dist-preview');
 
 if (!process.argv.includes('--skip-export')) {
-  execSync('npx expo export --platform web --output-dir dist-web --clear', {
+  execSync(`npx expo export --platform web --output-dir ${JSON.stringify(dist)}${process.env.PREVIEW_DIR ? '' : ' --clear'}`, {
     cwd: root,
     stdio: 'inherit',
     env: { ...process.env, EXPO_OFFLINE: '1', CI: '1' },

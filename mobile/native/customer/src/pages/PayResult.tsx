@@ -6,7 +6,7 @@ import Reanimated, { type SharedValue, useSharedValue, useAnimatedStyle, withTim
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Copy, Close } from '../ui/icons';
-import { FadeUp } from '../ui/motion';
+import { FadeUp, CountUp } from '../ui/motion';
 import { RiderTrack } from '../ui/RiderTrack';
 import { useApp, act, lastPay, go, openPage, closePage, PayResult as PR } from '../state';
 import { inr } from '../data/dates';
@@ -63,11 +63,11 @@ function Badge({ status }: { status: PR['status'] }) {
 }
 
 const bookRef = (r: PR) => r.bookingId ? (/^[A-Za-z]{1,3}-/.test(r.bookingId) ? r.bookingId : r.bookingId.toUpperCase()) : r.orderId || '';
-const Line = ({ k, v, copy, strong }: { k: string; v: string; copy?: boolean; strong?: boolean }) => (
+const Line = ({ k, v, copy, strong, count }: { k: string; v: string; copy?: boolean; strong?: boolean; count?: boolean }) => (
   <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, minHeight: 32, paddingVertical: 4 }}>
     <Txt size={13} color={G.mute} style={{ width: 96 }}>{k}</Txt>
     <Pressable disabled={!copy} onPress={() => act.copy(v, 'Copied')} style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 6 }}>
-      <Txt weight={strong ? 600 : 500} size={strong ? 16 : 14} style={[TNUM, { textAlign: 'right', flexShrink: 1 }]}>{v}</Txt>
+      {count ? <CountUp to={v} delay={500} style={[TNUM, { fontFamily: 'Poppins_600SemiBold', fontSize: 16, textAlign: 'right', color: G.ink }]} /> : <Txt weight={strong ? 600 : 500} size={strong ? 16 : 14} style={[TNUM, { textAlign: 'right', flexShrink: 1 }]}>{v}</Txt>}
       {copy ? <Copy size={14} color={G.mute} strokeWidth={1.5} /> : null}
     </Pressable>
   </View>
@@ -115,7 +115,7 @@ export default function PayResult() {
             <Txt weight={500} size={13} color={G.mute} style={{ marginBottom: 6 }}>{ok ? 'RECEIPT' : 'DETAILS'}</Txt>
             {id ? <Line k={isBooking ? 'Booking ID' : 'Order ID'} v={id} copy strong /> : null}
             <Line k={isBooking ? 'Booked' : 'For'} v={r.title} />
-            <Line k={ok ? 'Amount paid' : pend ? 'Amount' : 'Amount'} v={inr(r.amount)} strong />
+            <Line k={ok ? 'Amount paid' : pend ? 'Amount' : 'Amount'} v={inr(r.amount)} strong count />
             {how ? <Line k={ok ? 'Paid via' : 'Via'} v={how} /> : null}
             {r.ref ? <Line k="Payment ref" v={r.ref} copy /> : null}
             {r.orderId && r.orderId !== id ? <Line k="Order" v={r.orderId} copy /> : null}

@@ -1,26 +1,34 @@
-/* One-time primer after the first sign-in: why we use location, then the system dialog. Photos and camera are asked on use. */
-import { Platform, View, StyleSheet } from 'react-native';
+/* One-time welcome after the first sign-in: "Setting things up for you…", the notifications primer, then why we use location and the system
+   dialog (location step is skipped when it was already decided). Photos and camera are asked on use. */
+import { useEffect, useState } from 'react';
+import { PermissionsAndroid, Platform, View, StyleSheet } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { C, SP, InkContext, creamInk } from '../theme';
 import { Txt, useInsets, PAD } from '../ui/kit';
-import { Pressable3, FadeUp } from '../ui/motion';
+import { Pressable3, FadeUp, loaderT0 } from '../ui/motion';
+import { SetupScreen, NotifPrimer } from '../ui/welcomeNotif';
 import { GenericArt } from '../art/generic';
 import { BrandBg, Sheet } from '../ui/Brand';
 import { Check } from '../ui/icons';
 
-const KEY = 'wd-perm-primer-v1';
+const KEY = 'wd-perm-primer-v2';
 const INK = '#1A1033', SEC = '#4F4766';
 const seen = () => AsyncStorage.setItem(KEY, '1').catch(() => {});
 
-/** true only once: never shown again after it was answered, and skipped when location is already decided */
+/** true only once: never shown again after it was answered */
 export async function needsPrimer(): Promise<boolean> {
+  try { return !(await AsyncStorage.getItem(KEY)) } catch { return false }
+}
+async function locUndecided() {
+  try { const p = await Location.getForegroundPermissionsAsync(); return !p.granted && p.canAskAgain } catch { return false }
+}
+// no notifications module is bundled: Android 13+ asks through RN itself, elsewhere the tap just moves on
+async function askNotifications() {
   try {
-    if (await AsyncStorage.getItem(KEY)) return false;
-    const p = await Location.getForegroundPermissionsAsync();
-    if (p.granted || !p.canAskAgain) { await seen(); return false }
-    return true;
-  } catch { return false }
+    if (Platform.OS === 'android' && Number(Platform.Version) >= 33) await PermissionsAndroid.request('android.permission.POST_NOTIFICATIONS' as any);
+  } catch {}
 }
 
 const WHY = [
@@ -30,15 +38,35 @@ const WHY = [
 ];
 
 export default function Permissions({ onDone }: { onDone: () => void }) {
-  const ins = useInsets();
+  const [stage, setStage] = useState<'setup' | 'notif' | 'loc'>('setup');
+  const [busy, setBusy] = useState(false);
+  // the spinner screen is the "arriving" beat: it waits for the location loader overlay (which sits above it) to fade, then shows ~1s
+  useEffect(() => {
+    const end = Math.max(Date.now() + 1000, loaderT0 ? loaderT0 + 2700 + 1000 : 0);
+    const t = setTimeout(() => setStage('notif'), end - Date.now());
+    return () => clearTimeout(t);
+  }, []);
   const done = async () => { await seen(); onDone() };
+  const toLoc = async () => { if (await locUndecided()) setStage('loc'); else done() };
+  const allowNotif = async () => { setBusy(true); await askNotifications(); setBusy(false); toLoc() };
+  const wrap = (k: string, el: React.ReactNode) => (
+    <InkContext.Provider value={creamInk}>
+      <Animated.View key={k} entering={FadeIn.duration(320)} style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: C.canvas }]}>{el}</Animated.View>
+    </InkContext.Provider>
+  );
+  if (stage === 'setup') return wrap('setup', <SetupScreen />);
+  if (stage === 'notif') return wrap('notif', <NotifPrimer onAllow={allowNotif} onSkip={toLoc} busy={busy} />);
+  return <LocationPrimer onDone={done} />;
+}
+function LocationPrimer({ onDone: done }: { onDone: () => void }) {
+  const ins = useInsets();
   const allow = async () => {
     try { await Location.requestForegroundPermissionsAsync() } catch {}
     done();
   };
   return (
     <InkContext.Provider value={creamInk}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: C.brandDeep, zIndex: 100, alignItems: 'center' }]}>
+      <Animated.View entering={FadeIn.duration(320)} style={[StyleSheet.absoluteFill, { backgroundColor: C.brandDeep, zIndex: 100, alignItems: 'center' }]}>
         <BrandBg />
         <View style={{ flex: 1, width: '100%', maxWidth: 440 }}>
           <View style={{ flex: 1, paddingHorizontal: PAD + 4, paddingTop: ins.top + SP.xl, justifyContent: 'center' }}>
@@ -72,7 +100,7 @@ export default function Permissions({ onDone }: { onDone: () => void }) {
             </View>
           </Sheet>
         </View>
-      </View>
+      </Animated.View>
     </InkContext.Provider>
   );
 }

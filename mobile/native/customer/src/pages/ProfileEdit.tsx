@@ -1,6 +1,6 @@
 // Edit profile: first name, last name, mobile (read-only, it is the login), email. OWNER: PROFILE worker.
-import React, { useState } from 'react';
-import { View, ScrollView, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, TextInput, Platform, KeyboardAvoidingView, Animated, Easing } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Txt, useInsets } from '../ui/kit';
 import { C } from '../theme';
@@ -8,20 +8,24 @@ import { act, useApp, profile, closePage, toast, fmtPhone } from '../state';
 import { PageBar } from './Stub';
 import { G, PrimaryBtn } from './parts';
 
-/** outlined field whose label floats to the top once focused or filled */
+/** outlined field: label sits vertically centred when empty and unfocused, and glides to the top (12px, pinned) once focused or filled.
+ *  The typed text lives below it (paddingTop 26) so the two never overlap; label, prefix and text share one left edge and one font/line-height. */
+const FF_PAD = 14, FF_FONT = 15, FF_LINE = 22;
 export function FloatField({ label, value, onChange, readOnly, keyboardType, prefix, right, multiline, maxLength, autoCapitalize }: { label: string; value: string; onChange?: (v: string) => void; readOnly?: boolean; keyboardType?: any; prefix?: string; right?: React.ReactNode; multiline?: boolean; maxLength?: number; autoCapitalize?: any }) {
   const [f, setF] = useState(false), up = f || !!value || !!prefix;
+  const t = useRef(new Animated.Value(up ? 1 : 0)).current;
+  useEffect(() => { Animated.timing(t, { toValue: up ? 1 : 0, duration: 140, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: false }).start() }, [up]);
+  const txt = { fontFamily: 'Poppins_400Regular', fontSize: FF_FONT, lineHeight: FF_LINE, paddingTop: 26, paddingBottom: 8, paddingHorizontal: 0, margin: 0, includeFontPadding: false } as const;
   return (
-    <View style={{ minHeight: 56, borderRadius: 10, borderWidth: f ? 1.5 : 1, borderColor: f ? C.violet : 'rgba(23,23,23,0.16)', backgroundColor: readOnly ? G.raised : '#fff', paddingHorizontal: 14, justifyContent: 'center', marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
-      <View style={{ flex: 1, paddingTop: up ? 14 : 0, paddingBottom: up ? 4 : 0 }}>
-        <Txt size={up ? 11 : 15} color={f ? C.violet : G.mute} style={{ position: 'absolute', left: 0, top: up ? 6 : 0, lineHeight: up ? 14 : 24 }} numberOfLines={1}>{label}</Txt>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {prefix ? <Txt size={15} color={G.ink} style={{ marginRight: 8 }}>{prefix}</Txt> : null}
-          <TextInput value={value} editable={!readOnly} onChangeText={onChange} onFocus={() => setF(true)} onBlur={() => setF(false)} keyboardType={keyboardType} maxLength={maxLength} multiline={multiline} autoCapitalize={autoCapitalize}
-            accessibilityLabel={label} style={[{ flex: 1, fontFamily: 'Poppins_400Regular', fontSize: 15, color: readOnly ? G.mute : G.ink, paddingVertical: 0, minHeight: 24 }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]} />
-        </View>
+    <View style={{ minHeight: 64, borderRadius: 10, borderWidth: f ? 1.5 : 1, borderColor: f ? C.violet : 'rgba(23,23,23,0.16)', backgroundColor: readOnly ? G.raised : '#fff', paddingHorizontal: f ? FF_PAD - 0.5 : FF_PAD - 0, marginBottom: 16, flexDirection: 'row', alignItems: 'stretch' }}>
+      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
+        {prefix ? <Text style={[txt, { color: G.ink, marginRight: 8, textAlignVertical: 'top' }]}>{prefix}</Text> : null}
+        <TextInput value={value} editable={!readOnly} onChangeText={onChange} onFocus={() => setF(true)} onBlur={() => setF(false)} keyboardType={keyboardType} maxLength={maxLength} multiline={multiline} autoCapitalize={autoCapitalize}
+          accessibilityLabel={label} style={[txt, { flex: 1, minWidth: 0, color: readOnly ? G.mute : G.ink, textAlignVertical: 'top' }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]} />
       </View>
-      {right}
+      <Animated.Text pointerEvents="none" numberOfLines={1} style={{ position: 'absolute', left: FF_PAD - (f ? 0.5 : 0), right: FF_PAD, includeFontPadding: false, fontFamily: 'Poppins_400Regular', color: f ? C.violet : G.mute,
+        fontSize: t.interpolate({ inputRange: [0, 1], outputRange: [FF_FONT, 12] }), lineHeight: t.interpolate({ inputRange: [0, 1], outputRange: [24, 16] }), top: t.interpolate({ inputRange: [0, 1], outputRange: [19, 10] }) } as any}>{label}</Animated.Text>
+      {right ? <View style={{ justifyContent: 'center', paddingLeft: 8 }}>{right}</View> : null}
     </View>
   );
 }

@@ -4,7 +4,7 @@ import { View, Image, ScrollView, Pressable } from 'react-native';
 import { C } from '../theme';
 import { Txt } from '../ui/kit';
 import { Phone, Pin, Copy, Wallet, Receipt, Help as HelpIc, Chev, Check, Clock } from '../ui/icons';
-import { FadeUp } from '../ui/motion';
+import { FadeUp, CountUp } from '../ui/motion';
 import { feature, useApp, act, jobOf, jobTitle, jobWhen, canRate, addressOf, addrName, addrLine, receiverText, openPage, closePage, toast, UPCOMING, Job } from '../state';
 import { RiderTrack } from '../ui/RiderTrack';
 import { sheets } from '../sheets';
@@ -12,7 +12,7 @@ import { inr } from '../data/dates';
 import { SHOW_RATINGS } from '../data/reference';
 import { PageBar } from './Stub';
 import { G, card, Tap, Photo, PrimaryBtn, TNUM } from './parts';
-import { JobRider, showsRider } from '../ui/JobRider';
+import { JobRider, showsRider, showsCode, StartCode } from '../ui/JobRider';
 import { Stars, STAR_WORDS, durText, washerImg, washerSub, STATUS_TEXT, IcoBox, refundNote, POLICY, openRateSheet, openCancelSheet, openRescheduleSheet, openBookingHelp } from '../sheets/bookings';
 
 const STEPS = ['Booked', 'Washer assigned', 'On the way', 'Wash in progress', 'Completed'];
@@ -69,7 +69,7 @@ const PAY_BANNER: Record<string, { t: string; s: string; bg: string; fg: string 
 const Row = ({ k, v, tone, strike, bold }: { k: string; v: string; tone?: 'pos'; strike?: boolean; bold?: boolean }) => (
   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 28 }}>
     <Txt weight={bold ? 500 : 400} size={bold ? 15 : 14} color={bold ? G.ink : G.sub}>{k}</Txt>
-    <Txt weight={bold ? 500 : 400} size={bold ? 15 : 14} color={tone === 'pos' ? G.pos : strike ? G.mute : G.ink} style={[TNUM, strike ? { textDecorationLine: 'line-through' } : null]}>{v}</Txt>
+    {bold ? <CountUp to={v} duration={600} style={[TNUM, { fontFamily: 'Poppins_500Medium', fontSize: 15, color: G.ink }]} /> : <Txt weight={400} size={14} color={tone === 'pos' ? G.pos : strike ? G.mute : G.ink} style={[TNUM, strike ? { textDecorationLine: 'line-through' } : null]}>{v}</Txt>}
   </View>
 );
 
@@ -116,8 +116,9 @@ export default function Booking({ id }: { id: string }) {
         {PAY_BANNER[j.pay] ? <View style={{ backgroundColor: PAY_BANNER[j.pay].bg, borderRadius: 16, padding: 16 }}><Txt weight={600} size={15} color={PAY_BANNER[j.pay].fg}>{PAY_BANNER[j.pay].t}</Txt><Txt size={13} color={PAY_BANNER[j.pay].fg} style={{ marginTop: 4, lineHeight: 19 }}>{PAY_BANNER[j.pay].s}</Txt>{j.pay !== 'pending' ? <PrimaryBtn outline small label="Chat with us" onPress={() => act.whatsapp(`Hi Washing Daddy, about my booking ${ref}.`)} style={{ marginTop: 12 }} /> : null}</View> : null}
 
         {showsRider(j) ? <FadeUp><JobRider j={j} /></FadeUp> : null}
+        {showsCode(j) ? <FadeUp><StartCode j={j} /></FadeUp> : null}
 
-        <View style={card({ padding: 16 })}>
+        <FadeUp index={2} style={card({ padding: 16 })}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {j.washer ? <Image source={washerImg(j)} resizeMode="cover" accessibilityLabel={`Photo of ${j.washer.name}`} style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: G.raised }} />
               : <View style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: G.raised, alignItems: 'center', justifyContent: 'center' }}><Pin size={22} color={G.mute} strokeWidth={1.5} /></View>}
@@ -137,9 +138,9 @@ export default function Booking({ id }: { id: string }) {
               {canRate(j) && !j.stars ? <PrimaryBtn label="Rate your wash" onPress={() => openPage({ k: 'rate', id: j.id })} style={{ marginTop: 12 }} /> : null}
             </View>
           ) : null}
-        </View>
+        </FadeUp>
 
-        <View style={card({ padding: 16 })}>
+        <FadeUp index={3} style={card({ padding: 16 })}>
           <Txt size={12} color={G.mute}>{`${j.lines.length} service${j.lines.length > 1 ? 's' : ''} · ${durText(j.mins)}`}</Txt>
           <View style={{ gap: 12, marginTop: 12 }}>
             {j.lines.map(l => (
@@ -156,9 +157,9 @@ export default function Booking({ id }: { id: string }) {
               </View>
             ))}
           </View>
-        </View>
+        </FadeUp>
 
-        <View style={card({ padding: 16 })}>
+        <FadeUp index={4} style={card({ padding: 16 })}>
           <Txt weight={500} size={16} style={{ marginBottom: 8 }}>Bill details</Txt>
           <Row k="Item total" v={inr(itemTotal)} />
           {Math.abs(other) >= 0.5 ? <Row k={other > 0 ? 'Fees and GST' : j.coupon ? `Coupon ${j.coupon}` : 'Offers'} v={(other < 0 ? '−' : '') + inr(Math.abs(other))} tone={other < 0 ? 'pos' : undefined} /> : null}
@@ -170,7 +171,7 @@ export default function Booking({ id }: { id: string }) {
           {j.payRef ? <Pressable onPress={() => act.copy(j.payRef!, 'Payment ref copied')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, marginLeft: 36, minHeight: 24 }}><Txt size={12} color={G.mute}>Ref {j.payRef}</Txt><Copy size={13} color={G.mute} strokeWidth={1.5} /></Pressable> : null}
           {saved > 0 && !gone ? <View style={{ marginTop: 12, backgroundColor: 'rgba(22,163,74,0.08)', borderRadius: 10, padding: 12, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <Receipt size={16} color={G.pos} strokeWidth={1.5} /><Txt weight={500} size={13} color={G.pos}>{`You saved ${inr(saved)} on this booking`}</Txt></View> : null}
-        </View>
+        </FadeUp>
 
         {a ? (
           <View style={card({ padding: 16, flexDirection: 'row', gap: 12 })}>
