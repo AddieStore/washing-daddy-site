@@ -11,9 +11,9 @@ import { WCard } from './ProntoBits';
 
 type Tone = 'ok' | 'wait' | 'todo' | 'bad';
 const TONES: Record<Tone, { bg: string; fg: string }> = {
-  ok: { bg: 'rgba(20,192,138,0.18)', fg: '#0b8a62' },
-  wait: { bg: 'rgba(17,17,20,0.07)', fg: '#52525B' },
-  todo: { bg: 'rgba(17,17,20,0.07)', fg: '#52525B' },
+  ok: { bg: 'rgba(22,163,74,0.12)', fg: '#15803d' },
+  wait: { bg: 'rgba(84,9,218,0.08)', fg: '#5409DA' },
+  todo: { bg: 'rgba(84,9,218,0.08)', fg: '#5409DA' },
   bad: { bg: 'rgba(232,56,79,0.14)', fg: '#c0182f' },
 };
 function statusOf(d?: DocItem): { label: string; tone: Tone } {
@@ -32,11 +32,30 @@ export function docsSummary(items: Partial<Record<DocKind, DocItem>> = Docs.item
   return Object.keys(items).length ? { label: t('Adhoora'), tone: 'wait' } : { label: t('Baaki'), tone: 'todo' };
 }
 
+/** Primary button, customer look: 56 high, radius 16, violet with a violet glow; lilac while busy / not ready. `ghost` is the white-card secondary with violet text. */
+export function Cta({ label, onPress, busy, ready = true, icon, arrow, ghost, style }: {
+  label: string; onPress: () => void; busy?: boolean; ready?: boolean; icon?: IconName; arrow?: boolean; ghost?: boolean; style?: object;
+}) {
+  const { c, dark } = useTheme();
+  const off = !!busy || !ready;
+  const fg = ghost ? c.primary : off ? (dark ? c.fg3 : '#6B6483') : '#fff';
+  return (
+    <Pressy onPress={onPress} disabled={busy} accessibilityLabel={label} scaleTo={0.97}
+      style={[{ minHeight: 56, borderRadius: 16, backgroundColor: ghost ? c.card : off ? (dark ? c.tile2 : '#E6E0F5') : c.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
+        ghost ? { borderWidth: 1.5, borderColor: 'rgba(84,9,218,0.18)' } : null,
+        !off && !ghost && { shadowColor: '#5409DA', shadowOpacity: 0.32, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4 }, style]}>
+      {icon && !busy ? <Icon name={icon} size={18} color={fg} /> : null}
+      <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 16, color: fg, textAlign: 'center', flexShrink: 1 }}>{label}</Text>
+      {arrow && !busy ? <Icon name="arrow" size={18} color={fg} /> : null}
+    </Pressy>
+  );
+}
+
 function Thumb({ d }: { d?: DocItem }) {
   const { c } = useTheme();
   return (
-    <View style={{ width: 56, height: 56, borderRadius: 12, overflow: 'hidden', backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center' }}>
-      {!d ? <Icon name={'cam' as IconName} size={22} color={c.fg3} />
+    <View style={{ width: 56, height: 56, borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+      {!d ? <Icon name={'cam' as IconName} size={22} color={c.primary} />
         : d.mime === 'application/pdf' ? <Text style={{ fontSize: 26 }}>📄</Text>
         : <Image source={{ uri: d.data }} style={{ width: 56, height: 56 }} resizeMode="cover" accessibilityIgnoresInvertColors />}
     </View>
@@ -72,15 +91,15 @@ function ChooseSheet({ kind, label, close, onDone }: { kind: DocKind; label: str
       <View style={{ gap: 12 }}>
         {OPTIONS.map(o => (
           <Pressy key={o.source} scaleTo={0.97} disabled={!!busy} accessibilityLabel={t(o.label)} onPress={() => go(o.source)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 16, borderRadius: 16, backgroundColor: c.card, shadowColor: '#1A1033', shadowOpacity: c.shadow ? 0.07 : 0, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: c.shadow ? 3 : 0, borderWidth: c.shadow ? 0 : 1, borderColor: c.line, opacity: busy && busy !== o.source ? 0.5 : 1 }}>
-            <Text style={{ fontSize: 26 }}>{o.emoji}</Text>
-            <Text style={{ flex: 1, fontFamily: F.medium, fontSize: 16, color: c.fg }}>{t(o.label)}</Text>
-            {busy === o.source ? <ActivityIndicator color={brand.violet} /> : null}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, paddingHorizontal: 12, borderRadius: 16, backgroundColor: c.inputBg, opacity: busy && busy !== o.source ? 0.5 : 1 }}>
+            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 24 }}>{o.emoji}</Text></View>
+            <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 16, color: c.fg }}>{t(o.label)}</Text>
+            {busy === o.source ? <ActivityIndicator color={brand.violet} /> : <Icon name="chevron" size={18} color={c.fg3} />}
           </Pressy>
         ))}
       </View>
       {busy ? <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.semi, fontSize: 13, color: c.fg2, textAlign: 'center', marginTop: 12 }}>{t('Bhej rahe hain…')}</Text> : null}
-      <View style={{ alignItems: 'center' }}><LinkButton label={t('Rehne do')} color={c.fg2} onPress={() => { if (!busy) { close(); onDone?.() } }} /></View>
+      <View style={{ alignItems: 'center' }}><LinkButton label={t('Rehne do')} color={c.primary} onPress={() => { if (!busy) { close(); onDone?.() } }} /></View>
     </View>
   );
 }
@@ -102,7 +121,7 @@ export function DocsPanel({ reopen }: { reopen?: () => void }) {
           const locked = d?.status === 'verified';
           const label = t(k.label);
           return (
-            <View key={k.kind} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+            <View key={k.kind} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderTopWidth: i ? 1 : 0, borderTopColor: 'rgba(84,9,218,0.10)' }}>
               <Thumb d={d} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 22, color: c.fg }}>{label}</Text>
@@ -113,13 +132,13 @@ export function DocsPanel({ reopen }: { reopen?: () => void }) {
                   </View>
                   {locked ? <Text accessibilityLabel={t('Verify ho chuka, badal nahi sakte')} style={{ fontSize: 14 }}>🔒</Text> : null}
                 </View>
-                {d?.status === 'rejected' && d.note ? <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: brand.red, marginTop: 4 }}>{d.note}</Text> : null}
+                {d?.status === 'rejected' && d.note ? <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: '#dc2626', marginTop: 4 }}>{d.note}</Text> : null}
               </View>
               {locked ? null : (
                 <Pressy scaleTo={0.95} accessibilityRole="button" accessibilityLabel={(d ? t('Badlo') : t('Upload karo')) + ' ' + label}
                   onPress={() => sheet.open(close => <ChooseSheet kind={k.kind} label={label} close={close} onDone={reopen} />)}
-                  style={{ minHeight: 44, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: d ? c.soft : c.primary }}>
-                  <Text style={{ fontFamily: F.semi, fontSize: 14, color: d ? c.softInk : '#fff' }}>{d ? t('Badlo') : t('Upload karo')}</Text>
+                  style={{ minHeight: 44, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: d ? 'rgba(84,9,218,0.08)' : c.primary }}>
+                  <Text style={{ fontFamily: F.semi, fontSize: 14, color: d ? c.primary : '#fff' }}>{d ? t('Badlo') : t('Upload karo')}</Text>
                 </Pressy>
               )}
             </View>

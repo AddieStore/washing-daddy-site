@@ -14,7 +14,7 @@ export function SheetTitle({ title, sub }: { title: string; sub?: string }) {
   const { c } = useTheme();
   return (
     <View style={{ marginBottom: 16 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 22, lineHeight: 28, color: c.fg }}>{title}</Text>
+      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 20, lineHeight: 28, color: c.fg }}>{title}</Text>
       {sub ? <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: c.fg3, marginTop: 4 }}>{sub}</Text> : null}
     </View>
   );
@@ -42,7 +42,7 @@ function LinkRow({ title, sub, onPress, first }: { title: string; sub?: string; 
 
 function RowsBox({ children }: { children: React.ReactNode }) {
   const { c } = useTheme();
-  return <View style={{ borderRadius: 16, backgroundColor: c.tile2, overflow: 'hidden' }}>{children}</View>;
+  return <View style={{ borderRadius: 16, backgroundColor: c.inputBg, overflow: 'hidden' }}>{children}</View>;
 }
 
 /** The little 🧽 ····· 🚗 strip. */
@@ -140,7 +140,7 @@ function ReferBody({ close }: { close: () => void }) {
   return (
     <View>
       <SheetTitle title={t('Dost ko laao')} sub={t('Dost sign-up pe aapka code bataye aur kaam shuru kare, toh aapko bonus milega.')} />
-      <View style={{ marginTop: 8, padding: 16, borderRadius: 16, backgroundColor: c.soft, alignItems: 'center' }}>
+      <View style={{ marginTop: 8, padding: 20, borderRadius: 16, backgroundColor: c.inputBg, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.primary, alignItems: 'center' }}>
         <Text accessibilityLabel={code} style={{ fontFamily: F.bold, fontSize: 32, lineHeight: 40, letterSpacing: 2.7, color: c.primary }}>{code}</Text>
       </View>
       <View style={{ marginTop: 16, gap: 12 }}>

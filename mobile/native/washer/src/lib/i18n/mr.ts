@@ -1,5 +1,9 @@
 // Marathi mode. Same keys as hi.ts; values are simple, spoken Marathi.
 export const T: Record<string, string> = {
+  "Privacy policy": "प्रायव्हसी पॉलिसी",
+  "Hum aapka data kaise rakhte hain": "आम्ही तुमचा डेटा कसा ठेवतो",
+  "Account delete karwao": "अकाउंट डिलीट करा",
+  "Manager ko email jayegi. 30 din mein account aur data hata denge.": "मॅनेजरला ईमेल जाईल. 30 दिवसांत अकाउंट आणि डेटा काढून टाकू.",
   "Customer ko bata diya: aap raaste mein ho": "ग्राहकाला कळवले: तुम्ही रस्त्यात आहात",
   "Nikal gaya, raaste mein hoon": "निघालो, रस्त्यात आहे",
   "Aap online ho":"तुम्ही ऑनलाइन आहात",

@@ -4,7 +4,12 @@ import React, { useState } from 'react';
 import { Linking, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Button, ChipPicker, Field, F, Icon, LinkButton, Pressy, brand, sheet, ui, useTheme } from '../ui';
-import { WCard, TNUM } from './ProntoBits';
+import { TNUM } from './ProntoBits';
+
+/** Form block on the sheet: no inner card, fields sit straight on the white sheet (customer form look). */
+function WCard({ children, style }: { children?: React.ReactNode; style?: any }) {
+  return <View style={{ marginTop: style?.marginTop ?? 0 }}>{children}</View>;
+}
 import { act, DAY, route } from '../state/store';
 import { PLAN, PLAN_PRICE, normReg, type PlanId } from '../lib/schedule';
 import { SHARE } from '../lib/data';
@@ -125,7 +130,7 @@ function AddCarForm({ close }: { close: () => void }) {
   const last = step === STEPS.length - 1;
   return (
     <View style={{ paddingBottom: 8 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 22, lineHeight: 28, color: c.fg }}>{t('Naya customer jodo')}</Text>
+      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 20, lineHeight: 28, color: c.fg }}>{t('Naya customer jodo')}</Text>
       <View style={{ flexDirection: 'row', gap: 4, marginTop: 12 }} accessibilityLabel={`${t('Step')} ${step + 1}/${STEPS.length}`}>
         {STEPS.map((_, i) => (
           <View key={i} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: i <= step ? c.primary : c.soft }} />
@@ -260,12 +265,12 @@ function AddCarForm({ close }: { close: () => void }) {
   );
 }
 
-const lbl = (mt = 16) => ({ marginTop: mt, marginBottom: 8 });
+const lbl = (mt = 16) => ({ marginTop: mt, marginBottom: 6 });
 
 /** Field label: sentence case, 13 / 600 (the old small-caps eyebrow is gone). */
 function Eyebrow({ children, style }: { children?: React.ReactNode; style?: any }) {
   const { c } = useTheme();
-  return <Text style={[{ fontFamily: F.semi, fontSize: 13, lineHeight: 18, color: c.fg2 }, style]}>{children}</Text>;
+  return <Text style={[{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: c.fg3 }, style]}>{children}</Text>;
 }
 
 function Row({ k, v }: { k: string; v: string }) {

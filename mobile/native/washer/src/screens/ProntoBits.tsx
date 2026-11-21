@@ -3,33 +3,18 @@
 // RN-only stack: Svg gradient instead of expo-linear-gradient, Animated instead of reanimated. Colours come from theme tokens.
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, ViewStyle, StyleProp } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient as SvgGradient, Path, Rect, Stop } from 'react-native-svg';
+import { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { F, Icon, IconName, Pressy, brand, cardBox, cardShadow, useReducedMotion, useTheme } from '../ui';
+import { F, Icon, IconName, IconTile, Pressy, VioletHero, brand, cardBox, cardShadow, useReducedMotion, useTheme } from '../ui';
 
 const ND = Platform.OS !== 'web';
 export const TNUM = { fontVariant: ['tabular-nums'] as const };
 export const VIOLET_TINT = 'rgba(84,9,218,0.08)';
 
-/* ---------- violet gradient header block (customer Profile / Money hero) ---------- */
+/* ---------- violet gradient header block (customer Profile / Money hero), now the shared VioletHero ---------- */
 export function VHeader({ children, pad = 56, style, top }: { children?: React.ReactNode; pad?: number; style?: StyleProp<ViewStyle>; top?: number }) {
   const insets = useSafeAreaInsets();
-  const [box, setBox] = useState({ w: 390, h: 220 });
-  return (
-    <View onLayout={e => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
-      style={[{ overflow: 'hidden', backgroundColor: '#5409DA', paddingTop: top ?? insets.top + 16, paddingHorizontal: 16, paddingBottom: pad }, style]}>
-      <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Defs>
-          <SvgGradient id="vh" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor="#6A1BF2" /><Stop offset="0.5" stopColor="#5409DA" /><Stop offset="1" stopColor="#36058F" />
-          </SvgGradient>
-        </Defs>
-        <Rect x={0} y={0} width={box.w} height={box.h} fill="url(#vh)" />
-        <Circle cx={box.w - 10} cy={20} r={100} fill="#fff" fillOpacity={0.07} />
-      </Svg>
-      {children}
-    </View>
-  );
+  return <VioletHero pad={pad} top={top ?? insets.top + 16} style={style}>{children}</VioletHero>;
 }
 
 /** White pill that holds a control (the duty switch) so it reads on the violet header. */
@@ -93,17 +78,8 @@ export function PSection({ title, note, style }: { title: string; note?: string;
   );
 }
 
-/** 36px tile, radius 12, violet 8% tint, violet icon (or a tone). */
-export function IconTile({ icon, tone, size = 36, children }: { icon?: IconName; tone?: string; size?: number; children?: React.ReactNode }) {
-  const { c, dark } = useTheme();
-  const col = tone ?? c.primary;
-  const bg = tone ? tint(tone, dark ? 0.2 : 0.12) : dark ? 'rgba(122,66,240,0.2)' : VIOLET_TINT;
-  return (
-    <View style={{ width: size, height: size, borderRadius: size / 3 > 12 ? 12 : Math.round(size / 3), backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
-      {children ?? (icon ? <Icon name={icon} size={Math.round(size * 0.52)} color={col} /> : null)}
-    </View>
-  );
-}
+/** 36px tile, radius 12, violet 8% tint, violet icon (shared with ui/kit). */
+export { IconTile };
 
 export function tint(hex: string, a: number) {
   const m = /^#([0-9a-f]{6})$/i.exec(hex);

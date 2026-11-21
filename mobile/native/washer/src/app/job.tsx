@@ -43,9 +43,9 @@ function HChip({ icon, children }: { icon?: React.ComponentProps<typeof Icon>['n
 function SecHead({ title, meta }: { title: string; meta?: string }) {
   const { c } = useTheme();
   return (
-    <View style={{ marginTop: 24, marginBottom: 12 }}>
+    <View style={{ marginTop: 28, marginBottom: 12, alignItems: 'center' }}>
       <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 18, lineHeight: 24, color: c.fg }}>{title}</Text>
-      {meta ? <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3 }}>{meta}</Text> : null}
+      {meta ? <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3, textAlign: 'center' }}>{meta}</Text> : null}
     </View>
   );
 }
@@ -108,7 +108,7 @@ function Stage({ reg, st }: { reg: string; st: string }) {
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={2} style={{ fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: '#fff' }}>{c0.model}</Text>
+            <Text numberOfLines={2} style={{ fontFamily: F.bold, fontSize: 28, lineHeight: 34, letterSpacing: -0.4, color: '#fff' }}>{c0.model}</Text>
             <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.8)' }}>{c0.customer}</Text>
           </View>
           {washing && wd?.started_at ? <WashTimer startedAt={wd.started_at} interiorFrom={wd.interior_from} extraMinutes={wd.extra_minutes || 0} /> : null}
@@ -144,6 +144,33 @@ function PartnerStrip() {
       cars={(w.lifetime + Route.counts().done).toLocaleString('en-IN')}
       carsLabel={t('gaadi dhoyi')}
     />
+  );
+}
+
+/* ---------- step tracker (customer JobRider look): icons in tinted circles joined by a line, the active step violet ---------- */
+function StepTrack({ steps }: { steps: StepItem[] }) {
+  const { c, dark } = useTheme();
+  const n = steps.length || 1;
+  const reached = steps.reduce((m, s, i) => (s.state !== 'none' ? i : m), -1);
+  return (
+    <View style={{ flexDirection: 'row', paddingVertical: 8 }}>
+      <View pointerEvents="none" style={{ position: 'absolute', left: `${50 / n}%`, right: `${50 / n}%`, top: 31, height: 3, borderRadius: 2, backgroundColor: 'rgba(84,9,218,0.12)' }}>
+        <View style={{ height: 3, borderRadius: 2, backgroundColor: c.primary, width: `${n > 1 ? Math.max(0, reached) / (n - 1) * 100 : 0}%` }} />
+      </View>
+      {steps.map((s, i) => {
+        const ok = s.state === 'ok', now = s.state === 'now';
+        return (
+          <View key={i} style={{ flex: 1, alignItems: 'center', gap: 6 }} accessible accessibilityLabel={`${s.label}${s.time ? ' ' + s.time : ''}`}>
+            <View style={{ width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: now ? c.primary : ok ? 'rgba(84,9,218,0.16)' : dark ? 'rgba(139,92,246,0.2)' : '#EFEAFB',
+              ...(now ? { shadowColor: c.primary, shadowOpacity: 0.32, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 } : null) }}>
+              <Icon name={ok ? 'check' : s.icon} size={20} color={now ? '#fff' : ok || now ? c.primary : c.fg3} />
+            </View>
+            <Text numberOfLines={1} style={{ fontFamily: now ? F.semi : F.medium, fontSize: 12, lineHeight: 16, color: now ? c.primary : ok ? c.fg : c.fg3 }}>{s.label}</Text>
+            {s.time ? <Text style={{ fontFamily: F.body, fontSize: 10, lineHeight: 12, color: c.fg3, marginTop: -4 }}>{s.time}</Text> : null}
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -322,7 +349,7 @@ export default function JobScreen() {
         <Stage reg={reg} st={st} />
         <PartnerStrip />
         <View style={{ paddingHorizontal: 16 }}>
-          <DashCard style={{ marginTop: 12, paddingVertical: 8, paddingHorizontal: 8 }}><Stepper steps={steps} /></DashCard>
+          <DashCard style={{ marginTop: 12, paddingVertical: 8, paddingHorizontal: 8 }}><StepTrack steps={steps} /></DashCard>
 
           {reqs.length ? (
             <View style={{ marginTop: 18, gap: 10 }}>

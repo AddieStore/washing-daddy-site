@@ -1,15 +1,17 @@
 // Paisa tab: month total with target, the week, small tiles, what each car pays and the day's history.
 import React, { useCallback, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, Defs, LinearGradient as SvgGradient, Rect, Stop } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import { DutyToggle, F, Footer, PullToRefresh, Ring, brand, useTheme } from '../../ui';
+import { DutyToggle, F, Footer, PullToRefresh, Ring, brand, cardShadow, useTheme } from '../../ui';
 import { BarChart, Tile } from '../../ui';
 import { DAY, Extra, Hist, MODE, Money, RT, Route, S, Sync, W, act, carBy, ensureDay, route, useStore } from '../../state/store';
 import { addDaysStr, dayLong, dayNarrow, rupee, t12 } from '../../lib/time';
 import { isHindi, t } from '../../lib/i18n';
 import type { Car } from '../../lib/data';
 import { LiveSyncChip } from '../../screens/JobParts';
-import { CountUp, FadeUp, OnHeaderPill, PEmpty, PRow, PSection, RowsCard, TNUM, VHeader, WCard } from '../../screens/ProntoBits';
+import { CountUp, FadeUp, PEmpty, PRow, PSection, RowsCard, TNUM, WCard } from '../../screens/ProntoBits';
 import { RewardsCard } from '../../screens/RewardsCards';
 
 /** Right-hand amount column of a list row: big figure (own earning only) and a small grey line. */
@@ -41,7 +43,28 @@ function PayRow({ car, last }: { car: Car; last?: boolean }) {
   );
 }
 
+/** Violet gradient balance card (customer WD Money hero): diagonal gradient drawn with Svg, faint circle top-right. */
+function GradCard({ children }: { children?: React.ReactNode }) {
+  const [box, setBox] = useState({ w: 358, h: 180 });
+  return (
+    <View onLayout={e => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+      style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#5409DA', padding: 20, shadowColor: '#5409DA', shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 6 }}>
+      <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Defs>
+          <SvgGradient id="gc" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor="#6A1BF2" /><Stop offset="0.5" stopColor="#5409DA" /><Stop offset="1" stopColor="#36058F" />
+          </SvgGradient>
+        </Defs>
+        <Rect x={0} y={0} width={box.w} height={box.h} fill="url(#gc)" />
+        <Circle cx={box.w - 6} cy={10} r={96} fill="#fff" fillOpacity={0.07} />
+      </Svg>
+      {children}
+    </View>
+  );
+}
+
 export default function Paisa() {
+  const insets = useSafeAreaInsets();
   useStore();
   const { c } = useTheme();
   ensureDay();
@@ -86,28 +109,34 @@ export default function Paisa() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
-        <VHeader pad={72}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 40 }}>
-            <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 22, lineHeight: 28, color: '#fff' }}>{t('Hisaab')}</Text>
+        <View style={{ paddingTop: insets.top + 16, paddingHorizontal: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44 }}>
+            <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 28, lineHeight: 36, color: c.fg }}>{t('Hisaab')}</Text>
             <LiveSyncChip />
           </View>
-          <View style={{ marginTop: 8 }}><OnHeaderPill><DutyToggle /></OnHeaderPill></View>
-          <FadeUp index={0} style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 24 }}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.8)' }}>{dayLong(DAY, hi)}</Text>
-              <CountUp to={Math.round(month)} fmt={rupee} style={{ fontFamily: F.black, fontSize: 38, lineHeight: 46, letterSpacing: -0.5, color: '#fff', marginTop: 4 }} />
-              <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)' }}>
-                {target ? `${t('Poora mahina chale to')} ${rupee(target)}` : t('Is mahine ab tak')}
-              </Text>
-              <Text style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.82)', marginTop: 4 }}>
-                {t('Aaj')} {rupee(Money.today())}{exToday ? t(` · ${exToday} extra kaam`) : ''}{S.day?.startedAt ? t(` · shuru ${t12(S.day.startedAt)}`) : ''}
-              </Text>
-            </View>
-            <Ring size={84} stroke={9} fraction={target ? month / target : 0} value={cn.done} label={`/${cn.total} ${t('gaadi')}`} color="#FFD166" track="rgba(255,255,255,0.22)" ink="#fff" labelColor="rgba(255,255,255,0.75)" />
+          <View style={[{ alignSelf: 'flex-start', backgroundColor: c.card, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 2, marginTop: 8 }, cardShadow(c)]}><DutyToggle /></View>
+          <FadeUp index={0} style={{ marginTop: 16 }}>
+            <GradCard>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)' }}>{dayLong(DAY, hi)}</Text>
+                  <CountUp to={Math.round(month)} fmt={rupee} style={{ fontFamily: F.bold, fontSize: 38, lineHeight: 46, letterSpacing: -0.5, color: '#fff', marginTop: 2 }} />
+                  <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)' }}>
+                    {target ? `${t('Poora mahina chale to')} ${rupee(target)}` : t('Is mahine ab tak')}
+                  </Text>
+                </View>
+                <Ring size={84} stroke={9} fraction={target ? month / target : 0} value={cn.done} label={`/${cn.total} ${t('gaadi')}`} color="#FFD166" track="rgba(255,255,255,0.22)" ink="#fff" labelColor="rgba(255,255,255,0.75)" />
+              </View>
+              <View style={{ alignSelf: 'flex-start', marginTop: 14, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 }}>
+                <Text style={[{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: '#fff' }, { fontVariant: ['tabular-nums'] }]}>
+                  {t('Aaj')} {rupee(Money.today())}{exToday ? t(` · ${exToday} extra kaam`) : ''}{S.day?.startedAt ? t(` · shuru ${t12(S.day.startedAt)}`) : ''}
+                </Text>
+              </View>
+            </GradCard>
           </FadeUp>
-        </VHeader>
+        </View>
 
-        <View style={{ paddingHorizontal: 16, marginTop: -36 }}>
+        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
           <FadeUp index={1}><RewardsCard /></FadeUp>
 
           <PSection title={t('Is hafte')} note={MODE === 'demo' ? t('Demo data') : t('Gaadi roz')} />

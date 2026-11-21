@@ -44,6 +44,12 @@ const config: ExpoConfig = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    // added by libraries but not used by the app; kept out so the Play review has nothing to question
+    blockedPermissions: [
+      'android.permission.ACCESS_BACKGROUND_LOCATION', 'android.permission.RECORD_AUDIO', 'android.permission.SYSTEM_ALERT_WINDOW',
+      'android.permission.FOREGROUND_SERVICE_LOCATION', 'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK',
+      'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE', 'android.permission.DUMP',
+    ],
     permissions: ['CAMERA', 'ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'VIBRATE', 'POST_NOTIFICATIONS', 'SCHEDULE_EXACT_ALARM'],
     ...(hasAndroidFirebase ? { googleServicesFile: androidGoogleServices } : {}),
   },
@@ -80,7 +86,8 @@ const config: ExpoConfig = {
         dark: { image: './assets/splash-icon.png', backgroundColor: '#5409DA' },
       },
     ],
-    'expo-audio',
+    // playback only: no microphone and no background-playback foreground service (Play asks for declarations for both)
+    ['expo-audio', { recordAudioAndroid: false, enableBackgroundPlayback: false, enableBackgroundRecording: false }],
     // the spoken wash-stage alerts: the sound files are made by tools/prep-notif-sounds.sh; only the ones that exist are bundled
     ['expo-notifications', { color: '#5409DA', sounds: notifSounds }],
     [
@@ -88,8 +95,10 @@ const config: ExpoConfig = {
       {
         locationWhenInUsePermission:
           'WD Partner uses your location while the app is open so customers can see you on your way to their car.',
-        // onboarding asks for "Allow all the time" on Android (adds ACCESS_BACKGROUND_LOCATION); the tracking itself is not built yet
-        isAndroidBackgroundLocationEnabled: true,
+        // location is used only while the app is open (no background tracking is built), so no ACCESS_BACKGROUND_LOCATION
+        // and no location foreground service: Play would need a declaration and a video for either
+        isAndroidBackgroundLocationEnabled: false,
+        isAndroidForegroundServiceEnabled: false,
       },
     ],
     [

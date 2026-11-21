@@ -2,10 +2,11 @@
 import React, { useRef } from 'react';
 import { Image, Linking, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import Constants from 'expo-constants';
 import {
   DemoNote, DutyToggle, F, Footer, Icon, PillButton, PullToRefresh, Segmented, SyncDot, TrustRow, VerifiedBadge, brand, useTheme,
 } from '../../ui';
-import { FadeUp, IconTile, OnHeaderPill, PRow, PSection, RowsCard, TNUM, TileBox, VHeader, WCard, tint } from '../../screens/ProntoBits';
+import { FadeUp, IconTile, OnHeaderPill, PRow, RowsCard, TNUM, TileBox, VHeader, WCard, tint } from '../../screens/ProntoBits';
 import { DOC_KINDS, Docs, Kit, REAL, Route, S, act, me, myPhoto, syncState, useStore } from '../../state/store';
 import { openPhotoChooser } from '../../screens/PortraitPhoto';
 import { fmtPhone } from '../../lib/data';
@@ -30,7 +31,7 @@ function ProfileHead() {
       </View>
       <FadeUp index={0} style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 16 }}>
         <View style={{ width: 80, height: 80 }}>
-          <View style={{ width: 80, height: 80, borderRadius: 40, borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)', backgroundColor: '#EDE6FF', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: 80, height: 80, borderRadius: 40, borderWidth: 3, borderColor: 'rgba(255,255,255,0.85)', backgroundColor: '#EDE6FF', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
             {src
               ? <Image source={src} accessibilityLabel={w.name} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
               : <Text style={{ fontFamily: F.black, fontSize: 32, color: brand.violet }}>{w.name[0]}</Text>}
@@ -40,7 +41,7 @@ function ProfileHead() {
           </View>
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={2} style={{ fontFamily: F.bold, fontSize: 24, lineHeight: 32, color: '#fff' }}>{w.name}</Text>
+          <Text numberOfLines={2} style={{ fontFamily: F.bold, fontSize: 26, lineHeight: 34, color: '#fff' }}>{w.name}</Text>
           <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)' }}>{t('Washing Daddy washer')} · {w.areas}</Text>
           <Pressable onPress={openPhotoChooser} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('Profile photo badlo')} style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
             <Text style={{ fontFamily: F.semi, fontSize: 14, color: '#FFD166' }}>{t('Profile photo badlo')}</Text>
@@ -123,30 +124,43 @@ export default function Profile() {
         <FadeUp index={3}>
           <RowsCard>
             <PRow icon="gift" title={t('Attendance aur bonus')} sub={t('Early bird, poora mahina aur no complaint, ₹3,000 tak')} onPress={openRewards} />
-            <PRow icon="note" title={t('Customer feedback')} sub={t('Customer ki complaint aur unka haal')} onPress={openComplaints} last />
+            <PRow icon="note" title={t('Customer feedback')} sub={t('Customer ki complaint aur unka haal')} onPress={openComplaints} />
+            <PRow icon="user" title={t('Dost ko laao')} sub={t('Apna code share karo, bonus pao')} onPress={openReferSheet} last />
           </RowsCard>
         </FadeUp>
-        <PSection title={t('Settings')} style={{ marginTop: 12, marginBottom: 0 }} />
         <FadeUp index={4}>
           <RowsCard>
             <PRow icon="tabRound" title={t('Apna round set karo')} sub={t('Gaadiyan slot mein daalo aur round lock karo')} onPress={() => router.push('/round-setup')} />
             <PRow icon="help" tone={brand.red} title={t('Madad / SOS')} sub={t('Paisa, customer ya accident ki problem')} onPress={openHelpSheet} />
-            <PRow icon="user" title={t('Dost ko laao')} sub={t('Apna code share karo, bonus pao')} onPress={openReferSheet} />
             <PRow icon="globe" title={t('Bhasha')} sub={t('App ki bhasha chuno')} onPress={openLangSheet}
               right={<Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3 }}>{langLabel(S.lang)}</Text>} />
-            <PRow icon="sun" title={t('Screen')} sub={t('Dhoop mein "Din" saaf dikhta hai')}>
+            <PRow icon="sun" title={t('Screen')} sub={t('Dhoop mein "Din" saaf dikhta hai')} last={Platform.OS !== 'android'}>
               <Segmented options={[{ value: 'light' as const, label: t('Din') }, { value: 'dark' as const, label: t('Raat') }, { value: 'auto' as const, label: t('Auto') }]} value={S.theme} onChange={v => act.setTheme(v)} />
             </PRow>
             {Platform.OS === 'android' ? (
-              <PRow icon="sun" title={t('Awaaz alerts pakke chalein')} sub={t('Battery saver mein App ko "No restrictions" do, tab band hone par bhi awaaz aayegi')}
+              <PRow icon="sun" title={t('Awaaz alerts pakke chalein')} sub={t('Battery saver mein App ko "No restrictions" do, tab band hone par bhi awaaz aayegi')} last
                 onPress={() => { Linking.sendIntent('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS').catch(() => Linking.openSettings().catch(() => {})) }} />
             ) : null}
+          </RowsCard>
+        </FadeUp>
+        <FadeUp index={5}>
+          <RowsCard>
             <PRow leading={<View style={{ width: 24, alignItems: 'center' }}><SyncDot state={dot} /></View>} title={t('Customer app se sync')} sub={t(label)} onPress={openSyncSheet} />
             <PRow icon="reset" title={t('Aaj ka round reset')} sub={t('Sirf is phone se. Test ke liye.')}
-              onPress={() => openResetSheet(() => { try { router.navigate('/' as any) } catch { /* stay */ } })} />
+              onPress={() => openResetSheet(() => { try { router.navigate('/' as any) } catch { /* stay */ } })} last />
+          </RowsCard>
+        </FadeUp>
+        <FadeUp index={6}>
+          <RowsCard>
+            <PRow icon="shield" title={t('Privacy policy')} sub={t('Hum aapka data kaise rakhte hain')} onPress={() => { Linking.openURL('https://washingdaddy.com/privacy.html').catch(() => {}) }} />
+            <PRow icon="doc" title={t('Account delete karwao')} sub={t('Manager ko email jayegi. 30 din mein account aur data hata denge.')}
+              onPress={() => { Linking.openURL('mailto:Business@washingdaddy.com?subject=' + encodeURIComponent('WD Partner: delete my account +91 ' + w.phone) + '&body=' + encodeURIComponent('Please delete my WD Partner account and data. Phone: +91 ' + w.phone)).catch(() => Linking.openURL('https://washingdaddy.com/privacy.html#deletion-of-account-and-personal-data').catch(() => {})) }} />
             <PRow icon="logout" danger title={t('Log out')} sub={'+91 ' + fmtPhone(w.phone)} onPress={openLogoutSheet} last />
           </RowsCard>
         </FadeUp>
+        <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, textAlign: 'center', marginTop: 4 }}>
+          {'Washing Daddy Partner · v' + (Constants.expoConfig?.version ?? '1.0.0')}
+        </Text>
         {!REAL ? <DemoNote>{t('Washing Daddy Washer · test version. OTP 1234.')}</DemoNote> : null}
       </View>
       <Footer bottomPad={120} />

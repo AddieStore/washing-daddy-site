@@ -2,32 +2,44 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
-import { useTheme } from './theme';
+import { F, useTheme } from './theme';
 
 export function Sheet({
   visible,
   onClose,
   children,
+  title,
 }: {
   visible: boolean;
   onClose: () => void;
   children?: React.ReactNode;
+  /** optional heading drawn under the handle (20/600) */
+  title?: string;
 }) {
   const { c, dark } = useTheme();
   const insets = React.useContext(SafeAreaInsetsContext);
   const { height } = useWindowDimensions();
   const [mounted, setMounted] = useState(visible);
   const t = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  // While the keyboard is up the sheet already sits above it, so the home-indicator inset must not be added on top (no overshoot).
+  const [kb, setKb] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKb(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKb(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -45,11 +57,11 @@ export function Sheet({
 
   if (!mounted) return null;
   const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [height, 0] });
-  const bottomPad = 24 + (insets?.bottom ?? 0);
+  const bottomPad = 24 + (kb ? 0 : insets?.bottom ?? 0);
 
   return (
     <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.fill}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.fill}>
         <Animated.View style={[s.scrim, { opacity: t }]}>
           <Pressable style={s.fill} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
         </Animated.View>
@@ -66,10 +78,12 @@ export function Sheet({
           >
             <View style={[s.grab, { backgroundColor: c.fg3, opacity: 0.4 }]} />
             <ScrollView
+              bounces={false}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomPad }}
             >
+              {title ? <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 20, lineHeight: 28, color: c.fg, marginBottom: 12 }}>{title}</Text> : null}
               {children}
             </ScrollView>
           </Animated.View>

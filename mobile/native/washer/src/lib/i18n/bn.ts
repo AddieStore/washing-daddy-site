@@ -1,5 +1,9 @@
 // Bengali mode (বাংলা). Keys are the Hinglish text the app is written in.
 export const T: Record<string, string> = {
+  "Privacy policy": "প্রাইভেসি পলিসি",
+  "Hum aapka data kaise rakhte hain": "আমরা আপনার ডেটা কীভাবে রাখি",
+  "Account delete karwao": "অ্যাকাউন্ট ডিলিট করান",
+  "Manager ko email jayegi. 30 din mein account aur data hata denge.": "ম্যানেজারকে ইমেল যাবে। 30 দিনের মধ্যে অ্যাকাউন্ট ও ডেটা মুছে দেব।",
   "Customer ko bata diya: aap raaste mein ho": "কাস্টমারকে জানানো হয়েছে: আপনি রওনা দিয়েছেন",
   "Nikal gaya, raaste mein hoon": "রওনা দিয়েছি, রাস্তায় আছি",
   "Aap online ho":"আপনি অনলাইনে আছেন",
