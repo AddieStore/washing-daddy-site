@@ -10,7 +10,7 @@
  * OPS.demo()            sample data in memory, a booking arrives every ~40 s, washers move. Nothing is saved.
  * Views:  job(id), jobs({kind:'instant'|'scheduled'|'all', stage, q}), washer(phone), washers(), suggest(jobId),
  *         monthly(), dues(days), payments(), kpis(), byRound(roundId)
- * Writes (Promises): assign(jobId, phone, {etaMin}), unassign(jobId), stage(jobId, 'on_the_way'|'doing'|'done', {etaMin}),
+ * Writes (Promises): assign(jobId, phone, {etaMin}) (also makes the start code), unassign(jobId), ensureCode(jobId), stage(jobId, 'on_the_way'|'doing'|'done', {etaMin}),
  *         cancel(jobId, why), setEta(jobId, min), addWasher({name, phone, area, photo}), updateWasher(phone, {name, area}),
  *         setPhoto(phone, dataURL), setWasherStatus(phone, 'approved'|'blocked'), setRound(phone, roundId),
  *         customerStatus(phone, 'active'|'new')
@@ -49,7 +49,7 @@ function fmtTime(iso) { const t = ms(iso); if (!isFinite(t)) return ''; const d 
 const FRESH_MS = 3 * 60e3;
 
 /* ---------------- state ---------------- */
-const S = { jobs: {}, washers: {}, photos: {}, locs: {}, washes: {}, customers: {}, payorders: {}, plans: {}, loaded: {}, online: false, demo: false };
+const S = { jobs: {}, codes: {}, washers: {}, photos: {}, locs: {}, washes: {}, customers: {}, payorders: {}, plans: {}, loaded: {}, online: false, demo: false };
 const subs = new Set(); let tick = null;
 function emit() { if (tick) return; tick = setTimeout(() => { tick = null; subs.forEach(f => { try { f() } catch (e) { console.error(e) } }) }, 30) }
 const on = f => { subs.add(f); return () => subs.delete(f) };
@@ -66,6 +66,7 @@ async function start() {
   const since = isoIST(Date.now() - 45 * 864e5);   // bookings and payments of the last 45 days
   live('ondemand', db.collection('ondemand').where('created_at', '>=', since), 'jobs');
   live('washers', db.collection('washers'));
+  live('jobcodes', db.collection('jobcodes'), 'codes');
   live('washerphotos', db.collection('washerphotos'), 'photos');
   live('locations', db.collection('locations'), 'locs');
   live('customers', db.collection('customers'));
@@ -111,6 +112,7 @@ function jobView(id) {
     created: d.created_at || '', eta: d.eta || '', washerPhone: wph, washerId: d.washer_id || '',
     washerName: d.washer_name || (wph && S.washers[wph].name) || d.washer_id || '',
     washerLoc: isFinite(num(d.washer_lat, NaN)) ? { lat: num(d.washer_lat), lng: num(d.washer_lng), at: d.washer_loc_at } : null,
+    code: (S.codes[id] && S.codes[id].code) || '',
     late: stage === 'unassigned' && mode === 'instant' && Date.now() - ms(d.created_at) > 5 * 60e3,
   };
 }
@@ -201,7 +203,7 @@ function kpis() {
 /* ---------------- writes ---------------- */
 async function write(path, patch, create) {
   patch = { ...patch, updated_at: isoIST() };
-  if (S.demo) { const [col, id] = path.split('/'); const key = { ondemand: 'jobs', washerphotos: 'photos', locations: 'locs' }[col] || col; S[key][id] = create ? patch : { ...(S[key][id] || {}), ...patch }; emit(); return }
+  if (S.demo) { const [col, id] = path.split('/'); const key = { ondemand: 'jobs', washerphotos: 'photos', locations: 'locs', jobcodes: 'codes' }[col] || col; S[key][id] = create ? patch : { ...(S[key][id] || {}), ...patch }; emit(); return }
   const ref = db.doc(path);
   return create ? ref.set(patch) : ref.update(patch);
 }
@@ -215,7 +217,17 @@ async function assign(jobId, phone, o = {}) {
   const p = { washer_id: w.route_id, washer_name: w.name || '', washer_phone: phone, washer_photo: v.photo || '', assigned_at: isoIST(), assigned_by: 'admin',
     status: ['on_the_way', 'doing'].includes(j.raw.status) ? j.raw.status : 'new' };
   if (j.mode === 'instant') p.eta = isoIST(Date.now() + etaMin * 60e3);
+  await ensureCode(jobId);
   return write('ondemand/' + jobId, p);
+}
+// The customer's 4-digit start code (jobcodes/{bookingId}): the washer types it at the car to start the job; the rules
+// check it. Usually the customer app makes it; the desk makes one on assign if the customer hasn't opened the app yet.
+function newCode() { const a = new Uint32Array(1); crypto.getRandomValues(a); return String(a[0] % 10000).padStart(4, '0') }
+async function ensureCode(jobId) {
+  if (S.codes[jobId] && S.codes[jobId].code) return S.codes[jobId].code;
+  const j = need(jobId), code = newCode();
+  await write('jobcodes/' + jobId, { code, phone: j.customer.phone, created_at: isoIST() }, true);
+  return code;
 }
 async function unassign(jobId) {
   const j = need(jobId);
@@ -316,6 +328,7 @@ function demo() {
   J('B7Q2S2', { mode: 'scheduled', date: addDays(d, 1), slot: '09:30', service: 'Deep clean', total: 1299, price: 0, paid: false, pay_via: 'Pay on arrival', car: 'Mahindra XUV700', reg: 'DL 1C ZZ 9090', phone: '+919811006677', customer_id: '+919811006677', flat: '19', area: 'Paschim Puri', ...at(.008, -.012), status: 'scheduled', washer_id: 'chotte', washer_name: 'Chotte', created_at: T(600) });
   J('B7Q2S3', { mode: 'scheduled', date: addDays(d, 2), slot: '08:00', service: 'Foam wash', total: 399, price: 399, car: 'Hyundai i20', reg: 'DL 5C KK 3030', phone: '+919811002211', customer_id: '+919811002211', flat: 'E-9', area: 'Meera Bagh', ...at(-.008, .013), status: 'scheduled', created_at: T(90) });
   J('B7Q2C9', { service: 'Foam wash', total: 399, car: 'Swift', reg: 'DL 7C XY 1111', phone: '+919811008800', customer_id: '+919811008800', area: 'GH-9 Paschim Vihar', status: 'cancelled', cancelled_at: T(300), created_at: T(320) });
+  S.codes = {}; Object.keys(S.jobs).forEach(id => { S.codes[id] = { code: newCode(), phone: S.jobs[id].customer_id } });
   const till = n => addDays(d, n);
   S.customers = {
     '+919811440001': { name: 'Mr. Arora', area: 'GH-9 Paschim Vihar', status: 'active', cars: [{ id: 'c0', make: 'Mahindra', name: 'Scorpio N', plate: 'DL 4C AB 2731', plan: 'pro', start: till(-27), till: till(3), washer: 'Chotte' }], created_at: '2026-08-02' },
@@ -337,7 +350,7 @@ function demo() {
   S.payorders.WDW1 = { kind: 'wallet_topup', phone: '+919811440002', name: 'Neha Kapoor', status: 'paid', amount: 500, paid_amount: 500, created_at: T(400), paid_at: T(399), gateway: 'razorpay', paid_gateway: 'razorpay', pay_via: 'UPI' };
   S.payorders.WDP1 = { kind: 'pass', phone: '+919811440004', name: 'Sandeep', status: 'paid', amount: 1499, paid_amount: 1499, created_at: T(1500), paid_at: T(1499), gateway: 'cashfree', paid_gateway: 'cashfree', pay_via: 'Card' };
   S.payorders.WDB9 = { kind: 'booking', phone: '+919811005500', status: 'failed', amount: 399, created_at: T(35), gateway: 'razorpay', lines: [{ name: 'Foam wash', q: 1 }] };
-  ['jobs', 'washers', 'photos', 'locs', 'customers', 'payorders', 'plans', 'washes'].forEach(k => { S.loaded[k] = true });
+  ['jobs', 'codes', 'washers', 'photos', 'locs', 'customers', 'payorders', 'plans', 'washes'].forEach(k => { S.loaded[k] = true });
   emit();
   // the washers move; the one on the way closes in on his customer
   demoT.push(setInterval(() => {
@@ -353,6 +366,6 @@ function demo() {
 }
 
 window.OPS = { S, on, start, stop, demo, job: jobView, jobs, washer: washerView, washers, suggest, monthly, dues, payments, kpis, byRound: washerByRound,
-  assign, unassign, stage, cancel, setEta, addWasher, updateWasher, setPhoto, setWasherStatus, setRound, customerStatus,
+  assign, unassign, ensureCode, stage, cancel, setEta, addWasher, updateWasher, setPhoto, setWasherStatus, setRound, customerStatus,
   photoFromFile, km, ago, fmtTime, rs, nice, today, isoIST, ms, travelMin, STAGE_LABEL, FRESH_MS };
 })();

@@ -228,6 +228,7 @@ function jobSummary(j) {
     <dt>Car</dt><dd>${esc(j.car) || '-'}</dd><dt>Address</dt><dd>${esc(j.address) || '-'}</dd><dt>When</dt><dd>${esc(jobWhen(j))}</dd>
     <dt>Amount</dt><dd>${OPS.rs(j.amount)} ${payPill(j)}</dd><dt>Paid via</dt><dd>${esc(j.payVia)}</dd>
     <dt>Customer</dt><dd>${esc(nm)}${c.name ? `<br><small>${esc(nice(c.phone))}</small>` : ''}</dd>
+    <dt>Start code</dt><dd>${j.code ? `<b style="font-size:18px;letter-spacing:.2em;font-variant-numeric:tabular-nums">${esc(j.code)}</b>${j.raw.start_code ? ' <span class="pill green">Used</span>' : ''}<br><small>The customer gives it to the washer at the car</small>` : '<small>Made when you assign a washer</small>'}</dd>
     ${j.washerName ? `<dt>Washer</dt><dd>${esc(j.washerName)}${j.eta && j.open ? ` <span class="pill violet">${esc(etaText(j) || 'ETA ' + OPS.fmtTime(j.eta))}</span>` : ''}</dd>` : ''}
     </dl><div class="btns">${contactBtns(c.phone, '', nm)}${maps ? `<a class="btn sm ghost" href="${maps}" target="_blank" rel="noopener">${ic('ext', 16)}Open in Google Maps</a>` : ''}</div></div>`;
 }
