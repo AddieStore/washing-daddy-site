@@ -296,19 +296,8 @@ let loaderShown = false;
 /** when the location loader mounted (ms epoch, 0 = not yet); the welcome flow waits for it to fade before its own spinner screen */
 export let loaderT0 = 0;
 export const loaderPending = () => !loaderShown;
-export function Splash({ children, still }: { children?: ReactNode; still?: boolean }) {
-  const rm = useReducedMotion(), a = useSharedValue(rm || still ? 1 : 0), t = useSharedValue(rm || still ? 1 : 0);
-  useEffect(() => { if (rm || still) return; a.value = withTiming(1, { duration: 520, easing: R_EASE }); t.value = withDelay(260, withTiming(1, { duration: 520, easing: R_EASE })); }, []);
-  const w = useAnimatedStyle(() => ({ opacity: a.value, transform: [{ scale: 0.94 + 0.06 * a.value }] }));
-  const g = useAnimatedStyle(() => ({ opacity: t.value, transform: [{ translateY: (1 - t.value) * 6 }] }));
-  return (
-    <View style={{ flex: 1, backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center' }}>
-      <Reanimated.Text style={[{ fontFamily: F.b600, fontSize: 34, letterSpacing: 0.4, color: '#fff' }, w]}>Washing Daddy</Reanimated.Text>
-      <Reanimated.Text style={[{ fontFamily: F.body, fontSize: 13, color: 'rgba(255,255,255,.75)', marginTop: 6 }, g]}>Car wash at your parking spot</Reanimated.Text>
-      {children}
-    </View>
-  );
-}
+import { Splash, LoaderMap } from './splash';
+export { Splash };
 function PinSvg({ size = 40 }: { size?: number }) {
   return (
     <Svg width={size} height={size * 1.25} viewBox="0 0 32 40">
@@ -335,18 +324,7 @@ export function LocationLoader({ place }: { place?: string }) {
   const rs = ring.interpolate({ inputRange: [0, 1], outputRange: [0.4, 2.6] }), ro = ring.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] });
   return (
     <Animated.View pointerEvents="auto" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 900, elevation: 900, opacity: o, backgroundColor: C.violet }}>
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: x, backgroundColor: '#F4F2FA', alignItems: 'center', justifyContent: 'center' }]}>
-        {/* faint street grid */}
-        {[0.18, 0.36, 0.62, 0.8].map(p => <View key={'h' + p} style={{ position: 'absolute', left: 0, right: 0, top: `${p * 100}%`, height: 10, backgroundColor: '#fff' }} />)}
-        {[0.12, 0.4, 0.58, 0.86].map(p => <View key={'v' + p} style={{ position: 'absolute', top: 0, bottom: 0, left: `${p * 100}%`, width: 10, backgroundColor: '#fff' }} />)}
-        <View style={{ width: 120, height: 120, alignItems: 'center', justifyContent: 'center' }}>
-          <Animated.View style={{ position: 'absolute', width: 60, height: 60, borderRadius: 30, backgroundColor: C.violet, opacity: ro, transform: [{ scale: rs }] }} />
-          <View style={{ marginTop: -14 }}><PinSvg /></View>
-        </View>
-        <View style={{ marginTop: 20, backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: C.hair }}>
-          <Text style={{ fontFamily: F.b500, fontSize: 14, color: C.ink }}>{stage < 2 ? 'Fetching location…' : place || 'Location found'}</Text>
-        </View>
-      </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: x }]}><LoaderMap stage={stage} place={place} /></Animated.View>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: wm }]}><Splash /></Animated.View>
     </Animated.View>
   );

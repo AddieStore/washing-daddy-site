@@ -7,7 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Field, Txt, useInsets, PAD } from '../ui/kit';
 import { Pressable3, FadeUp, Splash } from '../ui/motion';
 import { BrandBg, BrandLogo, Sheet } from '../ui/Brand';
-import { WelcomeCollage, Cta, PhoneField, OtpBox } from '../ui/welcome';
+import { LoginStory } from '../ui/loginStory';
+import { Cta, PhoneField, OtpBox } from '../ui/welcome';
 import { Back, Check, Zap, Calendar } from '../ui/icons';
 import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp, legalPages, onAutoSignIn } from '../state';
 import { openLegalSheet } from '../pages/LegalDoc';
@@ -323,6 +324,7 @@ export default function Auth() {
 
   /* ---------- the violet top: hero on the phone step, a compact header (back, progress, big title) on the rest ---------- */
   const goBack = () => { setErr(''); if (step === 'plan') setStep('car'); else if (step === 'car') setStep('choose'); else if (step === 'choose') setStep('about'); else setStep('phone') };
+  const storyH = Math.max(140, Math.min(200, Math.round(win.height * 0.24)));
   const total = mode === 'instant' ? 3 : 4, nOf = (step === 'about' ? 1 : step === 'choose' ? 2 : step === 'car' ? 3 : 4);
   const T1 = ({ children }: { children: React.ReactNode }) => <Txt weight={700} size={30} color="#fff" style={{ lineHeight: 38 }}>{children}</Txt>;
   const T2 = ({ children }: { children: React.ReactNode }) => <Txt size={15} color="rgba(255,255,255,0.86)" style={{ lineHeight: 22, marginTop: SP.s }}>{children}</Txt>;
@@ -337,9 +339,8 @@ export default function Auth() {
             <Txt weight={600} size={14} color="#fff">Skip</Txt>
           </Pressable>
         </View>
-        <Txt weight={700} size={32} color="#fff" style={{ lineHeight: 40, marginTop: SP.l }}>Your car, washed{'\n'}<Txt weight={700} size={32} color={C.saffron}>every morning.</Txt></Txt>
-        <Txt size={15} color="rgba(255,255,255,0.86)" style={{ lineHeight: 22, marginTop: SP.s, maxWidth: 330 }}>A washer comes to where it's parked. Pressure wash only, no pocha.</Txt>
       </FadeUp>
+      <View style={{ marginTop: SP.m }}><LoginStory W={W} H={storyH} /></View>
     </View>
   );
   else top = (
@@ -354,7 +355,7 @@ export default function Auth() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 2 }}>
             <Txt weight={600} size={17} color="#fff" style={NUM}>+91 {fmtPhone(phone)}</Txt>
             <Link label="Change" color={C.saffron} onPress={() => { setStep('phone'); setErr('') }} />
-          </View></>
+          </View><View style={{ marginTop: SP.l, marginHorizontal: -(PAD + 4) }}><LoginStory W={W} H={Math.round(storyH * 0.8)} /></View></>
           : step === 'about' ? <><T1>What should we call you?</T1><T2>Your name helps your washer say hello</T2></>
           : step === 'choose' ? <><T1>How do you want your car washed?</T1><T2>You can change this any time</T2></>
           : step === 'car' ? <><T1>Tell us about your car</T1><T2>{mode === 'monthly' ? "And where it sleeps, so we can start tomorrow morning" : 'And where to find it when you book a wash'}</T2></>
@@ -367,12 +368,6 @@ export default function Auth() {
     <InkContext.Provider value={creamInk}>
       <View style={{ flex: 1, backgroundColor: C.brandDeep }}>
         <BrandBg />
-        {step === 'phone' ? (
-          <Reanimated.View key="collage" pointerEvents="none" entering={FadeIn.duration(420)} exiting={FadeOut.duration(260)} style={StyleSheet.absoluteFill}>
-            <WelcomeCollage intro={intro0} />
-            <LinearGradient pointerEvents="none" colors={['rgba(58,5,153,0.9)', 'rgba(70,8,184,0.62)', 'rgba(84,9,218,0.2)', 'rgba(84,9,218,0.04)']} locations={[0, 0.26, 0.5, 1]} style={StyleSheet.absoluteFill} />
-          </Reanimated.View>
-        ) : null}
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: kb }}>
             <View style={{ width: W, flexGrow: 1 }}>

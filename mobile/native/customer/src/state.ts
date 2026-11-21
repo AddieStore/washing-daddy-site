@@ -638,7 +638,8 @@ export function bill(o: { mode?: CartMode; when?: When; coupon?: string | null; 
   rows.push({ k: 'convenience', label: 'Convenience fee', amt: convenience, strike: convenience ? undefined : FEES.convenienceFee, tone: convenience ? undefined : 'pos' });
   if (visitFee) rows.push({ k: 'visit', label: 'Visit charge', amt: visitFee });
   rows.push({ k: 'gst', label: `GST (${FEES.gstPct}%)`, amt: gst, tone: 'mute' });
-  rows.push({ k: 'total', label: 'Total', amt: total });
+  rows.push({ k: 'total', label: rc ? 'Total per visit' : 'Total', amt: total });
+  if (rc) rows.push({ k: 'total', label: `Per month (${rc.perMonth} visits)`, amt: r2(total * rc.perMonth) });
   if (walletUse) rows.push({ k: 'wallet', label: WALLET.name, amt: -walletUse, tone: 'pos' });
   rows.push({ k: 'topay', label: 'To pay', amt: toPay });
   return { mode, count, mins, mrpTotal: mrp, itemTotal: sub, discount, recurOff, passCover, coupon, couponError, surcharge, convenience, visitFee, taxable, gst, total, walletUse, toPay, saved, rows,
