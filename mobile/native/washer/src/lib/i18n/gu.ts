@@ -1,5 +1,9 @@
 // Gujarati mode. Same keys as hi.ts (the Hinglish text the app is written in), values in Gujarati.
 export const T: Record<string, string> = {
+  "Privacy policy": "પ્રાઇવસી પૉલિસી",
+  "Hum aapka data kaise rakhte hain": "અમે તમારો ડેટા કેવી રીતે રાખીએ છીએ",
+  "Account delete karwao": "એકાઉન્ટ ડિલીટ કરાવો",
+  "Manager ko email jayegi. 30 din mein account aur data hata denge.": "મેનેજરને ઈમેલ જશે. 30 દિવસમાં એકાઉન્ટ અને ડેટા હટાવી દઈશું.",
   "Customer ko bata diya: aap raaste mein ho": "ગ્રાહકને જણાવ્યું: તમે રસ્તામાં છો",
   "Nikal gaya, raaste mein hoon": "નીકળી ગયો, રસ્તામાં છું",
   "Aap online ho":"તમે ઓનલાઇન છો",

@@ -152,6 +152,9 @@ export default function Profile() {
         </FadeUp>
         <FadeUp index={6}>
           <RowsCard>
+            <PRow icon="shield" title={t('Privacy policy')} sub={t('Hum aapka data kaise rakhte hain')} onPress={() => { Linking.openURL('https://washingdaddy.com/privacy.html').catch(() => {}) }} />
+            <PRow icon="doc" title={t('Account delete karwao')} sub={t('Manager ko email jayegi. 30 din mein account aur data hata denge.')}
+              onPress={() => { Linking.openURL('mailto:Business@washingdaddy.com?subject=' + encodeURIComponent('WD Partner: delete my account +91 ' + w.phone) + '&body=' + encodeURIComponent('Please delete my WD Partner account and data. Phone: +91 ' + w.phone)).catch(() => Linking.openURL('https://washingdaddy.com/privacy.html#deletion-of-account-and-personal-data').catch(() => {})) }} />
             <PRow icon="logout" danger title={t('Log out')} sub={'+91 ' + fmtPhone(w.phone)} onPress={openLogoutSheet} last />
           </RowsCard>
         </FadeUp>

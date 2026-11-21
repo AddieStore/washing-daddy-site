@@ -1,5 +1,9 @@
 // Telugu mode. Keys are the Hinglish text the app is written in (same keys as hi.ts).
 export const T: Record<string, string> = {
+  "Privacy policy": "ప్రైవసీ పాలసీ",
+  "Hum aapka data kaise rakhte hain": "మీ డేటాను ఎలా ఉంచుతాము",
+  "Account delete karwao": "అకౌంట్ డిలీట్ చేయించండి",
+  "Manager ko email jayegi. 30 din mein account aur data hata denge.": "మేనేజర్‌కు ఈమెయిల్ వెళ్తుంది. 30 రోజుల్లో అకౌంట్, డేటా తొలగిస్తాం.",
   "Customer ko bata diya: aap raaste mein ho": "కస్టమర్‌కు చెప్పాము: మీరు దారిలో ఉన్నారు",
   "Nikal gaya, raaste mein hoon": "బయలుదేరాను, దారిలో ఉన్నాను",
   "Aap online ho": "మీరు ఆన్‌లైన్‌లో ఉన్నారు",

@@ -1,5 +1,9 @@
 // Tamil mode. Keys are the Hinglish text the app is written in; values are Tamil.
 export const T: Record<string, string> = {
+  "Privacy policy": "தனியுரிமைக் கொள்கை",
+  "Hum aapka data kaise rakhte hain": "உங்கள் தரவை எப்படி வைத்திருக்கிறோம்",
+  "Account delete karwao": "கணக்கை நீக்கச் சொல்லுங்கள்",
+  "Manager ko email jayegi. 30 din mein account aur data hata denge.": "மேனேஜருக்கு மின்னஞ்சல் போகும். 30 நாட்களில் கணக்கும் தரவும் நீக்கப்படும்.",
   "Customer ko bata diya: aap raaste mein ho": "வாடிக்கையாளருக்கு தெரிவிக்கப்பட்டது: நீங்கள் வழியில் உள்ளீர்கள்",
   "Nikal gaya, raaste mein hoon": "புறப்பட்டேன், வழியில் இருக்கிறேன்",
   "Aap online ho":"நீங்கள் ஆன்லைனில் இருக்கிறீர்கள்",
