@@ -32,6 +32,7 @@ import { openAddressPicker } from '../sheets/address';
 import { openPassPromo } from '../sheets/money';
 import { MiniMap, EtaChip, OfferCarousel, Offer } from '../ui/home';
 import { HeroRide } from '../ui/heroRide';
+import { VettedSection } from '../ui/trust';
 
 // label -> accessibilityLabel, press scale 0.98
 const Pressable3 = ({ label, ...p }: React.ComponentProps<typeof P3> & { label?: string }) => <P3 scaleTo={0.96} accessibilityRole="button" accessibilityLabel={label} {...p} />;
@@ -471,7 +472,7 @@ function Badge({ label, value }: { label: string; value: string }) {
 function Trust({ W }: { W: number }) {
   const stats = !!(TRUST.cars || TRUST.rating), h = appCfg().home;
   if (!section('trust')) return null;
-  return (
+  return (<>
     <View style={{ marginTop: 32, alignItems: 'center' }}>
       <Txt weight={700} size={20} color={L.ink} style={{ textAlign: 'center', lineHeight: 26, width: 280 }}>{h.trustTitle}</Txt>
       {stats ? (
@@ -483,7 +484,8 @@ function Trust({ W }: { W: number }) {
         h.trustSub ? <Txt size={13} color={L.mut} style={{ marginTop: 8, textAlign: 'center', width: 260, lineHeight: 18 }}>{h.trustSub}</Txt> : null
       )}
     </View>
-  );
+    <VettedSection />
+  </>);
 }
 
 /* ---------- floating "washer assigned" mini card (only when the cart is empty) ---------- */
@@ -499,15 +501,17 @@ function Assigned() {
   const w = h.washer;
   const title = live || fin ? (fin ? `${w} washed your ${c.name}` : h.big) : up ? `${w} is assigned to your booking` : `${w} is assigned to your wash`;
   const subTxt = live ? chipText(c, d) : fin ? h.big + ' · WD Wash' : up ? `${up.slot} · ${up.type}` : d.notStarted ? h.big : `Today, ${ampm(d.eta) || '6:30 am'} · WD Wash`;
+  const openProfile = () => openPage({ k: 'washer', id: d.washer?.id || undefined, name: w });
   return (
     <FadeUp index={2} style={{ marginHorizontal: SIDE, marginTop: 16 }}><Pressable3 label={title} onPress={() => go('live')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, paddingRight: 12, borderRadius: 18, backgroundColor: '#fff', ...shadow }}>
-      <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#F2ECFF', alignItems: 'center', justifyContent: 'center' }}><Txt weight={700} size={18} color={L.accent}>{(w || 'W').trim().charAt(0).toUpperCase()}</Txt></View>
+      <Pressable3 label={`View ${w}'s profile`} onPress={openProfile} style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#F2ECFF', alignItems: 'center', justifyContent: 'center' }}><Txt weight={700} size={18} color={L.accent}>{(w || 'W').trim().charAt(0).toUpperCase()}</Txt></Pressable3>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Txt weight={600} size={14} color={L.ink} numberOfLines={1} style={{ lineHeight: 20 }}>{title}</Txt>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {live ? <Pulse color={L.pos} size={8} /> : null}
-          <Txt size={13} color={L.sec} numberOfLines={1} style={{ flex: 1, lineHeight: 18 }}>{subTxt}</Txt>
+          <Txt size={13} color={L.sec} numberOfLines={1} style={{ flexShrink: 1, lineHeight: 18 }}>{subTxt}</Txt>
         </View>
+        <Pressable3 label="View profile" onPress={openProfile} style={{ alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center' }}><Txt weight={600} size={12} color={L.accent}>View profile</Txt></Pressable3>
       </View>
       <Chev size={18} color={L.mut} strokeWidth={1.5} />
     </Pressable3></FadeUp>

@@ -49,7 +49,7 @@ function fmtTime(iso) { const t = ms(iso); if (!isFinite(t)) return ''; const d 
 const FRESH_MS = 3 * 60e3;
 
 /* ---------------- state ---------------- */
-const S = { jobs: {}, codes: {}, washers: {}, photos: {}, locs: {}, washes: {}, customers: {}, payorders: {}, plans: {}, loaded: {}, online: false, demo: false };
+const S = { jobs: {}, codes: {}, washers: {}, photos: {}, locs: {}, washes: {}, customers: {}, payorders: {}, plans: {}, pub: {}, loaded: {}, online: false, demo: false };
 const subs = new Set(); let tick = null;
 function emit() { if (tick) return; tick = setTimeout(() => { tick = null; subs.forEach(f => { try { f() } catch (e) { console.error(e) } }) }, 30) }
 const on = f => { subs.add(f); return () => subs.delete(f) };
@@ -70,6 +70,7 @@ async function start() {
   live('washerphotos', db.collection('washerphotos'), 'photos');
   live('locations', db.collection('locations'), 'locs');
   live('customers', db.collection('customers'));
+  unsubs.push(db.collection('washer_public').onSnapshot(sn => { S.pub = snapDocs(sn); S.loaded.pub = true; emit() }, e => console.warn('ops washer_public', e)));
   live('payorders', db.collection('payorders').where('created_at', '>=', since), 'payorders');
   unsubs.push(db.collection('catalog').onSnapshot(sn => { const o = {}; sn.docs.forEach(d => { const v = d.data(); if (v && v.kind === 'plan') o[d.id] = v }); S.plans = o; S.loaded.plans = true; emit() }, err('catalog')));
   // the monthly round: today's wash docs; re-listen when the day turns
@@ -203,9 +204,10 @@ function kpis() {
 /* ---------------- writes ---------------- */
 async function write(path, patch, create) {
   patch = { ...patch, updated_at: isoIST() };
-  if (S.demo) { const [col, id] = path.split('/'); const key = { ondemand: 'jobs', washerphotos: 'photos', locations: 'locs', jobcodes: 'codes' }[col] || col; S[key][id] = create ? patch : { ...(S[key][id] || {}), ...patch }; emit(); return }
+  if (S.demo && create === 'merge') create = false;
+  if (S.demo) { const [col, id] = path.split('/'); const key = { ondemand: 'jobs', washerphotos: 'photos', locations: 'locs', jobcodes: 'codes', washer_public: 'pub' }[col] || col; S[key][id] = create ? patch : { ...(S[key][id] || {}), ...patch }; emit(); return }
   const ref = db.doc(path);
-  return create ? ref.set(patch) : ref.update(patch);
+  return create === 'merge' ? ref.set(patch, { merge: true }) : create ? ref.set(patch) : ref.update(patch);
 }
 function need(id) { const j = jobView(id); if (!j) throw new Error('That booking is gone.'); return j }
 async function assign(jobId, phone, o = {}) {
@@ -214,8 +216,10 @@ async function assign(jobId, phone, o = {}) {
   if (!j.open) throw new Error('This booking is already ' + j.stageLabel.toLowerCase() + '.');
   const v = washerView(phone), k = isFinite(j.lat) && v.loc ? km({ lat: j.lat, lng: j.lng }, v.loc) : NaN;
   const etaMin = num(o.etaMin, travelMin(k));
-  const p = { washer_id: w.route_id, washer_name: w.name || '', washer_phone: phone, washer_photo: v.photo || '', assigned_at: isoIST(), assigned_by: 'admin',
+  const pp = S.pub[w.route_id], pt = pubTotals(pp);
+  const p = { washer_id: w.route_id, washer_name: w.name || '', washer_phone: (pp && /^\+91[6-9]\d{9}$/.test(String(pp.phone || '')) ? pp.phone : '') || phone, washer_photo: v.photo || '', assigned_at: isoIST(), assigned_by: 'admin',
     status: ['on_the_way', 'doing'].includes(j.raw.status) ? j.raw.status : 'new' };
+  if (pp) { p.washer_rating = pt.rating; p.washer_jobs = pt.jobs }   // the customer app shows these two on the booking
   if (j.mode === 'instant') p.eta = isoIST(Date.now() + etaMin * 60e3);
   await ensureCode(jobId);
   return write('ondemand/' + jobId, p);
@@ -228,6 +232,57 @@ async function ensureCode(jobId) {
   const j = need(jobId), code = newCode();
   await write('jobcodes/' + jobId, { code, phone: j.customer.phone, created_at: isoIST() }, true);
   return code;
+}
+/* ---- public profile: washer_public/{route_id}, what customers see in the app ---- */
+const OWNER_PHONE = '7701808924';
+const r1 = n => Math.round(n * 10) / 10;
+// jobs = before the app + done in the app; rating = weighted average of the old average and the app ratings
+function pubTotals(p) {
+  p = p || {};
+  const jb = Math.max(0, Math.round(num(p.jobs_base))), ja = Math.max(0, Math.round(num(p.jobs_app)));
+  const cb = Math.max(0, Math.round(num(p.rating_count_base))), ca = Math.max(0, Math.round(num(p.rating_count_app)));
+  const sum = num(p.rating_base) * cb + num(p.rating_sum_app), n = cb + ca;
+  return { jobs: jb + ja, rating: n ? r1(sum / n) : 0, ratings: n };
+}
+async function savePublic(phone, o) {
+  const w = S.washers[phone]; if (!w || !w.route_id) throw new Error('Give this washer a round id first.');
+  const own = digits(o.phone);
+  if (!/^[6-9]\d{9}$/.test(own)) throw new Error("Enter the washer's own 10-digit mobile number.");
+  if (own === OWNER_PHONE) throw new Error("That is the owner's number. Enter the washer's own number.");
+  const jobs = num(o.jobs_base, NaN), rb = num(o.rating_base, NaN), rc = num(o.rating_count_base, NaN);
+  if (!(jobs >= 0) || jobs !== Math.floor(jobs)) throw new Error('Jobs done so far: a whole number, 0 or more.');
+  if (!(rc >= 0) || rc !== Math.floor(rc)) throw new Error('Ratings count: a whole number, 0 or more.');
+  if (rc > 0 && !(rb >= 1 && rb <= 5)) throw new Error('Average rating must be between 1.0 and 5.0.');
+  const photo = String(o.photo || '').trim();
+  if (photo && !/^(https:\/\/|data:image\/)/i.test(photo)) throw new Error('Photo link must start with https://');
+  const since = String(o.since || '').trim();
+  if (since && !/^\d{4}-\d{2}-\d{2}$/.test(since)) throw new Error('Since date: pick a date.');
+  const v = o.verified || {}, id = w.route_id, cur = S.pub[id] || {};
+  const patch = { id, name: w.name || '', phone: '+91' + own, photo, area: String(o.area || '').trim().slice(0, 80), since,
+    languages: String(Array.isArray(o.languages) ? o.languages.join(',') : o.languages || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 8),
+    jobs_base: jobs, rating_base: rc > 0 ? r1(rb) : 0, rating_count_base: rc,
+    verified: { id: !!v.id, police: !!v.police, training: !!v.training, assessment: !!v.assessment } };
+  const t = pubTotals({ ...cur, ...patch });
+  patch.jobs = t.jobs; patch.rating = t.rating;   // read-only copies for the app; jobs_app / rating_*_app are not written here
+  return write('washer_public/' + id, patch, 'merge');
+}
+// counts what customers rated in the app (bookingratings/{bookingId}) for this washer's finished bookings (ondemand.washer_id = round id)
+async function recountApp(phone) {
+  const w = S.washers[phone]; if (!w || !w.route_id) throw new Error('Give this washer a round id first.');
+  const id = w.route_id; let done = {}, stars = {};
+  if (S.demo) {
+    Object.entries(S.jobs).forEach(([k, d]) => { if (d.washer_id === id && d.status === 'done') done[k] = 1 });
+    Object.entries(S.ratings || {}).forEach(([k, r]) => { stars[k] = num(r.stars) });
+  } else {
+    (await db.collection('ondemand').where('washer_id', '==', id).get()).docs.forEach(d => { if ((d.data() || {}).status === 'done') done[d.id] = 1 });
+    (await db.collection('bookingratings').get()).docs.forEach(d => { const r = d.data() || {}; stars[r.booking_id || d.id] = num(r.stars) });
+  }
+  let sum = 0, cnt = 0;
+  Object.keys(done).forEach(k => { const s = stars[k]; if (s >= 1 && s <= 5) { sum += s; cnt++ } });
+  const jobs = Object.keys(done).length, cur = S.pub[id] || {};
+  const t = pubTotals({ ...cur, jobs_app: jobs, rating_sum_app: sum, rating_count_app: cnt });
+  await write('washer_public/' + id, { id, jobs_app: jobs, rating_sum_app: sum, rating_count_app: cnt, jobs: t.jobs, rating: t.rating }, 'merge');
+  return { jobs, sum, cnt };
 }
 async function unassign(jobId) {
   const j = need(jobId);
@@ -350,6 +405,8 @@ function demo() {
   S.payorders.WDW1 = { kind: 'wallet_topup', phone: '+919811440002', name: 'Neha Kapoor', status: 'paid', amount: 500, paid_amount: 500, created_at: T(400), paid_at: T(399), gateway: 'razorpay', paid_gateway: 'razorpay', pay_via: 'UPI' };
   S.payorders.WDP1 = { kind: 'pass', phone: '+919811440004', name: 'Sandeep', status: 'paid', amount: 1499, paid_amount: 1499, created_at: T(1500), paid_at: T(1499), gateway: 'cashfree', paid_gateway: 'cashfree', pay_via: 'Card' };
   S.payorders.WDB9 = { kind: 'booking', phone: '+919811005500', status: 'failed', amount: 399, created_at: T(35), gateway: 'razorpay', lines: [{ name: 'Foam wash', q: 1 }] };
+  S.ratings = { B7Q2F0: { stars: 5 } };
+  S.pub = { chotte: { id: 'chotte', phone: '+919876500001', jobs_base: 420, rating_base: 4.8, rating_count_base: 150, jobs_app: 0, rating_sum_app: 0, rating_count_app: 0, languages: ['Hindi'], verified: { id: true, police: true, training: false, assessment: false }, since: '2024-06-01', area: 'GH-9 Paschim Vihar' } };
   ['jobs', 'codes', 'washers', 'photos', 'locs', 'customers', 'payorders', 'plans', 'washes'].forEach(k => { S.loaded[k] = true });
   emit();
   // the washers move; the one on the way closes in on his customer
@@ -366,6 +423,6 @@ function demo() {
 }
 
 window.OPS = { S, on, start, stop, demo, job: jobView, jobs, washer: washerView, washers, suggest, monthly, dues, payments, kpis, byRound: washerByRound,
-  assign, unassign, ensureCode, stage, cancel, setEta, addWasher, updateWasher, setPhoto, setWasherStatus, setRound, customerStatus,
+  assign, unassign, savePublic, recountApp, pubTotals, OWNER_PHONE, ensureCode, stage, cancel, setEta, addWasher, updateWasher, setPhoto, setWasherStatus, setRound, customerStatus,
   photoFromFile, km, ago, fmtTime, rs, nice, today, isoIST, ms, travelMin, STAGE_LABEL, FRESH_MS };
 })();

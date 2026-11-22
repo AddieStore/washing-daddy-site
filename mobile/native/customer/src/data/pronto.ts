@@ -27,7 +27,7 @@ export type ReferralState = { completed: number; earned: number; pending: number
 
 export type JobLine = { key: string; id: string; name: string; q: number; price: number; mrp: number; mins: number; variant?: VariantId };
 export type JobStatus = 'upcoming' | 'assigned' | 'on_the_way' | 'in_progress' | 'done' | 'cancelled';
-export type Washer = { name: string; rating: number; jobs: number; photo?: string | null };
+export type Washer = { id?: string; phone?: string | null; name: string; rating: number; jobs: number; photo?: string | null };
 export type Job = {
   id: string; mode: CartMode; status: JobStatus; date: string; slot: string; lines: JobLine[];
   total: number; saved: number; mins: number; addressId?: string; recur?: string;

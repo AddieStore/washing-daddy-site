@@ -120,12 +120,12 @@ export default function Booking({ id }: { id: string }) {
 
         <FadeUp index={2} style={card({ padding: 16 })}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            {j.washer ? <Image source={washerImg(j)} resizeMode="cover" accessibilityLabel={`Photo of ${j.washer.name}`} style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: G.raised }} />
+            {j.washer ? <Tap label={`View ${j.washer.name}'s profile`} onPress={() => openPage({ k: 'washer', id: j.washer!.id, name: j.washer!.name })}><Image source={washerImg(j)} resizeMode="cover" accessibilityLabel={`Photo of ${j.washer.name}`} style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: G.raised }} /></Tap>
               : <View style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: G.raised, alignItems: 'center', justifyContent: 'center' }}><Pin size={22} color={G.mute} strokeWidth={1.5} /></View>}
-            <View style={{ flex: 1, minWidth: 0 }}>
+            <Tap label={j.washer ? `View ${j.washer.name}'s profile` : undefined} disabled={!j.washer} onPress={() => j.washer && openPage({ k: 'washer', id: j.washer.id, name: j.washer.name })} style={{ flex: 1, minWidth: 0 }}>
               <Txt weight={500} size={16} numberOfLines={1}>{j.washer ? j.washer.name : 'Washer not assigned yet'}</Txt>
               <Txt size={12} color={G.mute} style={{ marginTop: 2 }}>{j.washer ? washerSub(j) : gone ? 'No washer was sent' : 'We assign one shortly before your slot'}</Txt>
-            </View>
+            </Tap>
             {j.washer && up ? <Tap label="Call support" onPress={() => act.call()} style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center' }}><Phone size={18} color="#fff" strokeWidth={1.5} /></Tap> : null}
           </View>
           {done && feature('ratings') ? (

@@ -20,7 +20,7 @@ export const TAB_ITEMS: { tab: Tab; label: string; off: IC; on: IC }[] = [
 ];
 /** tabs the live config keeps (appcfg tabs.* and features.wallet) */
 const shown = () => TAB_ITEMS.filter(x => x.tab === 'home' || (x.tab === 'live' ? tabOn('washes') : x.tab === 'money' ? tabOn('money') : tabOn('profile')));
-const MID = 76, BAR_H = 56, PADX = 8;   // gap in the bar under the raised centre button
+const MID = 76, BAR_H = 56, PADX = 8, PILL_H = 30, PILL_W = 54, PILL_TOP = 6;   // pill sits behind the icon only (Material-style indicator): same size on every tab, label stays below   // gap in the bar under the raised centre button
 /** Height of the bar without the bottom inset; screens keep their scroll padding >= this + inset. */
 export const TAB_H = TAB_BAR_H;
 
@@ -33,7 +33,7 @@ function TabCell({ t, label, Ic, on, liveNow }: { t: Tab; label: string; Ic: IC;
   const press = useSharedValue(1);
   // The active pill is ONE shared view in the bar that slides between cells; the cell only recolours its icon + label (white on the pill)
   const sc = useAnimatedStyle(() => ({ transform: [{ scale: press.value }] }));
-  const col = on ? '#FFFFFF' : T.card.fg3;
+  const col = on ? '#FFFFFF' : T.card.fg3, lcol = on ? C.violet : T.card.fg3;
   return (
     <View style={{ flex: 1, height: BAR_H }}>
       <Pressable accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={label} onPress={() => go(t)} hitSlop={{ top: 8, bottom: 8 }}
@@ -44,7 +44,7 @@ function TabCell({ t, label, Ic, on, liveNow }: { t: Tab; label: string; Ic: IC;
             <Ic size={21} color={col} strokeWidth={on ? 2 : 1.6} />
             {t === 'live' && liveNow ? <View style={{ position: 'absolute', top: -2, right: 4 }}><Pulse color={C.green} size={5} /></View> : null}
           </View>
-          <Txt weight={on ? 600 : 500} size={10.5} numberOfLines={1} color={col} style={{ lineHeight: 13 }}>{label}</Txt>
+          <Txt weight={on ? 600 : 500} size={10.5} numberOfLines={1} color={lcol} style={{ lineHeight: 13 }}>{label}</Txt>
         </Reanimated.View>
       </Pressable>
     </View>
@@ -60,7 +60,7 @@ function SlidePill({ x, w, show }: { x: number; w: number; show: boolean }) {
   }, [x, show, rm]);
   const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateX: px.value }] }));
   if (!w) return null;
-  return <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 6, width: w, height: BAR_H - 12, borderRadius: (BAR_H - 12) / 2, backgroundColor: C.violet, shadowColor: C.violet, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }, st]} />;
+  return <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: PILL_TOP, width: w, height: PILL_H, borderRadius: PILL_H / 2, backgroundColor: C.violet, shadowColor: C.violet, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }, st]} />;
 }
 
 /* "Book a wash" sheet behind the centre button */
@@ -121,12 +121,12 @@ export default function TabBar() {
       <View pointerEvents="box-none" style={[s.outer, { bottom: pb + 8 }]}>
         {/* floating capsule: solid surface (no translucency over elevation), soft shadow, detached from the screen edges */}
         <View onLayout={e => setBw(e.nativeEvent.layout.width)} style={[s.bar, { backgroundColor: T.day ? '#FFFFFF' : T.tabBg, shadowOpacity: T.day ? 0.16 : 0.4, borderColor: T.day ? C.hairViolet : T.page.line }]}>
-          <SlidePill x={px(Math.max(0, cur)) + 4} w={Math.max(0, cellW - 8)} show={cur >= 0 && !!cellW} />
+          <SlidePill x={px(Math.max(0, cur)) + (cellW - Math.min(PILL_W, cellW - 4)) / 2} w={cellW ? Math.min(PILL_W, cellW - 4) : 0} show={cur >= 0 && !!cellW} />
           {LEFT.map(cell)}
           {fab ? <View style={{ width: MID }} /> : null}
           {RIGHT.map(cell)}
         </View>
-        {fab ? <CentreButton bottom={BAR_H - 31 + 2} /> : null}
+        {fab ? <CentreButton bottom={4} /> : null}
       </View>
       <LocationLoader place={place} />
     </>
@@ -139,8 +139,8 @@ const s = StyleSheet.create({
     width: '100%', maxWidth: 420, height: BAR_H, borderRadius: BAR_H / 2, flexDirection: 'row', alignItems: 'center', paddingHorizontal: PADX, borderWidth: 1,
     shadowColor: '#1A1033', shadowRadius: 22, shadowOffset: { width: 0, height: 8 }, elevation: 10,
   },
-  cellIn: { alignItems: 'center', gap: 1 },
-  icWrap: { width: 40, height: 24, alignItems: 'center', justifyContent: 'center' },
+  cellIn: { alignItems: 'center', gap: 1, paddingTop: 1 },
+  icWrap: { width: 40, height: 28, alignItems: 'center', justifyContent: 'center' },
   fabWrap: { position: 'absolute', alignSelf: 'center', alignItems: 'center' },
   fab: {
     width: 62, height: 62, borderRadius: 31, borderWidth: 4, borderColor: '#fff', backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center',

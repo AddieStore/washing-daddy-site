@@ -9,12 +9,12 @@ import { Footer } from '../ui/Footer';
 import { Back, Help as HelpIc, Pin } from '../ui/icons';
 import { FadeUp, Shimmer } from '../ui/motion';
 import { JobRider, showsRider, showsCode, StartCode } from '../ui/JobRider';
-import { feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
+import { A, car, doc, history7, liveHead, activeStage, feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
 import { sheets } from '../sheets';
-import { inr, fmt, iso, TODAY } from '../data/dates';
+import { inr, fmt, iso, TODAY, ampm } from '../data/dates';
 import { slotLabel } from '../state';
 import { G, card, Tap, TNUM, PAGE_BG } from './parts';
-import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, useReducedMotion } from 'react-native-reanimated';
+import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withRepeat, withTiming, useReducedMotion } from 'react-native-reanimated';
 import { Stars, durText, washerImg, washerSub, STATUS_TEXT, dayLabel, openRateSheet } from '../sheets/bookings';
 
 const ND = Platform.OS !== 'web';
@@ -97,16 +97,18 @@ export function JobCard({ j, onPress }: { j: Job; onPress: () => void }) {
   );
 }
 
-/* ---------- the list with its Upcoming / Previous switch ---------- */
-/* Upcoming / Previous switch: the violet thumb springs across */
-function SegSwitch({ value, onChange }: { value: 'up' | 'prev'; onChange: (v: 'up' | 'prev') => void }) {
-  const [w, setW] = useState(0), rm = useReducedMotion(), x = useSharedValue(value === 'up' ? 0 : 1);
-  useEffect(() => { x.value = rm ? (value === 'up' ? 0 : 1) : withSpring(value === 'up' ? 0 : 1, { damping: 17, stiffness: 220, mass: 0.8 }) }, [value, rm]);
-  const st = useAnimatedStyle(() => ({ transform: [{ translateX: x.value * (w / 2 - 4) }] }));
+/* ---------- the list with its Upcoming / Previous (/ Daily) switch ---------- */
+type Seg = 'up' | 'prev' | 'daily';
+/* the violet thumb springs across; N equal cells, thumb inset 4px on every side */
+function SegSwitch({ value, onChange, items }: { value: Seg; onChange: (v: Seg) => void; items: readonly (readonly [Seg, string])[] }) {
+  const n = items.length, idx = Math.max(0, items.findIndex(i => i[0] === value));
+  const [w, setW] = useState(0), rm = useReducedMotion(), x = useSharedValue(idx), cell = Math.max(0, (w - 8) / n);
+  useEffect(() => { x.value = rm ? idx : withSpring(idx, { damping: 17, stiffness: 220, mass: 0.8 }) }, [idx, rm]);
+  const st = useAnimatedStyle(() => ({ transform: [{ translateX: x.value * cell }] }));
   return (
     <View onLayout={e => setW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', backgroundColor: '#fff', borderRadius: 999, padding: 4, height: 48, shadowColor: '#1A1033', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}>
-      {w ? <Reanimated.View style={[{ position: 'absolute', left: 4, top: 4, bottom: 4, width: w / 2 - 4, borderRadius: 999, backgroundColor: C.violet }, st]} /> : null}
-      {([['up', 'Upcoming'], ['prev', 'Previous']] as const).map(([k, l]) => (
+      {w ? <Reanimated.View style={[{ position: 'absolute', left: 4, top: 4, bottom: 4, width: cell, borderRadius: 999, backgroundColor: C.violet }, st]} /> : null}
+      {items.map(([k, l]) => (
         <Pressable key={k} accessibilityRole="button" accessibilityState={{ selected: value === k }} accessibilityLabel={l} onPress={() => onChange(k)} style={{ flex: 1, borderRadius: 999, alignItems: 'center', justifyContent: 'center' }}>
           <Txt weight={value === k ? 600 : 500} size={14} color={value === k ? '#fff' : G.sub}>{l}</Txt>
         </Pressable>
@@ -115,12 +117,61 @@ function SegSwitch({ value, onChange }: { value: 'up' | 'prev'; onChange: (v: 'u
   );
 }
 
+/* ---------- Daily: the washer's morning work on the selected car, newest first ---------- */
+type DailyRow = { date: string; status: 'done' | 'skipped' | 'scheduled' | 'live'; label: string; washer?: string; time?: string; mins?: number | null; tasks?: string; photos?: number; litres?: number | null; note?: string };
+/** monthly plan on the selected car (instant-only customers never see Daily) */
+export const hasMonthlyPlan = () => { const a = A(); return !!a && a.mode !== 'instant' && a.cars.length > 0 && !!car()?.plan };
+function dailyRows(): DailyRow[] {
+  const c = car(), d = doc(c), rows: DailyRow[] = [];
+  const live = activeStage(d), st: DailyRow['status'] = live ? 'live' : d.status === 'done' ? 'done' : d.status === 'skipped' ? 'skipped' : 'scheduled';
+  if (!d.notStarted && !(d.status === 'scheduled' && d.first)) {
+    rows.push({ date: d.date, status: st, label: liveHead(c).big, washer: d.washer?.name || c.washer, time: d.finished_at ? ampm(d.finished_at) : undefined, mins: d.minutes, tasks: d.tasks.filter(t => t.done).map(t => t.label).join(', '), photos: d.photos?.length || 0, litres: d.water_litres, note: d.status === 'skipped' ? d.skip_reason || undefined : undefined });
+  }
+  // earlier mornings: history7 rows are [date, "Washer · 6:38 AM · 11 min" | skip reason, tasks]
+  history7(c).forEach(([dt, title, sub]) => {
+    const m = title.match(/^(.*) · (\d{1,2}:\d\d [AP]M) · (\d+) min$/);
+    rows.push(m ? { date: iso(dt), status: 'done', label: 'Washed', washer: m[1], time: m[2], mins: +m[3], tasks: sub }
+      : { date: iso(dt), status: 'skipped', label: 'No wash', note: title });
+  });
+  return rows;
+}
+function LivePulse() {
+  const p = useSharedValue(0);
+  useEffect(() => { p.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }), -1, false) }, []);
+  const ring = useAnimatedStyle(() => ({ opacity: 0.45 * (1 - p.value), transform: [{ scale: 1 + p.value * 1.4 }] }));
+  return (
+    <View style={{ width: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
+      <Reanimated.View style={[{ position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: C.violet }, ring]} />
+      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: C.violet }} />
+    </View>
+  );
+}
+function DailyCard({ r }: { r: DailyRow }) {
+  const live = r.status === 'live', done = r.status === 'done', skip = r.status === 'skipped';
+  const tone = skip ? G.mute : done ? G.pos : C.violet, badge = live ? 'Live now' : done ? 'Done' : skip ? 'Skipped' : 'Scheduled';
+  const isToday = r.date === iso(TODAY);
+  const facts = [r.washer, r.time ? `Finished ${r.time}` : '', r.mins ? `${r.mins} min` : '', r.litres ? `${r.litres} L water` : '', r.photos ? `${r.photos} photo${r.photos > 1 ? 's' : ''}` : ''].filter(Boolean);
+  return (
+    <Tap onPress={() => sheets.day(r.date)} style={card({ padding: 16, ...(live ? { borderWidth: 1.5, borderColor: C.violet } : null) })}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        {live ? <LivePulse /> : null}
+        <Txt weight={500} size={17} style={{ flex: 1 }}>{isToday ? 'Today' : dayLabel(r.date)}</Txt>
+        <View style={{ backgroundColor: live ? 'rgba(84,9,218,0.08)' : done ? 'rgba(22,163,74,0.1)' : G.raised, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8 }}><Txt weight={500} size={12} color={tone}>{badge}</Txt></View>
+      </View>
+      <Txt size={13} color={G.sub} style={{ marginTop: 4 }}>{r.note || r.label}</Txt>
+      {facts.length ? <Txt size={12} color={G.mute} style={{ marginTop: 8, ...TNUM }}>{facts.join('  •  ')}</Txt> : null}
+      {r.tasks ? <Txt size={12} color={G.mute} style={{ marginTop: 4 }} numberOfLines={2}>{r.tasks}</Txt> : null}
+    </Tap>
+  );
+}
+
 export function BookingsBody({ tab: isTab }: { tab?: boolean }) {
   const ui = useApp(), ins = useInsets(), ref = useRef<any>(null), { upcoming, previous } = bookingsView();
-  const [seg, setSeg] = useState<'up' | 'prev'>('up'), [loading, setLoading] = useState(true), [refreshing, setRefreshing] = useState(false);
+  const plan = hasMonthlyPlan(), [seg0, setSeg] = useState<Seg>('up'), seg: Seg = seg0 === 'daily' && !plan ? 'up' : seg0, [loading, setLoading] = useState(true), [refreshing, setRefreshing] = useState(false);
   useEffect(() => { const t = setTimeout(() => setLoading(false), 500); return () => clearTimeout(t); }, []);
   useEffect(() => { if (ui.tabNonce) ref.current?.scrollTo({ y: 0, animated: true }); }, [ui.tabNonce]);
-  const list = seg === 'up' ? upcoming : previous;
+  const list = seg === 'prev' ? previous : upcoming, daily = seg === 'daily' ? dailyRows() : [];
+  const items = (plan ? [['up', 'Upcoming'], ['prev', 'Previous'], ['daily', 'Daily']] : [['up', 'Upcoming'], ['prev', 'Previous']]) as readonly (readonly [Seg, string])[];
   const refresh = async () => { setRefreshing(true); try { await act.refresh(); } catch (e: any) { toast(e.message || 'Could not refresh'); } setRefreshing(false); };
   return (
     <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
@@ -132,8 +183,15 @@ export function BookingsBody({ tab: isTab }: { tab?: boolean }) {
         </Tap>
       </View>
       <ScrollView ref={ref} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.violet} colors={[C.violet]} />} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: isTab ? 0 : 48 }}>
-        <SegSwitch value={seg} onChange={setSeg} />
-        {loading ? <ListSkeleton /> : list.length ? (
+        <SegSwitch value={seg} onChange={setSeg} items={items} />
+        {loading ? <ListSkeleton /> : seg === 'daily' ? (
+          daily.length ? <View style={{ marginTop: 16, gap: 12 }}>{daily.map((r, i) => <FadeUp key={'d' + r.date} index={i}><DailyCard r={r} /></FadeUp>)}</View> : (
+            <FadeUp><View style={{ alignItems: 'center', paddingTop: 72, paddingHorizontal: 32 }}>
+              <EmptyArt />
+              <Txt weight={500} size={17} style={{ marginTop: 16 }}>No daily washes yet</Txt>
+              <Txt size={13} color={G.sub} style={{ marginTop: 4, textAlign: 'center', lineHeight: 19 }}>Your daily washes will show up here from tomorrow morning</Txt>
+            </View></FadeUp>)
+        ) : list.length ? (
           <View style={{ marginTop: 8 }}>
             <View pointerEvents="none" style={{ position: 'absolute', left: 7, top: 22, bottom: 24, borderLeftWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(23,23,23,0.18)' }} />
             {list.map((j, i) => (

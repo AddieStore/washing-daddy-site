@@ -296,6 +296,7 @@ const SH = {
       setHTML(R('maptxt', el), w.loc ? '' : empty('No location yet. It shows once the washer opens WD Partner.'));
       if (mapEl) mapEl.hidden = !w.loc;
       const today = OPS.today(), js = OPS.jobs({ washer: w.phone }).filter(j => j.open || String(j.raw.finished_at || j.date).slice(0, 10) === today);
+      pubTotalsDraw();
       setHTML(R('jobs', el), js.length ? `<div class="cardlist">${js.map(jobRow).join('')}</div>` : empty('No jobs today.'));
     },
   },
@@ -331,11 +332,54 @@ function openWasher(phone) {
     <div class="sh-sec">Details</div><div class="card"><label class="lbl" for="wName" style="margin-top:0">Name</label><input class="field" id="wName" value="${esc(w.name)}" maxlength="60">
       <label class="lbl" for="wArea">Area</label><input class="field" id="wArea" value="${esc(w.area)}" maxlength="80"><div class="btns"><button class="btn sm go" type="button" data-act="savew" data-phone="${esc(phone)}">Save details</button></div>
       <label class="lbl" for="wRound">Round id</label><input class="field" id="wRound" value="${esc(w.round)}" maxlength="24" autocapitalize="none"><div class="hint">The id the washer's route and monthly round use. Lowercase letters, numbers and dashes.</div><div class="btns"><button class="btn sm go" type="button" data-act="saveround" data-phone="${esc(phone)}">Save round id</button></div></div>
+    <div class="sh-sec">Public profile <small style="font-weight:400;color:var(--grey)">(what customers see in the app)</small></div>${pubForm(w)}
     <div class="sh-sec">Location</div><div data-r="maptxt"></div><div class="mapbox small" data-r="map"></div>
     <div class="sh-sec">Jobs today</div><div data-r="jobs"></div>`);
-  UI.sheetMap = mkMap(R('map', $('#sheet')), pickPoint); SH.washer.update($('#sheet'));
+  UI.sheetMap = mkMap(R('map', $('#sheet')), pickPoint); SH.washer.update($('#sheet')); pubTotalsDraw();
   $('#wPhoto').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const d = await OPS.photoFromFile(f); await run(OPS.setPhoto(phone, d), 'Photo updated.') } catch (x) { toast(x.message, { cls: 'err' }) } e.target.value = '' };
 }
+/* public profile editor: static markup (typed text must survive the live re-draws); only the totals box is redrawn */
+function pubForm(w) {
+  const p = (OPS.S.pub || {})[w.round] || {}, v = p.verified || {};
+  const F = (id, label, val, extra = '') => `<label class="lbl" for="${id}">${label}</label><input class="field" id="${id}" value="${esc(val)}" ${extra}>`;
+  const T = (id, label) => `<label class="pchk"><input type="checkbox" id="${id}" ${v[{ pId: 'id', pPolice: 'police', pTraining: 'training', pAssessment: 'assessment' }[id]] ? 'checked' : ''}><span>${label}</span></label>`;
+  if (!w.round) return `<div class="card">${empty('Give this washer a round id first. The public profile is saved under it.')}</div>`;
+  return `<form class="card" id="pubForm" autocomplete="off" data-phone="${esc(w.phone)}">
+    <div data-r="pubtot" class="pubtot"></div>
+    ${F('pJobs', 'Jobs done so far, before the app', p.jobs_base ?? 0, 'type="number" min="0" step="1" inputmode="numeric"')}
+    <div class="pgrid"><div>${F('pRate', 'Average rating so far (1.0 to 5.0)', p.rating_base ? Number(p.rating_base).toFixed(1) : '', 'type="number" min="1" max="5" step="0.1" inputmode="decimal" placeholder="4.8"')}</div>
+    <div>${F('pRc', 'Based on how many ratings', p.rating_count_base ?? 0, 'type="number" min="0" step="1" inputmode="numeric"')}</div></div>
+    <label class="lbl" for="pPhone">Washer's own phone number</label><div class="ph" style="margin:0"><span class="cc">+91</span><input class="field" id="pPhone" inputmode="numeric" maxlength="11" value="${esc(dig(p.phone))}" placeholder="98765 43210"></div>
+    <div class="hint">Customers call this number. Not the owner's number.</div>
+    ${F('pArea', 'Area', p.area ?? w.area, 'maxlength="80"')}
+    <div class="pgrid"><div>${F('pSince', 'Since', p.since || '', 'type="date"')}</div><div>${F('pLang', 'Languages (comma list)', (p.languages || []).join(', '), 'placeholder="Hindi, English"')}</div></div>
+    ${F('pPhoto', 'Photo link (optional)', p.photo && !String(p.photo).startsWith('data:') ? p.photo : '', 'type="url" placeholder="https://"')}
+    <div class="lbl">Verified</div><div class="pchks">${T('pId', 'Aadhaar verified')}${T('pPolice', 'Police verified')}${T('pTraining', 'Trained by professionals')}${T('pAssessment', 'Assessment certified')}</div>
+    <div class="err" id="pErr"></div>
+    <div class="btns"><button class="btn sm go" type="submit" id="pGo">Save public profile</button><button class="btn sm soft" type="button" id="pRecount">Recount from app ratings</button></div>
+    <div class="hint">Recount reads the ratings customers gave in the app and updates the app counters. Your numbers above are never changed by it.</div></form>`;
+}
+const pubDraft = () => { const f = $('#pubForm'); if (!f) return null; return { jobs_base: $('#pJobs').value, rating_base: $('#pRate').value, rating_count_base: $('#pRc').value, phone: $('#pPhone').value, area: $('#pArea').value, since: $('#pSince').value, languages: $('#pLang').value, photo: $('#pPhoto').value, verified: { id: $('#pId').checked, police: $('#pPolice').checked, training: $('#pTraining').checked, assessment: $('#pAssessment').checked } } };
+function pubTotalsDraw() {
+  const f = $('#pubForm'); if (!f) return;
+  const w = OPS.washer(f.dataset.phone), p = (OPS.S.pub || {})[w && w.round] || {}, d = pubDraft();
+  const t = OPS.pubTotals({ jobs_base: d.jobs_base, rating_base: d.rating_base, rating_count_base: d.rating_count_base, jobs_app: p.jobs_app, rating_sum_app: p.rating_sum_app, rating_count_app: p.rating_count_app });
+  setHTML(R('pubtot', f), `<div class="pt"><b>${t.jobs}</b><span>jobs total</span></div><div class="pt"><b>${t.ratings ? t.rating.toFixed(1) + ' ★' : '-'}</b><span>rating from ${t.ratings} rating${t.ratings === 1 ? '' : 's'}</span></div>
+    <div class="pn">Before the app: ${num(d.jobs_base)} jobs. In the app: ${num(p.jobs_app)} jobs done, ${num(p.rating_count_app)} rating${num(p.rating_count_app) === 1 ? '' : 's'}. Press Recount to refresh the app numbers.</div>`);
+}
+document.addEventListener('input', e => { if (e.target.closest && e.target.closest('#pubForm')) pubTotalsDraw() });
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'pubForm') return; e.preventDefault();
+  const b = $('#pGo'); b.disabled = true; $('#pErr').textContent = '';
+  try { await OPS.savePublic(e.target.dataset.phone, pubDraft()); toast('Public profile saved.') } catch (x) { $('#pErr').textContent = x.message || 'Could not save.' }
+  b.disabled = false;
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('#pRecount'); if (!b) return;
+  b.disabled = true; $('#pErr').textContent = '';
+  try { const r = await OPS.recountApp($('#pubForm').dataset.phone); toast(`Counted ${r.jobs} job${r.jobs === 1 ? '' : 's'} and ${r.cnt} rating${r.cnt === 1 ? '' : 's'} from the app.`); pubTotalsDraw() } catch (x) { $('#pErr').textContent = x.message || 'Could not recount.' }
+  b.disabled = false;
+});
 function openAddWasher() {
   openSheet('addw', '', `${shHead('Add a washer')}<form id="awForm" class="card" autocomplete="off"><label class="lbl" for="awName" style="margin-top:0">Name</label><input class="field" id="awName" maxlength="60" data-focus required>
     <label class="lbl" for="awPh">Mobile number</label><div class="ph" style="margin:0"><span class="cc">+91</span><input class="field" id="awPh" inputmode="numeric" maxlength="11" placeholder="98765 43210" required></div>

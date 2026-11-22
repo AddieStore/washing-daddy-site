@@ -261,3 +261,12 @@ main{padding:14px 16px calc(84px + env(safe-area-inset-bottom,0px));max-width:15
 
 @media (max-width:599px){.hbtn{padding:0 11px;font-size:11.5px}.hdr-acts{gap:6px}.hbtn .lg{display:none}}
 .hbtn .sm{display:none}@media (max-width:599px){.hbtn .sm{display:inline}}
+
+/* public profile editor */
+.pubtot{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;padding:12px;border-radius:var(--r-ctl);background:var(--violet-t)}
+.pubtot .pt{flex:1 1 110px;display:flex;flex-direction:column}.pubtot .pt b{font-size:22px;color:var(--accent);line-height:1.2}.pubtot .pt span{font-size:12px;color:var(--ink2)}
+.pubtot .pn{flex-basis:100%;font-size:12px;color:var(--ink2)}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}@media (max-width:420px){.pgrid{grid-template-columns:1fr}}
+.pchks{display:grid;grid-template-columns:1fr 1fr;gap:8px}@media (max-width:420px){.pchks{grid-template-columns:1fr}}
+.pchk{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r-ctl);background:var(--tint);font-size:13px;font-weight:500;cursor:pointer}
+.pchk input{width:18px;height:18px;accent-color:var(--violet);margin:0}
