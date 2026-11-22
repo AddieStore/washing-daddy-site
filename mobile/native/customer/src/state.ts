@@ -86,6 +86,14 @@ let ui: UI = { tab: 'home', tabNonce: 0, ready: false, signedIn: false, carNonce
 const subs = new Set<() => void>();
 function emit() { ui = { ...ui, v: ui.v + 1, signedIn: !!(S.session && S.acct) }; subs.forEach(f => f()) }
 export function commit() { save(); emit() }
+/* Firestore snapshots arrive in bursts (7+ listeners fire right after sign-in, and again on every local write echo).
+   emitSoon coalesces them into one re-render; snapSame skips a snapshot whose data is identical to the last one. */
+let soonT: ReturnType<typeof setTimeout> | null = null;
+function emitSoon() { if (soonT) return; soonT = setTimeout(() => { soonT = null; emit() }, 40) }
+const snapSeen: Record<string, string> = {};
+function snapSame(k: string, v: unknown) { let j = ''; try { j = JSON.stringify(v) } catch (e) { return false } if (snapSeen[k] === j) return true; snapSeen[k] = j; return false }
+export const subscribeUi = (f: () => void) => { subs.add(f); return () => { subs.delete(f) } };
+export const tabNow = (): Tab => ui.tab;
 export function useApp() { return useSyncExternalStore(f => { subs.add(f); return () => { subs.delete(f) } }, () => ui, () => ui) }
 export function openPage(p: NonNullable<Page>) { haptic(); ui = { ...ui, pages: [...ui.pages, p], page: p }; emit() }
 export function closePage() { const pages = ui.pages.slice(0, -1); ui = { ...ui, pages, page: pages[pages.length - 1] || null }; emit() }
@@ -364,10 +372,12 @@ function subscribeCar() {
   if (!DB || !S.acct || !realAcct()) return; const c = car(); if (subFor === c.id) return;
   stop(unsubs); subFor = c.id; const reg = regOf(c), id = c.id;
   unsubs.push(DB.collection('washes').where('reg', '==', reg).onSnapshot(docs => {
-    REMOTE[id] = docs.map(d => fromContract(d.data())).sort((x, y) => String(y.date).localeCompare(String(x.date)));
-    if (car().id === id && !SIM) { emit(); toastStatus(id) }
+    const next = docs.map(d => fromContract(d.data())).sort((x, y) => String(y.date).localeCompare(String(x.date)));
+    if (snapSame('washes:' + id, next)) return;
+    REMOTE[id] = next;
+    if (car().id === id && !SIM) { emitSoon(); toastStatus(id) }
   }, e => console.warn('washes', e)));
-  unsubs.push(DB.collection('requests').where('reg', '==', reg).onSnapshot(docs => { REQS[id] = docs.map(d => ({ id: d.id, ...d.data() })); if (car().id === id) emit() }, () => {}));
+  unsubs.push(DB.collection('requests').where('reg', '==', reg).onSnapshot(docs => { const next = docs.map(d => ({ id: d.id, ...d.data() })); if (snapSame('reqs:' + id, next)) return; REQS[id] = next; if (car().id === id) emitSoon() }, () => {}));
 }
 function toastStatus(id: string) {
   const d = doc(car()), k = d.status + '|' + d.tasks.filter(t => t.done).length;
@@ -393,7 +403,7 @@ function watchCarPhotos() {
     if (t && v) t.photoCut = v.startsWith('data:image/webp');   // only cut-outs are saved as WebP (firestore.rules allows no extra field)
     if (t && v && t.photo !== v) { t.photo = v; commit() } }, () => {})) });
 }
-function stopSync() { stop(unsubs); stop(photoUnsubs); stop(moneyUnsubs); subscribeCoupons(null); subFor = null; if (acctUnsub) { try { acctUnsub() } catch (e) {} acctUnsub = null } REMOTE = {}; REQS = {}; DOCS = {}; lastStatus = {}; AUTOPAY_PAYS = [] }
+function stopSync() { stop(unsubs); stop(photoUnsubs); stop(moneyUnsubs); subscribeCoupons(null); subFor = null; if (acctUnsub) { try { acctUnsub() } catch (e) {} acctUnsub = null } REMOTE = {}; REQS = {}; DOCS = {}; lastStatus = {}; for (const k in snapSeen) delete snapSeen[k]; AUTOPAY_PAYS = [] }
 function renderAll() { if (!SIM) DOCS = {}; subscribeCar(); emit() }
 
 /* ---------- boot ---------- */
@@ -909,7 +919,7 @@ function watchCodes(jobs: Job[]) {
     let tried = false;
     codeUnsubs[id] = DB.doc('jobcodes/' + id).onSnapshot(g => {
       const d = g.exists ? g.data() : null;
-      if (d && /^\d{4}$/.test(String(d.code))) { if (JOBCODES[id] !== String(d.code)) { JOBCODES[id] = String(d.code); emit() } return }
+      if (d && /^\d{4}$/.test(String(d.code))) { if (JOBCODES[id] !== String(d.code)) { JOBCODES[id] = String(d.code); emitSoon() } return }
       if (tried) return; tried = true;
       DB.doc('jobcodes/' + id).set({ code: rand4(), phone: AUTH!.phone(), created_at: nowIST() }).catch((e: any) => console.warn('jobcode', e));
     }, () => {});
@@ -921,14 +931,14 @@ export const jobCode = (id: string): string | null => (realAcct() ? JOBCODES[id]
 function watchMoney() {
   stop(moneyUnsubs); if (!DB || !AUTH || !realAcct() || !AUTH.phone()) return;
   const ph = AUTH.phone()!, P = () => px(), q = (c: string, f: string) => DB.collection(c).where(f, '==', ph), warn = (w: string) => (e: any) => console.warn(w, e);
-  moneyUnsubs.push(DB.doc('wallets/' + ph).onSnapshot(g => { const d = g.exists ? g.data() : {}; P().wallet.cash = +d.cash || 0; P().wallet.promo = +d.promo || 0; emit() }, warn('wallet')));
-  moneyUnsubs.push(q('walletledger', 'phone').onSnapshot(ds => { P().wallet.ledger = ds.map(s => { const d = s.data(); return { id: s.id, at: d.at || '', kind: d.kind, amt: +d.amt || 0, note: d.note || '', bucket: d.bucket === 'promo' ? 'promo' : 'cash', expires: d.expires || null } }); emit() }, warn('ledger')));
-  moneyUnsubs.push(q('refunds', 'phone').onSnapshot(ds => { P().refunds = ds.map(s => { const d = s.data(); return { id: s.id, at: d.at || '', amt: +d.amt || 0, status: d.status || 'initiated', to: d.to === 'wallet' ? 'wallet' : 'source', what: d.what || '', bookingId: d.booking_id, eta: d.eta } }); emit() }, warn('refunds')));
-  moneyUnsubs.push(q('passes', 'phone').onSnapshot(ds => { P().passes = ds.map(s => { const d = s.data(); return { id: s.id, plan: d.plan, visitsTotal: +d.visits_total || 0, visitsLeft: +d.visits_left || 0, boughtAt: d.bought_at || '', validTill: d.valid_till || '', status: d.status || 'active' } }); emit() }, warn('passes')));
-  moneyUnsubs.push(DB.doc('referrals/' + ph).onSnapshot(g => { const d = g.exists ? g.data() : {}; P().referral = { completed: +d.completed || 0, earned: +d.earned || 0, pending: +d.pending || 0, ledger: Array.isArray(d.ledger) ? d.ledger : [] }; emit() }, warn('referral')));
+  moneyUnsubs.push(DB.doc('wallets/' + ph).onSnapshot(g => { const d = g.exists ? g.data() : {}; const cash = +d.cash || 0, promo = +d.promo || 0; if (P().wallet.cash === cash && P().wallet.promo === promo) return; P().wallet.cash = cash; P().wallet.promo = promo; emitSoon() }, warn('wallet')));
+  moneyUnsubs.push(q('walletledger', 'phone').onSnapshot(ds => { const next = ds.map(s => { const d = s.data(); return { id: s.id, at: d.at || '', kind: d.kind, amt: +d.amt || 0, note: d.note || '', bucket: d.bucket === 'promo' ? 'promo' : 'cash', expires: d.expires || null } }); if (snapSame('ledger', next)) return; P().wallet.ledger = next as any; emitSoon() }, warn('ledger')));
+  moneyUnsubs.push(q('refunds', 'phone').onSnapshot(ds => { const next = ds.map(s => { const d = s.data(); return { id: s.id, at: d.at || '', amt: +d.amt || 0, status: d.status || 'initiated', to: d.to === 'wallet' ? 'wallet' : 'source', what: d.what || '', bookingId: d.booking_id, eta: d.eta } }); if (snapSame('refunds', next)) return; P().refunds = next as any; emitSoon() }, warn('refunds')));
+  moneyUnsubs.push(q('passes', 'phone').onSnapshot(ds => { const next = ds.map(s => { const d = s.data(); return { id: s.id, plan: d.plan, visitsTotal: +d.visits_total || 0, visitsLeft: +d.visits_left || 0, boughtAt: d.bought_at || '', validTill: d.valid_till || '', status: d.status || 'active' } }); if (snapSame('passes', next)) return; P().passes = next; emitSoon() }, warn('passes')));
+  moneyUnsubs.push(DB.doc('referrals/' + ph).onSnapshot(g => { const d = g.exists ? g.data() : {}; const next = { completed: +d.completed || 0, earned: +d.earned || 0, pending: +d.pending || 0, ledger: Array.isArray(d.ledger) ? d.ledger : [] }; if (snapSame('referral', next)) return; P().referral = next; emitSoon() }, warn('referral')));
   moneyUnsubs.push(q('addresses', 'phone').onSnapshot(ds => { P().addresses = ds.map(s => { const d = s.data(); return { id: s.id, label: d.label, other: d.other || undefined, flat: d.flat || '', street: d.street || '', area: d.area || '', lat: +d.lat, lng: +d.lng, receiver: d.receiver_self === false ? { self: false, name: d.receiver_name || '', phone: d.receiver_phone || '' } : { self: true } } }); if (P().addrId && !P().addresses.some(a => a.id === P().addrId)) P().addrId = null; commit() }, warn('addresses')));
   moneyUnsubs.push(q('bookingratings', 'phone').onSnapshot(ds => { RATINGS = {}; ds.forEach(s => { const d = s.data(); RATINGS[d.booking_id] = { stars: d.stars, review: d.review } }); P().jobs = P().jobs.map(j => RATINGS[j.id] ? { ...j, stars: RATINGS[j.id].stars, review: RATINGS[j.id].review } : j); emit() }, () => {}));
-  moneyUnsubs.push(q('ondemand', 'customer_id').onSnapshot(ds => { P().jobs = ds.map(s => fromOndemand(s.id, s.data())); watchCodes(P().jobs); emit() }, warn('jobs')));
+  moneyUnsubs.push(q('ondemand', 'customer_id').onSnapshot(ds => { const next = ds.map(s => fromOndemand(s.id, s.data())); if (snapSame('jobs', next)) return; P().jobs = next; watchCodes(next); emitSoon() }, warn('jobs')));
   moneyUnsubs.push(() => { Object.values(codeUnsubs).forEach(u => { try { u() } catch (e) {} }); codeUnsubs = {}; JOBCODES = {} });
   subscribeCoupons(DB);   // public coupons -> COUPONS (data/config.ts)
 }

@@ -6,6 +6,7 @@ import { View } from 'react-native';
 import { RiderTrack } from './RiderTrack';
 import { Txt } from './kit';
 import { whenText, jobCode, type Job } from '../state';
+import { useActive } from './active';
 
 export const ETA_MINS = 15;
 const UPCOMING = ['upcoming', 'assigned', 'on_the_way', 'in_progress'];
@@ -22,7 +23,8 @@ const parseIST = (s: string) => (s ? Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(s) ?
 
 export function JobRider({ j, compact }: { j: Job; compact?: boolean }) {
   const [now, setNow] = useState(Date.now());
-  useEffect(() => { const i = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(i) }, []);
+  const active = useActive();
+  useEffect(() => { if (!active) return; setNow(Date.now()); const i = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(i) }, [active]);
   const slot = slotMs(j.date, j.slot), made = parseIST(j.createdAt);
   let eta = j.eta ? Date.parse(j.eta) : NaN, start = NaN;
   if (j.mode === 'instant') { if (!Number.isFinite(eta) && Number.isFinite(made)) eta = made + ETA_MINS * 60000; start = Number.isFinite(made) ? made : eta - ETA_MINS * 60000 }

@@ -3,8 +3,9 @@
 // so the rider feels like he is cruising; wheels spin, the flag waves, small puffs leave the exhaust.
 // Reduced motion: one still frame.
 import React, { useEffect } from 'react';
+import { useActive } from './active';
 import { View } from 'react-native';
-import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence, withDelay, withSpring, useReducedMotion, Easing, SharedValue } from 'react-native-reanimated';
+import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence, withDelay, withSpring, useReducedMotion, cancelAnimation, Easing, SharedValue } from 'react-native-reanimated';
 import Svg, { Path, Circle, Rect, Ellipse, G, Text as SText } from 'react-native-svg';
 
 const VB_W = 360, VB_H = 232;
@@ -13,7 +14,7 @@ const V = '#5409DA', V2 = '#6E2CF0', V3 = '#8A55F5', VD = '#2A0A6B', DARK = '#22
 /* a horizontally looping layer: draws `tile` twice and slides left by one tile forever */
 function Loop({ k, tile, ms, top, h, children, rm, span }: { k: number; tile: number; ms: number; top: number; h: number; children: (x0: number) => React.ReactNode; rm: boolean; span: number }) {
   const x = useSharedValue(0), n = Math.ceil(span / (tile * k)) + 1;
-  useEffect(() => { if (!rm) x.value = withRepeat(withTiming(1, { duration: ms, easing: Easing.linear }), -1, false) }, [rm]);
+  useEffect(() => { if (!rm) x.value = withRepeat(withTiming(1, { duration: ms, easing: Easing.linear }), -1, false); return () => cancelAnimation(x) }, [rm]);
   const st = useAnimatedStyle(() => ({ transform: [{ translateX: -x.value * tile * k }] }));
   return (
     <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: top * k, width: tile * n * k, height: h * k }, st]}>
@@ -70,7 +71,7 @@ function Wheel({ cx, cy, k, spin }: { cx: number; cy: number; k: number; spin: S
 /* the flag: two wave shapes cross-fade so it ripples in the wind (it trails backwards, to the left) */
 function Flag({ k, rm }: { k: number; rm: boolean }) {
   const f = useSharedValue(0);
-  useEffect(() => { if (!rm) f.value = withRepeat(withTiming(1, { duration: 320, easing: Easing.inOut(Easing.sin) }), -1, true) }, [rm]);
+  useEffect(() => { if (!rm) f.value = withRepeat(withTiming(1, { duration: 320, easing: Easing.inOut(Easing.sin) }), -1, true); return () => cancelAnimation(f) }, [rm]);
   const a = useAnimatedStyle(() => ({ opacity: 1 - f.value })), b = useAnimatedStyle(() => ({ opacity: f.value }));
   const box = { position: 'absolute' as const, left: 10 * k, top: 2 * k, width: 58 * k, height: 44 * k };
   const shape = (d: string, hi: string, ty: number) => (
@@ -160,7 +161,7 @@ function Body() {
 /* little exhaust puffs that drift back and fade */
 function Puff({ k, i, rm }: { k: number; i: number; rm: boolean }) {
   const p = useSharedValue(0);
-  useEffect(() => { if (!rm) p.value = withDelay(i * 420, withRepeat(withTiming(1, { duration: 1260, easing: Easing.out(Easing.quad) }), -1, false)) }, [rm]);
+  useEffect(() => { if (!rm) p.value = withDelay(i * 420, withRepeat(withTiming(1, { duration: 1260, easing: Easing.out(Easing.quad) }), -1, false)); return () => cancelAnimation(p) }, [rm]);
   const st = useAnimatedStyle(() => ({ opacity: p.value < 0.1 ? p.value * 6 : 0.6 * (1 - p.value), transform: [{ translateX: -46 * k * p.value }, { translateY: -6 * k * p.value }, { scale: 0.5 + p.value }] }));
   const s = 12 * k;
   return <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', left: 74 * k, top: 160 * k, width: s, height: s, borderRadius: s / 2, backgroundColor: '#D9CEF0' }, st]} />;
@@ -168,20 +169,21 @@ function Puff({ k, i, rm }: { k: number; i: number; rm: boolean }) {
 /* speed streaks behind the kit box */
 function Streak({ k, y, w, d, rm }: { k: number; y: number; w: number; d: number; rm: boolean }) {
   const p = useSharedValue(0);
-  useEffect(() => { if (!rm) p.value = withDelay(d, withRepeat(withTiming(1, { duration: 900, easing: Easing.in(Easing.quad) }), -1, false)) }, [rm]);
+  useEffect(() => { if (!rm) p.value = withDelay(d, withRepeat(withTiming(1, { duration: 900, easing: Easing.in(Easing.quad) }), -1, false)); return () => cancelAnimation(p) }, [rm]);
   const st = useAnimatedStyle(() => ({ opacity: Math.sin(p.value * Math.PI) * 0.9, transform: [{ translateX: -30 * k * p.value }] }));
   return <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', left: (54 - w) * k, top: y * k, width: w * k, height: 3 * k, borderRadius: 2, backgroundColor: '#C9B8F5' }, st]} />;
 }
 
-export function HeroRide({ width }: { width: number }) {
-  const rm = !!useReducedMotion(), k = (width / VB_W) * 0.5, H = VB_H * k, RW = VB_W * k, ox = width / 2 - 158 * k;   // rider at half size, centred, always fully on screen
+export const HeroRide = React.memo(function HeroRide({ width }: { width: number }) {
+  const active = useActive(), rm = !!useReducedMotion() || !active, k = (width / VB_W) * 0.5, H = VB_H * k, RW = VB_W * k, ox = width / 2 - 158 * k;   // rider at half size, centred, always fully on screen
   const spin = useSharedValue(0), bob = useSharedValue(0), lean = useSharedValue(0), enter = useSharedValue(rm ? 1 : 0);
   useEffect(() => {
     if (rm) return;
-    enter.value = withTiming(1, { duration: 700, easing: Easing.bezier(0.22, 1, 0.36, 1) });
+    if (enter.value < 1) enter.value = withTiming(1, { duration: 700, easing: Easing.bezier(0.22, 1, 0.36, 1) });
     spin.value = withRepeat(withTiming(1, { duration: 520, easing: Easing.linear }), -1, false);
     bob.value = withRepeat(withSequence(withTiming(1, { duration: 200, easing: Easing.inOut(Easing.sin) }), withTiming(0, { duration: 200, easing: Easing.inOut(Easing.sin) })), -1, false);
     lean.value = withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.sin) }), -1, true);
+    return () => { cancelAnimation(spin); cancelAnimation(bob); cancelAnimation(lean) };
   }, [rm]);
   const ride = useAnimatedStyle(() => ({ opacity: enter.value, transform: [
     { translateX: (1 - enter.value) * -40 + (lean.value * 2 - 1) * 14 * k },
@@ -216,7 +218,7 @@ export function HeroRide({ width }: { width: number }) {
       </Reanimated.View>
     </View>
   );
-}
+});
 
 /* The same washer character on his own (no street), for the live tracking screens and map marker.
    `w` is the drawn width; height is w * 204 / 290. Pass a 0..1 looping `spin` to turn the wheels. */

@@ -56,7 +56,7 @@ function PlanCard({ p, on, cur, onPress }: { p: Plan; on: boolean; cur: boolean;
   const dot = t.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
   return (
     <Pressable3 onPress={onPress} scaleTo={0.985} accessibilityRole="button" accessibilityLabel={`${p.name}, ${inr(p.price)} per month`} accessibilityState={{ selected: on }}>
-      <Animated.View style={{ backgroundColor: bg, borderRadius: 18, borderWidth: 1.5, borderColor: bd, padding: 18, shadowColor: '#1A1033', shadowOpacity: on ? 0.1 : 0.04, shadowRadius: on ? 14 : 6, shadowOffset: { width: 0, height: 3 }, elevation: on ? 3 : 1 }}>
+      <Animated.View style={{ backgroundColor: bg, borderRadius: 22, borderWidth: 1.5, borderColor: bd, padding: 20, shadowColor: '#1A1033', shadowOpacity: on ? 0.1 : 0.04, shadowRadius: on ? 14 : 6, shadowOffset: { width: 0, height: 3 }, elevation: on ? 3 : 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
           <Animated.View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, marginTop: 1, borderColor: on ? V : 'rgba(23,23,23,0.24)', backgroundColor: on ? V : C.white, alignItems: 'center', justifyContent: 'center', transform: [{ scale: dot.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] }}>
             {on ? <Check size={13} color={C.white} strokeWidth={3} /> : null}
@@ -69,15 +69,15 @@ function PlanCard({ p, on, cur, onPress }: { p: Plan; on: boolean; cur: boolean;
             <Txt size={13} color={SEC} style={{ marginTop: 2, lineHeight: 19 }}>{benefit(p)}</Txt>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Txt weight={700} size={22} color={INK} style={NUM}>{inr(p.price)}</Txt>
-            <Txt size={12} color={MUTED} style={{ marginTop: -2 }}>per month</Txt>
+            <Txt weight={700} size={26} color={on ? V : INK} style={NUM}>{inr(p.price)}</Txt>
+            <Txt size={12} color={MUTED} style={{ marginTop: -3 }}>per month</Txt>
           </View>
         </View>
-        <View style={{ height: 1, backgroundColor: on ? 'rgba(84,9,218,0.14)' : LINE, marginVertical: 14 }} />
-        <View style={{ gap: 10 }}>
+        <View style={{ height: 1, backgroundColor: on ? 'rgba(84,9,218,0.14)' : LINE, marginVertical: 16 }} />
+        <View style={{ gap: 12 }}>
           {features(p).map(f => (
             <View key={f.t} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={{ width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: f.on ? 'rgba(84,9,218,0.10)' : 'rgba(23,23,23,0.06)' }}>
+              <View style={{ width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: f.on ? (on ? 'rgba(84,9,218,0.16)' : 'rgba(84,9,218,0.10)') : 'rgba(23,23,23,0.06)' }}>
                 {f.on ? <Check size={11} color={V} strokeWidth={2.8} /> : <View style={{ width: 7, height: 2, borderRadius: 1, backgroundColor: MUTED }} />}
               </View>
               <Txt size={13} color={f.on ? INK : MUTED} style={{ flex: 1, lineHeight: 19 }}>{f.t}</Txt>
@@ -93,7 +93,7 @@ export function PlanPicker({ sel, setSel, curId }: { sel: Plan['id']; setSel: (i
   const sell = sellablePlans().map(p => p.id as string);
   const plans = ORDER.map(id => PLANS.find(p => p.id === id)).filter((p): p is Plan => !!p && (sell.includes(p.id) || p.id === curId));
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ gap: 16 }}>
       {plans.map((p, i) => (
         <FadeUp key={p.id} delay={i * 70}>
           <PlanCard p={p} on={sel === p.id} cur={curId === p.id} onPress={() => setSel(p.id)} />

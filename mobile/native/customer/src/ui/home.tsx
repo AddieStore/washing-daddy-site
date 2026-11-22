@@ -9,10 +9,11 @@ import { Txt } from './kit';
 import { Zap } from './icons';
 import { IMG } from '../img';
 import { Pressable3, SPRING } from './motion';
+import { useActive } from './active';
 
 /** a dot with an expanding ring (reanimated, UI thread) */
 export function PulseDot({ x, y, color, size = 9, delay = 0 }: { x: number; y: number; color: string; size?: number; delay?: number }) {
-  const rm = useReducedMotion(), v = useSharedValue(0);
+  const rm = !!useReducedMotion() || !useActive(), v = useSharedValue(0);
   useEffect(() => { if (rm) return; v.value = withDelay(delay, withRepeat(withTiming(1, { duration: 1700, easing: REasing.out(REasing.quad) }), -1, false)); return () => cancelAnimation(v) }, [rm]);
   const ring = useAnimatedStyle(() => ({ opacity: rm ? 0 : 0.5 * (1 - v.value), transform: [{ scale: 1 + v.value * 2.6 }] }));
   const r = size * 2.4;
@@ -61,7 +62,8 @@ export function EtaChip({ label, open }: { label: string; open: boolean }) {
 export function useCountdown() {
   const left = () => { const n = new Date(), e = new Date(n); e.setHours(23, 59, 59, 999); return Math.max(0, Math.floor((e.getTime() - n.getTime()) / 1000)) };
   const [s, setS] = useState(left);
-  useEffect(() => { const t = setInterval(() => setS(left()), 1000); return () => clearInterval(t) }, []);
+  const active = useActive();
+  useEffect(() => { if (!active) return; setS(left()); const t = setInterval(() => setS(left()), 1000); return () => clearInterval(t) }, [active]);
   const p = (n: number) => String(n).padStart(2, '0');
   return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
 }
@@ -80,7 +82,7 @@ export function Dots({ n, active }: { n: number; active: number }) {
 export type Offer = { key: string; tag: string; title: string; sub: string; cta: string; colors: [string, string]; onPress: () => void; countdown?: boolean; art?: ReactNode };
 /** snapping offer carousel with live countdown on the first card and dots underneath */
 export function OfferCarousel({ offers }: { offers: Offer[] }) {
-  const { width } = useWindowDimensions(), W = Math.min(width, 520), cw = W - 32 - 12, [i, setI] = useState(0), left = useCountdown(), rm = useReducedMotion();
+  const { width } = useWindowDimensions(), W = Math.min(width, 520), cw = W - 32 - 12, [i, setI] = useState(0), left = useCountdown(), rm = !!useReducedMotion() || !useActive();
   const ref = useRef<any>(null), held = useRef(false), cur = useRef(0), n = offers.length;
   // auto-advance: 600ms glide, ~2.9s hold; stops for good once the user touches it
   useEffect(() => {
@@ -141,7 +143,7 @@ export function PhotoTiles({ title, children }: { title?: ReactNode; children?: 
 /** hero photos: cross-fade every ~3s (400ms) with a slow 1.0 -> 1.06 zoom, under a light violet gradient (top + bottom only) */
 const HERO_PICS: (keyof typeof IMG)[] = ['red-foam', 'slide1', 'slide0'];
 export function HeroPhotos({ opacity = 1, style }: { opacity?: number; style?: any }) {
-  const rm = useReducedMotion(), [a, setA] = useState(0), z = useSharedValue(0);
+  const rm = !!useReducedMotion() || !useActive(), [a, setA] = useState(0), z = useSharedValue(0);
   useEffect(() => {
     if (rm) return;
     const t = setInterval(() => { setA(x => (x + 1) % HERO_PICS.length) }, 3000);

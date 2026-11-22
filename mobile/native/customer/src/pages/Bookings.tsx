@@ -14,8 +14,9 @@ import { sheets } from '../sheets';
 import { inr, fmt, iso, TODAY, ampm } from '../data/dates';
 import { slotLabel } from '../state';
 import { G, card, Tap, TNUM, PAGE_BG } from './parts';
-import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withRepeat, withTiming, useReducedMotion } from 'react-native-reanimated';
+import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withRepeat, withTiming, cancelAnimation, useReducedMotion } from 'react-native-reanimated';
 import { Stars, durText, washerImg, washerSub, STATUS_TEXT, dayLabel, openRateSheet } from '../sheets/bookings';
+import { useActive } from '../ui/active';
 
 const ND = Platform.OS !== 'web';
 const slotText = (j: Job) => (j.slot ? (/^\d\d:\d\d$/.test(j.slot) ? slotLabel(j.slot) : j.slot) : j.mode === 'instant' ? 'Instant' : '');
@@ -136,8 +137,8 @@ function dailyRows(): DailyRow[] {
   return rows;
 }
 function LivePulse() {
-  const p = useSharedValue(0);
-  useEffect(() => { p.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }), -1, false) }, []);
+  const p = useSharedValue(0), active = useActive();
+  useEffect(() => { if (!active) return; p.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }), -1, false); return () => cancelAnimation(p) }, [active]);
   const ring = useAnimatedStyle(() => ({ opacity: 0.45 * (1 - p.value), transform: [{ scale: 1 + p.value * 1.4 }] }));
   return (
     <View style={{ width: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
