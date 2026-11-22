@@ -41,7 +41,7 @@ const shot = async (name) => {
   console.log('shot', f);
 };
 
-await page.goto(pathToFileURL(path.join(root, 'dist-preview/index.html')).href);
+await page.goto(pathToFileURL(path.join(process.env.PREVIEW_DIR || root, 'dist-preview/index.html')).href);
 await page.evaluate(() => document.fonts.ready);
 await page.waitForTimeout(1200);
 await page.evaluate(() => document.fonts.ready);
