@@ -144,14 +144,19 @@ export default function Auth() {
   const onPhone = (t: string) => {
     let d = t.replace(/\D/g, ''); if (d.length > 10) d = d.slice(-10);
     setPhone(d); setShown(d.length > 5 ? d.slice(0, 5) + ' ' + d.slice(5) : d); setErr('');
+    // the moment a full valid number is typed, the code goes out by itself (no tap needed)
+    if (/^[6-9]\d{9}$/.test(d) && d !== autoSent.current && !busy) { autoSent.current = d; Keyboard.dismiss(); sendCode(d) }
   };
-  const sendCode = async () => {
-    if (!phoneOk) { setErr('Enter a 10-digit mobile number.'); return }
-    if (inv && inv === own) { setErr(OWN); return }
+  const autoSent = useRef('');
+  const sendCode = async (num?: string) => {
+    const ph = typeof num === 'string' ? num : phone;
+    if (!/^[6-9]\d{9}$/.test(ph)) { setErr('Enter a 10-digit mobile number.'); return }
+    if (inv && inv === ('WD' + ph.slice(-6))) { setErr(OWN); return }
     setBusy(true);
-    try { await act.sendOtp(phone); setCode(Array(OTP_N).fill('')); setLeft(30); setStep('otp') } catch (e) { setErr(msg(e)) }
+    try { await act.sendOtp(ph); setCode(Array(OTP_N).fill('')); setLeft(30); setStep('otp') } catch (e) { autoSent.current = ''; setErr(msg(e)) }
     setBusy(false);
   };
+  useEffect(() => { if (step === 'phone') autoSent.current = '' }, [step]);
 
   const verify = async (c: string[]) => {
     if (working.current || c.join('').length < OTP_N) return;
@@ -215,7 +220,7 @@ export default function Auth() {
 
   /* ---------- the sheet content ---------- */
   const six = OTP_N > 4;
-  const phoneField = <PhoneField value={shown} onChangeText={onPhone} onSubmit={sendCode} valid={phoneOk} />;
+  const phoneField = <PhoneField value={shown} onChangeText={onPhone} onSubmit={() => sendCode()} valid={phoneOk} />;
   let card;
   if (step === 'phone') card = (
     <>
@@ -230,7 +235,7 @@ export default function Auth() {
         ? <View style={{ marginTop: SP.s }}>{inviteBox}</View>
         : <Link label="I have an invite code" onPress={() => { setShowInv(true); setTapped(true) }} style={{ alignSelf: 'flex-start', marginTop: SP.hair, minHeight: 28 }} />}
       {err ? <View style={{ marginTop: SP.m }}><Err text={err} /></View> : null}
-      <Cta label="Continue" busy={busy ? 'Sending…' : false} disabled={!phoneOk} onPress={sendCode} style={{ marginTop: SP.l }} />
+      <Cta label="Continue" busy={busy ? 'Sending…' : false} disabled={!phoneOk} onPress={() => sendCode()} style={{ marginTop: SP.l }} />
       {legalPages('signup').length ? (
         <Txt size={12} color={L.muted} style={{ textAlign: 'center', marginTop: SP.m, lineHeight: 17 }}>By continuing, you agree to our {legalPages('signup').map((d, i, l) => (
           <Txt key={d.id} size={12} color={L.muted}>{i ? (i === l.length - 1 ? ' and ' : ', ') : ''}<Txt size={12} color={L.violet} style={{ textDecorationLine: 'underline' }} onPress={() => openLegalSheet(d.id)}>{d.title}</Txt></Txt>

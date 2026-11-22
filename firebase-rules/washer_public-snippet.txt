@@ -1,0 +1,7 @@
+// Add inside `match /databases/{database}/documents { ... }` of mobile/firebase/firestore.rules
+// (uses the existing signedIn() and isAdmin() helpers).
+// washer_public/{washerId}: public-facing washer profile shown to customers. Written by the ops dashboard only.
+match /washer_public/{washerId} {
+  allow read: if signedIn();
+  allow create, update, delete: if isAdmin();
+}

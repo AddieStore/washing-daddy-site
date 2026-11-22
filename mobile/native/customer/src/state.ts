@@ -78,7 +78,7 @@ export type Page =
   | { k: 'money' } | { k: 'refunds' } | { k: 'pass'; id?: string } | { k: 'coupons' } | { k: 'refer' }
   | { k: 'profile' } | { k: 'profileEdit' } | { k: 'addresses'; pick?: boolean } | { k: 'addressMap'; id?: string } | { k: 'addressForm'; id?: string; lat?: number; lng?: number; area?: string }
   | { k: 'help' } | { k: 'helpTopic'; id: string } | { k: 'legal' } | { k: 'legalDoc'; id: string } | { k: 'deleteAccount' } | { k: 'about' }
-  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string } | { k: 'payResult' }
+  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string } | { k: 'payResult' } | { k: 'washer'; id?: string; name?: string }
   | null;
 export type PageKind = NonNullable<Page>['k'];
 type UI = { tab: Tab; tabNonce: number; ready: boolean; signedIn: boolean; carNonce: number; sim: boolean; v: number; page: Page; pages: Page[] };
@@ -784,7 +784,7 @@ function fromOndemand(id: string, d: any): Job {
   const r = RATINGS[id];
   return { id, mode: d.mode || (d.slot ? 'scheduled' : 'instant'), status: jobStatus(d), date: d.date || '', slot: d.slot || '', lines, total: +(d.total ?? d.price) || 0, saved: +d.saved || 0,
     mins: lines.reduce((a, l) => a + l.mins * l.q, 0), addressId: d.address_id || undefined, pay: d.refunded ? 'refunded' : d.pass_id ? 'pass' : d.paid ? 'paid' : 'pay_on_arrival', payVia: d.pay_via || undefined,
-    coupon: d.coupon || null, washer: d.washer_id ? { name: d.washer_name || d.washer_id, rating: +d.washer_rating || 0, jobs: +d.washer_jobs || 0, photo: d.washer_photo || null } : null,
+    coupon: d.coupon || null, washer: d.washer_id ? { id: String(d.washer_id), name: d.washer_name || d.washer_id, rating: +d.washer_rating || 0, jobs: +d.washer_jobs || 0, photo: d.washer_photo || null, phone: d.washer_phone || null } : null,
     stars: r ? r.stars : undefined, review: r ? r.review : undefined, createdAt: d.created_at || '',
     payRef: d.gateway_ref || d.pay_ref || undefined, orderId: d.pay_ref || undefined, eta: d.eta || etaFrom(d.mode, d.created_at),
     washerAt: Number.isFinite(+d.washer_lat) && Number.isFinite(+d.washer_lng) && d.washer_lat !== '' ? { lat: +d.washer_lat, lng: +d.washer_lng, at: String(d.washer_loc_at || '') } : undefined,
@@ -797,6 +797,37 @@ function etaFrom(mode: any, created: any): string | undefined {
   const t = Date.parse(String(created).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(created)) ? '' : '+05:30'));
   return Number.isFinite(t) ? new Date(t + ETA_MIN * 60000).toISOString() : undefined;
 }
+/* ---- washer profile: washer_public/{id}, written by the ops dashboard. Counters add the app's ratings onto the manager's pre-app numbers. ---- */
+export type WasherProfile = { id: string; name: string; phone: string | null; photo: string | null; since: string | null; area: string; languages: string[];
+  verified: { id: boolean; police: boolean; training: boolean; assessment: boolean }; jobs: number; rating: number; ratingCount: number };
+const OWNER_PHONES = ['7701808924'];   // never shown as a washer's number
+const num = (v: any) => (Number.isFinite(+v) ? +v : 0);
+export function washerPhone(v: any): string | null {
+  const t = String(v || '').replace(/\D/g, '').slice(-10);
+  return t.length === 10 && !OWNER_PHONES.includes(t) ? t : null;
+}
+export function fromWasherPublic(id: string, d: any, fb?: { name?: string; rating?: number; jobs?: number; photo?: string | null }): WasherProfile {
+  const rc = num(d.rating_count_base) + num(d.rating_count_app), rs = num(d.rating_base) * num(d.rating_count_base) + num(d.rating_sum_app), v = d.verified || {};
+  return { id, name: String(d.name || (fb && fb.name) || id), phone: washerPhone(d.phone), photo: d.photo || (fb && fb.photo) || null, since: d.since ? String(d.since) : null,
+    area: String(d.area || ''), languages: Array.isArray(d.languages) ? d.languages.map(String) : [], verified: { id: !!v.id, police: !!v.police, training: !!v.training, assessment: !!v.assessment },
+    jobs: num(d.jobs_base) + num(d.jobs_app) || (fb && fb.jobs) || 0, rating: rc > 0 ? rs / rc : (fb && fb.rating) || 0, ratingCount: rc };
+}
+const SAMPLE_WASHERS: Record<string, any> = {
+  chotte: { name: 'Chotte', phone: '9876500011', since: '2024-03-01', area: 'Greater Kailash', languages: ['Hindi', 'English'], verified: { id: true, police: true, training: true, assessment: true }, jobs_base: 1180, rating_base: 4.8, rating_count_base: 240, jobs_app: 64, rating_sum_app: 96, rating_count_app: 20 },
+  shahrukh: { name: 'Shahrukh', phone: '9876500022', since: '2025-01-15', area: 'Saket', languages: ['Hindi', 'Urdu'], verified: { id: true, police: true, training: true, assessment: false }, jobs_base: 620, rating_base: 4.7, rating_count_base: 120, jobs_app: 31, rating_sum_app: 46, rating_count_app: 10 },
+};
+/** load a washer's public profile; falls back to what the booking already told us, never throws */
+export async function loadWasher(idOrName: string, fb?: { name?: string; rating?: number; jobs?: number; photo?: string | null }): Promise<WasherProfile | null> {
+  const id = String(idOrName || '').trim();
+  if (!id) return fb && fb.name ? fromWasherPublic(fb.name, {}, fb) : null;
+  try {
+    if (!DB) { const d = SAMPLE_WASHERS[id.toLowerCase()] || SAMPLE_WASHERS[String(fb && fb.name || '').toLowerCase()]; return d ? fromWasherPublic(id, d, fb) : fb && fb.name ? fromWasherPublic(id, {}, fb) : null }
+    const g = await DB.doc('washer_public/' + id).get();
+    if (g.exists) return fromWasherPublic(id, g.data() || {}, fb);
+  } catch (e) { console.warn('washer_public', e) }
+  return fb && fb.name ? fromWasherPublic(id, {}, fb) : { ...fromWasherPublic(id, {}, { name: id }) };
+}
+
 /* ---- start code: jobcodes/{bookingId} = { code, phone, created_at }. The washer types it in WD Partner to start the
    wash, so the right washer starts the right job. The phone creates it once if missing (the dashboard may too: a
    create that loses the race is refused by the rules and the snapshot then shows the dashboard's code). ---- */
