@@ -20,7 +20,7 @@ import {
   homeConfig, instantStatus, selectedAddress, addrName, wallet, activePass, REAL,
   appCfg, feature, section, uiButtons, serviceCats, unavailable, configLoading, UiButton, isGuest } from '../state';
 import { Pressable3 as P3, FadeUp, AddButton, CartBar, Shimmer, useSkeleton, loaderPending, primerGate, setOrigin, SPRING, TAB_BAR_H } from '../ui/motion';
-import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, withRepeat, withSequence, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
+import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, withRepeat, withSequence, cancelAnimation, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient as SvgLG, Stop } from 'react-native-svg';
 import { SvcArt, PausedVeil } from '../pages/parts';
@@ -33,6 +33,7 @@ import { openPassPromo } from '../sheets/money';
 import { MiniMap, EtaChip, OfferCarousel, Offer } from '../ui/home';
 import { HeroRide } from '../ui/heroRide';
 import { VettedSection } from '../ui/trust';
+import { useActive, TabActive } from '../ui/active';
 
 // label -> accessibilityLabel, press scale 0.98
 const Pressable3 = ({ label, ...p }: React.ComponentProps<typeof P3> & { label?: string }) => <P3 scaleTo={0.96} accessibilityRole="button" accessibilityLabel={label} {...p} />;
@@ -65,7 +66,7 @@ export const tsh = (_T: Theme, _c: string, _d: number) => ({});
 export const edgeOf = (T: Theme) => (T.day ? L.line : 'rgba(255,246,233,.22)');
 // a dot with a ring that grows and fades; use only for a genuinely live status
 export function Pulse({ color, size = 8, still }: { color: string; size?: number; still?: boolean }) {
-  const rm = useReduceMotion(), v = useRef(new Animated.Value(0)).current, on = !rm && !still;
+  const rm = useReduceMotion(), v = useRef(new Animated.Value(0)).current, active = useActive(), on = !rm && !still && active;
   useEffect(() => {
     if (!on) return;
     const l = Animated.loop(Animated.timing(v, { toValue: 1, duration: 1800, easing: EASE, useNativeDriver: ND }));
@@ -178,8 +179,8 @@ function HeroText({ title, sub, accent }: { title: string; sub: string; accent: 
   );
 }
 function Float({ children, style }: { children: ReactNode; style?: any }) {
-  const rm = useReducedMotion(), v = useSharedValue(0), e = useSharedValue(rm ? 1 : 0);
-  useEffect(() => { if (rm) return; e.value = withDelay(250, withSpring(1, { damping: 12, stiffness: 90 })); v.value = withRepeat(withTiming(1, { duration: 2600, easing: REasing.inOut(REasing.sin) }), -1, true) }, [rm]);
+  const rm = !!useReducedMotion() || !useActive(), v = useSharedValue(0), e = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { if (rm) return; if (e.value < 1) e.value = withDelay(250, withSpring(1, { damping: 12, stiffness: 90 })); v.value = withRepeat(withTiming(1, { duration: 2600, easing: REasing.inOut(REasing.sin) }), -1, true); return () => cancelAnimation(v) }, [rm]);
   const st = useAnimatedStyle(() => ({ opacity: e.value, transform: [{ translateY: -8 * v.value + (1 - e.value) * 40 }, { rotate: `${-2 + 4 * v.value}deg` }, { scale: 0.8 + 0.2 * e.value }] }));
   return <Reanimated.View pointerEvents="none" style={[style, st]}>{children}</Reanimated.View>;
 }
@@ -189,8 +190,8 @@ function Scallop({ W, color = '#fff' }: { W: number; color?: string }) {
   return <Svg width={W} height={20} style={{ position: 'absolute', left: 0, bottom: -1 }}><Path d={d} fill={color} /></Svg>;
 }
 function Live() {
-  const rm = useReducedMotion(), p = useSharedValue(0);
-  useEffect(() => { if (!rm) p.value = withRepeat(withTiming(1, { duration: 1400, easing: REasing.out(REasing.quad) }), -1, false) }, [rm]);
+  const rm = !!useReducedMotion() || !useActive(), p = useSharedValue(0);
+  useEffect(() => { if (!rm) p.value = withRepeat(withTiming(1, { duration: 1400, easing: REasing.out(REasing.quad) }), -1, false); return () => cancelAnimation(p) }, [rm]);
   const ring = useAnimatedStyle(() => ({ opacity: 0.7 * (1 - p.value), transform: [{ scale: 1 + 1.6 * p.value }] }));
   return (
     <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, height: 30, paddingLeft: 10, paddingRight: 12, borderRadius: 15, backgroundColor: '#17112A', marginTop: 12 }}>
@@ -565,7 +566,7 @@ export default function Home() {
   useEffect(() => { onGridJump(() => ref.current?.scrollTo({ y: Math.max(0, gridY.current - 90), animated: true })); return () => onGridJump(null) }, []);
   const refresh = async () => { setRefreshing(true); try { await act.refresh() } catch (e: any) { toast(e?.message || 'Could not refresh') } setRefreshing(false) };
   return (
-    <View style={{ flex: 1, backgroundColor: L.bg, alignItems: 'center' }}>
+    <TabActive tab="home"><View style={{ flex: 1, backgroundColor: L.bg, alignItems: 'center' }}>
       <Animated.ScrollView style={{ width: '100%', maxWidth: 520 }} ref={ref} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={onScroll} bounces
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={L.accent} colors={[L.accent]} progressViewOffset={Math.max(ins.top, 24) + 56} />}
         contentContainerStyle={{ paddingBottom: cart ? 64 : 0 }}>
@@ -585,6 +586,6 @@ export default function Home() {
       </Animated.ScrollView>
       <Header y={y} />
       {cart ? <CartBar aboveTabs /> : null}
-    </View>
+    </View></TabActive>
   );
 }

@@ -27,7 +27,7 @@ export function Splash({ children, still }: { children?: ReactNode; still?: bool
     <View style={{ flex: 1, backgroundColor: '#4B12C9', overflow: 'hidden' }}>
       <View style={{ position: 'absolute', left: 0, right: 0, top: 0, height: H }}><Backdrop W={W} H={H} tone={1} road /></View>
       <View style={{ position: 'absolute', left: 0, right: 0, top: floor - 190, alignItems: 'center' }}>
-        <Reanimated.Text style={[{ fontFamily: F.b600, fontSize: 34, letterSpacing: 0.4, color: '#fff' }, w]}>Washing Daddy</Reanimated.Text>
+        <Reanimated.Text numberOfLines={1} adjustsFontSizeToFit style={[{ fontFamily: F.b600, fontSize: 34, color: '#fff', textAlign: 'center', width: W - 48 }, w]}>Washing Daddy</Reanimated.Text>
         <Reanimated.Text style={[{ fontFamily: F.body, fontSize: 14, color: 'rgba(255,255,255,.85)', marginTop: 6 }, g]}>Car wash at your parking spot</Reanimated.Text>
       </View>
       <Reanimated.View style={[abs((W - rw) / 2, H - 36 - rw * 0.7 + 8, { width: rw }), rd]}><RiderArt w={rw} spin={spin} /></Reanimated.View>

@@ -4,6 +4,7 @@ import React, { useEffect, ReactNode } from 'react';
 import { View } from 'react-native';
 import Svg, { Path, Circle, Rect, Ellipse, G, Line, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Reanimated, { type SharedValue, useSharedValue, useAnimatedStyle, withRepeat, withTiming, cancelAnimation, useReducedMotion, Easing } from 'react-native-reanimated';
+import { useActive } from './active';
 
 export type ServiceKind = 'pressure' | 'foam' | 'vacuum' | 'dash' | 'tyre' | 'engine' | 'glass' | 'dry' | 'pass' | 'money' | 'plan' | 'shine';
 
@@ -167,7 +168,7 @@ function Scene({ kind, t, s }: { kind: ServiceKind; t: SharedValue<number>; s: n
 }
 
 export function ServiceAnim({ kind = 'shine', size = 220 }: { kind?: ServiceKind; size?: number }) {
-  const rm = useReducedMotion(), t = useSharedValue(rm ? 0.55 : 0), s = size / 200;
+  const rm = !!useReducedMotion() || !useActive(), t = useSharedValue(rm ? 0.55 : 0), s = size / 200;
   useEffect(() => {
     if (rm) { t.value = 0.55; return }
     t.value = 0; t.value = withRepeat(withTiming(1, { duration: 3000, easing: Easing.linear }), -1, false);

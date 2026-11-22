@@ -220,7 +220,7 @@ export function CountUp({ to, style, duration = 650, delay = 0 }: { to: number |
 
 /* ---------- Shimmer: grey block with a soft light band sweeping across (1.1s loop) ---------- */
 export function Shimmer({ width, height = 16, radius = 8, style }: { width?: number | string; height?: number; radius?: number; style?: StyleProp<ViewStyle> }) {
-  const [w, setW] = useState(0), rm = useReducedMotion(), x = useSharedValue(0);
+  const [w, setW] = useState(0), rm = useReducedMotion() || !useActive(), x = useSharedValue(0);
   useEffect(() => { if (!rm) x.value = withRepeat(withTiming(1, { duration: 1100, easing: REasing.inOut(REasing.quad) }), -1, false); return () => cancelAnimation(x) }, [rm]);
   const st = useAnimatedStyle(() => ({ transform: [{ translateX: -w * 0.8 + x.value * w * 1.8 }] }));
   return (
@@ -258,8 +258,8 @@ export function useParallax(_height = 330) {
 
 /* ---------- Pulse: live dot with an expanding ring, 1400ms loop ---------- */
 export function Pulse({ size = 10, color = C.green, style }: { size?: number; color?: string; style?: StyleProp<ViewStyle> }) {
-  const v = useRef(new A(0)).current;
-  useEffect(() => { const a = Animated.loop(Animated.timing(v, { toValue: 1, duration: 1400, easing: Easing.out(Easing.quad), useNativeDriver: ND })); a.start(); return () => a.stop(); }, []);
+  const v = useRef(new A(0)).current, active = useActive();
+  useEffect(() => { if (!active) return; const a = Animated.loop(Animated.timing(v, { toValue: 1, duration: 1400, easing: Easing.out(Easing.quad), useNativeDriver: ND })); a.start(); return () => a.stop(); }, [active]);
   return (
     <View style={[{ width: size * 2.4, height: size * 2.4, alignItems: 'center', justifyContent: 'center' }, style]}>
       <Animated.View style={{ position: 'absolute', width: size, height: size, borderRadius: size, backgroundColor: color, opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.45, 0] }), transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] }) }] }} />
@@ -297,6 +297,7 @@ let loaderShown = false;
 export let loaderT0 = 0;
 export const loaderPending = () => !loaderShown;
 import { Splash, LoaderMap } from './splash';
+import { useActive } from './active';
 export { Splash };
 function PinSvg({ size = 40 }: { size?: number }) {
   return (
