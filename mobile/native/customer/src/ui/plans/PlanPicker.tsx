@@ -57,22 +57,18 @@ function PlanCard({ p, on, cur, onPress }: { p: Plan; on: boolean; cur: boolean;
   return (
     <Pressable3 onPress={onPress} scaleTo={0.985} accessibilityRole="button" accessibilityLabel={`${p.name}, ${inr(p.price)} per month`} accessibilityState={{ selected: on }}>
       <Animated.View style={{ backgroundColor: bg, borderRadius: 22, borderWidth: 1.5, borderColor: bd, padding: 20, shadowColor: '#1A1033', shadowOpacity: on ? 0.1 : 0.04, shadowRadius: on ? 14 : 6, shadowOffset: { width: 0, height: 3 }, elevation: on ? 3 : 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-          <Animated.View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, marginTop: 1, borderColor: on ? V : 'rgba(23,23,23,0.24)', backgroundColor: on ? V : C.white, alignItems: 'center', justifyContent: 'center', transform: [{ scale: dot.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] }}>
-            {on ? <Check size={13} color={C.white} strokeWidth={3} /> : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Animated.View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: on ? V : 'rgba(23,23,23,0.24)', backgroundColor: on ? V : C.white, alignItems: 'center', justifyContent: 'center', transform: [{ scale: dot.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] }}>
+            {on ? <Check size={14} color={C.white} strokeWidth={3} /> : null}
           </Animated.View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <Txt {...type.h2} color={INK}>{p.name}</Txt>
-              {cur ? <View style={{ borderRadius: 999, paddingVertical: 2, paddingHorizontal: 8, backgroundColor: 'rgba(84,9,218,0.10)' }}><Txt weight={500} size={11} color={V}>Current</Txt></View> : null}
-            </View>
-            <Txt size={13} color={SEC} style={{ marginTop: 2, lineHeight: 19 }}>{benefit(p)}</Txt>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Txt weight={700} size={26} color={on ? V : INK} style={NUM}>{inr(p.price)}</Txt>
-            <Txt size={12} color={MUTED} style={{ marginTop: -3 }}>per month</Txt>
-          </View>
+          <Txt weight={600} size={19} color={INK} style={{ flex: 1 }}>{p.name}</Txt>
+          {cur ? <View style={{ borderRadius: 999, paddingVertical: 3, paddingHorizontal: 10, backgroundColor: 'rgba(84,9,218,0.10)' }}><Txt weight={500} size={12} color={V}>Current plan</Txt></View> : null}
         </View>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 14 }}>
+          <Txt weight={700} size={30} color={on ? V : INK} style={NUM}>{inr(p.price)}</Txt>
+          <Txt size={14} color={MUTED}>per month</Txt>
+        </View>
+        <Txt size={14} color={SEC} style={{ marginTop: 4, lineHeight: 21 }}>{benefit(p)}</Txt>
         <View style={{ height: 1, backgroundColor: on ? 'rgba(84,9,218,0.14)' : LINE, marginVertical: 16 }} />
         <View style={{ gap: 12 }}>
           {features(p).map(f => (
