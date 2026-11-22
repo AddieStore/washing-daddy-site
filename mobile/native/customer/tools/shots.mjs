@@ -55,6 +55,9 @@ for (const s of steps) {
       if (s.into) await loc(s.into).click({ timeout: 5000 });
       await page.keyboard.type(String(s.type), { delay: 20 });
     } else if (s.press) await page.keyboard.press(s.press);
+    else if (s.hscroll) { const [x, y, dx] = s.hscroll; await page.mouse.move(x, y); await page.mouse.wheel(dx, 0); }
+    else if (s.eval) { await page.evaluate(s.eval); }
+    else if (s.drag) { const [x1, y1, x2, y2] = s.drag; await page.mouse.move(x1, y1); await page.mouse.down(); await page.mouse.move((x1 + x2) / 2, (y1 + y2) / 2, { steps: 6 }); await page.mouse.move(x2, y2, { steps: 6 }); await page.mouse.up(); }
     else if (s.scroll !== undefined) { await page.mouse.move(VW / 2, VH / 2); await page.mouse.wheel(0, s.scroll); }
     else if (s.wait) await page.waitForTimeout(s.wait);
     else if (s.shot) { await page.evaluate(() => document.fonts.ready); await shot(s.shot); }
