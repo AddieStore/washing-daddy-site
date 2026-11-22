@@ -49,7 +49,7 @@ function fmtTime(iso) { const t = ms(iso); if (!isFinite(t)) return ''; const d 
 const FRESH_MS = 3 * 60e3;
 
 /* ---------------- state ---------------- */
-const S = { jobs: {}, codes: {}, washers: {}, photos: {}, locs: {}, washes: {}, customers: {}, payorders: {}, plans: {}, pub: {}, loaded: {}, online: false, demo: false };
+const S = { jobs: {}, codes: {}, washers: {}, photos: {}, locs: {}, washes: {}, customers: {}, payorders: {}, plans: {}, catalog: {}, pub: {}, loaded: {}, online: false, demo: false };
 const subs = new Set(); let tick = null;
 function emit() { if (tick) return; tick = setTimeout(() => { tick = null; subs.forEach(f => { try { f() } catch (e) { console.error(e) } }) }, 30) }
 const on = f => { subs.add(f); return () => subs.delete(f) };
@@ -72,7 +72,7 @@ async function start() {
   live('customers', db.collection('customers'));
   unsubs.push(db.collection('washer_public').onSnapshot(sn => { S.pub = snapDocs(sn); S.loaded.pub = true; emit() }, e => console.warn('ops washer_public', e)));
   live('payorders', db.collection('payorders').where('created_at', '>=', since), 'payorders');
-  unsubs.push(db.collection('catalog').onSnapshot(sn => { const o = {}; sn.docs.forEach(d => { const v = d.data(); if (v && v.kind === 'plan') o[d.id] = v }); S.plans = o; S.loaded.plans = true; emit() }, err('catalog')));
+  unsubs.push(db.collection('catalog').onSnapshot(sn => { const all = {}, o = {}; sn.docs.forEach(d => { const v = d.data(); if (!v) return; all[d.id] = v; if (v.kind === 'plan') o[d.id] = v }); S.catalog = all; S.plans = o; S.loaded.plans = true; S.loaded.catalog = true; emit() }, err('catalog')));
   // the monthly round: today's wash docs; re-listen when the day turns
   let day = '';
   const watchDay = () => { const d = today(); if (d === day) return; day = d; if (washUnsub) washUnsub(); washUnsub = db.collection('washes').where('date', '==', d).onSnapshot(sn => { S.washes = snapDocs(sn); S.loaded.washes = true; emit() }, err('washes')) };
@@ -208,6 +208,12 @@ async function write(path, patch, create) {
   if (S.demo) { const [col, id] = path.split('/'); const key = { ondemand: 'jobs', washerphotos: 'photos', locations: 'locs', jobcodes: 'codes', washer_public: 'pub' }[col] || col; S[key][id] = create ? patch : { ...(S[key][id] || {}), ...patch }; emit(); return }
   const ref = db.doc(path);
   return create === 'merge' ? ref.set(patch, { merge: true }) : create ? ref.set(patch) : ref.update(patch);
+}
+// catalog/{id}: prices, names, badges, feature rows. Writes only the changed fields (merge); the website and app read the same doc.
+async function saveCatalog(id, patch) {
+  if (!id || !patch || !Object.keys(patch).length) return;
+  if (S.demo) { S.catalog[id] = { ...(S.catalog[id] || {}), ...patch }; if (S.catalog[id].kind === 'plan') S.plans[id] = S.catalog[id]; emit(); return }
+  return db.collection('catalog').doc(id).set(patch, { merge: true });
 }
 function need(id) { const j = jobView(id); if (!j) throw new Error('That booking is gone.'); return j }
 async function assign(jobId, phone, o = {}) {
@@ -386,13 +392,29 @@ function demo() {
   S.codes = {}; Object.keys(S.jobs).forEach(id => { S.codes[id] = { code: newCode(), phone: S.jobs[id].customer_id } });
   const till = n => addDays(d, n);
   S.customers = {
-    '+919811440001': { name: 'Mr. Arora', area: 'GH-9 Paschim Vihar', status: 'active', cars: [{ id: 'c0', make: 'Mahindra', name: 'Scorpio N', plate: 'DL 4C AB 2731', plan: 'pro', start: till(-27), till: till(3), washer: 'Chotte' }], created_at: '2026-08-02' },
-    '+919811440002': { name: 'Neha Kapoor', area: 'GH-6 Paschim Vihar', status: 'active', cars: [{ id: 'c0', make: 'Honda', name: 'Civic', plate: 'DL 3C BK 0419', plan: 'std', start: till(-32), till: till(-2), washer: 'Chotte' }, { id: 'c1', make: 'Kia', name: 'Seltos', plate: 'DL 3C BK 7711', plan: 'std', start: till(-10), till: till(20), washer: 'Chotte' }], created_at: '2026-07-11' },
-    '+919811440003': { name: 'Gupta ji', area: 'Meera Bagh', status: 'active', cars: [{ id: 'c0', make: 'Maruti', name: 'Ertiga', plate: 'DL 8C MM 4040', plan: 'basic', start: till(-24), till: till(6), washer: 'Shahrukh' }], created_at: '2026-09-20' },
-    '+919811440004': { name: 'Sandeep', area: 'GH-14 Paschim Vihar', status: 'active', cars: [{ id: 'c0', make: 'Tata', name: 'Nexon', plate: 'DL 9C NX 1414', plan: 'pro', start: till(-5), till: till(25), washer: 'Shahrukh' }], created_at: '2026-10-15' },
-    '+919811440005': { name: 'Priya M.', area: 'Sundar Vihar', status: 'new', cars: [{ id: 'c0', make: 'Hyundai', name: 'Venue', plate: 'DL 6C VV 2626', plan: 'std', start: till(1), till: till(30) }], created_at: T(200) },
+    '+919811440001': { name: 'Mr. Arora', area: 'GH-9 Paschim Vihar', status: 'active', cars: [{ id: 'c0', make: 'Mahindra', name: 'Scorpio N', plate: 'DL 4C AB 2731', plan: 'plan-pro', start: till(-27), till: till(3), washer: 'Chotte' }], created_at: '2026-08-02' },
+    '+919811440002': { name: 'Neha Kapoor', area: 'GH-6 Paschim Vihar', status: 'active', cars: [{ id: 'c0', make: 'Honda', name: 'Civic', plate: 'DL 3C BK 0419', plan: 'plan-std', start: till(-32), till: till(-2), washer: 'Chotte' }, { id: 'c1', make: 'Kia', name: 'Seltos', plate: 'DL 3C BK 7711', plan: 'plan-std', start: till(-10), till: till(20), washer: 'Chotte' }], created_at: '2026-07-11' },
+    '+919811440003': { name: 'Gupta ji', area: 'Meera Bagh', status: 'active', cars: [{ id: 'c0', make: 'Maruti', name: 'Ertiga', plate: 'DL 8C MM 4040', plan: 'plan-std', start: till(-24), till: till(6), washer: 'Shahrukh' }], created_at: '2026-09-20' },
+    '+919811440004': { name: 'Sandeep', area: 'GH-14 Paschim Vihar', status: 'active', cars: [{ id: 'c0', make: 'Tata', name: 'Nexon', plate: 'DL 9C NX 1414', plan: 'plan-pro', start: till(-5), till: till(25), washer: 'Shahrukh' }], created_at: '2026-10-15' },
+    '+919811440005': { name: 'Priya M.', area: 'Sundar Vihar', status: 'new', cars: [{ id: 'c0', make: 'Hyundai', name: 'Venue', plate: 'DL 6C VV 2626', plan: 'plan-std', start: till(1), till: till(30) }], created_at: T(200) },
   };
-  S.plans = { basic: { kind: 'plan', name: 'Basic', price: 599 }, std: { kind: 'plan', name: 'Standard', price: 899 }, pro: { kind: 'plan', name: 'Pro', price: 1299 } };
+  const PL = (name, price, mrp, badge, order, rows) => ({ kind: 'plan', name, price, mrp, badge, status: 'live', order, rows });
+  const PK = (name, price, mrp, badge, order, included = []) => ({ kind: 'pack', name, price, mrp, badge, status: 'live', order, included });
+  S.catalog = {
+    'plan-std': PL('WD Standard', 999, 0, '', 1, [{ k: 'Exterior', v: '2× a week' }, { k: 'Interior', v: '1× a week' }, { k: 'Tyre shine', v: 'Monthly' }]),
+    'plan-pro': PL('WD Pro', 1800, 2200, 'POPULAR', 2, [{ k: 'Exterior', v: '3× a week' }, { k: 'Interior', v: '2× a week' }, { k: 'Tyre shine', v: 'Weekly' }]),
+    'plan-exc': PL('WD Exclusive', 2500, 0, '', 3, [{ k: 'Exterior', v: 'Daily' }, { k: 'Interior', v: '3× a week' }, { k: 'Deep clean', v: 'Monthly' }]),
+    'plan-res': PL('WD Reserve', 5555, 0, '', 4, [{ k: 'Exterior', v: 'Daily' }, { k: 'Interior', v: 'Daily' }, { k: 'Deep clean', v: '2× a month' }]),
+    'pack-wash': PK('WD Wash', 199, 0, '', 1, ['Pressure wash', 'Tyre & trim polish', 'Interior cleaning']),
+    'pack-deep': PK('WD Deep Cleaning', 800, 1000, 'POPULAR', 2),
+    'pack-exclusive': PK('WD Exclusive wash', 2100, 0, '', 3),
+    'svc-foam': { kind: 'service', name: 'Foam wash', price: 349, mrp: 0, badge: '', status: 'live', order: 1 },
+    'svc-interior': { kind: 'service', name: 'Interior vacuum', price: 249, mrp: 0, badge: '', status: 'live', order: 2 },
+    'svc-pressure': { kind: 'service', name: 'Pressure wash', price: 449, mrp: 0, badge: '', status: 'paused', order: 3 },
+    'store-shine': { kind: 'store', name: 'Dashboard shine spray', price: 299, mrp: 350, badge: '', status: 'live', order: 1 },
+    'store-cloth': { kind: 'store', name: 'Microfibre cloth (pack of 3)', price: 199, mrp: 0, badge: 'NEW', status: 'live', order: 2 },
+  };
+  S.plans = {}; Object.entries(S.catalog).forEach(([id, v]) => { if (v.kind === 'plan') S.plans[id] = v });
   S.washes = {
     [d + '_DL4CAB2731']: { washer_id: 'chotte', reg: 'DL4CAB2731', car_label: 'Scorpio N', status: 'done', date: d },
     [d + '_DL3CBK0419']: { washer_id: 'chotte', reg: 'DL3CBK0419', car_label: 'Civic', status: 'done', date: d },
@@ -407,7 +429,7 @@ function demo() {
   S.payorders.WDB9 = { kind: 'booking', phone: '+919811005500', status: 'failed', amount: 399, created_at: T(35), gateway: 'razorpay', lines: [{ name: 'Foam wash', q: 1 }] };
   S.ratings = { B7Q2F0: { stars: 5 } };
   S.pub = { chotte: { id: 'chotte', phone: '+919876500001', jobs_base: 420, rating_base: 4.8, rating_count_base: 150, jobs_app: 0, rating_sum_app: 0, rating_count_app: 0, languages: ['Hindi'], verified: { id: true, police: true, training: false, assessment: false }, since: '2024-06-01', area: 'GH-9 Paschim Vihar' } };
-  ['jobs', 'codes', 'washers', 'photos', 'locs', 'customers', 'payorders', 'plans', 'washes'].forEach(k => { S.loaded[k] = true });
+  ['jobs', 'codes', 'washers', 'photos', 'locs', 'customers', 'payorders', 'plans', 'catalog', 'washes'].forEach(k => { S.loaded[k] = true });
   emit();
   // the washers move; the one on the way closes in on his customer
   demoT.push(setInterval(() => {
@@ -423,6 +445,6 @@ function demo() {
 }
 
 window.OPS = { S, on, start, stop, demo, job: jobView, jobs, washer: washerView, washers, suggest, monthly, dues, payments, kpis, byRound: washerByRound,
-  assign, unassign, savePublic, recountApp, pubTotals, OWNER_PHONE, ensureCode, stage, cancel, setEta, addWasher, updateWasher, setPhoto, setWasherStatus, setRound, customerStatus,
+  assign, unassign, savePublic, recountApp, pubTotals, OWNER_PHONE, ensureCode, stage, cancel, setEta, addWasher, updateWasher, setPhoto, setWasherStatus, setRound, customerStatus, saveCatalog,
   photoFromFile, km, ago, fmtTime, rs, nice, today, isoIST, ms, travelMin, STAGE_LABEL, FRESH_MS };
 })();

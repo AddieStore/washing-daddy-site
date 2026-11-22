@@ -33,12 +33,13 @@ const IC = {
   vol: '<path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
   mute: '<path d="M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6"/>',
   ext: '<path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  tag: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.5"/>',
   drop: '<path d="M12 2.7s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11z"/>', lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
 };
 const ic = (n, s = 20, w = 2) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ''}</svg>`;
 
 /* ---------------- state + prefs ---------------- */
-const UI = { sec: 'live', sheet: null, bk: { tab: 'instant', chip: 'open', q: '' }, mo: { chip: 'active' }, pay: { chip: 'paid' }, map: null, sheetMap: null, etaEdited: false, seeded: false, seen: new Set() };
+const UI = { sec: 'live', sheet: null, bk: { tab: 'instant', chip: 'open', q: '' }, mo: { chip: 'active' }, pr: { chip: 'plan', d: {}, err: {}, busy: {}, edit: null }, pay: { chip: 'paid' }, map: null, sheetMap: null, etaEdited: false, seeded: false, seen: new Set() };
 const pref = (k, d) => tryLS(() => { const v = localStorage.getItem('wdops_' + k); return v === null ? d : v === '1' }, d);
 const setPref = (k, v) => tryLS(() => localStorage.setItem('wdops_' + k, v ? '1' : '0'));
 UI.sound = pref('sound', true);
@@ -301,6 +302,7 @@ const SH = {
     },
   },
   addw: { update() {} },
+  price: { update() {} },
   monthly: {
     update(el) {
       const c = OPS.monthly().find(x => x.phone === UI.sheet.id); if (!c) return setHTML(R('sum', el), empty('This customer is gone.'));
@@ -448,6 +450,9 @@ document.addEventListener('click', async e => {
     case 'savew': return run(OPS.updateWasher(ph, { name: $('#wName').value, area: $('#wArea').value }), 'Details saved.');
     case 'saveround': return run(OPS.setRound(ph, $('#wRound').value), 'Round id saved.');
     case 'custstatus': return run(OPS.customerStatus(ph, t.dataset.st), t.dataset.st === 'active' ? 'Customer activated.' : 'Customer paused.');
+    case 'pedit': return openPriceEdit(id);
+    case 'pradd': { UI.pr.edit.lines = prReadLines(); UI.pr.edit.lines.push({ k: '', v: '' }); prDrawLines(); const k = $$('[data-lk]', $('#sheet')); k[k.length - 1].focus(); return }
+    case 'prrm': { UI.pr.edit.lines = prReadLines(); UI.pr.edit.lines.splice(num(t.dataset.i), 1); return prDrawLines() }
     case 'fit': return UI.map && UI.map.fit();
     case 'tab': UI.bk.tab = t.dataset.v; return SECS.bookings.update();
     case 'chip': { const g = t.dataset.g; UI[g].chip = t.dataset.v; return SECS[t.dataset.s].update() }
@@ -597,7 +602,129 @@ const SECS = {
     },
   },
 };
-const NAV = [['live', 'Live', 'live'], ['bookings', 'Bookings', 'list'], ['monthly', 'Monthly', 'users'], ['payments', 'Payments', 'card'], ['washers', 'Washers', 'wash'], ['map', 'Map', 'map']];
+/* ---------------- prices (catalog/{id}) ---------------- */
+const PR_KINDS = [['plan', 'Monthly plans'], ['pack', 'One-time washes'], ['service', 'Services'], ['store', 'Store']];
+const PR_NOTE = 'Website checkout charges this price once the payment server update is on.';
+const prItems = kind => Object.entries(OPS.S.catalog || {}).filter(([, v]) => v && v.kind === kind).map(([id, v]) => ({ id, ...v }))
+  .sort((a, b) => num(a.order, 999) - num(b.order, 999) || String(a.name || a.id).localeCompare(String(b.name || b.id)));
+const prWeb = v => v.webShow !== false;
+const prWebKind = k => k === 'plan' || k === 'pack';
+const prVal = (it, f) => { const d = UI.pr.d[it.id]; if (d && f in d) return d[f]; return f === 'price' ? String(num(it.price)) : f === 'mrp' ? String(num(it.mrp)) : prWeb(it) };
+// validates a card draft and returns { patch } or { error }
+function prPatch(it) {
+  const d = UI.pr.d[it.id] || {}, patch = {};
+  if ('price' in d) {
+    const t = String(d.price).trim();
+    if (!/^\d+$/.test(t) || +t < 1 || +t > 50000) return { error: 'Price must be a whole number from 1 to 50000.' };
+    if (+t !== num(it.price)) patch.price = +t;
+  }
+  const price = patch.price != null ? patch.price : num(it.price);
+  if ('mrp' in d) {
+    const t = String(d.mrp).trim() || '0';
+    if (!/^\d+$/.test(t) || +t > 100000) return { error: 'Old price must be a whole number, or 0 for none.' };
+    if (+t > 0 && +t <= price) return { error: 'Old price must be higher than the price, or 0 for none.' };
+    if (+t !== num(it.mrp)) patch.mrp = +t;
+  }
+  if ('webShow' in d && d.webShow !== prWeb(it)) patch.webShow = !!d.webShow;
+  return { patch };
+}
+const prCard = it => {
+  const id = esc(it.id), web = prWebKind(it.kind), d = UI.pr.d[it.id], dirty = !!d && Object.keys(prPatch(it).patch || {}).length > 0 || (!!d && !!prPatch(it).error);
+  const st = it.status && it.status !== 'live' ? `<span class="pill amber">${esc(it.status)}</span>` : '';
+  const mrp = num(it.mrp) > 0 ? `<s>${OPS.rs(it.mrp)}</s>` : '';
+  return `<form class="card pr-card" data-pid="${id}" autocomplete="off" novalidate>
+    <div class="pr-h"><div class="gr"><b>${esc(it.name || it.id)}</b><small>${id}</small><div class="mini">${it.badge ? `<span class="pill violet">${esc(it.badge)}</span>` : ''}${st}</div></div>
+      <div class="pr-now"><b>${OPS.rs(it.price)}</b>${mrp}</div></div>
+    <label class="lbl" for="pp_${id}">Price</label>
+    <div class="rs-in"><span>₹</span><input class="field" id="pp_${id}" data-pf="price" data-id="${id}" inputmode="numeric" maxlength="6" value="${esc(prVal(it, 'price'))}"></div>
+    <label class="lbl" for="pm_${id}">Old price (MRP), 0 for none</label>
+    <div class="rs-in"><span>₹</span><input class="field" id="pm_${id}" data-pf="mrp" data-id="${id}" inputmode="numeric" maxlength="6" value="${esc(prVal(it, 'mrp'))}"></div>
+    ${web ? `<label class="tgl"><input type="checkbox" data-pf="webShow" data-id="${id}" ${prVal(it, 'webShow') ? 'checked' : ''}><span class="tg-t">Show on website</span><i aria-hidden="true"></i></label>` : ''}
+    ${it.kind === 'service' ? '<div class="hint">Base price for a hatchback. Sedan and SUV prices scale from it.</div>' : ''}
+    ${web ? `<div class="hint">${PR_NOTE}</div>` : ''}
+    <div class="err" data-r="perr" role="alert">${esc(UI.pr.err[it.id] || '')}</div>
+    <div class="btns"><button class="btn go" type="submit" data-save ${dirty && !UI.pr.busy[it.id] ? '' : 'disabled'}>Save</button><button class="btn soft" type="button" data-act="pedit" data-id="${id}">${ic('tag', 16)}Edit details</button></div></form>`;
+};
+SECS.prices = {
+  title: 'Prices',
+  build: () => `<div class="page-h"><h2>Prices</h2></div><div class="note">Website and app prices. Changes show on both within a minute.</div><div class="chips pr-chips" data-r="chips"></div><div class="cardlist pr-list" data-r="list"></div>`,
+  update(m = $('#main')) {
+    const ae = document.activeElement; if (ae && ae.matches && ae.matches('input') && m.contains(ae)) return;   // never redraw under typing
+    setHTML(R('chips', m), PR_KINDS.map(([v, l]) => `<button type="button" class="chip ${UI.pr.chip === v ? 'on' : ''}" aria-pressed="${UI.pr.chip === v}" data-act="chip" data-g="pr" data-s="prices" data-v="${v}">${l} <small>${prItems(v).length}</small></button>`).join(''));
+    const list = prItems(UI.pr.chip);
+    setHTML(R('list', m), list.length ? list.map(prCard).join('') : empty(OPS.S.loaded.catalog ? 'Nothing in this list yet.' : 'Loading…'));
+  },
+};
+function prRefresh(id) {   // re-evaluate one card's Save button and error line without redrawing it
+  const f = $(`form[data-pid="${CSS.escape(id)}"]`), it = (OPS.S.catalog || {})[id]; if (!f || !it) return;
+  const r = prPatch({ id, ...it }), b = $('[data-save]', f);
+  b.disabled = !!UI.pr.busy[id] || !(Object.keys(r.patch || {}).length || r.error);
+  const e = R('perr', f); if (e) e.textContent = UI.pr.err[id] || '';
+}
+document.addEventListener('input', e => {
+  const t = e.target; if (!t.dataset || !t.dataset.pf) return;
+  const id = t.dataset.id, d = UI.pr.d[id] = UI.pr.d[id] || {};
+  d[t.dataset.pf] = t.type === 'checkbox' ? t.checked : t.value;
+  UI.pr.err[id] = ''; prRefresh(id);
+});
+async function prSubmit(id) {
+  const it = { id, ...((OPS.S.catalog || {})[id] || {}) }, r = prPatch(it);
+  if (r.error) { UI.pr.err[id] = r.error; return prRefresh(id) }
+  if (!Object.keys(r.patch).length) { UI.pr.err[id] = ''; return prRefresh(id) }
+  UI.pr.busy[id] = true; prRefresh(id);
+  try {
+    await OPS.saveCatalog(id, r.patch); delete UI.pr.d[id]; UI.pr.err[id] = '';
+    toast(OPS.S.demo ? 'Demo: changed on screen only, nothing is saved.' : 'Saved. Website and app update within a minute.');
+  } catch (x) { console.warn(x); UI.pr.err[id] = 'Could not save. Check the internet and try again.' }
+  UI.pr.busy[id] = false;
+  const ae = document.activeElement; if (ae && ae.matches && ae.matches('input')) ae.blur();
+  SECS.prices.update(); prRefresh(id);
+}
+document.addEventListener('submit', e => { const f = e.target.closest && e.target.closest('form[data-pid]'); if (!f) return; e.preventDefault(); prSubmit(f.dataset.pid) });
+
+/* edit sheet: name, badge, and the feature lines the website shows */
+const prLine = (kind, i, l) => kind === 'plan'
+  ? `<div class="ln-row"><div><label class="lbl" for="lk${i}">Feature ${i + 1}</label><input class="field" id="lk${i}" data-lk maxlength="40" value="${esc(l.k)}" placeholder="Interior"></div><div><label class="lbl" for="lv${i}">Detail</label><input class="field" id="lv${i}" data-lv maxlength="40" value="${esc(l.v)}" placeholder="2× a week"></div><button class="x" type="button" data-act="prrm" data-i="${i}" aria-label="Remove line ${i + 1}">${ic('x')}</button></div>`
+  : `<div class="ln-row one"><div><label class="lbl" for="lk${i}">Line ${i + 1}</label><input class="field" id="lk${i}" data-lk maxlength="60" value="${esc(l.k)}" placeholder="Interior cleaning"></div><button class="x" type="button" data-act="prrm" data-i="${i}" aria-label="Remove line ${i + 1}">${ic('x')}</button></div>`;
+const prReadLines = () => $$('.ln-row', $('#sheet')).map(r => ({ k: $('[data-lk]', r).value, v: $('[data-lv]', r) ? $('[data-lv]', r).value : '' }));
+function prDrawLines() { const e = $('#prLines'); if (e) e.innerHTML = UI.pr.edit.lines.map((l, i) => prLine(UI.pr.edit.kind, i, l)).join('') || '<div class="hint">No lines yet.</div>' }
+function openPriceEdit(id) {
+  const it = (OPS.S.catalog || {})[id]; if (!it) return;
+  const lines = it.kind === 'plan' ? (Array.isArray(it.rows) ? it.rows : []).map(r => ({ k: String(r.k || ''), v: String(r.v || '') })) : it.kind === 'pack' ? (Array.isArray(it.included) ? it.included : []).map(x => ({ k: String(x), v: '' })) : null;
+  UI.pr.edit = { id, kind: it.kind, lines };
+  openSheet('price', id, `${shHead('Edit details')}<form class="card" id="prForm" autocomplete="off" novalidate>
+    <label class="lbl" for="peName" style="margin-top:0">Name</label><input class="field" id="peName" maxlength="60" value="${esc(it.name || '')}" data-focus>
+    <label class="lbl" for="peBadge">Badge, for example POPULAR (empty for none)</label><input class="field" id="peBadge" maxlength="20" value="${esc(it.badge || '')}">
+    ${lines ? `<div class="sh-sec" style="margin-top:22px">${it.kind === 'plan' ? 'Feature lines on the website' : 'What is included, shown on the website'}</div><div id="prLines"></div>
+    <div class="btns"><button class="btn sm soft" type="button" data-act="pradd">${ic('plus', 16)}Add a line</button></div><div class="hint">Shown on washingdaddy.com once you save lines here.</div>` : ''}
+    <div class="err" id="peErr" role="alert"></div><div class="btns"><button class="btn go" type="submit" id="peGo">Save</button><button class="btn ghost" type="button" data-act="close">Cancel</button></div></form>`);
+  prDrawLines();
+}
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'prForm') return; e.preventDefault();
+  const E = UI.pr.edit, it = (OPS.S.catalog || {})[E.id], err = $('#peErr'); if (!it) return;
+  const name = $('#peName').value.trim(), badge = $('#peBadge').value.trim(), patch = {};
+  if (!name) { err.textContent = 'Name is needed.'; return }
+  if (name !== String(it.name || '')) patch.name = name;
+  if (badge !== String(it.badge || '')) patch.badge = badge;
+  if (E.lines) {
+    const out = [];
+    for (const l of prReadLines()) {
+      const k = l.k.trim(), v = l.v.trim();
+      if (!k && !v) continue;
+      if (E.kind === 'plan' && (!k || !v)) { err.textContent = 'Each feature line needs both a feature and a detail, or remove it.'; return }
+      out.push(E.kind === 'plan' ? { k, v } : k);
+    }
+    const key = E.kind === 'plan' ? 'rows' : 'included', cur = Array.isArray(it[key]) ? it[key] : [];
+    if (JSON.stringify(out) !== JSON.stringify(cur)) { patch[key] = out; patch.webEdited = true }
+  }
+  if (!Object.keys(patch).length) { closeSheet(); return }
+  const b = $('#peGo'); b.disabled = true; err.textContent = '';
+  try { await OPS.saveCatalog(E.id, patch); closeSheet(); toast(OPS.S.demo ? 'Demo: changed on screen only, nothing is saved.' : 'Saved. Website and app update within a minute.') }
+  catch (x) { console.warn(x); err.textContent = 'Could not save. Check the internet and try again.'; b.disabled = false }
+});
+
+const NAV = [['live', 'Live', 'live'], ['bookings', 'Bookings', 'list'], ['monthly', 'Monthly', 'users'], ['payments', 'Payments', 'card'], ['washers', 'Washers', 'wash'], ['prices', 'Prices', 'tag'], ['map', 'Map', 'map']];
 
 function goto(sec, noHash) {
   if (!SECS[sec]) sec = 'live';

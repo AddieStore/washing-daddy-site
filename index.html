@@ -939,7 +939,7 @@ body.co-open{overflow:hidden}
   var N8N = "https://n8n.washingdaddy.com/webhook";
   var CF_MODE = "production";        /* keep in step with pay/index.html */
   var PHONE = "917701808924";
-  var ITEMS = {
+  var ITEMS = window.WD_ITEMS = {
     "std":   { kind:"Monthly plan", nm:"WD Standard",    pr:999,  unit:"/month", ds:"Daily pressure wash at your gate",       inc:["Interior 1× a week","Tyre polish 2× a week","Foam 1× a week"] },
     "pro":   { kind:"Monthly plan", nm:"WD Pro",         pr:1800, unit:"/month", ds:"Daily pressure wash at your gate",       inc:["Interior 2× a week","Tyre polish daily","Foam 2× a week","Detailing 1× a month"] },
     "exc":   { kind:"Monthly plan", nm:"WD Exclusive",   pr:2500, unit:"/month", ds:"Daily pressure wash at your gate",       inc:["Interior 3× a week","Tyre polish daily","Foam 4× a week","Detailing 2× a month","Car perfume","1 on-demand service"] },
@@ -1058,6 +1058,96 @@ body.co-open{overflow:hidden}
         err(((x && x.message) || "Couldn't start the payment.") + " Try again, or WhatsApp us on 77018 08924.");
       });
   });
+})();
+</script>
+
+<script>
+/* ---------- live prices: washingdaddy.com reads the same Firestore catalog as the app ----------
+   Edited from WD Operations > Prices. If the read fails the prices already in the page stay. */
+(function(){
+  var MAP = { std:'plan-std', pro:'plan-pro', exc:'plan-exc', res:'plan-res', wash:'pack-wash', deep:'pack-deep', exclusive:'pack-exclusive' };
+  var URL = "https://firestore.googleapis.com/v1/projects/gen-lang-client-0799769592/databases/(default)/documents/catalog?pageSize=200&key=AIzaSyAFNwmEFj4BywMcIsWndyZ2BoI_82-pSac";
+  function val(v){
+    if (!v) return null;
+    if ('stringValue' in v) return v.stringValue;
+    if ('integerValue' in v) return Number(v.integerValue);
+    if ('doubleValue' in v) return Number(v.doubleValue);
+    if ('booleanValue' in v) return v.booleanValue;
+    if (v.arrayValue) return (v.arrayValue.values || []).map(val);
+    if (v.mapValue) { var o = {}, f = v.mapValue.fields || {}; for (var k in f) o[k] = val(f[k]); return o; }
+    return null;
+  }
+  function rs(n){ return "₹" + Number(n).toLocaleString("en-IN"); }
+  function apply(docs){
+    var P = {};
+    Object.keys(MAP).forEach(function(id){
+      var d = docs[MAP[id]]; if (!d) return;
+      var price = Number(d.price);
+      if (!isFinite(price) || price < 1 || price > 50000) return;
+      P[id] = { price:price, name:d.name, badge:d.badge, show:d.webShow !== false, rows:d.webEdited ? d.rows : null, inc:d.webEdited ? d.included : null };
+    });
+    window.WD_LIVE = P;
+    [].forEach.call(document.querySelectorAll('#plans article.plan'), function(a){
+      var b = a.querySelector('[data-buy]'); if (!b) return;
+      var p = P[b.dataset.buy]; if (!p) return;
+      if (!p.show){ a.hidden = true; a.style.display = 'none'; return; }
+      var h = a.querySelector('h3'); if (h && p.name) h.textContent = p.name;
+      var pr = a.querySelector('.price'), sm = pr && pr.querySelector('small');
+      if (pr){ pr.textContent = rs(p.price); if (sm) pr.appendChild(sm); }
+      var flag = a.querySelector('.flag');
+      if (typeof p.badge === 'string' && p.badge){
+        if (!flag){ flag = document.createElement('span'); flag.className = 'flag'; a.insertBefore(flag, a.firstChild); }
+        flag.textContent = p.badge.charAt(0).toUpperCase() + p.badge.slice(1).toLowerCase();
+      } else if (flag && p.badge === '') flag.remove();
+      var ul = a.querySelector('ul'), lines = null;
+      if (p.rows && p.rows.length) lines = p.rows.map(function(r){ return [r.k, r.v]; });
+      else if (p.inc && p.inc.length) lines = p.inc.map(function(t){ return [t, '']; });
+      if (ul && lines){
+        ul.innerHTML = '';
+        lines.forEach(function(l){
+          var li = document.createElement('li'); li.appendChild(document.createTextNode(l[0] || ''));
+          if (l[1]){ var q = document.createElement('span'); q.className = 'q'; q.textContent = l[1]; li.appendChild(q); }
+          ul.appendChild(li);
+        });
+      }
+    });
+    /* checkout sheet, enquiry list, footer, ticker */
+    var plans = ['std','pro','exc','res'].filter(function(id){ return P[id] && P[id].show; });
+    var sel = document.getElementById('f-plan');
+    if (sel && plans.length){
+      var keep = [].slice.call(sel.options).filter(function(o){ return !/a month$/.test(o.text); });
+      sel.innerHTML = '';
+      keep.slice(0,1).concat(plans.map(function(id){ var o = document.createElement('option'); o.textContent = P[id].name + ' — ' + rs(P[id].price) + ' a month'; return o; }), keep.slice(1)).forEach(function(o){ sel.appendChild(o); });
+    }
+    [].forEach.call(document.querySelectorAll('footer [data-plan]'), function(a){
+      var nm = a.textContent.trim(), id = null;
+      Object.keys(P).forEach(function(k){ if (P[k].name === nm || (window.WD_ITEMS && window.WD_ITEMS[k] && window.WD_ITEMS[k].nm === nm)) id = k; });
+      var li = a.parentNode, pr = li && li.querySelector('.pr');
+      if (!id || !pr) return;
+      if (!P[id].show){ li.style.display = 'none'; return; }
+      pr.textContent = rs(P[id].price); a.dataset.plan = P[id].name + ' — ' + rs(P[id].price) + ' a month';
+    });
+    if (window.WD_ITEMS) Object.keys(P).forEach(function(id){ var it = window.WD_ITEMS[id]; if (it){ it.pr = P[id].price; if (P[id].name) it.nm = P[id].name; } });
+    if (plans.length){
+      var low = Math.min.apply(null, plans.map(function(id){ return P[id].price; })), L = rs(low);
+      [].forEach.call(document.querySelectorAll('.ticker .run span, .lede, .ticket .amt'), function(el){
+        if (el.classList.contains('amt')){ var sm = el.querySelector('small'); el.textContent = L; if (sm) el.appendChild(sm); }
+        else el.childNodes.forEach(function(n){ if (n.nodeType === 3) n.nodeValue = n.nodeValue.replace(/₹999/g, L); });
+      });
+    }
+  }
+  function go(){
+    fetch(URL).then(function(r){ if (!r.ok) throw 0; return r.json(); }).then(function(j){
+      var docs = {};
+      (j.documents || []).forEach(function(d){
+        var id = d.name.split('/').pop(), o = {}, f = d.fields || {};
+        for (var k in f) o[k] = val(f[k]);
+        docs[id] = o;
+      });
+      apply(docs);
+    }).catch(function(){});
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
 })();
 </script>
 <script src="/wd-footer.js" defer></script>
