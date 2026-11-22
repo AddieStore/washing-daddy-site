@@ -39,7 +39,7 @@ export default function DeleteAccount() {
       <PageBar title="Delete account" onBack={() => setStep(0)} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16 }}>
-          <Txt weight={500} size={22} style={{ lineHeight: 30 }}>Tell us why you are leaving</Txt>
+          <Txt weight={600} size={22} style={{ lineHeight: 28 }}>Tell us why you are leaving</Txt>
           <Txt size={14} color={G.sub} style={{ marginTop: 6, lineHeight: 20 }}>Optional, but it helps us get better. We remove your data within 30 days of the request.</Txt>
           <TextInput value={why} onChangeText={setWhy} multiline maxLength={300} placeholder="Your reason" placeholderTextColor={G.mute} accessibilityLabel="Reason"
             style={[{ marginTop: 16, minHeight: 96, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(23,23,23,0.16)', padding: 14, fontFamily: 'Poppins_400Regular', fontSize: 15, lineHeight: 22, includeFontPadding: false, color: G.ink, textAlignVertical: 'top' }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]} />
@@ -58,7 +58,7 @@ export default function DeleteAccount() {
       <PageBar title="" />
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 8 }}>
         <Hero />
-        <Txt weight={500} size={22} style={{ textAlign: 'center', marginTop: 16, lineHeight: 30 }}>Before you delete{'\n'}your account</Txt>
+        <Txt weight={600} size={22} style={{ textAlign: 'center', marginTop: 16, lineHeight: 28 }}>Before you delete{'\n'}your account</Txt>
         {blockers.length ? <View style={{ marginTop: 20, padding: 14, borderRadius: 14, backgroundColor: '#FFF7ED', gap: 4 }}><Txt weight={500} size={13} color="#C2410C">On your account right now</Txt>{blockers.map(b => <Txt key={b} size={13} color="#9A3412">{b}</Txt>)}</View> : null}
         <Label>RESOLVE BEFORE DELETION</Label>
         <View style={{ flexDirection: 'row', gap: 12 }}><Info i={0} /><Info i={1} /></View>

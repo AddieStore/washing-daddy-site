@@ -84,7 +84,7 @@ export default function Pass({ id }: { id?: string }) {
             ); })}
           </View>
 
-          <Txt weight={500} size={18} style={{ marginHorizontal: 16, marginTop: 28, marginBottom: 12 }}>How the pass works</Txt>
+          <Txt weight={500} size={18} style={{ marginHorizontal: 16, marginTop: 32, marginBottom: 12, lineHeight: 24 }}>How the pass works</Txt>
           <View style={{ marginHorizontal: 16, gap: 14 }}>
             {['Buy the pass once and pay for 3 washes up front.', 'Book any covered service. Choose "Use pass" at checkout.', `Use all ${p.visits} visits within ${p.days} days of buying.`].map((t, i) => (
               <View key={i} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
@@ -94,7 +94,7 @@ export default function Pass({ id }: { id?: string }) {
             ))}
           </View>
 
-          <Txt weight={500} size={18} style={{ marginHorizontal: 16, marginTop: 28, marginBottom: 12 }}>Frequently asked questions</Txt>
+          <Txt weight={500} size={18} style={{ marginHorizontal: 16, marginTop: 32, marginBottom: 12, lineHeight: 24 }}>Frequently asked questions</Txt>
           <View style={{ marginHorizontal: 16, gap: 8 }}>
             {p.faqs.map(([qq, a], i) => (
               <Pressable3 key={qq} haptics={false} scaleTo={0.985} onPress={() => { haptic(); setFaq(faq === i ? -1 : i) }} style={{ backgroundColor: '#F6F3FD', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14 }}>

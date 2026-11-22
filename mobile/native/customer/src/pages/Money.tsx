@@ -1,6 +1,6 @@
 // Wallet: balance, top-up chips with cashback, gift card, rules, transactions, refunds link. Also the 'money' tab (tab=true: no back bar). OWNER: MONEY worker.
 import React, { useState } from 'react';
-import { View, ScrollView, TextInput, RefreshControl } from 'react-native';
+import { View, ScrollView, TextInput, RefreshControl, Pressable } from 'react-native';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Footer } from '../ui/Footer';
@@ -117,12 +117,16 @@ export default function Money({ tab }: { tab?: boolean }) {
               <Tap label="My refunds" onPress={() => openPage({ k: 'refunds' })} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Receipt size={16} color={V} strokeWidth={1.5} /><Txt weight={500} size={13} color={V}>My refunds</Txt></Tap>
             </View>
             {rows.length === 0 ? <Txt size={14} color={G.mute} style={{ paddingVertical: 24, textAlign: 'center' }}>No transactions yet. Add money to get started.</Txt> : rows.map((l, i) => (
-              <FadeUp key={l.id} index={i} distance={8} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: G.line, marginTop: i ? 0 : 8 }}>
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Txt weight={500} size={14} numberOfLines={1}>{l.note || KIND[l.kind]}</Txt>
-                  <Txt size={12} color={G.mute} style={{ marginTop: 2 }}>{(l.note && l.note !== KIND[l.kind]) ? KIND[l.kind] + ' · ' : ''}{day(l.at)}{l.expires && l.amt > 0 ? ` · expires ${day(l.expires)}` : ''}</Txt>
-                </View>
-                <Txt weight={500} size={15} color={l.amt >= 0 ? G.pos : G.ink} style={TNUM}>{l.amt >= 0 ? '+' : '−'}{rs(Math.abs(l.amt))}</Txt>
+              <FadeUp key={l.id} index={i} distance={8}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`${l.note || KIND[l.kind]}, details`} onPress={() => openPage({ k: 'txn', id: l.id })} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, marginHorizontal: -8, paddingHorizontal: 8, borderRadius: 12, backgroundColor: pressed ? V_SOFT : 'transparent' })}>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Txt weight={500} size={14} numberOfLines={1}>{l.note || KIND[l.kind]}</Txt>
+                    <Txt size={12} color={G.mute} style={{ marginTop: 2 }}>{(l.note && l.note !== KIND[l.kind]) ? KIND[l.kind] + ' · ' : ''}{day(l.at)}{l.expires && l.amt > 0 ? ` · expires ${day(l.expires)}` : ''}</Txt>
+                  </View>
+                  <Txt weight={500} size={15} color={l.amt >= 0 ? G.pos : G.ink} style={TNUM}>{l.amt >= 0 ? '+' : '−'}{rs(Math.abs(l.amt))}</Txt>
+                  <View style={{ marginLeft: 6 }}><Chev size={16} color={G.mute} strokeWidth={1.5} /></View>
+                </Pressable>
+                {i < rows.length - 1 ? <View style={{ height: 1, backgroundColor: G.line }} /> : null}
               </FadeUp>
             ))}
             {!all && w.ledger.length > 6 ? <Tap label="See all" onPress={() => setAll(true)} style={{ alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: G.line }}><Txt weight={500} size={14} color={V}>See all {w.ledger.length} transactions</Txt></Tap> : null}

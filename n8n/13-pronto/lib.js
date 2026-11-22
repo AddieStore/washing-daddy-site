@@ -77,7 +77,7 @@ async function verifyIdToken(ctx, authz) {
   if (typeof claims.iat !== 'number' || claims.iat > nowS + SKEW) return { ok: false, why: 'iat in future' };
   if (typeof claims.sub !== 'string' || !claims.sub || claims.sub.length > 128) return { ok: false, why: 'bad sub' };
   if (!/^\+91[6-9]\d{9}$/.test(String(claims.phone_number || ''))) return { ok: false, why: 'no Indian phone number in token' };
-  return { ok: true, phone: claims.phone_number };
+  return { ok: true, phone: claims.phone_number, uid: claims.sub };
 }
 
 /* ======================= Google access token (service account) ======================= */
@@ -249,7 +249,10 @@ const DEF_FEES = { convenience: 19, convenienceBelow: 299, gstPct: 5, visit: 0,
 const DEF_WALLET = { min: 100, max: 10000, cap: 10000, cashbackPct: 5, cashDays: 365, promoDays: 15 };
 const DEF_VARIANTS = { hatch: 1, sedan: 1.2, suv: 1.4 };
 const DEF_PARTS = { morning: ['07:00', '11:30'], afternoon: ['12:00', '16:30'], evening: ['17:00', '20:00'] };
-const DEF_RECUR = { weekly: 10, twice: 15, alt: 20 };
+// recurring: visits in the first month (the billing cycle) and the % off each visit; same defaults and the same
+// appcfg/customer.recurring.<id>.{visits, off} override as the app (data/reference.ts RECURRING, data/config.ts).
+// need = how many weekdays the customer picks (alt: every other day from the start date).
+const DEF_RECUR = { weekly: { visits: 4, off: 10, need: 1 }, twice: { visits: 8, off: 15, need: 2 }, alt: { visits: 15, off: 20, need: 0 } };
 function cfgOf(appcfg, slotsCfg) {
   const a = appcfg || {}, f = isObj(a.fees) ? a.fees : {}, s = slotsCfg || {}, w = isObj(a.wallet) ? a.wallet : {};
   const parts = {};
@@ -259,7 +262,11 @@ function cfgOf(appcfg, slotsCfg) {
   }
   const feat = k => !(isObj(a.features) && a.features[k] === false);
   const inst = isObj(a.instant) ? a.instant : {};
+  const rec = isObj(a.recurring) ? a.recurring : {}, recur = {};
+  for (const k of Object.keys(DEF_RECUR)) { const d = isObj(rec[k]) ? rec[k] : {};
+    recur[k] = { visits: Math.max(1, Math.round(num(d.visits, DEF_RECUR[k].visits))), off: Math.min(90, Math.max(0, num(d.off, DEF_RECUR[k].off))), need: DEF_RECUR[k].need }; }
   return {
+    recur,
     maintenance: !!(isObj(a.maintenance) && a.maintenance.on),
     feat,
     fees: { convenience: num(f.convenience, DEF_FEES.convenience), convenienceBelow: num(f.convenienceBelow, DEF_FEES.convenienceBelow),
@@ -365,6 +372,36 @@ function billOf(x) {
   const saved = r2(Math.max(0, x.priced.mrp - sub) + recurOff + pass + couponAmt);
   return { sub, recurOff, passCover: pass, base, couponOff: couponAmt, surcharge: x.surcharge || 0, convenience, visit: x.fees.visit || 0, taxable, gst, total, walletUse, toPay, saved };
 }
+// Recurring: the first payment is the first billing cycle (one month = cfg visits). Each visit costs the per-visit
+// total; a coupon is taken once, on the first visit. Same arithmetic as the app's bill() for mode 'recurring'.
+function recurBillOf(x, n) {
+  const one = billOf(Object.assign({}, x, { coupon: null, useWallet: false })), first = billOf(Object.assign({}, x, { useWallet: false }));
+  const total = r2(one.total * (n - 1) + first.total);
+  let walletUse = x.useWallet ? r2(Math.min(Math.max(0, x.walletBal || 0), total)) : 0, toPay = r2(total - walletUse);
+  if (toPay > 0 && toPay < 1) { if (x.useWallet && (x.walletBal || 0) - walletUse >= toPay) { walletUse = r2(walletUse + toPay); toPay = 0; } else toPay = 1; }
+  return Object.assign({}, one, { visits: n, perVisit: one.total, firstVisit: first.total, couponOff: first.couponOff, total, walletUse, toPay, saved: r2(one.saved * n + first.couponOff) });
+}
+// The visit dates of the first cycle: weekly/twice = the picked weekdays from the start date on; alt = every other day.
+function recurDates(freq, days, start, n) {
+  const out = [];
+  for (let i = 0; out.length < n && i < 400; i++) { const d = addDaysISO(start, i); if (freq === 'alt' ? i % 2 === 0 : days.includes(new Date(d + 'T00:00:00Z').getUTCDay())) out.push(d); }
+  return out;
+}
+function recurPlan(cfg, r) {
+  if (!isObj(r)) return { ok: false, why: 'Pick how often and a time slot.' };
+  const freq = String(r.freq || '');
+  if (!own(DEF_RECUR, freq)) return { ok: false, why: 'Pick how often.' };
+  const rc = cfg.recur[freq], start = String(r.start || ''), slot = String(r.slot || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(slot)) return { ok: false, why: 'Pick a time slot.' };
+  let days = Array.isArray(r.days) ? r.days : [];
+  if (!days.every(d => Number.isInteger(d) && d >= 0 && d <= 6) || new Set(days).size !== days.length) return { ok: false, why: 'Pick the days for your visits.' };
+  if (rc.need) { if (days.length !== rc.need) return { ok: false, why: rc.need === 1 ? 'Pick one day of the week.' : 'Pick two days of the week.' }; }
+  else days = [0, 1, 2, 3, 4, 5, 6];
+  days = days.slice().sort((a, b) => a - b);
+  return { ok: true, freq, days, slot, start, visits: rc.visits, off: rc.off, dates: recurDates(freq, days, start, rc.visits) };
+}
+// n paise-exact shares of amt (rupees); the first share takes the remainder
+function shares(amt, n) { const p = Math.round(r2(amt) * 100), each = Math.floor(p / n), out = Array(n).fill(each); out[0] += p - each * n; return out.map(x => x / 100); }
 // promo first (it expires sooner), then cash
 function splitDebit(w, amt) { const promo = r2(Math.min(Math.max(0, num(w.promo, 0)), amt)), cash = r2(Math.min(Math.max(0, num(w.cash, 0)), amt - promo)); return { promo, cash, short: r2(amt - promo - cash) }; }
 const balOf = w => r2(num(w && w.cash, 0) + num(w && w.promo, 0));
@@ -387,7 +424,7 @@ async function gate(ctx, req, feature) {
   const cfg = cfgOf(appcfg && appcfg.data, slotsCfg && slotsCfg.data);
   if (cfg.maintenance) return { ok: false, res: fail(503, 'We are doing some maintenance. Try again in a little while.' + NOTHING) };
   for (const f of [].concat(feature || [])) if (!cfg.feat(f)) return { ok: false, res: fail(403, 'This is switched off right now.' + NOTHING) };
-  return { ok: true, phone: t.phone, cfg };
+  return { ok: true, phone: t.phone, uid: t.uid, cfg };
 }
 // Same request from the same phone within 2 minutes -> same order id (a retry never makes a second order)
 // rzp / gateway only pick how to pay, so leave them out: switching to the Cashfree backup keeps the same order.
@@ -416,13 +453,27 @@ async function catalogMap(ctx) { const m = {}; (await fsList(ctx, 'catalog')).fo
 async function quote(ctx, phone, cfg, b, withExtras) {
   const mode = String(b.mode || '');
   if (!['instant', 'scheduled', 'recurring'].includes(mode)) return { ok: false, res: fail(400, 'Pick instant or scheduled.' + NOTHING) };
-  if (mode === 'recurring') return { ok: false, res: fail(400, 'Recurring bookings are coming soon. Book a scheduled wash for now.' + NOTHING) };
+  if (mode === 'recurring' && !cfg.feat('recurring')) return { ok: false, res: fail(403, 'Recurring booking is off right now.' + NOTHING) };
+  // recurring: the full plan is checked when booking; the coupon check only needs how often (the app's default is weekly)
+  let rp = null;
+  if (mode === 'recurring' && withExtras) { rp = recurPlan(cfg, b.recur); if (!rp.ok) return { ok: false, res: fail(400, rp.why + NOTHING) }; }
+  const freq = mode !== 'recurring' ? null : rp ? rp.freq : isObj(b.recur) && own(DEF_RECUR, String(b.recur.freq)) ? String(b.recur.freq) : 'weekly';
+  const recurOffPct = freq ? cfg.recur[freq].off : 0, visits = freq ? cfg.recur[freq].visits : 1;
   const priced = priceLines(await catalogMap(ctx), b.lines);
   if (!priced.ok) return { ok: false, res: fail(400, priced.message + NOTHING) };
   let slotDoc = null, date = todayIST(ctx.now), slot = '', surcharge = 0;
   if (withExtras) {
     if (mode === 'instant') {
       const p = instantProblem(cfg, ctx.now); if (p) return { ok: false, res: fail(409, p + NOTHING) };
+    } else if (mode === 'recurring') {
+      // the first visit must be bookable (it can be up to a week after the start day); the peak charge is the start
+      // day's, like the app's bill. Later visits are counted on their slots when the payment lands.
+      date = rp.dates[0]; slot = rp.slot;
+      const [fd, sd] = await Promise.all([fsGet(ctx, 'slots', date), rp.start === date ? null : fsGet(ctx, 'slots', rp.start)]);
+      slotDoc = fd;
+      const wide = Object.assign({}, cfg, { slots: Object.assign({}, cfg.slots, { days: cfg.slots.days + 7 }) });
+      const p = slotProblem(wide, fd && fd.data, date, slot, ctx.now); if (p) return { ok: false, res: fail(409, p + NOTHING) };
+      surcharge = surchargeFor(cfg, (rp.start === date ? fd : sd) && (rp.start === date ? fd : sd).data, slot);
     } else {
       if (!cfg.feat('scheduled')) return { ok: false, res: fail(403, 'Scheduled booking is off right now.' + NOTHING) };
       const w = isObj(b.when) ? b.when : {}; date = String(w.date || ''); slot = String(w.slot || '');
@@ -432,7 +483,7 @@ async function quote(ctx, phone, cfg, b, withExtras) {
     }
   }
   let pass = null, passCfg = null;
-  if (withExtras && b.usePass === true) {
+  if (withExtras && b.usePass === true && mode !== 'recurring') {
     if (!cfg.feat('pass')) return { ok: false, res: fail(403, 'WD Pass is off right now.' + NOTHING) };
     pass = await activePassOf(ctx, phone);
     if (!pass) return { ok: false, res: fail(409, "You don't have an active WD Pass." + NOTHING) };
@@ -440,8 +491,8 @@ async function quote(ctx, phone, cfg, b, withExtras) {
   }
   const pcov = passCover(priced.lines, passCfg);
   if (pass && !pcov) return { ok: false, res: fail(409, 'Your WD Pass does not cover these services. Turn off the pass and try again.' + NOTHING) };
-  const recurOffPct = 0;
-  const base = Math.max(0, priced.sub - Math.min(pcov, priced.sub));
+  const recurOff = recurOffPct ? Math.round(priced.sub * recurOffPct / 100) : 0;
+  const base = Math.max(0, priced.sub - recurOff - Math.min(pcov, priced.sub - recurOff));
   let coupon = null;
   if (b.coupon) {
     if (!cfg.feat('coupons')) return { ok: false, res: fail(403, 'Coupons are off right now.' + NOTHING) };
@@ -453,15 +504,16 @@ async function quote(ctx, phone, cfg, b, withExtras) {
     if (!cfg.feat('wallet')) return { ok: false, res: fail(403, 'WD Money is off right now.' + NOTHING) };
     wallet = await fsGet(ctx, 'wallets', phone);
   }
-  const bill = billOf({ mode, priced, recurOffPct, passCoverAmt: pcov, coupon, surcharge, fees: cfg.fees, walletBal: balOf(wallet && wallet.data), useWallet: b.useWallet === true });
-  return { ok: true, mode, priced, bill, coupon, pass, date, slot };
+  const bx = { mode, priced, recurOffPct, passCoverAmt: pcov, coupon, surcharge, fees: cfg.fees, walletBal: balOf(wallet && wallet.data), useWallet: b.useWallet === true };
+  const bill = mode === 'recurring' ? recurBillOf(bx, visits) : billOf(bx);
+  return { ok: true, mode, priced, bill, coupon, pass, date, slot, recur: rp };
 }
 
 async function couponValidate(ctx, req) {
   const g = await gate(ctx, req, 'coupons'); if (!g.ok) return g.res;
   const b = isObj(req.body) ? req.body : {};
   if (!rateLimit(ctx, 'coupon:' + g.phone, 10, 600000)) return fail(429, 'Too many tries. Wait a few minutes.');
-  const q = await quote(ctx, g.phone, g.cfg, Object.assign({}, b, { coupon: b.code, mode: b.mode === 'recurring' ? 'scheduled' : b.mode }), false);
+  const q = await quote(ctx, g.phone, g.cfg, Object.assign({}, b, { coupon: b.code }), false);
   if (!q.ok) return q.coupon ? reply(200, { ok: true, valid: false, off: 0, message: q.coupon.why }) : q.res;
   if (!q.coupon) return reply(200, { ok: true, valid: false, off: 0, message: 'Enter a coupon code.' });
   return reply(200, { ok: true, valid: true, off: q.coupon.off });
@@ -485,7 +537,9 @@ async function bookingCreate(ctx, req) {
     coupon: q.coupon && q.coupon.ok ? q.coupon.code : null, coupon_off: q.bill.couponOff, pass_id: q.pass ? q.pass.id : null, pass_cover: q.bill.passCover,
     address_id: addr.id, area: clean(addr.data.area, 160), flat: clean(addr.data.flat, 120), lat: num(addr.data.lat, null), lng: num(addr.data.lng, null),
     car_name: clean(car.name, 80), car_reg: clean(car.reg, 20).toUpperCase(), ref: /^WD\d{6}$/.test(String(b.ref || '')) ? b.ref : null, via: clean(b.via, 20) };
-  return startOrder(ctx, orderId, po, String(b.name || ''), 'Booking: ' + po.lines.map(l => (l.q > 1 ? l.q + ' x ' : '') + l.name).join(', '));
+  if (q.recur) Object.assign(po, { recur: { freq: q.recur.freq, days: q.recur.days, slot: q.recur.slot, start: q.recur.start }, visits: q.recur.visits, dates: q.recur.dates,
+    per_visit: q.bill.perVisit, first_visit: q.bill.firstVisit });
+  return startOrder(ctx, orderId, po, String(b.name || ''), 'Booking: ' + po.lines.map(l => (l.q > 1 ? l.q + ' x ' : '') + l.name).join(', ') + (q.recur ? ' · ' + q.recur.visits + ' visits (' + q.recur.freq + ')' : ''));
 }
 
 // Writes payorders/{id}; then either fulfils at once (nothing left to pay) or opens a Cashfree order.
@@ -643,6 +697,32 @@ async function fulfil(ctx, orderId, pay) {
         const rid = d.coupon + '_' + phone, red = await fsGet(ctx, 'couponredemptions', rid);
         writes.push(wSet(ctx, 'couponredemptions', rid, { code: d.coupon, phone, count: num(red && red.data.count, 0) + 1, last_order: orderId, at }, pre(red)));
       }
+      if (d.mode === 'recurring' && Array.isArray(d.dates) && d.dates.length) {
+        // one scheduled booking per visit of the paid month; each carries its share of the money, so cancelling one
+        // visit refunds only that visit (wd-booking-cancel)
+        const n = d.dates.length, sc = await fsGet(ctx, 'slots_cfg', 'default'), cap = cfgOf(null, sc && sc.data).slots.capacity;
+        const gw = shares(pay.amount, n), wp = shares(num(extraPo.wallet_promo, 0), n), wc = shares(num(extraPo.wallet_cash, 0), n);
+        const ids = d.dates.map((_, i) => (i ? b62(sha(ctx, 'booking|' + orderId + '|' + i), 20) : d.booking_id));
+        const [slotDocs, jobs] = await Promise.all([Promise.all(d.dates.map(x => fsGet(ctx, 'slots', x))), Promise.all(ids.map(id => fsGet(ctx, 'ondemand', id)))]);
+        const seen = {};
+        d.dates.forEach((date, i) => {
+          if (!seen[date]) { const s = slotDocs[i], sd0 = s ? s.data : {}; seen[date] = { s, booked: Object.assign({}, isObj(sd0.booked) ? sd0.booked : {}), sold: Array.isArray(sd0.sold) ? sd0.sold.slice() : [] }; }
+          const t = seen[date]; t.booked[d.slot] = num(t.booked[d.slot], 0) + 1; if (t.booked[d.slot] >= cap && !t.sold.includes(d.slot)) t.sold.push(d.slot);
+          if (jobs[i]) return;
+          writes.push(wSet(ctx, 'ondemand', ids[i], { service: names.slice(0, 80), service_id: d.lines.map(l => l.id).join('+').slice(0, 80),
+            services: d.lines.map(l => ({ id: l.id, variant: l.variant, q: l.q, price: l.price })),
+            price: gw[i], total: i ? num(d.per_visit, 0) : num(d.first_visit, num(d.per_visit, 0)), saved: 0, paid: true, pay_ref: pay.amount > 0 ? orderId : '',
+            pay_via: pay.amount > 0 ? (pay.gateway === 'razorpay' ? 'Razorpay' : 'Cashfree') : pay.via, gateway_ref: String(pay.ref || ''), order_paid: r2(pay.amount),
+            payorder_id: orderId, mode: 'scheduled', recur: d.recur ? d.recur.freq : '', series_id: d.booking_id, visit_no: i + 1, visits: n,
+            share_gateway: gw[i], share_wallet_promo: wp[i], share_wallet_cash: wc[i],
+            date, slot: d.slot, address_id: d.address_id, area: d.area, flat: d.flat, lat: d.lat, lng: d.lng,
+            car: d.car_name, reg: d.car_reg, phone, customer_id: phone, status: 'scheduled', washer_id: '', created_at: at,
+            coupon: i ? null : d.coupon || null, pass_id: null, wallet_use: r2(wp[i] + wc[i]) }, { exists: false }));
+        });
+        Object.keys(seen).forEach(date => { const t = seen[date]; writes.push(t.s ? wPatch(ctx, 'slots', date, { booked: t.booked, sold: t.sold }, pre(t.s)) : wSet(ctx, 'slots', date, { booked: t.booked, sold: t.sold, closed: false }, { exists: false })); });
+        notify = 'New recurring booking ' + d.booking_id + ' from ' + phone + ': ' + names + ', ' + n + ' visits (' + (d.recur ? d.recur.freq : '') + ') from ' + d.dates[0] + ' ' + d.slot +
+          '. First month ' + fmtR(d.total) + (d.wallet_use ? ', WD Money ' + fmtR(d.wallet_use) : '') + (pay.amount ? (pay.gateway === 'razorpay' ? ', Razorpay ' : ', Cashfree ') + fmtR(pay.amount) : '') + '. ' + (d.area || '');
+      } else {
       if (d.mode === 'scheduled' && d.slot) {
         const [s, sc] = await Promise.all([fsGet(ctx, 'slots', d.date), fsGet(ctx, 'slots_cfg', 'default')]);
         const cap = cfgOf(null, sc && sc.data).slots.capacity, sd0 = s ? s.data : {};
@@ -655,7 +735,7 @@ async function fulfil(ctx, orderId, pay) {
         writes.push(wSet(ctx, 'ondemand', d.booking_id, { service: names.slice(0, 80), service_id: d.lines.map(l => l.id).join('+').slice(0, 80),
           services: d.lines.map(l => ({ id: l.id, variant: l.variant, q: l.q, price: l.price })),
           // price = what Cashfree took (workflow 10 checks the order for exactly this); total = the whole bill
-          price: r2(pay.amount), total: d.total, saved: d.saved, paid: true, pay_ref: pay.amount > 0 ? orderId : '', pay_via: pay.amount > 0 ? (pay.gateway === 'razorpay' ? 'Razorpay' : 'Cashfree') : pay.via, gateway_ref: String(pay.ref || ''),
+          price: r2(pay.amount), total: d.total, saved: d.saved, paid: true, pay_ref: pay.amount > 0 ? orderId : '', pay_via: pay.amount > 0 ? (pay.gateway === 'razorpay' ? 'Razorpay' : 'Cashfree') : pay.via, gateway_ref: String(pay.ref || ''), order_paid: r2(pay.amount),
           payorder_id: orderId, mode: d.mode, date: d.date, slot: d.slot || '', address_id: d.address_id, area: d.area, flat: d.flat, lat: d.lat, lng: d.lng,
           car: d.car_name, reg: d.car_reg, phone, customer_id: phone, status: d.mode === 'instant' ? 'new' : 'scheduled', washer_id: '', created_at: at,
           coupon: d.coupon || null, pass_id: d.pass_id || null, wallet_use: d.wallet_use || 0 }, { exists: false }));
@@ -663,6 +743,7 @@ async function fulfil(ctx, orderId, pay) {
       if (d.mode === 'instant' && pay.amount > 0 && pay.gateway !== 'razorpay') dispatch = d.booking_id;   // workflow 10 can verify only Cashfree-paid jobs; Razorpay ones reach washers through the normal job alert
       notify = 'New ' + d.mode + ' booking ' + d.booking_id + ' from ' + phone + ': ' + names + (d.slot ? ' on ' + d.date + ' ' + d.slot : '') +
         '. Total ' + fmtR(d.total) + (d.wallet_use ? ', WD Money ' + fmtR(d.wallet_use) : '') + (d.pass_id ? ', WD Pass' : '') + (pay.amount ? (pay.gateway === 'razorpay' ? ', Razorpay ' : ', Cashfree ') + fmtR(pay.amount) : '') + '. ' + (d.area || '');
+      }
     } else return { result: { ok: false, alert: 'Workflow 13: order ' + orderId + ' has unknown kind ' + d.kind } };
     writes.push(wPatch(ctx, 'payorders', orderId, Object.assign({ status: 'paid', paid_at: at, paid_amount: r2(pay.amount), cf_payment_id: pay.gateway === 'razorpay' ? '' : String(pay.ref || ''), rzp_payment_id: pay.gateway === 'razorpay' ? String(pay.ref || '') : '', pay_via: String(pay.via || ''), paid_gateway: pay.gateway || (pay.amount > 0 ? 'cashfree' : '') }, extraPo), pre(po)));
     return { writes, result: { ok: true, notify, alert: alerts.join('\n') || undefined, dispatch } };
@@ -753,7 +834,9 @@ async function bookingCancel(ctx, req) {
     if (!Number.isFinite(start) || start - ctx.now < 2 * 3600e3) return fail(409, 'A washer is already assigned, so this booking cannot be cancelled in the app. Call us on 77018 08924.');
   }
   const po = j.payorder_id ? await fsGet(ctx, 'payorders', j.payorder_id) : null;
-  const gateway = po && po.data.status === 'paid' ? r2(num(po.data.paid_amount, 0)) : 0;
+  // a visit of a recurring month refunds only its own share (the shares add up to what was paid)
+  const series = !!j.series_id && num(j.visits, 1) > 1;
+  const gateway = po && po.data.status === 'paid' ? r2(series ? num(j.share_gateway, 0) : num(po.data.paid_amount, 0)) : 0;
   let cfRefundId = '';
   if (gateway > 0) {
     cfRefundId = 'RF' + id.slice(0, 20);
@@ -771,9 +854,11 @@ async function bookingCancel(ctx, req) {
     const at = nowIST(ctx.now), today = todayIST(ctx.now), writes = [];
     writes.push(wPatch(ctx, 'ondemand', id, { status: 'cancelled', cancelled_at: at, refunded: !!(po && po.data.status === 'paid') }, pre(job)));
     let walletBack = 0;
-    if (po && po.data.status === 'paid' && num(po.data.wallet_use, 0) > 0) {
+    const wPromo = series ? r2(num(job.data.share_wallet_promo, 0)) : r2(num(po && po.data.wallet_promo, 0));
+    const wCash = series ? r2(num(job.data.share_wallet_cash, 0)) : r2(num(po && po.data.wallet_use, 0) - wPromo);
+    if (po && po.data.status === 'paid' && r2(wPromo + wCash) > 0) {
       const w = await fsGet(ctx, 'wallets', g.phone), ww = Object.assign({ cash: 0, promo: 0 }, w ? w.data : {});
-      const promo = r2(num(po.data.wallet_promo, 0)), cash = r2(num(po.data.wallet_use, 0) - promo);
+      const promo = wPromo, cash = wCash;
       ww.promo = r2(num(ww.promo, 0) + promo); ww.cash = r2(num(ww.cash, 0) + cash); walletBack = r2(promo + cash);
       writes.push(wSet(ctx, 'wallets', g.phone, { phone: g.phone, cash: ww.cash, promo: ww.promo, updated_at: at }, pre(w)));
       if (promo) writes.push(wSet(ctx, 'walletledger', 'L' + b62(sha(ctx, id + '|refund|promo'), 18), { phone: g.phone, at, kind: 'refund', amt: promo, note: 'Refund · cancelled booking', bucket: 'promo', expires: addDaysISO(today, 15), booking_id: id }, { exists: false }));
@@ -781,7 +866,7 @@ async function bookingCancel(ctx, req) {
       writes.push(wSet(ctx, 'refunds', 'RW' + id.slice(0, 20), { phone: g.phone, at, amt: walletBack, status: 'credited', to: 'wallet', what: String(job.data.service || 'Booking') + ' · cancelled', booking_id: id }, { exists: false }));
     }
     if (gateway > 0) writes.push(wSet(ctx, 'refunds', cfRefundId, { phone: g.phone, at, amt: gateway, status: 'initiated', to: 'source', what: String(job.data.service || 'Booking') + ' · cancelled', booking_id: id, eta: '5-7 working days', cf_refund_id: cfRefundId }, { exists: false }));
-    if (po && po.data.status === 'paid' && po.data.pass_id) {
+    if (po && po.data.status === 'paid' && po.data.pass_id && !series) {
       const p = await fsGet(ctx, 'passes', po.data.pass_id);
       if (p) writes.push(wPatch(ctx, 'passes', po.data.pass_id, { visits_left: num(p.data.visits_left, 0) + 1, status: 'active' }, pre(p)));
     }

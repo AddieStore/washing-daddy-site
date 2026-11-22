@@ -3,7 +3,7 @@
 export type HelpTopic = { id: string; title: string; sub: string; faqs: [string, string][]; icon?: string };
 export const HELP_TOPICS: HelpTopic[] = [
   { id: 'booking', title: 'Booking', sub: 'Scheduling, changes and cancellations', faqs: [
-    ['How fast does an instant washer arrive?', 'Usually within 45-60 minutes during service hours (6 AM to 8 PM).'],
+    ['How fast does an instant washer arrive?', 'Usually within 15 minutes during service hours (6 AM to 8 PM).'],
     ['Can I reschedule a booking?', 'Yes, up to 2 hours before the slot. Open the booking under Bookings and tap Help.'],
     ['How do I cancel?', 'Cancel from the booking up to 2 hours before the slot for a full refund. See the cancellation policy.'],
   ] },

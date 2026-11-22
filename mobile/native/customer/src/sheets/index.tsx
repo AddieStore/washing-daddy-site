@@ -13,7 +13,7 @@ import { PAUSE_MAX, canPause, pauseFits, pauseLeft } from '../data/model';
 import { TODAY, addDays, fmt, iso, inr, ampm, parse } from '../data/dates';
 import { IMG, RATIO, src, ImgKey } from '../img';
 import {
-  A, car, carImg, doc, planOf, maskPlate, fmtPhone, pName, cartLines, planPayDates, switchQuote, dayDetail, calendar, realAcct, chipText, payReal, pendingRef, refCode, inviteLink,
+  A, car, carImg, doc, planOf, maskPlate, fmtPhone, pName, cartLines, planPayDates, switchQuote, dayDetail, calendar, realAcct, chipText, payReal, pendingRef, refCode, inviteLink, autopayView,
   act, toast, openSheet, closeSheet, go, sheetHooks, trackWasher, distance, useApp, Track,
 } from '../state';
 import { TrackMap } from './TrackMap';
@@ -158,22 +158,50 @@ function Proof() {
 }
 
 /* ---------- plan ---------- */
+// A monthly plan is always paid by autopay (Razorpay subscription): the first month now, then every month by itself.
 function PayPlan() {
-  const c = car(), p = planOf(c), { from, to } = planPayDates(c), [via, setVia] = useState('GPay'), [busy, run] = useRun(), ink = useInk();
+  const c = car(), p = planOf(c), { from, to } = planPayDates(c), [via, setVia] = useState('GPay'), [busy, run] = useRun(), ink = useInk(), ap = autopayView(c);
   const go_ = () => run(async () => {
     const r = await act.payPlan(via);
-    openSheet(r.pending ? <Success title="Payment received" sub="We're checking it with the bank. Your plan updates by itself as soon as it clears." />
-      : <Success title="Paid" sub={`Your ${c.name} is covered till ${fmt(r.till)}. Receipt sent on WhatsApp.`} />);
+    openSheet(r.pending ? <Success title="Payment received" sub={`Autopay is set up. We're confirming it with Razorpay; your plan updates by itself as soon as it clears. ${inr(p.price)} every month after that, cancel any time in Profile.`} />
+      : <Success title="Autopay is on" sub={`Your ${c.name} is covered till ${fmt(r.till)}. ${inr(p.price)} is charged every month by itself. Cancel any time in Profile.`} />);
+  });
+  if (ap.on) return (
+    <View>
+      <Eyebrow>{c.name} · {p.name}</Eyebrow>
+      <SheetTitle>Autopay is on</SheetTitle>
+      <SheetSub>{`${ap.label}.${c.till ? ' Paid up till ' + fmt(c.till) + '.' : ''} Cancel any time in Profile.`}</SheetSub>
+      <Btn variant="violet" label="Done" onPress={closeSheet} />
+    </View>
+  );
+  return (
+    <View>
+      <Eyebrow>{c.name} · {p.name}</Eyebrow>
+      <SheetTitle>{`${inr(p.price)} a month with autopay`}</SheetTitle>
+      <Txt weight={600} size={13} color={ink.ok} style={{ marginTop: -SP.s, marginBottom: SP.m }}>Autopay every month, cancel any time</Txt>
+      <Confirm fromLabel={c.till ? 'Paid up till' : 'Starts'} from={fmt(from)} toLabel="After paying" to={fmt(to)} />
+      <SheetSub>{`You pay ${inr(p.price)} now for ${c.till ? 'the next month' : 'your first month'}. After that Razorpay charges ${inr(p.price)} on the same date every month by UPI autopay or card. Cancel any time in Profile; your plan runs till the end of the paid month.`}</SheetSub>
+      <Btn variant="violet" label={'Pay ' + inr(p.price) + ' and start autopay'} busy={busy ? 'Opening Razorpay…' : false} onPress={go_} />
+      {realAcct() ? null : <Demo>Test version. No money moves. Live autopay goes through Razorpay.</Demo>}
+    </View>
+  );
+}
+// Profile → Cancel autopay: stops future charges; the plan stays till its paid-up date
+function CancelAutopay() {
+  const c = car(), p = planOf(c), [busy, run] = useRun();
+  const go_ = () => run(async () => {
+    const r = await act.cancelAutopay();
+    openSheet(<Success title="Autopay cancelled" sub={`No more charges. Your ${c.name} stays on ${p.name}${r.till ? ' till ' + fmt(r.till) : ' till the end of the paid month'}.`} />);
   });
   return (
     <View>
       <Eyebrow>{c.name} · {p.name}</Eyebrow>
-      <SheetTitle>{`Pay ${inr(p.price)} for ${c.till ? 'one more month' : 'your first month'}`}</SheetTitle>
-      {pendingRef() && !c.till ? <Txt weight={600} size={13} color={ink.ok} style={{ marginTop: -SP.s, marginBottom: SP.m }}>Invite code applied: ₹200 off</Txt> : null}
-      <Confirm fromLabel={c.till ? 'Paid up till' : 'Starts'} from={fmt(from)} toLabel="After paying" to={fmt(to)} />
-      <PayWith via={via} set={setVia} />
-      <Btn variant="violet" label={'Pay ' + inr(p.price)} busy={busy ? (payReal() ? 'Opening…' : `Opening ${via}…`) : false} onPress={go_} />
-      {payReal() ? null : <Demo>Test version. No money moves. Live payments go through Cashfree.</Demo>}
+      <SheetTitle>Cancel autopay?</SheetTitle>
+      <SheetSub>{`Razorpay stops charging ${inr(p.price)} a month. Your washes carry on${c.till ? ' till ' + fmt(c.till) : ' till the end of the paid month'}; after that, start autopay again from the Plan tab.`}</SheetSub>
+      <View style={{ flexDirection: 'row', gap: SP.m }}>
+        <Btn variant="ghost" label="Keep autopay" onPress={closeSheet} style={{ flex: 1 }} />
+        <Btn variant="violet" label="Cancel autopay" busy={busy ? 'Cancelling…' : false} onPress={go_} style={{ flex: 1 }} />
+      </View>
     </View>
   );
 }
@@ -606,6 +634,7 @@ function Refer() {
 /* ---------- the public API ---------- */
 export const sheets = {
   payPlan: () => openSheet(<PayPlan />),
+  cancelAutopay: () => openSheet(<CancelAutopay />),
   switchPlan: (id: string) => openSheet(<SwitchPlan id={id} />),
   pause: () => {
     const c = car();

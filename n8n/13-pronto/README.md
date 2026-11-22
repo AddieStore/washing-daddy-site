@@ -34,7 +34,12 @@ All are `POST https://n8n.washingdaddy.com/webhook/<name>` with `Authorization: 
 - WD Money, pass visits, coupon redemptions and slot counts are taken only when the payment has landed.
   If two payments race for the same wallet balance, the second is fulfilled and Ravi gets a Telegram line
   with the shortfall.
-- Recurring bookings are refused ("coming soon"): there is no monthly billing behind them yet.
+- Recurring bookings (Nov 2026): the first payment is the **first month**, `visits` (appcfg/customer.recurring.<freq>.visits,
+  default weekly 4, twice 8, alt 15) x the per-visit total (catalog price - `off`% recurring discount + peak charge of the start
+  day + convenience fee + GST). A coupon is taken once, on the first visit. This is the same sum as the app's bill rows
+  ("Total per visit", "First month (N visits)", "To pay") and the Razorpay/Cashfree order amount. When it is paid, one
+  scheduled `ondemand` doc is written per visit (`series_id`, `visit_no`, `share_gateway`, `share_wallet_*`); cancelling one
+  visit refunds only its share. The next month is not billed automatically yet: the customer books again.
 - 20 calls a minute per number. Errors are `{ ok:false, message }` ready for a toast. The workflow never
   answers 404 (the app reads 404 as "not live yet").
 - Ravi gets a Telegram line for every paid order, cancellation and any problem (`⚠ ...`).
@@ -60,4 +65,5 @@ credential, publish both, seed the `catalog`/`appcfg`/`passes_cfg`/`coupons` doc
 Secrets live only in `/root/docker-compose.yml` on the droplet, never in this repo.
 
 Not built yet: the daily expiry job (promo 15 days, cash 365 days, passes past `valid_till`), referral
-rewards, and recurring billing.
+rewards, and automatic billing of the second and later months of a recurring booking. Monthly plans are
+billed by Razorpay autopay in workflow 14 (`n8n/14-razorpay-autopay`).

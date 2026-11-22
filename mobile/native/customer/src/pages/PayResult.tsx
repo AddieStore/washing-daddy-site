@@ -1,5 +1,5 @@
 // Payment result: where checkout lands. paid / pending / failed / cancelled, with booking ID, what was booked, amount, how and what happens next.
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, ScrollView, Pressable } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import Reanimated, { type SharedValue, useSharedValue, useAnimatedStyle, withTiming, withDelay, withSpring, withRepeat, cancelAnimation, useAnimatedProps, useReducedMotion, Easing } from 'react-native-reanimated';
@@ -8,8 +8,9 @@ import { Txt, useInsets } from '../ui/kit';
 import { Copy, Close } from '../ui/icons';
 import { FadeUp, CountUp } from '../ui/motion';
 import { RiderTrack } from '../ui/RiderTrack';
-import { useApp, act, lastPay, go, openPage, closePage, PayResult as PR } from '../state';
+import { useApp, act, lastPay, go, openPage, closePage, jobOf, jobWhen, PayResult as PR } from '../state';
 import { inr } from '../data/dates';
+import { ServiceAnim, kindOf, kindName } from '../ui/serviceAnim';
 import { G, card, Tap, PrimaryBtn, PAGE_BG, TNUM } from './parts';
 
 const AC = Reanimated.createAnimatedComponent(Circle), AP = Reanimated.createAnimatedComponent(Path);
@@ -73,10 +74,27 @@ const Line = ({ k, v, copy, strong, count }: { k: string; v: string; copy?: bool
   </View>
 );
 
+/** cross-fades from the tick badge into the animation of what was booked, after ~1.6 s */
+function Hero({ r, ok, svc }: { r: PR; ok: boolean; svc: boolean }) {
+  const rm = useReducedMotion(), q = useSharedValue(0);
+  useEffect(() => { if (!svc) return; const id = setTimeout(() => { q.value = rm ? 1 : withTiming(1, { duration: 520, easing: Easing.inOut(Easing.cubic) }) }, rm ? 900 : 1600); return () => clearTimeout(id) }, [svc]);
+  const a = useAnimatedStyle(() => ({ opacity: 1 - q.value, transform: [{ scale: 1 - 0.12 * q.value }] }));
+  const b = useAnimatedStyle(() => ({ opacity: q.value, transform: [{ scale: 0.9 + 0.1 * q.value }] }));
+  const j = r.bookingId ? jobOf(r.bookingId) : null;
+  return (
+    <View style={{ width: 240, height: 176, alignItems: 'center', justifyContent: 'center' }}>
+      <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }, svc ? a : null]}><Badge key={r.status + r.at} status={r.status} /></Reanimated.View>
+      {svc ? <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }, b]}><ServiceAnim kind={kindOf(r, j ? j.lines : undefined)} size={220} /></Reanimated.View> : null}
+    </View>
+  );
+}
+
 export default function PayResult() {
   useApp();
   const ins = useInsets(), r = lastPay();
   const eta = useMemo(() => Date.now() + 15 * 60000, []);
+  const [late, setLate] = useState(false);
+  useEffect(() => { const id = setTimeout(() => setLate(true), 1600 + 300); return () => clearTimeout(id) }, []);
   if (!r) return (
     <View style={{ flex: 1, backgroundColor: PAGE_BG, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
       <Txt weight={600} size={20}>Nothing to show here</Txt>
@@ -93,6 +111,12 @@ export default function PayResult() {
     : (r.message || (r.status === 'cancelled' ? 'No money was taken. You can try again whenever you are ready.' : 'No money was taken. If anything was deducted, it is refunded to your source in 3 to 5 working days.'));
   const how = r.gateway ? (r.gateway === 'Demo' ? 'Demo payment' : r.gateway) : '';
   const when = r.at ? new Date(r.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : '';
+  const svcOn = ok, job = r.bookingId ? jobOf(r.bookingId) : null, kd = kindOf(r, job ? job.lines : undefined);
+  const hhmm = (iso?: string) => { const d = iso ? new Date(iso) : null; return d && !isNaN(+d) ? d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).toUpperCase() : '' };
+  const rider = job && job.washer ? job.washer.name.split(' ')[0] : '';
+  const whenTxt = job ? (job.mode === 'instant' ? (hhmm(job.eta) ? `around ${hhmm(job.eta)}` : 'in about 15 minutes') : jobWhen(job)) : (isBooking ? 'in about 15 minutes' : '');
+  const head2 = !ok || !late ? head : isBooking ? `Your ${kindName[kd]} is booked` : r.kind === 'pass' ? 'Your WD Pass is ready' : r.kind === 'plan' ? 'Your plan is active' : r.kind === 'wallet' ? 'Money added to WD Money' : head;
+  const sub2 = !ok || !late ? sub : isBooking ? (rider ? `${rider} will reach you ${whenTxt}` : `We are assigning your washer. Expect them ${whenTxt}`) : sub;
   const tint = ok ? C.violet : pend ? '#B07A00' : bad && r.status === 'failed' ? G.neg : G.mute;
   return (
     <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
@@ -101,10 +125,10 @@ export default function PayResult() {
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: ins.bottom + 32, gap: 12 }}>
         <View style={{ alignItems: 'center' }}>
-          <Badge key={r.status + r.at} status={r.status} />
-          <FadeUp delay={200}>
-            <Txt weight={600} size={24} color={tint} style={{ textAlign: 'center' }}>{head}</Txt>
-            <Txt size={14} color={G.sub} style={{ marginTop: 6, textAlign: 'center', lineHeight: 20, paddingHorizontal: 16 }}>{sub}</Txt>
+          {svcOn ? <Hero r={r} ok={ok} svc={svcOn} /> : <Badge key={r.status + r.at} status={r.status} />}
+          <FadeUp key={late ? 'b' : 'a'} delay={late ? 0 : 200}>
+            <Txt weight={600} size={24} color={tint} style={{ textAlign: 'center' }}>{head2}</Txt>
+            <Txt size={14} color={G.sub} style={{ marginTop: 6, textAlign: 'center', lineHeight: 20, paddingHorizontal: 16 }}>{sub2}</Txt>
           </FadeUp>
         </View>
 

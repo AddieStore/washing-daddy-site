@@ -78,7 +78,7 @@ export type Page =
   | { k: 'money' } | { k: 'refunds' } | { k: 'pass'; id?: string } | { k: 'coupons' } | { k: 'refer' }
   | { k: 'profile' } | { k: 'profileEdit' } | { k: 'addresses'; pick?: boolean } | { k: 'addressMap'; id?: string } | { k: 'addressForm'; id?: string; lat?: number; lng?: number; area?: string }
   | { k: 'help' } | { k: 'helpTopic'; id: string } | { k: 'legal' } | { k: 'legalDoc'; id: string } | { k: 'deleteAccount' } | { k: 'about' }
-  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string } | { k: 'payResult' } | { k: 'washer'; id?: string; name?: string }
+  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string } | { k: 'payResult' } | { k: 'txn'; id: string } | { k: 'washer'; id?: string; name?: string }
   | null;
 export type PageKind = NonNullable<Page>['k'];
 type UI = { tab: Tab; tabNonce: number; ready: boolean; signedIn: boolean; carNonce: number; sim: boolean; v: number; page: Page; pages: Page[] };
@@ -239,6 +239,15 @@ export function planStatus(c: Car = car()): [string, string, string] {
   return c.status === 'new' && !c.till ? ['Starts tomorrow', '#FFBA08', '#1A0A33'] : (left ?? 0) <= 3 ? ['Due soon', '#FF6A1A', '#fff'] : ['Active', '#14C08A', '#fff'];
 }
 // what paying for the plan moves the paid-up date to
+/** monthly autopay for a car: on = Razorpay will charge again (cancelling = stops at the end of the paid month) */
+const AUTOPAY_ON = ['active', 'authenticated', 'pending', 'past_due'];
+export const autopayOn = (c: Car = car()) => !!(c && c.autopay && AUTOPAY_ON.includes(c.autopay.status));
+export function autopayView(c: Car = car()) {
+  const a = c && c.autopay, st = a ? a.status : '';
+  const label = !a ? '' : st === 'cancelling' ? `Autopay stops after ${c.till ? fmt(parse(c.till)) : 'this month'}` : st === 'cancelled' || st === 'completed' ? 'Autopay is off'
+    : st === 'past_due' || st === 'pending' ? 'Last autopay payment failed. Razorpay will try again.' : st === 'halted' ? 'Autopay stopped: payments failed. Pay again to restart.' : `Autopay on · ${inr(a.amount || planOf(c).price)} every month`;
+  return { on: autopayOn(c), status: st, label };
+}
 export function planPayDates(c: Car = car()) { const from = c.till ? parse(c.till) : addDays(TODAY, 1), nt = new Date(from); nt.setMonth(nt.getMonth() + 1); return { from, to: nt } }
 export function switchQuote(id: PlanId, c: Car = car()) {
   const np = PLANS.find(p => p.id === id)!, cp = planOf(c), left = c.till ? Math.max(0, Math.round((parse(c.till).getTime() - TODAY.getTime()) / 864e5)) : 0;
@@ -286,7 +295,7 @@ export function svcLines() {
 }
 // Packs are paid online (n8n prices them); a la carte services are paid to the washer on arrival until n8n knows their prices.
 export const svcPayOnline = () => { const { lines } = svcLines(); return lines.length === 1 && lines[0].pack && lines[0].q === 1 };
-export type When = { date: string; slot: string } | null;   // null = instant (next free washer, 45-60 min)
+export type When = { date: string; slot: string } | null;   // null = instant (next free washer, 15 min)
 
 export const sheetHooks = { payPlan: () => {}, note: () => {}, bookings: () => {}, orders: () => {} };
 
@@ -371,6 +380,7 @@ function watchAccount() {
   watchCarPhotos(); watchMoney();
   acctUnsub = DB.doc('customers/' + AUTH.phone()).onSnapshot(g => {
     if (!g.exists || !S.acct) return; const was = S.acct.status;
+    AUTOPAY_PAYS = Array.isArray(g.data().autopay_payments) ? g.data().autopay_payments : [];
     S.acct = fromCustomerDoc(g.data(), S.acct); S.carIdx = Math.min(S.carIdx, S.acct.cars.length - 1); subFor = null; subscribeCar(); commit(); watchCarPhotos();
     if (was && was !== 'active' && S.acct.status === 'active') toast("You're all set. Live wash updates are on.");
   }, () => {});
@@ -383,7 +393,7 @@ function watchCarPhotos() {
     if (t && v) t.photoCut = v.startsWith('data:image/webp');   // only cut-outs are saved as WebP (firestore.rules allows no extra field)
     if (t && v && t.photo !== v) { t.photo = v; commit() } }, () => {})) });
 }
-function stopSync() { stop(unsubs); stop(photoUnsubs); stop(moneyUnsubs); subscribeCoupons(null); subFor = null; if (acctUnsub) { try { acctUnsub() } catch (e) {} acctUnsub = null } REMOTE = {}; REQS = {}; DOCS = {}; lastStatus = {} }
+function stopSync() { stop(unsubs); stop(photoUnsubs); stop(moneyUnsubs); subscribeCoupons(null); subFor = null; if (acctUnsub) { try { acctUnsub() } catch (e) {} acctUnsub = null } REMOTE = {}; REQS = {}; DOCS = {}; lastStatus = {}; AUTOPAY_PAYS = [] }
 function renderAll() { if (!SIM) DOCS = {}; subscribeCar(); emit() }
 
 /* ---------- boot ---------- */
@@ -463,7 +473,7 @@ export function instantStatus(): { open: boolean; label: string; reason: 'open' 
   const back = 'Back at ' + ampm(INSTANT_HOURS.open).replace(':00', '').replace(' ', '');
   if (m < o || m >= c) return { open: false, label: back, reason: 'closed' };
   if (homeConfig().instantBusy) return { open: false, label: appCfg().instant.busyMessage, reason: 'busy' };
-  return { open: true, label: 'Washer in 45-60 min', reason: 'open' };
+  return { open: true, label: 'Washer in 15 min', reason: 'open' };
 }
 
 /* ---- cart mode, schedule choice, recurring ---- */
@@ -508,7 +518,7 @@ const partOf = (t: string): DayPart => (DAY_PARTS.find(p => t2m(t) >= t2m(p.from
 // same as n8n workflow 13 (surchargeFor): slots/{date}.surcharge[t] if set, else fees.slotSurcharge[t]; plus the flat fees.surcharge of the day part
 export const slotSurcharge = (date: string, t: string, part: DayPart = partOf(t)) => (SLOT_LIVE[date]?.surcharge?.[t] ?? SLOT_SURCHARGE[t] ?? 0) + (PART_SURCHARGE[part] || 0);
 /** "Wed 18 Nov, 1:00 pm" for a When */
-export const whenText = (w: When = S.when) => (w ? `${fmt(w.date, { weekday: 'short', day: 'numeric', month: 'short' })}, ${/^\d\d:\d\d$/.test(w.slot) ? slotLabel(w.slot) : w.slot}` : 'Instant · 45-60 min');
+export const whenText = (w: When = S.when) => (w ? `${fmt(w.date, { weekday: 'short', day: 'numeric', month: 'short' })}, ${/^\d\d:\d\d$/.test(w.slot) ? slotLabel(w.slot) : w.slot}` : 'Instant · 15 min');
 
 /* ---- addresses ---- */
 /** which of our served areas an address belongs to (for the washer); anything else keeps the map's locality line */
@@ -563,7 +573,36 @@ export const couponsView = () => couponList().map(c => ({ ...c, check: couponChe
 export function wallet() {
   const w = S.acct ? px().wallet : { cash: 0, promo: 0, ledger: [] as LedgerRow[] }, soon = iso(addDays(TODAY, 7));
   const expiring = r2(w.ledger.filter(l => l.amt > 0 && l.bucket === 'promo' && l.expires && l.expires >= iso(TODAY) && l.expires <= soon).reduce((a, l) => a + l.amt, 0));
-  return { balance: r2(w.cash + w.promo), cash: r2(w.cash), promo: r2(w.promo), ledger: [...w.ledger].sort((a, b) => b.at.localeCompare(a.at)), expiringSoon: Math.min(expiring, w.promo) };
+  return { balance: r2(w.cash + w.promo), cash: r2(w.cash), promo: r2(w.promo), ledger: [...w.ledger, ...paidOnlineRows()].sort((a, b) => b.at.localeCompare(a.at)), expiringSoon: Math.min(expiring, w.promo) };
+}
+/** Money paid by card / UPI (not WD Money), listed with the transactions so every payment shows up: one row per
+ *  booking order (a recurring month's visits share one order) and one per monthly-plan autopay charge. The balance
+ *  is never computed from these. Real: ondemand.order_paid and customers/{phone}.autopay_payments (written by n8n). */
+function paidOnlineRows(): LedgerRow[] {
+  if (!S.acct) return [];
+  const out: LedgerRow[] = [], seen = new Set<string>();
+  px().jobs.forEach(j => {
+    const amt = +(j.paidOnline || 0), k = 'pay:' + (j.orderId || j.id);
+    if (!(amt > 0) || seen.has(k)) return; seen.add(k);
+    out.push({ id: k, at: j.createdAt || '', kind: 'payment', amt: -amt, note: jobTitle(j), bucket: 'cash', expires: null });
+  });
+  const ap = realAcct() ? AUTOPAY_PAYS : (A().payments || []).filter(p => p.autopay).map(p => ({ at: p.d + 'T09:00:00+05:30', amt: p.amt, what: p.what, ref: p.ref || p.d }));
+  ap.forEach((p, i) => { if (+p.amt > 0) out.push({ id: 'ap:' + (p.ref || i), at: String(p.at || ''), kind: 'payment', amt: -(+p.amt), note: String(p.what || 'Monthly plan (autopay)'), bucket: 'cash', expires: null }) });
+  return out;
+}
+let AUTOPAY_PAYS: { at: string; amt: number; what: string; ref?: string }[] = [];
+/** read-only: one wallet ledger row plus the booking it was for (matched by title and time; payment and refund rows only) */
+export function txnOf(id: string): { row: LedgerRow; job: Job | null; siblings: LedgerRow[] } | null {
+  if (!S.acct) return null;
+  const led = wallet().ledger, row = led.find(l => l.id === id); if (!row) return null;
+  let job: Job | null = null;
+  if (row.kind === 'payment' || row.kind === 'refund') {
+    const t = row.note.replace(/^Refund · /, ''), at = +new Date(row.at);
+    const c = [...px().jobs, ...(px().attempts || [])].filter(j => jobTitle(j) === t || j.lines.some(x => x.name === t));
+    job = c.sort((a, b) => Math.abs(+new Date(a.createdAt) - at) - Math.abs(+new Date(b.createdAt) - at))[0] || null;
+  }
+  const siblings = job && row.kind === 'payment' ? led.filter(l => l.kind === 'payment' && l.note === row.note && Math.abs(+new Date(l.at) - +new Date(row.at)) < 5000) : [row];
+  return { row, job, siblings };
 }
 export const topUpBonus = (amt: number) => r2(amt * WALLET.cashbackPct / 100);
 export function topUpCheck(amt: number): string | null {
@@ -598,7 +637,10 @@ export type Bill = {
   mode: CartMode; count: number; mins: number; mrpTotal: number; itemTotal: number; discount: number; recurOff: number; passCover: number;
   coupon: { code: string; off: number } | null; couponError: string | null; surcharge: number; convenience: number; visitFee: number;
   taxable: number; gst: number; total: number; walletUse: number; toPay: number; saved: number; rows: BillRow[];
-  perMonth: { visits: number; total: number } | null;   // recurring: visits a month and the month's estimate
+  // recurring: the first payment is the first month. total = that month (perVisit x visits, coupon once, on the first
+  // visit); perVisit = one visit; taxable/gst are per visit. n8n workflow 13 (recurBillOf) charges exactly this.
+  perMonth: { visits: number; total: number } | null;
+  perVisit: number | null;
 };
 function passCoverFor(lines: CartLine[]) {
   const p = activePass(); if (!p || !feature('pass')) return 0; const plan = PASS_PLANS.find(x => x.id === p.plan); if (!plan) return 0;
@@ -624,26 +666,45 @@ export function bill(o: { mode?: CartMode; when?: When; coupon?: string | null; 
   const slotT = mode === 'scheduled' ? (w ? w.slot : null) : mode === 'recurring' ? (S.recur ? S.recur.slot : null) : null;
   const slotDate = mode === 'scheduled' ? (w ? w.date : '') : S.recur ? S.recur.start : '';
   const surcharge = count && slotT ? slotSurcharge(slotDate, slotT) : 0;
-  const after = Math.max(0, base - (coupon ? coupon.off : 0));
-  // convenience fee on small carts (item total under the free-above line), never on a visit the pass fully covers
-  const convenience = count && sub < FEES.convenienceFreeAbove && !(passCover && after === 0) ? FEES.convenienceFee : 0, visitFee = count ? FEES.visitFee : 0;
-  const taxable = r2(after + surcharge + convenience + visitFee), gst = r2(taxable * FEES.gstPct / 100), total = r2(taxable + gst);
+  // one visit's total for a coupon amount (recurring takes the coupon on the first visit only)
+  const visit = (off: number) => {
+    const after = Math.max(0, base - off);
+    // convenience fee on small carts (item total under the free-above line), never on a visit the pass fully covers
+    const convenience = count && sub < FEES.convenienceFreeAbove && !(passCover && after === 0) ? FEES.convenienceFee : 0;
+    const taxable = r2(after + surcharge + convenience + visitFee), gst = r2(taxable * FEES.gstPct / 100);
+    return { convenience, taxable, gst, total: r2(taxable + gst) };
+  };
+  const visitFee = count ? FEES.visitFee : 0, cOff = coupon ? coupon.off : 0;
+  const one = visit(rc ? 0 : cOff), first = rc ? visit(cOff) : one, n = rc ? rc.perMonth : 1;
+  const { convenience, taxable, gst } = one;
+  // recurring: the first month is paid now (n visits; the coupon once). Same sum as n8n recurBillOf.
+  const total = rc ? r2(one.total * (n - 1) + first.total) : one.total;
   const walletUse = useWallet ? r2(Math.min(wallet().balance, total)) : 0, toPay = r2(total - walletUse);
-  const discount = Math.max(0, mrp - sub), saved = r2(discount + recurOff + passCover + (coupon ? coupon.off : 0));
-  const rows: BillRow[] = [{ k: 'items', label: 'Item total', amt: sub, strike: discount ? mrp : undefined }];
+  const discount = Math.max(0, mrp - sub), saved = r2((discount + recurOff + passCover) * n + cOff);
+  const rows: BillRow[] = [{ k: 'items', label: rc ? 'Item total per visit' : 'Item total', amt: sub, strike: discount ? mrp : undefined }];
   if (recurOff) rows.push({ k: 'recurring', label: `Recurring discount (${rc!.off}%)`, amt: -recurOff, tone: 'pos' });
   if (passCover) rows.push({ k: 'pass', label: 'WD Pass visit', amt: -passCover, tone: 'pos' });
-  if (coupon) rows.push({ k: 'coupon', label: `Coupon ${coupon.code}`, amt: -coupon.off, tone: 'pos' });
+  if (coupon && !rc) rows.push({ k: 'coupon', label: `Coupon ${coupon.code}`, amt: -coupon.off, tone: 'pos' });
   if (surcharge) rows.push({ k: 'slot', label: 'Peak slot charge', amt: surcharge });
   rows.push({ k: 'convenience', label: 'Convenience fee', amt: convenience, strike: convenience ? undefined : FEES.convenienceFee, tone: convenience ? undefined : 'pos' });
   if (visitFee) rows.push({ k: 'visit', label: 'Visit charge', amt: visitFee });
   rows.push({ k: 'gst', label: `GST (${FEES.gstPct}%)`, amt: gst, tone: 'mute' });
-  rows.push({ k: 'total', label: rc ? 'Total per visit' : 'Total', amt: total });
-  if (rc) rows.push({ k: 'total', label: `Per month (${rc.perMonth} visits)`, amt: r2(total * rc.perMonth) });
+  if (rc) {
+    const month = r2(one.total * n);
+    rows.push({ k: 'total', label: 'Total per visit', amt: one.total });
+    rows.push({ k: 'total', label: `First month (${n} visits)`, amt: month });
+    if (coupon) rows.push({ k: 'coupon', label: `Coupon ${coupon.code} (first visit)`, amt: -r2(month - total), tone: 'pos' });
+  } else rows.push({ k: 'total', label: 'Total', amt: total });
   if (walletUse) rows.push({ k: 'wallet', label: WALLET.name, amt: -walletUse, tone: 'pos' });
-  rows.push({ k: 'topay', label: 'To pay', amt: toPay });
+  rows.push({ k: 'topay', label: rc ? `To pay now · first month` : 'To pay', amt: toPay });
   return { mode, count, mins, mrpTotal: mrp, itemTotal: sub, discount, recurOff, passCover, coupon, couponError, surcharge, convenience, visitFee, taxable, gst, total, walletUse, toPay, saved, rows,
-    perMonth: rc ? { visits: rc.perMonth, total: r2(total * rc.perMonth) } : null };
+    perMonth: rc ? { visits: n, total } : null, perVisit: rc ? one.total : null };
+}
+/** recurring: the visit dates of the first month (same rule as n8n recurDates): the picked weekdays from the start day, or every other day */
+export function recurDates(r: Recur, n: number): string[] {
+  const out: string[] = [];
+  for (let i = 0; out.length < n && i < 400; i++) { const d = iso(addDays(parse(r.start), i)); if (r.freq === 'alt' ? i % 2 === 0 : r.days.includes(parse(d).getDay())) out.push(d) }
+  return out;
 }
 
 /* ---- bookings (on-demand jobs) ---- */
@@ -787,6 +848,8 @@ function fromOndemand(id: string, d: any): Job {
     coupon: d.coupon || null, washer: d.washer_id ? { id: String(d.washer_id), name: d.washer_name || d.washer_id, rating: +d.washer_rating || 0, jobs: +d.washer_jobs || 0, photo: d.washer_photo || null, phone: d.washer_phone || null } : null,
     stars: r ? r.stars : undefined, review: r ? r.review : undefined, createdAt: d.created_at || '',
     payRef: d.gateway_ref || d.pay_ref || undefined, orderId: d.pay_ref || undefined, eta: d.eta || etaFrom(d.mode, d.created_at),
+    // order_paid: what the gateway took for the whole order (bookings since Nov 2026); older paid docs: price was that amount
+    recur: d.recur || undefined, paidOnline: +d.order_paid > 0 ? +d.order_paid : d.paid === true && d.pay_ref && !d.series_id && +d.price > 0 ? +d.price : undefined,
     washerAt: Number.isFinite(+d.washer_lat) && Number.isFinite(+d.washer_lng) && d.washer_lat !== '' ? { lat: +d.washer_lat, lng: +d.washer_lng, at: String(d.washer_loc_at || '') } : undefined,
     carAt: Number.isFinite(+d.lat) && Number.isFinite(+d.lng) && d.lat !== '' && d.lat != null ? { lat: +d.lat, lng: +d.lng } : undefined };
 }
@@ -897,7 +960,7 @@ const PX_ACTS = {
   async applyCoupon(code: string) {
     if (!feature('coupons')) throw off('Coupons are'); const c = code.trim().toUpperCase(); if (!c) throw new Error('Enter a coupon code.');
     const ch = couponCheck(c); if (!ch.ok) throw new Error(ch.why);
-    if (moneyLive()) { const j = await server!.call('wd-coupon-validate', { code: c, mode: cartMode(), lines: svcLines().lines.map(l => ({ id: l.id, variant: l.variant || null, q: l.q })) }); if (!j.valid) throw new Error(j.message || "That code isn't valid.") }
+    if (moneyLive()) { const j = await server!.call('wd-coupon-validate', { code: c, mode: cartMode(), recur: cartMode() === 'recurring' ? S.recur : null, lines: svcLines().lines.map(l => ({ id: l.id, variant: l.variant || null, q: l.q })) }); if (!j.valid) throw new Error(j.message || "That code isn't valid.") }
     S.coupon = c; commit(); haptic(); toast(`${c} applied · you save ${fmtR(ch.off)}`); return ch.off;
   },
   removeCoupon() { S.coupon = null; commit() },
@@ -917,7 +980,7 @@ const PX_ACTS = {
     if (mode === 'recurring' && !S.recur) throw new Error('Pick how often and a time slot.');
     if (!a) throw new Error('Add the address where your car is parked.');
     if (b.couponError) throw new Error(b.couponError);
-    const title = jobTitlePlain(lines), snap = { mode, date: mode === 'scheduled' ? S.when!.date : mode === 'recurring' ? S.recur!.start : iso(TODAY), slot: mode === 'scheduled' ? S.when!.slot : mode === 'recurring' ? S.recur!.slot : '',
+    const title = jobTitlePlain(lines) + (b.perMonth ? ` · first month, ${b.perMonth.visits} visits` : ''), snap = { mode, date: mode === 'scheduled' ? S.when!.date : mode === 'recurring' ? S.recur!.start : iso(TODAY), slot: mode === 'scheduled' ? S.when!.slot : mode === 'recurring' ? S.recur!.slot : '',
       lines: lines.map(l => ({ key: l.key, id: l.id, name: l.name, q: l.q, price: l.price, mrp: l.mrp, mins: l.mins, variant: l.variant })), total: b.total, saved: b.saved, mins: b.mins, addressId: a.id,
       coupon: b.coupon ? b.coupon.code : null, washer: null, createdAt: nowIST() };
     const clearCart = () => { S.svc = {}; S.coupon = null; S.when = null; S.useWallet = false; S.usePass = false; if (pendingRef()) setPendingRef(''); commit() };
@@ -947,10 +1010,14 @@ const PX_ACTS = {
     if (b.walletUse) demoDebit(b.walletUse, jobTitlePlain(lines));
     if (b.passCover) { const ps = activePass(); if (ps) { ps.visitsLeft--; if (!ps.visitsLeft) ps.status = 'used' } }
     if (b.coupon) p.usedCoupons.push(b.coupon.code);
-    p.jobs.unshift({ id, mode, status: 'upcoming', date: mode === 'scheduled' ? S.when!.date : mode === 'recurring' ? S.recur!.start : iso(TODAY), slot: mode === 'scheduled' ? S.when!.slot : mode === 'recurring' ? S.recur!.slot : '',
+    const job0 = { id, mode, status: 'upcoming' as JobStatus, date: mode === 'scheduled' ? S.when!.date : mode === 'recurring' ? S.recur!.start : iso(TODAY), slot: mode === 'scheduled' ? S.when!.slot : mode === 'recurring' ? S.recur!.slot : '',
       recur: mode === 'recurring' ? S.recur!.freq : undefined, lines: lines.map(l => ({ key: l.key, id: l.id, name: l.name, q: l.q, price: l.price, mrp: l.mrp, mins: l.mins, variant: l.variant })),
-      total: b.total, saved: b.saved, mins: b.mins, addressId: a.id, pay: b.toPay === 0 && b.passCover ? 'pass' : 'paid', payVia: b.toPay === 0 ? (b.walletUse ? WALLET.name : 'WD Pass is') : 'Razorpay · ' + via, coupon: b.coupon ? b.coupon.code : null, washer: null, createdAt: nowIST(),
-      orderId: 'WDB' + id.slice(1).toUpperCase(), payRef: b.toPay ? 'pay_demo' + id.slice(-6) : undefined, eta: mode === 'instant' ? new Date(Date.now() + ETA_MIN * 60000).toISOString() : undefined });
+      total: b.total, saved: b.saved, mins: b.mins, addressId: a.id, pay: (b.toPay === 0 && b.passCover ? 'pass' : 'paid') as Job['pay'], payVia: b.toPay === 0 ? (b.walletUse ? WALLET.name : 'WD Pass is') : 'Razorpay · ' + via, coupon: b.coupon ? b.coupon.code : null, washer: null, createdAt: nowIST(),
+      orderId: 'WDB' + id.slice(1).toUpperCase(), payRef: b.toPay ? 'pay_demo' + id.slice(-6) : undefined, paidOnline: b.toPay || undefined, eta: mode === 'instant' ? new Date(Date.now() + ETA_MIN * 60000).toISOString() : undefined };
+    // recurring: the paid first month is one booking per visit, like the server writes them
+    const visits = mode === 'recurring' && b.perMonth ? recurDates(S.recur!, b.perMonth.visits) : [];
+    if (visits.length) p.jobs.unshift(...visits.map((date, i) => ({ ...job0, id: i ? id + '_' + (i + 1) : id, mode: 'scheduled' as CartMode, date, total: i || !b.coupon ? b.perVisit! : r2(b.total - b.perVisit! * (visits.length - 1)), coupon: i ? null : job0.coupon })));
+    else p.jobs.unshift(job0);
     clearCart();
     finishPay({ status: 'paid', kind: 'booking', title, amount: b.toPay, gateway: b.toPay ? 'Razorpay' : b.walletUse ? 'WD Money' : 'WD Pass', ref: b.toPay ? 'pay_demo' + id.slice(-6) : undefined, orderId: 'WDB' + id.slice(1).toUpperCase(), bookingId: id, at: nowIST() });
     return { id, paid: true, pending: false, shown: true };
@@ -1252,14 +1319,51 @@ export const act = {
   },
 
   /* --- payments: each returns {pending}; pending = money taken, waiting for the bank, plan updates by itself --- */
-  async payPlan(via = 'UPI') {
-    const c = car(), p = planOf(c), { to } = planPayDates(c), was = c.till || '';
-    const r = await checkout('plan', p.price, `${p.name} · ${c.name}`, via, { planId: p.id });
-    if (r.pending) { commit(); pollPaidTo(c, was); return { pending: true, till: to } }
-    c.till = iso(to); commit(); return { pending: false, till: to };
+  /** A monthly plan is always paid by autopay: a Razorpay subscription (n8n workflow 14). wd-sub-create prices it from
+   *  the Firestore catalog and makes the subscription; the customer authorises the mandate (and pays the first month) in
+   *  Razorpay Checkout inside the app; wd-sub-confirm checks the signature and the payment with Razorpay and moves the
+   *  paid-up date. Every later month Razorpay charges by itself and wd-sub-hook moves the date. Preview: simulated.
+   *  -> { pending, till }: pending = paid, waiting for Razorpay to confirm; the plan updates by itself. */
+  async payPlan(_via = 'UPI') {
+    const c = car(), p = planOf(c), { to } = planPayDates(c), what = `${p.name} · ${c.name} (autopay)`;
+    if (autopayOn(c)) throw new Error(`Autopay is already on for your ${c.name}. ${p.name} renews by itself every month.`);
+    if (!realAcct() || !server) {
+      await wait(1100);
+      A().payments.push({ d: iso(TODAY), what, amt: p.price, via: 'Razorpay Autopay', ref: 'pay_demo' + Date.now().toString().slice(-6), autopay: true });
+      c.till = iso(to); c.autopay = { sub: 'sub_demo' + c.id, status: 'active', plan: p.id, amount: p.price, since: iso(TODAY), last_paid: iso(TODAY) }; commit();
+      return { pending: false, till: to };
+    }
+    if (!PAYWEB_AVAILABLE) throw new Error('Update the app to start autopay. Nothing was charged.');
+    const j: any = await server.call('wd-sub-create', { plan: p.id, car: { reg: c.plate, name: c.name } });   // throws: nothing was charged
+    let r;
+    try { r = await razorpayCheckout({ keyId: String(j.keyId), subscriptionId: String(j.subscriptionId), recurring: true, name: j.name || 'Washing Daddy', description: j.description || what,
+      prefill: { contact: (j.prefill && j.prefill.contact) || '', name: A().name || '' } }) }
+    catch (e: any) {
+      if (e && e.cancelled) throw new Error('Autopay was not set up. Nothing was charged.');
+      throw new Error((errOf(e) && !(e && e.unavailable) ? errOf(e) + '. ' : "Razorpay didn't open. ") + 'No money was taken.');
+    }
+    let k: any = { paid: false };
+    try { k = await server.call('wd-sub-confirm', { subscriptionId: j.subscriptionId, ...r }) } catch (e) { /* Razorpay's webhook confirms it */ }
+    const amt = Number(j.amount) > 0 ? Number(j.amount) / 100 : p.price;
+    A().payments.push({ d: iso(TODAY), what, amt, via: 'Razorpay Autopay', ref: r.razorpay_payment_id, pending: !k.paid, autopay: true });
+    c.autopay = { sub: String(j.subscriptionId), status: k.paid ? 'active' : 'authenticated', plan: p.id, amount: amt };
+    if (k.paid && /^\d{4}-\d{2}-\d{2}$/.test(String(k.till || ''))) c.till = String(k.till);
+    commit();
+    return { pending: !k.paid, till: k.paid && k.till ? parse(String(k.till)) : to };
+  },
+  /** stop autopay at the end of the paid month (n8n wd-sub-cancel); the plan runs till its paid-up date */
+  async cancelAutopay() {
+    const c = car(), ap = c.autopay;
+    if (!ap || !(autopayOn(c) || ap.status === 'halted')) throw new Error('Autopay is not on for this car.');
+    if (!realAcct() || !server) { await wait(600); c.autopay = { ...ap, status: 'cancelling' }; commit(); return { till: c.till } }
+    const j: any = await server.call('wd-sub-cancel', { subscriptionId: ap.sub, car: { reg: c.plate } });
+    c.autopay = { ...ap, status: String(j.status || 'cancelling') }; commit();
+    return { till: (j.till as string) || c.till };
   },
   async switchPlan(id: PlanId, via = 'UPI') {
     if (HIDDEN_FROM_NEW.includes(id)) throw new Error('That plan is no longer available.');
+    // autopay charges the plan it was set up for: switching first would leave the next charge on the old price
+    if (autopayOn(car()) && id !== car().plan) throw new Error(`Autopay is on for ${planOf(car()).name}. Cancel autopay in Profile, then pick the new plan when this month ends.`);
     const c = car(), q = switchQuote(id, c);
     if (q.up && q.diff) await checkout('upgrade', q.diff, `Upgrade to ${q.np.name} · ${c.name}`, via, { toPlan: q.np.id, fromPlan: q.cp.id, till: c.till || '' });
     c.plan = id; commit();
@@ -1306,7 +1410,7 @@ export const act = {
     if (svcPayOnline() && payReal()) { const r = await checkout('onetime', lines[0].price, `${lines[0].name} · ${c.name}`, via, { service: lines[0].id }); paid = r.ref || 'paid' }
     const done = (id: string) => {
       // Kept on the account so the Washes tab can list it under Upcoming
-      A().bookings.unshift({ id, carId: c.id, type: names, what: paid ? 'Paid · ₹' + sub : 'Pay on arrival · ₹' + sub, date: when ? when.date : iso(TODAY), slot: when ? when.slot : 'Instant · 45-60 min' });
+      A().bookings.unshift({ id, carId: c.id, type: names, what: paid ? 'Paid · ₹' + sub : 'Pay on arrival · ₹' + sub, date: when ? when.date : iso(TODAY), slot: when ? when.slot : 'Instant · 15 min' });
       S.svc = {}; commit(); return { id, paid: !!paid };
     };
     if (!DB || !AUTH || !realAcct()) { await wait(800); return done('demo') }
@@ -1376,7 +1480,7 @@ export const act = {
 };
 
 // a guest can browse and fill the cart; these need a real account, so they open sign-in instead
-const GUEST_BLOCKED = ['addCar', 'carPhoto', 'pause', 'resume', 'note', 'removeNote', 'issue', 'closeReq', 'rate', 'payPlan', 'switchPlan', 'tip', 'checkoutCart', 'book',
+const GUEST_BLOCKED = ['addCar', 'carPhoto', 'pause', 'resume', 'note', 'removeNote', 'issue', 'closeReq', 'rate', 'payPlan', 'cancelAutopay', 'switchPlan', 'tip', 'checkoutCart', 'book',
   'cancelBooking', 'bookServices', 'togglePref', 'setName', 'deleteAccount', 'placeOrder', 'cancelJob', 'rescheduleJob', 'rateJob', 'saveAddress', 'deleteAddress',
   'saveProfile', 'topUp', 'claimGift', 'buyPass', 'shareReferral', 'findFriends', 'requestDeletion'] as const;
 for (const k of GUEST_BLOCKED) {

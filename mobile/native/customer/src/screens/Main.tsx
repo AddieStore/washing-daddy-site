@@ -38,6 +38,7 @@ import About from '../pages/About';
 import Bookings from '../pages/Bookings';
 import Booking from '../pages/Booking';
 import Rate from '../pages/Rate';
+import Txn from '../pages/Txn';
 import Washer from '../pages/Washer';
 import PayResult from '../pages/PayResult';
 import Permissions, { needsPrimer } from './Permissions';
@@ -78,6 +79,7 @@ function PageView({ p }: { p: NonNullable<Page> }): React.ReactElement {
     case 'bookings': return <Bookings />;
     case 'booking': return <Booking id={p.id} />;
     case 'rate': return <Rate id={p.id} />;
+    case 'txn': return <Txn id={p.id} />;
     case 'washer': return <Washer id={p.id} name={p.name} />;
     case 'payResult': return <PayResult />;
     default: { const never: never = p; return never }

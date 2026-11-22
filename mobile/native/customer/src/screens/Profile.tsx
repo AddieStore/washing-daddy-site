@@ -6,7 +6,7 @@ import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Footer } from '../ui/Footer';
 import { Back, Chev, Plan, Wallet, Help, Gift, Pin, Info, Shield, Logout, Car, Cart } from '../ui/icons';
-import { useApp, profile, fmtPhone, openPage, closePage, go, wallet, passView, feature } from '../state';
+import { useApp, profile, fmtPhone, openPage, closePage, go, wallet, passView, feature, autopayView } from '../state';
 import { Buttons } from './Home';
 import { REFERRAL } from '../data/reference';
 import { sheets } from '../sheets';
@@ -39,7 +39,7 @@ export default function Profile() {
           <View style={{ position: 'absolute', right: -50, top: -30, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.07)' }} />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, height: 48 }}>
             {pushed ? <Pressable accessibilityLabel="Back" onPress={closePage} hitSlop={12} style={{ width: 32, height: 48, justifyContent: 'center' }}><Back size={24} color="#fff" strokeWidth={1.8} /></Pressable> : null}
-            <Txt weight={600} size={18} color="#fff">Profile</Txt>
+            <Txt weight={600} size={22} color="#fff" style={{ lineHeight: 28 }}>Profile</Txt>
           </View>
           <FadeUp index={0} style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 12 }}>
             <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: '#EDE6FF', overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end', borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)' }}>
@@ -81,7 +81,8 @@ export default function Profile() {
 
           <FadeUp index={4}><View style={[card({ marginTop: 12, overflow: 'hidden', borderRadius: 20 })]}>
             <ListRow icon={ic(Pin)} title="Saved addresses" onPress={() => openPage({ k: 'addresses' })} />
-            {feature('plans') ? <ListRow icon={ic(Car)} title="Monthly plan" onPress={() => { closePage(); go('plan') }} /> : null}
+            {feature('plans') ? <ListRow icon={ic(Car)} title="Monthly plan" sub={autopayView().label || undefined} onPress={() => { closePage(); go('plan') }} /> : null}
+            {autopayView().on || autopayView().status === 'halted' ? <ListRow icon={ic(Car)} title="Cancel autopay" sub="Stops future charges. Your plan runs till the paid-up date." danger onPress={() => sheets.cancelAutopay()} /> : null}
             {feature('store') ? <ListRow icon={ic(Cart)} title="Store" onPress={() => { closePage(); go('store') }} /> : null}
             <ListRow icon={ic(Info)} title="About us" onPress={() => openPage({ k: 'about' })} />
             <ListRow icon={ic(Shield)} title="Legal & Privacy" onPress={() => openPage({ k: 'legal' })} />

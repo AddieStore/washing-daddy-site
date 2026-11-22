@@ -245,7 +245,7 @@ export const SHOW_RATINGS = false;
 /* ---- cart modes ---- */
 export type CartMode = 'instant' | 'scheduled' | 'recurring';
 export const CART_MODES: { id: CartMode; label: string; sub: string }[] = [
-  { id: 'instant', label: 'Instant', sub: 'Washer in 45-60 min' },
+  { id: 'instant', label: 'Instant', sub: 'Washer in 15 min' },
   { id: 'scheduled', label: 'Scheduled', sub: 'Pick a day and time' },
   { id: 'recurring', label: 'Recurring', sub: 'Same slot every week, cheaper' },
 ];

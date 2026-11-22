@@ -161,7 +161,7 @@ export function SuccessTick({ title, sub, onDone }: { title: string; sub?: strin
         <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: G.violet, alignItems: 'center', justifyContent: 'center' }}>
           <Check size={32} color="#fff" strokeWidth={1.5} />
         </View>
-        <Txt weight={500} size={22} style={{ marginTop: 24, textAlign: 'center' }}>{title}</Txt>
+        <Txt weight={600} size={22} style={{ marginTop: 24, textAlign: 'center', lineHeight: 28 }}>{title}</Txt>
         {sub ? <Txt size={14} color={G.sub} style={{ marginTop: 8, textAlign: 'center', lineHeight: 20 }}>{sub}</Txt> : null}
       </Animated.View>
     </Animated.View>
