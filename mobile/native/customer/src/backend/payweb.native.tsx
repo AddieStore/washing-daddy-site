@@ -35,7 +35,7 @@ export function razorpayCheckout(o: RzpOpen): Promise<RzpDone> {
     // a subscription (monthly autopay) opens with subscription_id + recurring and no order/amount: Razorpay takes the
     // amount from the plan the server created
     const base = { key: o.keyId, name: o.name || 'Washing Daddy', description: o.description || '', prefill: o.prefill || {}, theme: { color: '#5409DA' }, webview_intent: true, retry: { enabled: true } };
-    const opts = o.subscriptionId ? { ...base, subscription_id: o.subscriptionId, recurring: 1 }
+    const opts = o.subscriptionId ? { ...base, subscription_id: o.subscriptionId }
       : { ...base, order_id: o.orderId, amount: o.amount, currency: o.currency || 'INR' };
     const html = page(`<script src="https://checkout.razorpay.com/v1/checkout.js"></script><script>${post}
 (function(){ if(!window.Razorpay){ post({t:'load'}); return; }
@@ -100,6 +100,7 @@ export function PayWebHost() {
         <WebView ref={ref} style={{ flex: 1, backgroundColor: '#F6F3FF' }}
           source={source!} originWhitelist={['*']} javaScriptEnabled domStorageEnabled thirdPartyCookiesEnabled
           setSupportMultipleWindows={false} onLoadEnd={() => setBusy(false)}
+          onRenderProcessGone={() => job.onClose()} onError={() => { setBusy(false); job.onMsg({ t: 'load' }) }}
           onMessage={(e: any) => { try { job.onMsg(JSON.parse(e.nativeEvent.data)) } catch (err) {} }}
           onShouldStartLoadWithRequest={(r: any) => {
             const u = r.url || '';

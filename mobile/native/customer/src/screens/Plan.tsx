@@ -4,21 +4,22 @@ import { View, Pressable, ScrollView } from 'react-native';
 import { C } from '../theme';
 import { Txt, useInsets, type } from '../ui/kit';
 import { Footer } from '../ui/Footer';
-import { Pressable3, FadeUp, CountUp, TAB_BAR_H } from '../ui/motion';
-import { Help, Info, Gift, Chev, Clock, Camera, Pause } from '../ui/icons';
+import { Pressable3, FadeUp, TAB_BAR_H } from '../ui/motion';
+import { Help, Pause, Check } from '../ui/icons';
 import { PLANS } from '../data/reference';
 import type { PlanId } from '../data/reference';
 import { PlanPicker, PlanCta } from '../ui/plans/PlanPicker';
+import { PlanSummary } from '../ui/plans/PlanSummary';
 import { PAUSE_MAX, canPause, pauseLeft } from '../data/model';
 import { TODAY, fmt, iso, inr } from '../data/dates';
-import { A, car, daysLeft, planStatus, planOf, usage, act, toast, useApp, pendingRef, openPage, feature } from '../state';
+import { A, car, planOf, usage, act, toast, useApp } from '../state';
 import { sheets } from '../sheets';
 
 const run = (f: () => Promise<unknown>) => f().catch((e: Error) => toast(e.message));
 const INK = '#171717', SEC = '#525252', MUTED = '#737373', LINE = 'rgba(23,23,23,0.08)', RAISED = '#F4F4F5';
 const SH = { shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 } as const;
 const TN = { fontVariant: ['tabular-nums'] } as const;
-const Card = ({ children, style }: { children: React.ReactNode; style?: any }) => <View style={[{ backgroundColor: C.white, borderRadius: 14, borderWidth: 1, borderColor: LINE }, SH, style]}>{children}</View>;
+const Card = ({ children, style }: { children: React.ReactNode; style?: any }) => <View style={[{ backgroundColor: C.white, borderRadius: 16, borderWidth: 1, borderColor: LINE }, SH, style]}>{children}</View>;
 const Ghost = ({ label, onPress }: { label: string; onPress: () => void }) => (
   <Pressable3 onPress={onPress} style={{ marginTop: 12, minHeight: 48, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(23,23,23,0.16)', alignItems: 'center', justifyContent: 'center' }}><Txt weight={500} size={14} color={INK}>{label}</Txt></Pressable3>
 );
@@ -26,39 +27,9 @@ const Ghost = ({ label, onPress }: { label: string; onPress: () => void }) => (
 function Bar({ frac }: { frac: number }) {
   const f = Math.max(0, Math.min(1, frac));
   return (
-    <View style={{ height: 4, borderRadius: 2, backgroundColor: RAISED, marginTop: 12, overflow: 'hidden' }}>
-      <View style={{ height: 4, borderRadius: 2, backgroundColor: INK, width: `${f * 100}%` }} />
+    <View style={{ height: 4, borderRadius: 2, backgroundColor: C.canvas2, marginTop: 12, overflow: 'hidden' }}>
+      <View style={{ height: 4, borderRadius: 2, backgroundColor: C.violet, width: `${f * 100}%` }} />
     </View>
-  );
-}
-
-// current plan, days left, offer row
-function Balance() {
-  const c = car(), p = planOf(c), left = daysLeft(c), st = planStatus(c), ref = pendingRef();
-  return (
-    <Card style={{ overflow: 'hidden' }}>
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Txt weight={500} size={15} color={INK}>{`Current plan · ${p.name}`}</Txt><Info size={18} color={MUTED} strokeWidth={1.5} /></View>
-          <View style={{ borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: RAISED }}><Txt weight={500} size={12} color={SEC}>{st[0]}</Txt></View>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 16 }}>
-          <CountUp to={left == null ? inr(p.price) : String(left)} duration={600} style={[TN, { fontFamily: 'Poppins_500Medium', fontSize: 28, color: C.violet }]} />
-          <Txt size={14} color={SEC}>{left == null ? 'a month' : 'days left'}</Txt>
-        </View>
-        <Txt size={13} color={SEC} style={{ marginTop: 8, lineHeight: 20 }}>
-          {left == null ? 'Your plan starts after the first wash. Pay once you have seen it.' : `Paid up till ${fmt(c.till!, { day: 'numeric', month: 'short', year: 'numeric' })}. Renew below to keep your mornings going.`}
-        </Txt>
-      </View>
-      {feature('refer') ? <Pressable3 onPress={() => openPage({ k: 'refer' })} style={{ borderTopWidth: 1, borderTopColor: LINE, minHeight: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 12 }}>
-        <Gift size={18} color={MUTED} strokeWidth={1.5} />
-        <View style={{ flex: 1 }}>
-          <Txt weight={500} size={14} color={INK}>{ref ? 'Invite code applied' : 'Refer a friend, get ₹200'}</Txt>
-          <Txt size={12} color={MUTED}>{ref ? 'Applied when you pay for your first wash' : 'They get a wash, you get a credit'}</Txt>
-        </View>
-        <Chev size={18} color={MUTED} strokeWidth={1.5} />
-      </Pressable3> : null}
-    </Card>
   );
 }
 
@@ -92,11 +63,11 @@ const USING = [
 function Bullets({ title, items }: { title: string; items: string[] }) {
   return (
     <Card style={{ padding: 16 }}>
-      <Txt weight={500} size={18} color={INK}>{title}</Txt>
+      <Txt {...type.h2} color={INK}>{title}</Txt>
       <View style={{ marginTop: 12, gap: 12 }}>
         {items.map((t, i) => (
           <View key={i} style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: MUTED, marginTop: 8 }} />
+            <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(84,9,218,0.10)', alignItems: 'center', justifyContent: 'center', marginTop: 0 }}><Check size={12} color={C.violet} strokeWidth={2.8} /></View>
             <Txt size={14} color={SEC} style={{ flex: 1, lineHeight: 20 }}>{t}</Txt>
           </View>
         ))}
@@ -123,8 +94,8 @@ export default function Plan() {
           <Txt size={14} color={SEC} style={{ marginTop: 2, lineHeight: 20 }}>Your car washed at your parking spot every morning, before 7:30 AM. Billed monthly, per car.</Txt>
         </View>
         <View style={{ paddingHorizontal: 16, gap: 16 }}>
-          {isNew ? <FadeUp duration={300} distance={8}><Choose sel={sel} setSel={setSel} /></FadeUp> : <FadeUp duration={300} distance={8}><Balance /></FadeUp>}
-          {isNew ? <FadeUp delay={50} duration={300} distance={8}><Balance /></FadeUp> : <FadeUp delay={50} duration={300} distance={8}><Choose sel={sel} setSel={setSel} /></FadeUp>}
+          {isNew ? <FadeUp duration={300} distance={8}><Choose sel={sel} setSel={setSel} /></FadeUp> : <FadeUp duration={300} distance={8}><PlanSummary /></FadeUp>}
+          {isNew ? <FadeUp delay={50} duration={300} distance={8}><PlanSummary /></FadeUp> : <FadeUp delay={50} duration={300} distance={8}><Choose sel={sel} setSel={setSel} /></FadeUp>}
         </View>
         <View style={{ paddingHorizontal: 16, marginTop: 32, gap: 12 }}>
           {c.status !== 'new' && (

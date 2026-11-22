@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useColorScheme, View } from 'react-native';
+import { Alert, useColorScheme, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
@@ -16,6 +16,17 @@ import Auth from './src/screens/Auth';
 import { Splash } from './src/ui/motion';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// A JS error must never close the app in the middle of a payment: show what happened and carry on.
+const EU = (globalThis as any).ErrorUtils;
+if (EU && !(globalThis as any).__wdErrHandler) {
+  (globalThis as any).__wdErrHandler = true;
+  const prev = EU.getGlobalHandler && EU.getGlobalHandler();
+  EU.setGlobalHandler((e: any, fatal?: boolean) => {
+    try { Alert.alert('Something went wrong', String((e && e.message) || e).slice(0, 220) + '\nIf money was taken it shows in Money within a few minutes.') }
+    catch (_) { if (prev) prev(e, fatal) }
+  });
+}
 
 export default function App() {
   const [fonts] = useFonts({ Anton_400Regular, AlfaSlabOne_400Regular, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold });

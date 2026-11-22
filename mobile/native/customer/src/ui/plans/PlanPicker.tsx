@@ -1,9 +1,9 @@
 // Plans: one card per plan, stacked one under another, all in the same calm style. Tap a card to select it.
 // The sticky "Start" button lives in PlanCta, which the screen places above the tab bar.
-import React from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Animated } from 'react-native';
 import { C } from '../../theme';
-import { Txt } from '../kit';
+import { Txt, type } from '../kit';
 import { Pressable3, FadeUp } from '../motion';
 import { Check } from '../icons';
 import { PLANS, sellablePlans } from '../../data/reference';
@@ -49,33 +49,42 @@ export function features(p: Plan): { t: string; on: boolean }[] {
 }
 
 function PlanCard({ p, on, cur, onPress }: { p: Plan; on: boolean; cur: boolean; onPress: () => void }) {
+  const t = useRef(new Animated.Value(on ? 1 : 0)).current;
+  useEffect(() => { Animated.spring(t, { toValue: on ? 1 : 0, useNativeDriver: false, friction: 7, tension: 120 }).start(); }, [on]);
+  const bg = t.interpolate({ inputRange: [0, 1], outputRange: ['#FFFFFF', TINT] });
+  const bd = t.interpolate({ inputRange: [0, 1], outputRange: ['rgba(23,23,23,0.08)', V] });
+  const dot = t.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
   return (
     <Pressable3 onPress={onPress} scaleTo={0.985} accessibilityRole="button" accessibilityLabel={`${p.name}, ${inr(p.price)} per month`} accessibilityState={{ selected: on }}>
-      <View style={{ backgroundColor: on ? TINT : C.white, borderRadius: 16, borderWidth: 2, borderColor: on ? V : LINE, padding: 18 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: on ? V : 'rgba(23,23,23,0.24)', backgroundColor: on ? V : C.white, alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={{ backgroundColor: bg, borderRadius: 18, borderWidth: 1.5, borderColor: bd, padding: 18, shadowColor: '#1A1033', shadowOpacity: on ? 0.1 : 0.04, shadowRadius: on ? 14 : 6, shadowOffset: { width: 0, height: 3 }, elevation: on ? 3 : 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <Animated.View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, marginTop: 1, borderColor: on ? V : 'rgba(23,23,23,0.24)', backgroundColor: on ? V : C.white, alignItems: 'center', justifyContent: 'center', transform: [{ scale: dot.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] }}>
             {on ? <Check size={13} color={C.white} strokeWidth={3} /> : null}
+          </Animated.View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <Txt {...type.h2} color={INK}>{p.name}</Txt>
+              {cur ? <View style={{ borderRadius: 999, paddingVertical: 2, paddingHorizontal: 8, backgroundColor: 'rgba(84,9,218,0.10)' }}><Txt weight={500} size={11} color={V}>Current</Txt></View> : null}
+            </View>
+            <Txt size={13} color={SEC} style={{ marginTop: 2, lineHeight: 19 }}>{benefit(p)}</Txt>
           </View>
-          <Txt weight={600} size={18} color={INK} style={{ flex: 1 }}>{p.name}</Txt>
-          {cur ? <Txt weight={500} size={12} color={V}>Current plan</Txt> : null}
+          <View style={{ alignItems: 'flex-end' }}>
+            <Txt weight={700} size={22} color={INK} style={NUM}>{inr(p.price)}</Txt>
+            <Txt size={12} color={MUTED} style={{ marginTop: -2 }}>per month</Txt>
+          </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 14 }}>
-          <Txt weight={700} size={28} color={INK} style={NUM}>{inr(p.price)}</Txt>
-          <Txt size={14} color={MUTED}>per month</Txt>
-        </View>
-        <Txt size={14} color={SEC} style={{ marginTop: 4, lineHeight: 21 }}>{benefit(p)}</Txt>
-        <View style={{ height: 1, backgroundColor: on ? 'rgba(84,9,218,0.14)' : LINE, marginVertical: 16 }} />
-        <View style={{ gap: 12 }}>
+        <View style={{ height: 1, backgroundColor: on ? 'rgba(84,9,218,0.14)' : LINE, marginVertical: 14 }} />
+        <View style={{ gap: 10 }}>
           {features(p).map(f => (
-            <View key={f.t} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <View style={{ width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: f.on ? 'rgba(84,9,218,0.10)' : 'rgba(23,23,23,0.06)' }}>
-                {f.on ? <Check size={12} color={V} strokeWidth={2.8} /> : <View style={{ width: 8, height: 2, borderRadius: 1, backgroundColor: MUTED }} />}
+            <View key={f.t} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: f.on ? 'rgba(84,9,218,0.10)' : 'rgba(23,23,23,0.06)' }}>
+                {f.on ? <Check size={11} color={V} strokeWidth={2.8} /> : <View style={{ width: 7, height: 2, borderRadius: 1, backgroundColor: MUTED }} />}
               </View>
-              <Txt size={14} color={f.on ? INK : MUTED} style={{ flex: 1, lineHeight: 20 }}>{f.t}</Txt>
+              <Txt size={13} color={f.on ? INK : MUTED} style={{ flex: 1, lineHeight: 19 }}>{f.t}</Txt>
             </View>
           ))}
         </View>
-      </View>
+      </Animated.View>
     </Pressable3>
   );
 }
