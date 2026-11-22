@@ -1,8 +1,8 @@
 /* Login story: four animated scenes (book, ride, wash, proof) that play while the customer types their number and code.
    One morning, start to finish: night turns to dawn, the booking is made, the WD Partner rides over, washes the car, shows the proof.
    Characters, car and city are drawn here in SVG; every loop runs on the UI thread and rests still with reduced motion. */
-import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient as SG, Path, Rect, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -66,34 +66,39 @@ function Star({ x, y, d }: { x: number; y: number; d: number }) {
   const p = usePulse(900 + d * 7, d * 11), st = useAnimatedStyle(() => ({ opacity: 0.25 + p.value * 0.75 }));
   return <Animated.View style={[abs(x, y, { width: 3, height: 3, borderRadius: 2, backgroundColor: '#fff' }), st]} />;
 }
+/** the login page paints the story on a light lavender sky that melts into white; splash and primer keep the deep-violet one */
+export const LightCtx = createContext(false);
 /** tone 0 = night, 1 = dawn, 2 = morning, 3 = bright day: the sun climbs and the sky warms as the story goes */
 export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: number; road?: boolean }) {
-  const sky = [['rgba(58,5,153,0)', '#4B12C9', '#6A2BF0'], ['rgba(84,9,218,0)', '#7A3AF2', '#FF9E7A'], ['rgba(110,40,235,0)', '#8E55F5', '#FFC08A'], ['rgba(130,70,245,0)', '#A97BFF', '#FFE2A8']][tone];
-  const sunY = [H - 40, H - 70, H - 105, H - 140][tone], sunC = ['#CDB8FF', '#FFC58A', '#FFD470', '#FFE49A'][tone];
+  const light = useContext(LightCtx);
+  const sky = light ? ['#E2D3FF', '#ECE2FF', '#F3ECFF'] : [['rgba(58,5,153,0)', '#4B12C9', '#6A2BF0'], ['rgba(84,9,218,0)', '#7A3AF2', '#FF9E7A'], ['rgba(110,40,235,0)', '#8E55F5', '#FFC08A'], ['rgba(130,70,245,0)', '#A97BFF', '#FFE2A8']][tone];
+  const sunY = [H - 40, H - 70, H - 105, H - 140][tone], sunC = (light ? ['#FFE9A6', '#FFDF8A', '#FFD470', '#FFCB4A'] : ['#CDB8FF', '#FFC58A', '#FFD470', '#FFE49A'])[tone];
   const glow = usePulse(2400);
   const sunSt = useAnimatedStyle(() => ({ transform: [{ scale: 1 + glow.value * 0.06 }], opacity: 0.55 + glow.value * 0.2 }));
   const roadX = useLoop(900), roadSt = useAnimatedStyle(() => ({ transform: [{ translateX: -roadX.value * 38 }] }));
   return (
     <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: W, height: H, overflow: 'hidden' }}>
       <LinearGradient colors={sky as any} locations={[0, 0.45, 1]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
-      {tone === 0 ? Array.from({ length: 14 }, (_, i) => <Star key={i} x={(i * 53 + 17) % W} y={8 + ((i * 37) % 90)} d={i * 40} />) : null}
+      {tone === 0 && !light ? Array.from({ length: 14 }, (_, i) => <Star key={i} x={(i * 53 + 17) % W} y={8 + ((i * 37) % 90)} d={i * 40} />) : null}
       <Animated.View style={[abs(W * (0.62 + tone * 0.04) - 70, sunY - 70, { width: 140, height: 140, borderRadius: 70, backgroundColor: sunC }), sunSt]} />
       <View style={abs(W * (0.62 + tone * 0.04) - 38, sunY - 38, { width: 76, height: 76, borderRadius: 38, backgroundColor: sunC, opacity: 0.95 })} />
       {[0, 1, 2].map(i => <Cloud key={i} x={(i * 140 + 20 + tone * 30) % (W - 60)} y={14 + i * 22} w={64 + i * 18} d={i * 700} />)}
-      <Skyline W={W} h={96} color="rgba(255,255,255,0.10)" seed={3 + tone} speed={42000} />
-      <Skyline W={W} h={70} color="rgba(46,10,120,0.55)" seed={11 + tone} speed={26000} windows={tone < 2} />
-      <View style={abs(0, H - 36, { width: W, height: 36, backgroundColor: '#2A0F6B' })}>
-        <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.28)' }} />
+      <Skyline W={W} h={96} color={light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.10)'} seed={3 + tone} speed={42000} />
+      <Skyline W={W} h={70} color={light ? 'rgba(84,9,218,0.14)' : 'rgba(46,10,120,0.55)'} seed={11 + tone} speed={26000} windows={!light && tone < 2} />
+      <View style={abs(0, H - 36, { width: W, height: 36, backgroundColor: light ? 'transparent' : '#2A0F6B' })}>
+        {light ? <LinearGradient colors={['#D9CBFA', '#F3ECFF']} style={StyleSheet.absoluteFill} /> : null}
+        <View style={{ height: 3, backgroundColor: light ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.28)' }} />
         {road ? <Animated.View style={[abs(0, 16, { flexDirection: 'row', width: W + 80 }), roadSt]}>
-          {Array.from({ length: Math.ceil(W / 38) + 3 }, (_, i) => <View key={i} style={{ width: 22, height: 4, borderRadius: 2, marginRight: 16, backgroundColor: 'rgba(255,255,255,0.6)' }} />)}
+          {Array.from({ length: Math.ceil(W / 38) + 3 }, (_, i) => <View key={i} style={{ width: 22, height: 4, borderRadius: 2, marginRight: 16, backgroundColor: light ? '#fff' : 'rgba(255,255,255,0.6)' }} />)}
         </Animated.View> : null}
       </View>
     </View>
   );
 }
 function Cloud({ x, y, w, d }: { x: number; y: number; w: number; d: number }) {
+  const light = useContext(LightCtx);
   const p = usePulse(3600, d), st = useAnimatedStyle(() => ({ transform: [{ translateX: p.value * 16 }] }));
-  return <Animated.View style={[abs(x, y, { width: w, height: w * 0.3, borderRadius: w, backgroundColor: 'rgba(255,255,255,0.16)' }), st]} />;
+  return <Animated.View style={[abs(x, y, { width: w, height: w * 0.3, borderRadius: w, backgroundColor: light ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.16)' }), st]} />;
 }
 
 /* ------------------------------------------------------------------ the car */
@@ -177,8 +182,9 @@ export function Pin({ size = 34 }: { size?: number }) {
   return <Svg width={size} height={size * 1.25} viewBox="0 0 32 40"><Path d="M16 38 C16 38 4 24 4 15 A12 12 0 0 1 28 15 C28 24 16 38 16 38Z" fill={SAFF} /><Circle cx={16} cy={15} r={5} fill="#3A0599" /></Svg>;
 }
 export function Sparkle({ x, y, s, delay }: { x: number; y: number; s: number; delay: number }) {
+  const light = useContext(LightCtx);
   const p = usePulse(650, delay), st = useAnimatedStyle(() => ({ opacity: 0.2 + p.value * 0.8, transform: [{ scale: 0.4 + p.value * 0.8 }, { rotate: p.value * 45 + 'deg' }] }));
-  return <Animated.View style={[abs(x, y, { width: s, height: s }), st]}><Svg width={s} height={s} viewBox="0 0 20 20"><Path d="M10 0 L12.4 7.6 L20 10 L12.4 12.4 L10 20 L7.6 12.4 L0 10 L7.6 7.6Z" fill="#fff" /></Svg></Animated.View>;
+  return <Animated.View style={[abs(x, y, { width: s, height: s }), st]}><Svg width={s} height={s} viewBox="0 0 20 20"><Path d="M10 0 L12.4 7.6 L20 10 L12.4 12.4 L10 20 L7.6 12.4 L0 10 L7.6 7.6Z" fill={light ? SAFF : '#fff'} /></Svg></Animated.View>;
 }
 export function Drop({ x, y, dx, dy, ms, delay, r = 4 }: { x: number; y: number; dx: number; dy: number; ms: number; delay: number; r?: number }) {
   const p = useLoop(ms, 0.5, delay), st = useAnimatedStyle(() => ({ opacity: interpolate(p.value, [0, 0.12, 0.85, 1], [0, 1, 1, 0]), transform: [{ translateX: p.value * dx }, { translateY: p.value * dy + p.value * p.value * 10 }] }));
@@ -199,7 +205,7 @@ function SceneBook({ W, H }: { W: number; H: number }) {
       <Backdrop W={W} H={H} tone={0} />
       <Stage W={W} H={H}>
         <View style={abs(0, GROUND - 160 + 6)}><Person look={CUSTOMER} pose="phone" h={158} /></View>
-        <Animated.View style={[abs(40, 86, { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff' }), rip]} />
+        <Animated.View style={[abs(40, 86, { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(84,9,218,0.22)' }), rip]} />
         <Card x={96} y={18} delay={900} w={176}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Tick /><View><Txt weight={600} size={12} color="#1A1033" style={{ lineHeight: 15 }}>Wash booked</Txt><Txt size={10} color="#6B6483" style={{ lineHeight: 13 }}>Instant · Pressure wash</Txt></View></View>
         </Card>
@@ -332,20 +338,24 @@ export function LoginStory({ W, H = 220, ms = 4600 }: { W: number; H?: number; m
   const [i, setI] = useState(0), rm = useReducedMotion();
   useEffect(() => { if (rm) return; const t = setInterval(() => setI(n => (n + 1) % SLIDES.length), ms); return () => clearInterval(t) }, [rm, ms]);
   const Scene = SCENES[i];
+  // light lavender sky -> the caption block fades to pure white, which is the colour of the login sheet below
   return (
-    <View style={{ width: W }}>
-      <View style={{ width: W, height: H, overflow: 'hidden' }}>
-        <Animated.View key={i} entering={FadeIn.duration(420)} exiting={FadeOut.duration(280)} style={abs(0, 0)}><Scene W={W} H={H} /></Animated.View>
-      </View>
-      <View style={{ paddingHorizontal: SP.l + 4, paddingTop: SP.m, minHeight: 92, backgroundColor: '#2A0F6B' }}>
-        <Animated.View key={'t' + i} entering={FadeIn.duration(420).delay(140)} exiting={FadeOut.duration(200)}>
-          <Txt weight={700} size={26} color="#fff" style={{ lineHeight: 33 }}>{SLIDES[i].t}</Txt>
-          <Txt size={14} color="rgba(255,255,255,0.86)" style={{ lineHeight: 20, marginTop: 4 }}>{SLIDES[i].s}</Txt>
-        </Animated.View>
-        <View style={{ flexDirection: 'row', gap: 6, marginTop: 12, paddingBottom: 6 }}>
-          {SLIDES.map((_, k) => <View key={k} style={{ height: 6, width: k === i ? 22 : 6, borderRadius: 3, backgroundColor: k === i ? SAFF : 'rgba(255,255,255,0.4)' }} />)}
+    <LightCtx.Provider value>
+      <View style={{ width: W }}>
+        <View style={{ width: W, height: H, overflow: 'hidden' }}>
+          <Animated.View key={i} entering={FadeIn.duration(420)} exiting={FadeOut.duration(280)} style={abs(0, 0)}><Scene W={W} H={H} /></Animated.View>
+          <LinearGradient pointerEvents="none" colors={['#E2D3FF', 'rgba(226,211,255,0)']} style={abs(0, 0, { width: W, height: 26 })} />
         </View>
+        <LinearGradient colors={['#F3ECFF', '#FFFFFF']} style={{ paddingHorizontal: SP.l + 4, paddingTop: SP.m, minHeight: 104 }}>
+          <Animated.View key={'t' + i} entering={FadeIn.duration(420).delay(140)} exiting={FadeOut.duration(200)}>
+            <Txt weight={700} size={26} color="#1A1033" style={{ lineHeight: 33 }}>{SLIDES[i].t}</Txt>
+            <Txt size={14} color="#5B5275" style={{ lineHeight: 20, marginTop: 4 }}>{SLIDES[i].s}</Txt>
+          </Animated.View>
+          <View style={{ flexDirection: 'row', gap: 6, marginTop: 12, paddingBottom: 14 }}>
+            {SLIDES.map((_, k) => <View key={k} style={{ height: 6, width: k === i ? 22 : 6, borderRadius: 3, backgroundColor: k === i ? '#5409DA' : 'rgba(84,9,218,0.22)' }} />)}
+          </View>
+        </LinearGradient>
       </View>
-    </View>
+    </LightCtx.Provider>
   );
 }
