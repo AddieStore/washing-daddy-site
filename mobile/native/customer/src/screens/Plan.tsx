@@ -2,13 +2,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Pressable, ScrollView } from 'react-native';
 import { C } from '../theme';
-import { Txt, useInsets } from '../ui/kit';
+import { Txt, useInsets, type } from '../ui/kit';
 import { Footer } from '../ui/Footer';
-import { Pressable3, FadeUp, CountUp } from '../ui/motion';
+import { Pressable3, FadeUp, CountUp, TAB_BAR_H } from '../ui/motion';
 import { Help, Info, Gift, Chev, Clock, Camera, Pause } from '../ui/icons';
 import { PLANS } from '../data/reference';
 import type { PlanId } from '../data/reference';
-import { PlanPicker } from '../ui/plans/PlanPicker';
+import { PlanPicker, PlanCta } from '../ui/plans/PlanPicker';
 import { PAUSE_MAX, canPause, pauseLeft } from '../data/model';
 import { TODAY, fmt, iso, inr } from '../data/dates';
 import { A, car, daysLeft, planStatus, planOf, usage, act, toast, useApp, pendingRef, openPage, feature } from '../state';
@@ -54,7 +54,7 @@ function Balance() {
         <Gift size={18} color={MUTED} strokeWidth={1.5} />
         <View style={{ flex: 1 }}>
           <Txt weight={500} size={14} color={INK}>{ref ? 'Invite code applied' : 'Refer a friend, get ₹200'}</Txt>
-          <Txt size={12} color={MUTED}>{ref ? '₹200 off your first month' : 'They get a wash, you get a credit'}</Txt>
+          <Txt size={12} color={MUTED}>{ref ? 'Applied when you pay for your first wash' : 'They get a wash, you get a credit'}</Txt>
         </View>
         <Chev size={18} color={MUTED} strokeWidth={1.5} />
       </Pressable3> : null}
@@ -62,18 +62,26 @@ function Balance() {
   );
 }
 
-// pick a plan, then pay or switch
-function Choose({ lead }: { lead?: boolean }) {
-  const c = car(), p = planOf(c);
-  const [sel, setSel] = useState<PlanId>(p.id);
-  const pl = PLANS.find(x => x.id === sel) || p, cur = pl.id === p.id;
-  const label = cur ? `${c.till ? 'Pay next month' : 'Pay first month'} · ${inr(pl.price)}` : `${pl.price > p.price ? 'Upgrade to' : 'Switch to'} ${pl.name.replace('WD ', '')} · ${inr(pl.price)}`;
-  return <View>{lead ? null : <Txt weight={600} size={18} color={INK} style={{ marginBottom: 12 }}>Choose your plan</Txt>}<PlanPicker sel={sel} setSel={setSel} curId={p.id} cta={label} lead={lead} onCta={() => (cur ? sheets.payPlan() : sheets.switchPlan(pl.id))} /></View>;
+// pick a plan (the sticky button is in Plan)
+function ctaFor(sel: PlanId) {
+  const c = car(), p = planOf(c), pl = PLANS.find(x => x.id === sel) || p, cur = pl.id === p.id, per = `${inr(pl.price)}/month`;
+  const label = cur ? (c.till ? `Renew ${pl.name.replace('WD ', '')} · ${per}` : `Start tomorrow morning · ${per}`) : `${pl.price > p.price ? 'Upgrade to' : 'Switch to'} ${pl.name.replace('WD ', '')} · ${per}`;
+  return { label, go: () => (cur ? sheets.payPlan() : sheets.switchPlan(pl.id)) };
+}
+function Choose({ sel, setSel }: { sel: PlanId; setSel: (id: PlanId) => void }) {
+  const p = planOf(car());
+  return (
+    <View>
+      <Txt {...type.h2} color={INK} style={{ lineHeight: 24 }}>Pick your plan</Txt>
+      <Txt size={14} color={SEC} style={{ marginTop: 4, marginBottom: 16, lineHeight: 21 }}>Same wash quality on every plan. Pick how much extra care your car gets.</Txt>
+      <PlanPicker sel={sel} setSel={setSel} curId={p.id} />
+    </View>
+  );
 }
 
 const HOW = [
   'Pick the plan that matches how many mornings a week your car should get a pressure wash.',
-  'Pay once a month with UPI, card or netbanking. Receipts show up below.',
+  'Pay monthly by autopay, UPI or card. Every receipt shows up below. Cancel any time.',
   'Your washer comes before 7:30 AM. Watch every step live on the Washes tab and get a photo when done.',
 ];
 const USING = [
@@ -101,7 +109,7 @@ export default function Plan() {
   const { tabNonce } = useApp(), ins = useInsets();
   const top = Math.max(ins.top, 24), sc = useRef<any>(null), first = useRef(true);
   useEffect(() => { if (first.current) { first.current = false; return } sc.current?.scrollTo({ y: 0, animated: true }); }, [tabNonce]);
-  const c = car(), u = usage(c), a = A();
+  const c = car(), u = usage(c), a = A(), [sel, setSel] = useState<PlanId>(planOf(c).id), cta = ctaFor(sel), tabH = TAB_BAR_H + Math.max(ins.bottom, 0) + 8;
   const isNew = c.status === 'new', pz = !!c.paused && c.paused.to >= iso(TODAY), cp = canPause(c);
   const pays = a.payments.slice().sort((x, y) => y.d.localeCompare(x.d));
   return (
@@ -109,14 +117,14 @@ export default function Plan() {
       <ScrollView ref={sc} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 0 }}>
         <View style={{ paddingTop: top, paddingHorizontal: 16, paddingBottom: 20 }}>
           <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Txt weight={600} size={24} color={INK}>Plans</Txt>
+            <Txt {...type.h1} color={INK}>Monthly plans</Txt>
             <Pressable3 onPress={() => sheets.help()} accessibilityRole="button" accessibilityLabel="Plan questions" style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: C.white, borderWidth: 1, borderColor: LINE, alignItems: 'center', justifyContent: 'center' }}><Help size={18} color={INK} strokeWidth={1.5} /></Pressable3>
           </View>
-          <Txt size={14} color={SEC} style={{ marginTop: 2, lineHeight: 20 }}>A daily pressure wash before 7:30 AM, with live photos. Every plan is billed monthly, per car.</Txt>
+          <Txt size={14} color={SEC} style={{ marginTop: 2, lineHeight: 20 }}>Your car washed at your parking spot every morning, before 7:30 AM. Billed monthly, per car.</Txt>
         </View>
         <View style={{ paddingHorizontal: 16, gap: 16 }}>
-          {isNew ? <FadeUp duration={300} distance={8}><Choose lead /></FadeUp> : <FadeUp duration={300} distance={8}><Balance /></FadeUp>}
-          {isNew ? <FadeUp delay={50} duration={300} distance={8}><Balance /></FadeUp> : <FadeUp delay={50} duration={300} distance={8}><Choose /></FadeUp>}
+          {isNew ? <FadeUp duration={300} distance={8}><Choose sel={sel} setSel={setSel} /></FadeUp> : <FadeUp duration={300} distance={8}><Balance /></FadeUp>}
+          {isNew ? <FadeUp delay={50} duration={300} distance={8}><Balance /></FadeUp> : <FadeUp delay={50} duration={300} distance={8}><Choose sel={sel} setSel={setSel} /></FadeUp>}
         </View>
         <View style={{ paddingHorizontal: 16, marginTop: 32, gap: 12 }}>
           {c.status !== 'new' && (
@@ -162,8 +170,9 @@ export default function Plan() {
             </View>
           )) : <View style={{ padding: 16, paddingTop: 0 }}><Txt weight={500} size={14} color={INK}>No payments yet</Txt><Txt size={12} color={MUTED}>Your first receipt shows up here</Txt></View>}
         </Card>
-        <Footer bg={C.canvas} />
+        <Footer bg={C.canvas} extraBottom={110} />
       </ScrollView>
+      <PlanCta label={cta.label} onPress={cta.go} bottom={tabH} />
     </View>
   );
 }

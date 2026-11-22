@@ -23,7 +23,7 @@ export default function Rate({ id }: { id: string }) {
                 <Txt size={13} color={G.sub} style={{ marginTop: 4 }} numberOfLines={1}>{`${jobTitle(j)} · ${jobWhen(j)}`}</Txt>
               </View>
             </View>
-            <Txt weight={500} size={20} style={{ marginTop: 24, textAlign: 'center' }}>How was your wash?</Txt>
+            <Txt weight={600} size={22} style={{ marginTop: 24, textAlign: 'center', lineHeight: 28 }}>How was your wash?</Txt>
             <Txt size={13} color={G.sub} style={{ marginTop: 4, textAlign: 'center' }}>Your washer sees this rating.</Txt>
             <View style={{ marginTop: 8 }}><RateForm id={id} big onDone={closePage} /></View>
           </>

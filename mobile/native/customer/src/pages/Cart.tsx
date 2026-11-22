@@ -20,6 +20,9 @@ import { POLICY } from '../sheets/bookings';
 import { G, card, Photo, AddBtn, PrimaryBtn, SuccessTick, Price, TNUM, SHADOW_F, PAGE_BG, inr, Tap } from './parts';
 
 const ND = Platform.OS !== 'web';
+// to the paisa, so the button, the bill and the Razorpay amount read the same (₹642.60, not ₹643)
+const rp = (n: number) => { const a = Math.round(Math.abs(n) * 100) / 100, w = Math.floor(a), p = Math.round((a - w) * 100);
+  return (n < 0 ? '−' : '') + inr(w) + (p ? '.' + String(p).padStart(2, '0') : '') };
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function Modes({ mode }: { mode: CartMode }) {
@@ -79,7 +82,7 @@ export default function Cart() {
   const together = CAR_SERVICES.filter(s => !svcQty(s.id) && !lines.some(l => l.id === s.id) && !unavailable(s.id)).slice(0, 6);
   const needSlot = mode === 'scheduled' && !w, needRecur = mode === 'recurring' && !rc, instantShut = mode === 'instant' && !st.open;
   const contact = addr ? (addr.receiver.self ? `${pr.first || 'You'}${pr.last ? ' ' + pr.last : ''}, ${fmtPhone(pr.phone || '')}` : receiverText(addr.receiver)) : '';
-  const cta = needSlot ? 'Select time slot' : needRecur ? 'Set repeat plan' : instantShut ? 'Instant is closed' : 'Pay ' + inr(b.toPay);
+  const cta = needSlot ? 'Select time slot' : needRecur ? 'Set repeat plan' : instantShut ? 'Instant is closed' : 'Pay ' + rp(b.toPay);
   const payMode = !needSlot && !needRecur && !instantShut;
   const press = async () => {
     if (needSlot) return openSlotSheet();
@@ -173,7 +176,7 @@ export default function Cart() {
             <View style={card({ overflow: 'hidden' })}>
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(o => !o)} style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}><Txt weight={600} size={16}>To pay</Txt><CountUp to={inr(b.toPay)} duration={500} style={[TNUM, { fontFamily: 'Poppins_700Bold', fontSize: 17, color: G.ink }]} /></View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}><Txt weight={600} size={16}>{b.perMonth ? 'To pay now' : 'To pay'}</Txt><CountUp to={rp(b.toPay)} duration={500} style={[TNUM, { fontFamily: 'Poppins_700Bold', fontSize: 17, color: G.ink }]} /></View>
                   {b.saved > 0 ? <View style={{ alignSelf: 'flex-start', marginTop: 6, backgroundColor: 'rgba(22,163,74,0.10)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, flexDirection: 'row' }}><CountUp to={inr(b.saved)} duration={500} style={[TNUM, { fontFamily: 'Poppins_600SemiBold', fontSize: 13, color: G.pos }]} /><Txt weight={600} size={13} color={G.pos}> saved on the total!</Txt></View> : null}
                 </View>
                 <View style={{ transform: [{ rotate: open ? '-90deg' : '90deg' }] }}><Chev size={16} color={G.mute} strokeWidth={1.5} /></View>
@@ -185,7 +188,7 @@ export default function Cart() {
                       <Txt weight={r.k === 'total' ? 500 : 400} size={14} color={r.tone === 'pos' ? G.pos : r.k === 'total' ? G.ink : G.sub}>{r.label}</Txt>
                       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'baseline' }}>
                         {r.strike ? <Price v={r.strike} size={13} weight={400} strike /> : null}
-                        {r.amt === 0 && r.strike ? <Txt weight={500} size={14} color={G.pos}>Free</Txt> : <Price v={r.amt} size={14} weight={r.k === 'total' ? 500 : 400} color={r.tone === 'pos' ? G.pos : r.tone === 'mute' ? G.mute : G.ink} />}
+                        {r.amt === 0 && r.strike ? <Txt weight={500} size={14} color={G.pos}>Free</Txt> : <Txt weight={r.k === 'total' ? 500 : 400} size={14} color={r.tone === 'pos' ? G.pos : r.tone === 'mute' ? G.mute : G.ink} style={TNUM}>{rp(r.amt)}</Txt>}
                       </View>
                     </View>
                   ))}
@@ -193,7 +196,7 @@ export default function Cart() {
                 </View>
               ) : null}
             </View>
-            {b.perMonth ? <Txt size={12} color={G.mute} style={{ marginTop: 8, marginLeft: 4 }}>{inr(b.total)} a visit × {b.perMonth.visits} visits = around {inr(b.perMonth.total)} a month.</Txt> : null}
+            {b.perMonth && b.perVisit != null ? <Txt size={12} color={G.mute} style={{ marginTop: 8, marginLeft: 4, lineHeight: 17 }}>You pay now for the first month: {b.perMonth.visits} visits at {rp(b.perVisit)} a visit{b.coupon ? ', coupon on the first visit' : ''} = {rp(b.perMonth.total)}. Each visit shows in Bookings; cancel one and its share is refunded.</Txt> : null}
 
             {together.length ? (
               <>
@@ -226,12 +229,12 @@ export default function Cart() {
           <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: G.line, paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(ins.bottom, 12) + 4, flexDirection: 'row', alignItems: 'center', gap: 16, ...SHADOW_F }}>
             {payMode ? (
               <FadeUp distance={0} duration={200} style={{ flex: 1 }}><Tap label="Bill details" onPress={openBillSheet}>
-                <Txt size={12} color={G.mute}>{b.perMonth ? 'To pay per visit' : 'To pay'}</Txt>
-                <CountUp to={inr(b.toPay)} duration={450} style={[TNUM, { fontFamily: 'Poppins_700Bold', fontSize: 20, color: G.ink }]} />
+                <Txt size={12} color={G.mute}>{b.perMonth ? `First month · ${b.perMonth.visits} visits` : 'To pay'}</Txt>
+                <CountUp to={rp(b.toPay)} duration={450} style={[TNUM, { fontFamily: 'Poppins_700Bold', fontSize: 20, color: G.ink }]} />
                 {b.saved > 0 ? <Txt weight={500} size={11} color={G.pos}>{inr(b.saved)} saved</Txt> : null}
               </Tap></FadeUp>
             ) : null}
-            <PrimaryBtn label={payMode ? 'Pay now' : cta} onPress={press} busy={busy} disabled={instantShut} style={payMode ? { width: 170 } : { flex: 1 }} />
+            <PrimaryBtn label={cta} onPress={press} busy={busy} disabled={instantShut} style={payMode ? { width: 190 } : { flex: 1 }} />
           </View>
           <CartCoach top={ins.top + 120} />
         </>

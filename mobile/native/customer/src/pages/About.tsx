@@ -17,7 +17,7 @@ export default function About() {
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <PageBar title="About us" />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        <Txt weight={500} size={24} style={{ lineHeight: 32 }}>{ABOUT.title}</Txt>
+        <Txt weight={600} size={22} style={{ lineHeight: 28 }}>{ABOUT.title}</Txt>
         <Txt size={15} color={G.sub} style={{ marginTop: 8, lineHeight: 22 }}>{ABOUT.intro}</Txt>
 
         <Txt weight={500} size={17} style={{ marginTop: 32, marginBottom: 12 }}>How it works</Txt>

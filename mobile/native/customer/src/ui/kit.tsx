@@ -29,6 +29,23 @@ export function Txt({ style, weight = 400, font = 'body', size = 14, color, uppe
   const w = head ? 700 : weight === 500 && size >= 17 ? 600 : weight;
   return <Text {...p} style={[{ fontFamily: WF[w as 400 | 500 | 600 | 700 | 800], fontSize: size, color: color ?? ink.fg, fontVariant: ['tabular-nums'] }, head && { lineHeight: Math.round(size * 1.22) }, track(size, w), style, { textTransform: 'none' }]} />;
 }
+/* ---------- shared text presets: one family of sizes and weights ----------
+   h1 page title (tab title, hero page heading) · h2 section title · h3 row / card title · body · label (small label above a field) · caption (helper, meta).
+   Use <H1>, <H2>, <H3>, <Body>, <Caption>, or spread `type.h2` into <Txt {...type.h2}>. */
+export const type = {
+  h1: { size: 22, weight: 600 as const, lineHeight: 28 },
+  h2: { size: 18, weight: 600 as const, lineHeight: 24 },
+  h3: { size: 15, weight: 500 as const, lineHeight: 21 },
+  body: { size: 14, weight: 400 as const, lineHeight: 21 },
+  label: { size: 13, weight: 500 as const, lineHeight: 18 },
+  caption: { size: 12, weight: 400 as const, lineHeight: 17 },
+};
+type Preset = keyof typeof type;
+const preset = (k: Preset, dim = false) => function PresetTxt({ style, color, ...p }: Omit<TxtProps, 'size' | 'weight'>) {
+  const t = type[k], ink = useInk();
+  return <Txt {...p} weight={t.weight} size={t.size} color={color ?? (dim ? ink.fg3 : k === 'body' ? ink.fg2 : undefined)} style={[{ lineHeight: t.lineHeight }, style]} />;
+};
+export const H1 = preset('h1'), H2 = preset('h2'), H3 = preset('h3'), Body = preset('body'), Label = preset('label'), Caption = preset('caption', true);
 const tShadow = (_T: Theme, _c: string, _d: number): TextStyle => ({});
 
 /* ---------- hard shadow ---------- */
@@ -256,7 +273,7 @@ export function SecHead({ title, gold, link, onLink, style }: { title: string; g
     </View>
   );
 }
-export function BigTitle({ children, em, size = 24, style }: { children?: ReactNode; em?: string; size?: number; style?: StyleProp<TextStyle> }) {
+export function BigTitle({ children, em, size = 22, style }: { children?: ReactNode; em?: string; size?: number; style?: StyleProp<TextStyle> }) {
   return (
     <Txt weight={500} size={size} style={[{ lineHeight: Math.round(size * 1.25) }, style]}>
       {children}{em ? <Em>{children ? ' ' : ''}{em}</Em> : null}

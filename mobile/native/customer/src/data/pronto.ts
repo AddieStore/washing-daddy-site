@@ -34,6 +34,7 @@ export type Job = {
   pay: 'paid' | 'pay_on_arrival' | 'refunded' | 'pass' | 'pending' | 'failed' | 'cancelled'; payVia?: string; coupon?: string | null;
   payRef?: string;      // gateway payment id (Razorpay pay_..., Cashfree cf_payment_id) or our order id
   orderId?: string;     // our payorders id (WD...), shown as the booking reference until the server gives a booking id
+  paidOnline?: number;  // what the gateway took for the whole order (ondemand order_paid); a recurring month's visits share one order
   eta?: string;         // instant: when the washer should reach the car (ISO, IST); 15 min within 1 km
   washerAt?: { lat: number; lng: number; at: string };   // live washer position while on the way (WD Partner, every ~30 s)
   carAt?: { lat: number; lng: number };                  // where the car is parked

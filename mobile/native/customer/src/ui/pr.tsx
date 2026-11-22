@@ -123,7 +123,7 @@ export function PTop({ title, left, right, sub }: { title?: string; left?: React
     <View style={{ backgroundColor: '#FFFFFF', paddingTop: ins.top + SP.s, paddingBottom: SP.m, paddingHorizontal: SP.page, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       {left}
       <View style={{ flex: 1, minWidth: 0 }}>
-        {title ? <Txt weight={500} size={24} color={P.ink}>{title}</Txt> : null}
+        {title ? <Txt weight={600} size={22} color={P.ink} style={{ lineHeight: 28 }}>{title}</Txt> : null}
         {sub ? <Txt size={13} color={P.muted} numberOfLines={1}>{sub}</Txt> : null}
       </View>
       {right}

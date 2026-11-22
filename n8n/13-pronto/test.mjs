@@ -5,7 +5,7 @@ import { keys, idToken, makeWorld, PROJECT } from './tests/fakes.mjs';
 import { run } from './tests/runner.mjs';
 
 const src = fs.readFileSync(new URL('./lib.js', import.meta.url), 'utf8');
-const L = new Function(src + '; return { handle, billOf, priceLines, couponOff, cfgOf, slotProblem, surchargeFor, splitDebit, r9 };')();
+const L = new Function(src + '; return { handle, billOf, recurBillOf, recurDates, priceLines, couponOff, cfgOf, slotProblem, surchargeFor, splitDebit, r9 };')();
 const WF13 = JSON.parse(fs.readFileSync(new URL('./13-pronto.json', import.meta.url), 'utf8'));
 const WF8 = JSON.parse(fs.readFileSync(new URL('../2026-11-01/8-cashfree.json', import.meta.url), 'utf8'));
 
@@ -176,8 +176,6 @@ const rec = r => { all.push(r); return r; };
     check('wd-coupon-validate: under min order -> valid:false with the reason', cv2.status === 200 && cv2.body.valid === false && /more to use/.test(cv2.body.message), cv2);
     const cv3 = rec(await call(W, 'wd-coupon-validate', { code: 'NOPE99', mode: 'instant', lines: [{ id: 'ext', q: 1 }] }));
     check('wd-coupon-validate: unknown code -> valid:false', cv3.body.valid === false);
-    const rec1 = rec(await call(W, 'wd-booking-create', cart({ mode: 'recurring', recur: { freq: 'weekly', days: [1], slot: '09:00', start: TOMORROW } })));
-    check('recurring: refused clearly, nothing charged', rec1.status === 400 && /coming soon/.test(rec1.body.message) && /Nothing was charged/.test(rec1.body.message));
     // reschedule 09:00 -> 10:00: peak charge 30 (+GST) comes back to the wallet
     const mv = rec(await call(W, 'wd-booking-reschedule', { bookingId: r.body.bookingId, date: TOMORROW, slot: '10:00' }));
     check('reschedule off-peak: 31.50 credited to WD Money, slots moved', mv.status === 200 && mv.body.credited === 31.5 && W.get('wallets/' + ME).cash === 31.5 && W.get('slots/' + TOMORROW).booked['09:00'] === 0 && W.get('slots/' + TOMORROW).booked['10:00'] === 1 && !W.get('slots/' + TOMORROW).sold.includes('09:00'), { mv, s: W.get('slots/' + TOMORROW) });
@@ -275,6 +273,57 @@ const rec = r => { all.push(r); return r; };
     const W3 = makeWorld(K, seed()); W3.cfFail = true;
     const down = rec(await call(W3, 'wd-wallet-topup', { amount: 500 }));
     check('Cashfree down: 502 + alert, payorder marked failed', down.status === 502 && !!down.alert && [...W3.docs.entries()].some(([k, d]) => k.startsWith('payorders/') && d.data.status === 'failed'), down);
+  }
+  // ================= recurring: the first month is paid up front =================
+  {
+    const s0 = seed(); s0['coupons/REC50'] = { type: 'flat', value: 50, minOrder: 0, modes: ['recurring'], perUser: 1, validTill: '2099-12-31', status: 'live' };
+    const W = makeWorld(K, s0);
+    const dow = new Date(TOMORROW + 'T00:00:00Z').getUTCDay(), plus = n => new Date(Date.parse(TOMORROW + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+    const R = (o = {}) => cart(Object.assign({ mode: 'recurring', recur: { freq: 'weekly', days: [dow], slot: '10:00', start: TOMORROW } }, o));
+    // 149 - 10% (15) = 134 + 19 convenience = 153 + 5% GST = 160.65 a visit; 4 visits = 642.60
+    const pv = rec(await call(W, 'wd-booking-create', R({ shownTotal: 160.65 })));
+    check('recurring: app showing only one visit (160.65) is refused, the month is 642.60, nothing charged', pv.status === 409 && /642\.6/.test(pv.body.message) && W.cfOrders.size === 0, pv);
+    const r = rec(await call(W, 'wd-booking-create', R({ shownTotal: 642.6 })));
+    const po = W.get('payorders/' + r.body.orderId), o = W.cfOrders.get(r.body.orderId);
+    check('recurring: one order for the first month 642.60 (4 visits x 160.65)', r.status === 200 && o && o.order_amount === 642.6 && po.amount === 642.6 && po.total === 642.6 && po.per_visit === 160.65 && po.visits === 4, { r: r.body, po });
+    check('recurring: visit dates are the picked weekday, weekly from the start day', JSON.stringify(po.dates) === JSON.stringify([TOMORROW, plus(7), plus(14), plus(21)]), po.dates);
+    check('recurring: nothing booked before payment', !W.get('ondemand/' + r.body.bookingId));
+    const ok = await paid(W, r.body.orderId, 642.6, { payId: 'PR1' });
+    const jobs = [...W.docs.entries()].filter(([k, d]) => k.startsWith('ondemand/') && d.data.payorder_id === r.body.orderId).map(([, d]) => d.data).sort((a, b) => a.visit_no - b.visit_no);
+    check('recurring paid: 4 scheduled visits, first one is the bookingId the app waits for', ok.status === 200 && jobs.length === 4 && W.get('ondemand/' + r.body.bookingId).visit_no === 1 && jobs.every(j => j.status === 'scheduled' && j.paid && j.slot === '10:00' && j.recur === 'weekly' && j.series_id === r.body.bookingId), jobs.map(j => [j.date, j.visit_no]));
+    check('recurring paid: the visit shares add up to exactly what was paid', Math.round(jobs.reduce((a, j) => a + j.share_gateway, 0) * 100) === 64260 && jobs.every(j => j.order_paid === 642.6), jobs.map(j => j.share_gateway));
+    check('recurring paid: each visit takes its slot (tomorrow 10:00 is now sold out)', W.get('slots/' + TOMORROW).booked['10:00'] === 1 && W.get('slots/' + plus(21)).booked['10:00'] === 1);
+    check('recurring: Ravi told about the series', /recurring booking/.test(ok.notify || ''), ok.notify);
+    const dup = await paid(W, r.body.orderId, 642.6, { payId: 'PR1' });
+    check('recurring: duplicate webhook books nothing twice', dup.status === 200 && [...W.docs.keys()].filter(k => k.startsWith('ondemand/')).length === 4);
+    const second = jobs[1], secondId = [...W.docs.entries()].find(([k, d]) => k.startsWith('ondemand/') && d.data.payorder_id === r.body.orderId && d.data.visit_no === 2)[0].slice('ondemand/'.length);
+    const c1 = rec(await call(W, 'wd-booking-cancel', { bookingId: secondId }));
+    check('cancel one visit: refunds only that visit (160.65), not the month', c1.status === 200 && W.cfRefunds.length === 1 && W.cfRefunds[0].refund_amount === 160.65 && c1.body.refund.amt === 160.65, { c1, rf: W.cfRefunds });
+    const c2 = rec(await call(W, 'wd-booking-cancel', { bookingId: secondId }));
+    check('the same visit cannot be refunded twice', c2.status === 409 && W.cfRefunds.length === 1, c2);
+    check('the other visits stay booked', W.get('ondemand/' + r.body.bookingId).status === 'scheduled' && second.date === plus(7));
+    // coupon once (first visit only), WD Money first
+    const W2 = makeWorld(K, Object.assign(s0, { ['wallets/' + ME]: { phone: ME, cash: 100, promo: 0 } }));
+    const cv = rec(await call(W2, 'wd-coupon-validate', { code: 'REC50', mode: 'recurring', recur: { freq: 'weekly' }, lines: [{ id: 'ext', variant: 'hatch', q: 1 }] }));
+    check('coupon validate in recurring mode: REC50 50 off', cv.status === 200 && cv.body.valid === true && cv.body.off === 50, cv);
+    // first visit 134 - 50 = 84 + 19 = 103 + GST 5.15 = 108.15; month = 3 x 160.65 + 108.15 = 590.10; minus 100 WD Money = 490.10
+    const r2 = rec(await call(W2, 'wd-booking-create', R({ coupon: 'REC50', useWallet: true, shownTotal: 590.1 })));
+    const po2 = W2.get('payorders/' + r2.body.orderId);
+    check('recurring + coupon (once) + WD Money: total 590.10, wallet 100, card 490.10', r2.status === 200 && po2.total === 590.1 && po2.wallet_use === 100 && po2.amount === 490.1 && po2.first_visit === 108.15 && W2.cfOrders.get(r2.body.orderId).order_amount === 490.1, po2);
+    await paid(W2, r2.body.orderId, 490.1);
+    const js2 = [...W2.docs.entries()].filter(([k, d]) => k.startsWith('ondemand/') && d.data.payorder_id === r2.body.orderId).map(([, d]) => d.data);
+    check('recurring + wallet: 100 taken from WD Money once, coupon redeemed once, wallet shares add up', W2.get('wallets/' + ME).cash === 0 && W2.get('couponredemptions/REC50_' + ME).count === 1 && Math.round(js2.reduce((a, j) => a + j.share_wallet_cash, 0) * 100) === 10000, js2.map(j => j.share_wallet_cash));
+    const bad = rec(await call(W2, 'wd-booking-create', R({ recur: { freq: 'twice', days: [1], slot: '10:00', start: TOMORROW } })));
+    check('twice a week with one day picked: 400, nothing charged', bad.status === 400 && /two days/.test(bad.body.message), bad);
+    const alt = rec(await call(makeWorld(K, seed()), 'wd-booking-create', R({ recur: { freq: 'alt', days: [0, 1, 2, 3, 4, 5, 6], slot: '10:00', start: TOMORROW } })));
+    check('alternate days: 15 visits every other day', alt.status === 200 && alt.body.paymentSessionId, alt);
+    const s3 = seed(); s3['appcfg/customer'] = Object.assign({}, s3['appcfg/customer'], { features: { recurring: false }, recurring: { weekly: { visits: 5, off: 0 } } });
+    const offR = rec(await call(makeWorld(K, s3), 'wd-booking-create', R()));
+    check('recurring switched off in the dashboard: 403', offR.status === 403, offR);
+    const s4 = seed(); s4['appcfg/customer'] = Object.assign({}, s4['appcfg/customer'], { recurring: { weekly: { visits: 5, off: 0 } } });
+    const W4 = makeWorld(K, s4), r4 = rec(await call(W4, 'wd-booking-create', R()));
+    // 149 + 19 = 168 + 8.40 = 176.40 a visit, 5 visits = 882
+    check('dashboard visits/off override (5 visits, 0% off): 882.00', r4.status === 200 && W4.get('payorders/' + r4.body.orderId).amount === 882, W4.get('payorders/' + r4.body.orderId));
   }
   // ================= Razorpay first, Cashfree backup =================
   {

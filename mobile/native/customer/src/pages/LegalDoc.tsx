@@ -25,7 +25,7 @@ export default function LegalDoc({ id }: { id: string }) {
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <PageBar title={d.title} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: Math.max(ins.bottom, 16) + 24 }}>
-        <Txt weight={500} size={24} style={{ lineHeight: 32 }}>{d.title}</Txt>
+        <Txt weight={600} size={22} style={{ lineHeight: 28 }}>{d.title}</Txt>
         {d.updated ? <Txt size={13} color={G.mute} style={{ marginTop: 4 }}>Last updated {d.updated}{d.draft ? ' · Draft' : ''}</Txt> : null}
         {blocks.map((b, i) => {
           if (b.k === 'h') {

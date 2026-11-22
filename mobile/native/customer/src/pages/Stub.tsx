@@ -22,7 +22,7 @@ export default function Stub({ title, note, back = true }: { title: string; note
   const ins = useInsets();
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      {back ? <PageBar title={title} /> : <View style={{ paddingTop: ins.top + 16, paddingHorizontal: 16 }}><Txt weight={500} size={20}>{title}</Txt></View>}
+      {back ? <PageBar title={title} /> : <View style={{ paddingTop: ins.top + 16, paddingHorizontal: 16 }}><Txt weight={600} size={22} style={{ lineHeight: 28 }}>{title}</Txt></View>}
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Txt size={14} color={G.sub}>{note || 'This page is being built.'}</Txt>
       </ScrollView>

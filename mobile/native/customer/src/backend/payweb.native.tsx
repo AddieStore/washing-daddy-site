@@ -1,6 +1,7 @@
 // The payment page opens INSIDE the app, in a full-screen sheet with our own header, never in the browser.
-// Razorpay: its standard checkout.js, given the order our server (n8n workflow 13) created. The app only shows it;
-// the server checks Razorpay's signature and the payment itself before anything is booked (wd-rzp-confirm).
+// Razorpay: its standard checkout.js, given the order our server (n8n workflow 13) created, or the subscription for a
+// monthly plan's autopay (workflow 14). The app only shows it; the server checks Razorpay's signature and the payment
+// itself before anything is booked or a plan is extended (wd-rzp-confirm / wd-sub-confirm).
 // Cashfree (backup): Cashfree's JS checkout for a session from the server; it returns to washingdaddy.com/pay/?order_id=…,
 // which we catch here instead of loading. UPI apps (upi://, intent://) are handed to Android.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -31,8 +32,11 @@ export function razorpayCheckout(o: RzpOpen): Promise<RzpDone> {
   return new Promise((resolve, reject) => {
     let settled = false, lastErr = '';
     const end = (f: () => void) => { if (settled) return; settled = true; shut(); f() };
-    const opts = { key: o.keyId, order_id: o.orderId, amount: o.amount, currency: o.currency || 'INR', name: o.name || 'Washing Daddy', description: o.description || '',
-      prefill: o.prefill || {}, theme: { color: '#5409DA' }, webview_intent: true, retry: { enabled: true } };
+    // a subscription (monthly autopay) opens with subscription_id + recurring and no order/amount: Razorpay takes the
+    // amount from the plan the server created
+    const base = { key: o.keyId, name: o.name || 'Washing Daddy', description: o.description || '', prefill: o.prefill || {}, theme: { color: '#5409DA' }, webview_intent: true, retry: { enabled: true } };
+    const opts = o.subscriptionId ? { ...base, subscription_id: o.subscriptionId, recurring: 1 }
+      : { ...base, order_id: o.orderId, amount: o.amount, currency: o.currency || 'INR' };
     const html = page(`<script src="https://checkout.razorpay.com/v1/checkout.js"></script><script>${post}
 (function(){ if(!window.Razorpay){ post({t:'load'}); return; }
 var o=${esc(opts)};

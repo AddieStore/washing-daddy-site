@@ -470,19 +470,16 @@ function Badge({ label, value }: { label: string; value: string }) {
   );
 }
 function Trust({ W }: { W: number }) {
-  const stats = !!(TRUST.cars || TRUST.rating), h = appCfg().home;
+  const stats = !!(TRUST.cars || TRUST.rating);
   if (!section('trust')) return null;
   return (<>
     <View style={{ marginTop: 32, alignItems: 'center' }}>
-      <Txt weight={700} size={20} color={L.ink} style={{ textAlign: 'center', lineHeight: 26, width: 280 }}>{h.trustTitle}</Txt>
       {stats ? (
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 20, backgroundColor: '#fff', borderRadius: 22, paddingVertical: 14, paddingHorizontal: 8, ...shadow }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 0, backgroundColor: '#fff', borderRadius: 22, paddingVertical: 14, paddingHorizontal: 8, ...shadow }}>
           {TRUST.cars ? <Badge label={TRUST.carsLabel} value={String(TRUST.cars)} /> : null}
           {TRUST.rating ? <Badge label={TRUST.ratingLabel} value={String(TRUST.rating)} /> : null}
         </View>
-      ) : (
-        h.trustSub ? <Txt size={13} color={L.mut} style={{ marginTop: 8, textAlign: 'center', width: 260, lineHeight: 18 }}>{h.trustSub}</Txt> : null
-      )}
+      ) : null}
     </View>
     <VettedSection />
   </>);

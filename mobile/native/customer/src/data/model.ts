@@ -9,8 +9,10 @@ export type Car = {
   plan: PlanId; till: string | null; start?: string | null; status: 'active' | 'new'; washer: string; area?: string;
   parking: string; window: string; keys: string; doneAt?: string | null; mins: number; streak: number; washes: number;
   paused: Pause | null; pauses?: Pause[]; note: string | null; rating: number;
+  // monthly autopay (Razorpay subscription, n8n workflow 14), written by the server into customers/{phone}.cars[i]
+  autopay?: { sub: string; status: string; plan?: string; amount?: number; since?: string; last_paid?: string } | null;
 };
-export type Payment = { d: string; what: string; amt: number; via: string; ref?: string; pending?: boolean };
+export type Payment = { d: string; what: string; amt: number; via: string; ref?: string; pending?: boolean; autopay?: boolean };
 export type Order = { id: string; total: number; status: string; items: { name: string; q: number }[] };
 export type Rewash = { id: string; carId: string; spots: string[]; open: boolean; at: string };
 export type Booking = { id: string; carId: string; type: string; what: string; date: string; slot: string };

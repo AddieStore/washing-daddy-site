@@ -286,13 +286,13 @@ export default function Service({ id }: { id?: string }) {
             </Animated.ScrollView>
 
             <View style={{ paddingHorizontal: 16 }}>
-              <Txt weight={700} size={20} style={{ marginTop: 32 }}>What you get</Txt>
+              <Txt weight={600} size={18} style={{ marginTop: 32, lineHeight: 24 }}>What you get</Txt>
               <FadeUp distance={10} style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
                 <GetChip big={(svc ? svc.mins : pack!.mins) + ''} small="minutes" />
                 <GetChip big={included.length + ''} small="included" />
                 <GetChip big={steps.length + ''} small="steps" />
               </FadeUp>
-              <Txt weight={500} size={18} style={{ marginTop: 28 }}>How is the service done</Txt>
+              <Txt weight={600} size={18} style={{ marginTop: 32, lineHeight: 24 }}>How is the service done</Txt>
               <View style={{ marginTop: 16, gap: 16 }}>
                 {steps.map(([t, s], i) => (
                   <FadeUp key={i} index={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
@@ -308,7 +308,7 @@ export default function Service({ id }: { id?: string }) {
               <View style={{ marginTop: 8 }}>
                 {included.map((x, i) => <FadeUp key={x} index={i} distance={12} style={{ flexDirection: 'row', gap: 12, alignItems: 'center', minHeight: 40 }}><View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(22,163,74,.12)', alignItems: 'center', justifyContent: 'center' }}><Check size={14} color={G.pos} strokeWidth={2} /></View><Txt size={14} color={G.sub} style={{ flex: 1 }}>{x}</Txt></FadeUp>)}
               </View>
-              <Txt weight={500} size={18} style={{ marginTop: 24 }}>Excluded from service</Txt>
+              <Txt weight={600} size={18} style={{ marginTop: 32, lineHeight: 24 }}>Excluded from service</Txt>
               <View style={{ marginTop: 8 }}>
                 {excluded.map(x => <View key={x} style={{ flexDirection: 'row', gap: 12, alignItems: 'center', minHeight: 40 }}><View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: G.raised, alignItems: 'center', justifyContent: 'center' }}><Close size={13} color={G.mute} strokeWidth={2} /></View><Txt size={14} color={G.sub} style={{ flex: 1 }}>{x}</Txt></View>)}
               </View>
@@ -329,7 +329,7 @@ export default function Service({ id }: { id?: string }) {
                 </View>
               </View>
               <View style={card({ marginTop: 24, padding: 16, backgroundColor: G.raised, borderWidth: 0, shadowOpacity: 0, elevation: 0 })}>
-                <Txt weight={500} size={15}>Washer arrives in 45-60 min</Txt>
+                <Txt weight={500} size={15}>Washer arrives in 15 min</Txt>
                 <Txt size={13} color={G.sub} style={{ marginTop: 4 }}>Book now, or pick Scheduled or Recurring in the cart</Txt>
               </View>
             </View>
