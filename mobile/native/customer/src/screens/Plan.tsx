@@ -5,11 +5,10 @@ import { C } from '../theme';
 import { Txt, useInsets, type } from '../ui/kit';
 import { Footer } from '../ui/Footer';
 import { Pressable3, FadeUp, TAB_BAR_H } from '../ui/motion';
-import { Help, Pause } from '../ui/icons';
+import { Help, Pause, Check } from '../ui/icons';
 import { PLANS } from '../data/reference';
 import type { PlanId } from '../data/reference';
 import { PlanPicker, PlanCta } from '../ui/plans/PlanPicker';
-import { PlanSummary } from '../ui/plans/PlanSummary';
 import { PAUSE_MAX, canPause, pauseLeft } from '../data/model';
 import { TODAY, fmt, iso, inr } from '../data/dates';
 import { A, car, planOf, usage, act, toast, useApp } from '../state';
@@ -49,14 +48,15 @@ export default function Plan() {
   return (
     <View style={{ flex: 1, backgroundColor: C.canvas }}>
       <ScrollView ref={sc} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 0 }}>
-        <View style={{ paddingTop: top, paddingHorizontal: 16, paddingBottom: 8 }}>
-          <View style={{ height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ paddingTop: top, paddingHorizontal: 16, paddingBottom: 20 }}>
+          <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Txt {...type.h1} color={INK}>Monthly plans</Txt>
-            <Pressable3 onPress={() => sheets.help()} accessibilityRole="button" accessibilityLabel="Plan questions" style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: C.white, borderWidth: 1, borderColor: LINE, alignItems: 'center', justifyContent: 'center' }}><Help size={18} color={INK} strokeWidth={1.5} /></Pressable3>
+            <Pressable3 onPress={() => sheets.help()} accessibilityRole="button" accessibilityLabel="Plan questions" style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: C.white, borderWidth: 1, borderColor: LINE, alignItems: 'center', justifyContent: 'center' }}><Help size={18} color={INK} strokeWidth={1.5} /></Pressable3>
           </View>
         </View>
-        <View style={{ paddingHorizontal: 16 }}><PlanSummary /></View>
-        <View style={{ marginTop: 16 }}><PlanPicker sel={sel} setSel={setSel} curId={planOf(c).id} /></View>
+        <View style={{ paddingHorizontal: 16, gap: 16 }}>
+          <FadeUp duration={300} distance={8}><PlanPicker sel={sel} setSel={setSel} curId={planOf(c).id} /></FadeUp>
+        </View>
         <View style={{ paddingHorizontal: 16, marginTop: 32, gap: 12 }}>
           {c.status !== 'new' && (
             <FadeUp index={2} distance={8}><Card style={{ padding: 16 }}>
@@ -97,7 +97,7 @@ export default function Plan() {
             </View>
           )) : <View style={{ padding: 16, paddingTop: 0 }}><Txt weight={500} size={14} color={INK}>No payments yet</Txt><Txt size={12} color={MUTED}>Your first receipt shows up here</Txt></View>}
         </Card>
-        <Footer bg={C.canvas} extraBottom={170} />
+        <Footer bg={C.canvas} extraBottom={110} />
       </ScrollView>
       <PlanCta label={cta.label} onPress={cta.go} bottom={tabH} />
     </View>
