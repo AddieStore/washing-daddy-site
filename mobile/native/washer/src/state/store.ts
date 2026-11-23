@@ -24,6 +24,7 @@ import { ui } from '../ui/bus';
 import { registerPushToken, clearPushToken } from '../lib/pushToken';
 import { mirrorCheckIn, mirrorFirstCar, writeCheckOut, startHeartbeat, loadAttendance } from '../backend/attendance';
 import { buildLedger, ledgerWriter } from '../backend/earnings';
+import { demoSample } from '../lib/demoSample';
 import { requestPinToken, PIN_MSG, isPin } from '../lib/pinLogin';
 
 const { db, auth } = backend;
@@ -612,7 +613,7 @@ export const act = {
   startRound() {
     if (REAL && view.bookState === 'loading') { ui.toast(t('Gaadiyon ki list aa rahi hai, ek minute ruko')); return false }
     ensureDay(); const etas = Route.etaList();
-    route().forEach((c, i) => { if (!W(c.reg)) { const d = newWash(c, i + 1, etas[i]); S.day!.washes[c.reg] = d; S.outbox[DAY + '_' + c.reg] = d } });
+    route().forEach((c, i) => { if (!W(c.reg)) { const d = newWash(c, i + 1, etas[i]); if (MODE === 'demo') demoSample(d, i); S.day!.washes[c.reg] = d; S.outbox[DAY + '_' + c.reg] = d } });
     S.day!.started = true; S.day!.startedAt = isoIST(); S.current = S.current || Route.nextReg(); save(); emit(); Sync.flush();
     ui.haptic([20, 50, 20]); ui.confetti(.6); ui.toast(t(`Round shuru! ${route().length} customers ko time chala gaya`));
     Sync.listen(); return true;
