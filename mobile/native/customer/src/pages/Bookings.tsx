@@ -9,7 +9,7 @@ import { Footer } from '../ui/Footer';
 import { Back, Help as HelpIc, Pin } from '../ui/icons';
 import { FadeUp, Shimmer } from '../ui/motion';
 import { JobRider, showsRider, showsCode, StartCode } from '../ui/JobRider';
-import { A, car, doc, history7, liveHead, activeStage, feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
+import { carryNote, A, car, doc, history7, liveHead, activeStage, feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
 import { sheets } from '../sheets';
 import { inr, fmt, iso, TODAY, ampm } from '../data/dates';
 import { slotLabel } from '../state';
@@ -126,7 +126,7 @@ function dailyRows(): DailyRow[] {
   const c = car(), d = doc(c), rows: DailyRow[] = [];
   const live = activeStage(d), st: DailyRow['status'] = live ? 'live' : d.status === 'done' ? 'done' : d.status === 'skipped' ? 'skipped' : 'scheduled';
   if (!d.notStarted && !(d.status === 'scheduled' && d.first)) {
-    rows.push({ date: d.date, status: st, label: liveHead(c).big, washer: d.washer?.name || c.washer, time: d.finished_at ? ampm(d.finished_at) : undefined, mins: d.minutes, tasks: d.tasks.filter(t => t.done).map(t => t.label).join(', '), photos: d.photos?.length || 0, litres: d.water_litres, note: d.status === 'skipped' ? d.skip_reason || undefined : undefined });
+    rows.push({ date: d.date, status: st, label: liveHead(c).big, washer: d.washer?.name || c.washer, time: d.finished_at ? ampm(d.finished_at) : undefined, mins: d.minutes, tasks: d.tasks.filter(t => t.done).map(t => t.label).join(', '), photos: d.photos?.length || 0, litres: d.water_litres, note: d.status === 'skipped' ? [d.skip_reason, carryNote(c, d)].filter(Boolean).join('. ') || undefined : undefined });
   }
   // earlier mornings: history7 rows are [date, "Washer · 6:38 AM · 11 min" | skip reason, tasks]
   history7(c).forEach(([dt, title, sub]) => {
