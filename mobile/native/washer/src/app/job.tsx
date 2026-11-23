@@ -7,7 +7,7 @@ import { DashCard, IconBubble } from '../ui/dash';
 import { CarPic } from '../screens/CarPhoto';
 import { Pressy, Button, CallButton, CarArt, DemoNote, Empty, Eyebrow, LinkButton, Plate, ProgressBar, SlideToConfirm, Stepper, Tier } from '../ui';
 import type { StepItem } from '../ui';
-import { Route, RT, W, act, photoSrc, carBy, ensureDay, openReqs, planName, route, skipAsk, S, useStore, DAY, view, MIN_PHOTOS, photoNeeds } from '../state/store';
+import { Route, RT, W, act, photoSrc, carBy, ensureDay, openReqs, planName, route, skipAsk, S, useStore, DAY, view, MIN_PHOTOS, MIN_BEFORE, photoNeeds } from '../state/store';
 import { STATUS, navOf, telOf } from '../lib/data';
 import type { Photo } from '../lib/data';
 import { SPOTS, isSundayIST } from '../lib/washGuide';
@@ -230,13 +230,13 @@ export default function JobScreen() {
   const reqs = openReqs(reg).filter(q => q.kind !== 'skip_tomorrow');
   const sk = skipAsk(reg);
   const pend = view.pendingPhotos[reg] || [];
-  const photosOf = (kind: 'after' | 'issue'): ShotItem[] =>
+  const photosOf = (kind: 'before' | 'after' | 'issue'): ShotItem[] =>
     ((wd ? wd.photos : []) as ShotItem[]).filter(p => p.kind === kind && !p.spot).concat(pend.filter(p => p.kind === kind).map(p => ({ kind: p.kind, at: '', display: p.display, pending: true } as ShotItem)));
   const need = wd ? photoNeeds(wd) : null;
   const afterN = need ? need.car : 0;
   const photosOk = !!need && need.ok;
   const late = !!wd && Route.isLate(reg);
-  const sunday = !!wd && isSundayIST(wd.started_at) && (st === 'washing' || st === 'done');
+  const sunday = !!wd && !!need && need.sunday && (st === 'washing' || st === 'done');
 
   const shoot = async (kind: Photo['kind'], spot?: string) => {
     if (!W(reg)) { ui.toast(t('Pehle round shuru karo')); return }
@@ -246,13 +246,13 @@ export default function JobScreen() {
       if (!r) return;
       if (spot) setSpotPend(m => ({ ...m, [spot]: r.preview }));
       else act.photoPending(reg, kind, r.preview);
-      try { act.addPhoto(reg, kind, r.url, spot) } finally {
+      try { act.addPhoto(reg, kind, r.url, spot, r.file) } finally {
         if (spot) setSpotPend(m => { const n = { ...m }; delete n[spot]; return n });
         else act.photoPending(reg, kind, null);
       }
     } catch (e: any) { ui.toast(t(e?.hi || 'Photo nahi gayi. Dobara try karo')) }
   };
-  const viewShot = (kind: 'after' | 'issue') => {
+  const viewShot = (kind: 'before' | 'after' | 'issue') => {
     const w = W(reg); if (!w) return;
     openPhotoSheet(reg, kind, w.photos.filter(p => p.kind === kind), !['done', 'skipped'].includes(w.status), () => { void shoot(kind) });
   };
@@ -290,6 +290,13 @@ export default function JobScreen() {
                 </Text>
               </View>
               <Button variant="ink" label={t('Skip karo · customer ne mana kiya')} onPress={() => act.skip(reg, 'Customer ne mana kiya')} style={{ marginBottom: 10 }} />
+            </View>
+          ) : null}
+          {st !== 'arrived' ? (
+            <View style={{ marginBottom: 12 }}>
+              {st === 'scheduled'
+                ? <Button variant="gold" icon="walk" label={t('Nikla · gaadi ki taraf')} onPress={() => act.onTheWay(reg)} />
+                : <Button variant="gold" icon="flag" label={t('Pahuncha · gaadi ke paas')} onPress={() => act.arrived(reg)} />}
             </View>
           ) : null}
           <SlideToConfirm label={t('Wash shuru karo')} resetKey={reg + st} onDone={() => act.startWash(reg)} />
@@ -382,9 +389,9 @@ export default function JobScreen() {
             ? (wd.interior ? <ExtrasRow addons={wd.addons || []} compact /> : <InteriorButton reg={reg} />)
             : null}
 
-          <SecHead title={t('Photo')} meta={t(`Gaadi ki kam se kam ${MIN_PHOTOS} photo zaroori`)} />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            {(['after', 'issue'] as const).map(k => (
+          <SecHead title={t('Photo')} meta={t(`Pehle ki 1 aur baad ki kam se kam ${MIN_PHOTOS} photo zaroori`)} />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {(['before', 'after', 'issue'] as const).map(k => (
               <Shot key={k} kind={k} list={photosOf(k)} enabled={!!wd} onTake={() => { void shoot(k) }} onView={() => viewShot(k)} />
             ))}
           </View>
@@ -399,7 +406,7 @@ export default function JobScreen() {
                   const src = pendSrc || (got ? photoSrc(got) : undefined);
                   return (
                     <View key={sp.key} style={{ width: '48.5%' }}>
-                      <Pressy onPress={pendSrc || st !== 'washing' ? undefined : () => { void shoot('after', sp.key) }} accessibilityLabel={t(sp.label)} scaleTo={0.94}
+                      <Pressy onPress={pendSrc || st !== 'washing' ? undefined : () => { void shoot('inside', sp.key) }} accessibilityLabel={t(sp.label)} scaleTo={0.94}
                         style={{ width: '100%', aspectRatio: 1, borderRadius: R.card, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', gap: 8,
                           backgroundColor: th.tile2 }}>
                         {src ? <Image source={{ uri: src }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : <View style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(84,9,218,0.08)' }}><Icon name="cam" size={22} color={th.primary} /></View>}
@@ -432,8 +439,8 @@ export default function JobScreen() {
             <View style={{ marginTop: 18 }}>
               <PrimaryButton off={!photosOk} icon="check" label={t('Wash khatam karo')} onPress={photosOk ? finish : () => act.needPhoto(reg)} />
               <DemoNote>{photosOk ? t('Aakhri kadam. Customer ko photo ke saath chala jayega') : need && need.sunday
-                ? t(`Gaadi ki ${Math.max(0, MIN_PHOTOS - afterN)} photo aur andar ki ${need.missing.length} photo baaki hain, phir wash band hogi`)
-                : t(`Gaadi ki ${MIN_PHOTOS} photo lo (${Math.min(afterN, MIN_PHOTOS)}/${MIN_PHOTOS}), phir wash band hogi`)}</DemoNote>
+                ? t(`Pehle ki ${Math.max(0, MIN_BEFORE - need.before)}, baad ki ${Math.max(0, MIN_PHOTOS - afterN)} aur andar ki ${need.missing.length} photo baaki hain, phir wash band hogi`)
+                : t(`Pehle ki ${Math.min(need ? need.before : 0, MIN_BEFORE)}/${MIN_BEFORE} aur baad ki ${Math.min(afterN, MIN_PHOTOS)}/${MIN_PHOTOS} photo lo, phir wash band hogi`)}</DemoNote>
             </View>
           ) : null}
 

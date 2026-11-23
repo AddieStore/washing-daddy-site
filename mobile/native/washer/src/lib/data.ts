@@ -9,7 +9,8 @@ export type Car = {
   mine?: boolean; pending?: boolean; status?: string;   // cars the washer added himself (newcars/)
 };
 export type WashStatus = 'scheduled' | 'on_the_way' | 'arrived' | 'washing' | 'done' | 'skipped';
-export type Photo = { kind: 'before' | 'after' | 'issue'; asset_id?: string; url?: string; at: string; spot?: string };
+// url: a Firebase Storage download URL (washphotos/{DATE}_{REG}/{n}.jpg); an inline data URL only while pending_upload is true (offline fallback)
+export type Photo = { kind: 'before' | 'after' | 'issue' | 'inside'; asset_id?: string; url?: string; at: string; spot?: string; n?: number; lat?: number; lng?: number; pending_upload?: boolean };
 export type Wash = {
   date: string; reg: string; car_label: string; washer: { id: string; name: string; photo_url?: string }; washer_id: string;
   status: WashStatus; eta: string;
@@ -20,6 +21,8 @@ export type Wash = {
   // the round as a timeline (lib/slots.ts), the interior add-on, and a late flag: all synced to the customer app and the dashboard
   slot?: number; slot_from?: string; slot_to?: string; interior?: boolean; interior_from?: number | null; extra_minutes?: number;
   addons?: { key: string; at: string; minutes: number }[]; overdue_at?: string | null;
+  // Sunday interior (contract 2026-11-23): sunday=true on Sunday docs; a missed one carries to the next day
+  sunday?: boolean; carried_from?: string; carried_task?: string; interior_carried_to?: string;
 };
 export type Req = { id: string; reg: string; kind: string; text: string; spots: string[]; created_at: string; status: string; seen_at?: string; done_at?: string };
 export type Job = {

@@ -186,9 +186,9 @@ export function TaskRow({ k, done, doneAt, can, onPress }: { k: TaskKey; done: b
 
 /* ---------- photo tile ---------- */
 export type ShotItem = Photo & { pending?: boolean; display?: string };
-export function Shot({ kind, list, enabled, onTake, onView }: { kind: 'after' | 'issue'; list: ShotItem[]; enabled: boolean; onTake: () => void; onView: () => void }) {
+export function Shot({ kind, list, enabled, onTake, onView }: { kind: 'before' | 'after' | 'issue'; list: ShotItem[]; enabled: boolean; onTake: () => void; onView: () => void }) {
   const { c } = useTheme();
-  const lab = kind === 'after' ? t('Gaadi') : t('Problem');
+  const lab = kind === 'before' ? t('Pehle') : kind === 'after' ? t('Baad mein') : t('Problem');
   const last = list[list.length - 1];
   const fly = useRef(new Animated.Value(1)).current;
   const n = list.length;
@@ -338,13 +338,13 @@ export function openSkipSheet(reg: string, customer: string) {
   sheet.open(close => <SkipSheet reg={reg} customer={customer} close={close} />);
 }
 
-export function openPhotoSheet(reg: string, kind: 'after' | 'issue', list: Wash['photos'], can: boolean, retake: () => void) {
-  const title = kind === 'after' ? t('Gaadi ki photo') : t('Problem ki photo');
+export function openPhotoSheet(reg: string, kind: 'before' | 'after' | 'issue', list: Wash['photos'], can: boolean, retake: () => void) {
+  const title = kind === 'before' ? t('Pehle ki photo') : kind === 'after' ? t('Baad ki photo') : t('Problem ki photo');
   sheet.open(close => (
     <PhotoSheet title={title} reg={reg} kind={kind} list={list} can={can} retake={retake} close={close} />
   ));
 }
-function PhotoSheet({ title, reg, kind, list, can, retake, close }: { title: string; reg: string; kind: 'after' | 'issue'; list: Wash['photos']; can: boolean; retake: () => void; close: () => void }) {
+function PhotoSheet({ title, reg, kind, list, can, retake, close }: { title: string; reg: string; kind: 'before' | 'after' | 'issue'; list: Wash['photos']; can: boolean; retake: () => void; close: () => void }) {
   const { c } = useTheme();
   return (
     <View>
