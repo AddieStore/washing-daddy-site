@@ -9,7 +9,7 @@ import { Footer } from '../ui/Footer';
 import { Back, Help as HelpIc, Pin } from '../ui/icons';
 import { FadeUp, Shimmer } from '../ui/motion';
 import { JobRider, showsRider, showsCode, StartCode } from '../ui/JobRider';
-import { carryNote, A, car, doc, history7, liveHead, activeStage, feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
+import { carryNote, washNotices, A, car, doc, history7, liveHead, activeStage, feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
 import { sheets } from '../sheets';
 import { inr, fmt, iso, TODAY, ampm } from '../data/dates';
 import { slotLabel } from '../state';
@@ -147,13 +147,24 @@ function LivePulse() {
     </View>
   );
 }
+/** the washer's replies (seen / done / re-wash status) and the one-tap rating for today's wash */
+function WashNotices() {
+  const list = washNotices();
+  if (!list.length) return null;
+  return <View style={{ marginTop: 16, gap: 12 }}>{list.map((n, i) => (
+    <View key={i} style={card({ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
+      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: n.tint, alignItems: 'center', justifyContent: 'center' }}><Txt size={16}>{n.icon}</Txt></View>
+      <View style={{ flex: 1 }}><Txt weight={500} size={15}>{n.title}</Txt><Txt size={13} color={G.sub} style={{ marginTop: 2, lineHeight: 18 }}>{n.sub}</Txt></View>
+      <Tap label={n.btn} onPress={n.act} style={{ minHeight: 40, paddingHorizontal: 12, justifyContent: 'center' }}><Txt weight={600} size={14} color={C.violet}>{n.btn}</Txt></Tap>
+    </View>))}</View>;
+}
 function DailyCard({ r }: { r: DailyRow }) {
   const live = r.status === 'live', done = r.status === 'done', skip = r.status === 'skipped';
   const tone = skip ? G.mute : done ? G.pos : C.violet, badge = live ? 'Live now' : done ? 'Done' : skip ? 'Skipped' : 'Scheduled';
   const isToday = r.date === iso(TODAY);
   const facts = [r.washer, r.time ? `Finished ${r.time}` : '', r.mins ? `${r.mins} min` : '', r.litres ? `${r.litres} L water` : '', r.photos ? `${r.photos} photo${r.photos > 1 ? 's' : ''}` : ''].filter(Boolean);
   return (
-    <Tap onPress={() => sheets.day(r.date)} style={card({ padding: 16, ...(live ? { borderWidth: 1.5, borderColor: C.violet } : null) })}>
+    <Tap onPress={() => (isToday && r.photos ? sheets.proof() : sheets.day(r.date))} style={card({ padding: 16, ...(live ? { borderWidth: 1.5, borderColor: C.violet } : null) })}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         {live ? <LivePulse /> : null}
         <Txt weight={500} size={17} style={{ flex: 1 }}>{isToday ? 'Today' : dayLabel(r.date)}</Txt>
@@ -186,7 +197,7 @@ export function BookingsBody({ tab: isTab }: { tab?: boolean }) {
       <ScrollView ref={ref} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.violet} colors={[C.violet]} />} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: isTab ? 0 : 48 }}>
         <SegSwitch value={seg} onChange={setSeg} items={items} />
         {loading ? <ListSkeleton /> : seg === 'daily' ? (
-          daily.length ? <View style={{ marginTop: 16, gap: 12 }}>{daily.map((r, i) => <FadeUp key={'d' + r.date} index={i}><DailyCard r={r} /></FadeUp>)}</View> : (
+          daily.length ? <><WashNotices /><View style={{ marginTop: 16, gap: 12 }}>{daily.map((r, i) => <FadeUp key={'d' + r.date} index={i}><DailyCard r={r} /></FadeUp>)}</View></> : (
             <FadeUp><View style={{ alignItems: 'center', paddingTop: 72, paddingHorizontal: 32 }}>
               <EmptyArt />
               <Txt weight={500} size={17} style={{ marginTop: 16 }}>No daily washes yet</Txt>

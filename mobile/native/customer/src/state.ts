@@ -151,7 +151,9 @@ export function doc(c: Car = car()): WashDoc {
   if (realAcct() && c.status !== 'new') return { date: iso(TODAY), reg: regOf(c), car_label: c.name, washer: { name: c.washer }, photos: [], status: 'scheduled', eta: null, first: true, notStarted: true, tasks: [], washer_note: null, water_litres: null, customer_note_seen: false, remote: false };
   return DOCS[c.id] || (DOCS[c.id] = makeDoc(c));
 }
-export const requestsFor = (c: Car) => REQS[c.id] || [];
+/** demo only: what the washer's acknowledgement of a "skip tomorrow" request looks like (real accounts read requests/{id}) */
+const demoReqs = (c: Car) => (REAL || c.img !== 'scorpio' ? [] : [{ id: 'demo-skip', reg: regOf(c), kind: 'skip_tomorrow', from: iso(addDays(TODAY, 1)), to: iso(addDays(TODAY, 1)), status: 'seen', seen_at: '2026-01-01T07:05:00+05:30', washer_reply: 'Ok sir, no wash tomorrow', created_at: iso(TODAY) }]);
+export const requestsFor = (c: Car) => REQS[c.id] || demoReqs(c);
 const byNewest = (a: any, b: any) => String(b.created_at).localeCompare(String(a.created_at));
 const reqTime = (v: any) => { const t = ampm(hm(v)); return t ? ' ' + t : '' };
 /** real wash photos of a doc (before / after / issue / inside + spot); empty for a demo doc, which keeps its static images */
@@ -169,22 +171,22 @@ export function carryNote(c: Car = car(), d: WashDoc = doc(c)): string | null {
 }
 /** the daily rating already given for today's wash (ratings/{DATE}_{REG}) */
 export const ratedToday = (c: Car = car()) => RATED[c.id] || null;
-export const canRateToday = (c: Car = car()) => { const d = doc(c); return realAcct() && !!d.remote && d.status === 'done' && !RATED[c.id] };
+export const canRateToday = (c: Car = car()) => { const d = doc(c); return (realAcct() || !REAL) && !!d.remote && d.status === 'done' && !RATED[c.id] };
 
 /* ---------- view helpers (what each screen draws) ---------- */
-export type Banner = { icon: string; tint: string; title: string; sub: string; btn: string; act: () => void };
+export type Banner = { kind?: 'wash'; icon: string; tint: string; title: string; sub: string; btn: string; act: () => void };
 export function banners(): Banner[] {
   const c = car(), b: Banner[] = [], a = A();
   if (c.status === 'new' && !c.till) b.push({ icon: '🧾', tint: 'rgba(255,186,8,.2)', title: 'Pay after your first wash', sub: `${planOf(c).name}, ${inr(planOf(c).price)} a month`, btn: 'Pay now', act: () => sheetHooks.payPlan() });
   if (c.paused && c.paused.to >= iso(TODAY)) b.push({ icon: '⏸', tint: 'rgba(46,139,255,.18)', title: `Washes paused ${fmt(c.paused.from)} – ${fmt(c.paused.to)}`, sub: 'The days are added to your plan', btn: 'Resume', act: () => act.resume().catch(e => toast(e.message)) });
   const d = doc(c); if (activeStage(d)) b.unshift({ icon: '●', tint: 'rgba(255,186,8,.25)', title: 'Live now', sub: chipText(c, d), btn: 'Watch', act: () => go('live') });
   const seen = requestsFor(c).filter(r => r.kind === 'note').sort(byNewest)[0];
-  if (c.note) b.push({ icon: '✎', tint: 'rgba(255,106,26,.18)', title: `Note for ${c.washer}${seen && seen.status === 'done' ? ' · handled ✓' + reqTime(seen.done_at) : seen && seen.status === 'seen' ? ' · seen ✓' + reqTime(seen.seen_at) : ''}`, sub: seen && seen.washer_reply ? `${c.note}\n${c.washer}: ${seen.washer_reply}` : c.note, btn: 'Edit', act: () => sheetHooks.note() });
+  if (c.note) b.push({ kind: 'wash', icon: '✎', tint: 'rgba(255,106,26,.18)', title: `Note for ${c.washer}${seen && seen.status === 'done' ? ' · handled ✓' + reqTime(seen.done_at) : seen && seen.status === 'seen' ? ' · seen ✓' + reqTime(seen.seen_at) : ''}`, sub: seen && seen.washer_reply ? `${c.note}\n${c.washer}: ${seen.washer_reply}` : c.note, btn: 'Edit', act: () => sheetHooks.note() });
   // pause / skip-tomorrow acknowledgement from the washer
   const pz = requestsFor(c).filter(r => (r.kind === 'skip_tomorrow' || r.kind === 'pause') && r.from).sort(byNewest)[0];
-  if (pz && (pz.status === 'seen' || pz.status === 'done') && pz.to >= iso(TODAY) && !DISMISSED[pz.id]) b.push({ icon: '⏸', tint: 'rgba(46,139,255,.18)', title: `${c.washer} ${pz.status === 'done' ? 'has marked it' : 'has seen it'} ✓${reqTime(pz.status === 'done' ? pz.done_at : pz.seen_at)}`, sub: pz.washer_reply || (pz.kind === 'skip_tomorrow' ? 'No wash tomorrow' : `No wash ${fmt(pz.from)} – ${fmt(pz.to)}`), btn: 'OK', act: () => { DISMISSED[pz.id] = true; emitSoon() } });
+  if (pz && (pz.status === 'seen' || pz.status === 'done') && pz.to >= iso(TODAY) && !DISMISSED[pz.id]) b.push({ kind: 'wash', icon: '⏸', tint: 'rgba(46,139,255,.18)', title: `${c.washer} ${pz.status === 'done' ? 'has marked it' : 'has seen it'} ✓${reqTime(pz.status === 'done' ? pz.done_at : pz.seen_at)}`, sub: pz.washer_reply || (pz.kind === 'skip_tomorrow' ? 'No wash tomorrow' : `No wash ${fmt(pz.from)} – ${fmt(pz.to)}`), btn: 'OK', act: () => { DISMISSED[pz.id] = true; emitSoon() } });
   // today's wash is done: ask for the daily rating
-  if (canRateToday(c)) b.push({ icon: '★', tint: 'rgba(255,186,8,.22)', title: 'How was today\'s wash?', sub: `Rate ${c.washer}'s wash in one tap`, btn: 'Rate', act: () => sheetHooks.rateDay() });
+  if (canRateToday(c)) b.push({ kind: 'wash', icon: '★', tint: 'rgba(255,186,8,.22)', title: 'How was today\'s wash?', sub: `Rate ${c.washer}'s wash in one tap`, btn: 'Rate', act: () => sheetHooks.rateDay() });
   a.bookings.filter(x => x.carId === c.id && x.date >= iso(TODAY)).forEach(x => b.push({ icon: '✦', tint: 'rgba(84,9,218,.15)', title: `One-time ${x.type} wash`, sub: `${fmt(x.date, { weekday: 'short', day: 'numeric', month: 'short' })}, ${x.slot}`, btn: 'Details', act: () => sheetHooks.bookings() }));
   a.orders.filter(o => o.status !== 'Delivered').forEach(o => b.push({ icon: '📦', tint: 'rgba(20,192,138,.16)', title: `Order ${o.id} arrives tomorrow`, sub: `${o.items.length} item${o.items.length > 1 ? 's' : ''}, with ${car().washer}'s wash`, btn: 'View', act: () => sheetHooks.orders() }));
   if (realAcct()) {
@@ -192,11 +194,13 @@ export function banners(): Banner[] {
     requestsFor(c).filter(r => r.kind === 'rewash' && !DISMISSED[r.id] && (r.status !== 'done' || String(r.done_at || '').slice(0, 10) === iso(TODAY))).sort(byNewest).slice(0, 2).forEach(r => {
       const spots = Array.isArray(r.spots) ? r.spots.join(', ').toLowerCase() : String(r.text || '').replace(/^Re-wash: /, '').toLowerCase();
       const st = r.status === 'done' ? `Fixed ✓${reqTime(r.done_at)}` : r.status === 'seen' ? `${c.washer} saw it ✓${reqTime(r.seen_at)}` : 'Sent, waiting for ' + c.washer;
-      b.push({ icon: r.status === 'done' ? '✓' : '↺', tint: r.status === 'done' ? 'rgba(20,192,138,.16)' : 'rgba(232,56,79,.14)', title: r.status === 'done' ? 'Re-wash done' : `${c.washer} is coming back`, sub: `${st}. Re-wash of ${spots}${r.washer_reply ? '. ' + c.washer + ': ' + r.washer_reply : r.status === 'done' ? '' : ' by 11 AM'}`, btn: 'OK', act: () => { DISMISSED[r.id] = true; emitSoon() } });
+      b.push({ kind: 'wash', icon: r.status === 'done' ? '✓' : '↺', tint: r.status === 'done' ? 'rgba(20,192,138,.16)' : 'rgba(232,56,79,.14)', title: r.status === 'done' ? 'Re-wash done' : `${c.washer} is coming back`, sub: `${st}. Re-wash of ${spots}${r.washer_reply ? '. ' + c.washer + ': ' + r.washer_reply : r.status === 'done' ? '' : ' by 11 AM'}`, btn: 'OK', act: () => { DISMISSED[r.id] = true; emitSoon() } });
     });
-  } else a.requests.filter(r => r.carId === c.id && r.open).forEach(r => b.push({ icon: '↺', tint: 'rgba(232,56,79,.14)', title: `${c.washer} is coming back`, sub: `Re-wash of ${r.spots.join(', ').toLowerCase()} by 11 AM`, btn: 'OK', act: () => act.closeReq(r.id) }));
+  } else a.requests.filter(r => r.carId === c.id && r.open).forEach(r => b.push({ kind: 'wash', icon: '↺', tint: 'rgba(232,56,79,.14)', title: `${c.washer} is coming back`, sub: `Re-wash of ${r.spots.join(', ').toLowerCase()} by 11 AM`, btn: 'OK', act: () => act.closeReq(r.id) }));
   return b;
 }
+/** the washer's replies and the rating prompt for the Daily tab (acknowledged notes, skip/pause, re-wash status, rate today's wash) */
+export const washNotices = () => banners().filter(b => b.kind === 'wash');
 // The steps under "Today's wash": [label, sub, 'done'|'later', done_at]
 export function todaySteps(c: Car = car()): [string, string, 'done' | 'later', string | null | undefined][] {
   const k = extras(c, TODAY), steps: [string, string, 'done' | 'later', string | null | undefined][] = doc(c).tasks.map(t => [t.label, TASK_SUB[t.key] || '', t.done ? 'done' : 'later', t.done_at]);
@@ -237,6 +241,7 @@ export function history7(c: Car = car()): [Date, string, string][] {
     if (realAcct() && !r) continue;
     if (r) { h.push([dt, r.status === 'skipped' ? (r.skip_reason || 'Skipped') : `${r.washer?.name || c.washer} · ${ampm(r.finished_at) || 'washed'} · ${r.minutes || 0} min`, r.tasks.filter(t => !['pressure', 'dry'].includes(t.key)).map(t => t.label).join(', ')]); continue }
     if (isPaused(c, dt)) { h.push([dt, 'Paused by you', '']); continue }
+    if (!REAL && c.img === 'scorpio' && i === 3) { h.push([dt, 'Gate was locked and no key was left', '']); continue }   // demo only: a skipped morning with the washer's reason
     const ex = planTasks(c, dt).filter(k => !['pressure', 'dry'].includes(k)).map(k => TASK_LABEL[k]), f = t2m('06:36') + ((hash(c.plate + i) % 9) - 4);
     h.push([dt, `${c.washer} · ${ampm(m2t(f))} · ${9 + (hash(c.plate + i) % 4)} min`, ex.join(', ')]);
   }
@@ -1362,7 +1367,7 @@ export const act = {
   closeReq(id: string) { const r = A().requests.find(x => x.id === id); if (r) r.open = false; commit(); toast('Marked as fixed') },
   // ratings/{date_REG}
   rate(n: number, tag?: string) {
-    const c = car(); c.rating = n; commit(); haptic();
+    const c = car(); c.rating = n; if (!(DB && realAcct())) RATED[c.id] = { stars: n, tag }; commit(); haptic();
     if (DB && realAcct()) { RATED[c.id] = { stars: n, tag }; DB.doc(`ratings/${iso(TODAY)}_${regOf(c)}`).set({ reg: regOf(c), date: iso(TODAY), stars: n, ...(tag ? { tag } : {}), at: nowIST() }).catch(() => { delete RATED[c.id]; emitSoon(); toast("Couldn't save your rating. Try again.") }); }
     toast(n >= 4 ? `${c.washer} will see your ${n} stars` : 'Sorry. Tell us what was missed.');
   },

@@ -2,6 +2,7 @@
 // the schedule must match the washer app (.notes/sync-contract.md, "The morning's task list").
 import { PLANS, PlanId, WASHER_FOR, DEFAULT_PLAN } from './reference';
 import { TODAY, iso, parse, addDays, fmt, hm, t2m, ampm } from './dates';
+import { IMG } from '../img';
 
 export type Pause = { from: string; to: string };
 export type Car = {
@@ -151,13 +152,20 @@ export function makeDoc(c: Car): WashDoc {
   const base = { date: iso(TODAY), reg: regOf(c), car_label: c.name, washer: { name: c.washer }, photos: [] as Photo[] };
   if (c.status === 'new') return { ...base, date: iso(addDays(TODAY, 1)), status: 'scheduled', eta: '06:45', first: true, tasks: planTasks(c, addDays(TODAY, 1)).map(k => ({ key: k, label: TASK_LABEL[k], done: false })) };
   if (isPaused(c, TODAY)) return { ...base, status: 'skipped', skip_reason: 'Paused by you', tasks: [] };
-  const keys = planTasks(c, TODAY), fin = t2m(c.img === 'civic' ? '06:31' : c.img === 'scorpio' ? '06:42' : '06:38'), mins = c.mins || 11, start = fin - mins;
+  const sun = c.img === 'scorpio', keys = sun && !planTasks(c, TODAY).includes('interior') ? (['pressure', 'interior', ...planTasks(c, TODAY).filter(k => k !== 'pressure')] as TaskKey[]) : planTasks(c, TODAY), fin = t2m(c.img === 'civic' ? '06:31' : c.img === 'scorpio' ? '06:42' : '06:38'), mins = c.mins || 11, start = fin - mins;
   const m2 = (m: number) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(Math.round(m % 60)).padStart(2, '0');
   return { ...base, status: 'done', eta: m2(start + 2), on_the_way_at: m2(start - 9), arrived_at: m2(start - 1), started_at: m2(start), finished_at: m2(fin), minutes: mins,
     tasks: keys.map((k, i) => ({ key: k, label: TASK_LABEL[k], done: true, done_at: m2(start + Math.round(mins * (i + 1) / keys.length)) })),
-    photos: c.img === 'scorpio' ? [{ kind: 'before', src: 'proof', local: 'before' }, { kind: 'after', src: 'proof' }] : c.img ? [{ kind: 'after', src: c.img, cut: true }] : [],
-    water_litres: 7, washer_note: c.img === 'scorpio' ? 'Neem leaves on the roof, cleaned off. Front left tyre looks a little low, please check the pressure.' : 'All good today.', customer_note_seen: !!c.note };
+    photos: c.img === 'scorpio' ? DEMO_PHOTOS(m2, fin) : c.img ? [{ kind: 'after', src: c.img, cut: true }] : [],
+    water_litres: 7, washer_note: c.img === 'scorpio' ? 'Neem leaves on the roof, cleaned off. Front left tyre looks a little low, please check the pressure.' : 'All good today.', customer_note_seen: !!c.note,
+    // demo only: Sunday's interior was carried over, so the Monday wash does it and says so
+    ...(sun ? { remote: true, carried_from: iso(addDays(TODAY, -((TODAY.getDay() + 7) % 7 || 7))), carried_task: 'interior' } : {}) };
 }
+// demo only: the washer's photos for the sample Scorpio (before, after, and the Sunday interior spots)
+const DEMO_PHOTOS = (m2: (m: number) => string, fin: number): Photo[] => [
+  { kind: 'before', src: IMG.before, at: m2(fin - 12) }, { kind: 'after', src: IMG.after, at: m2(fin) },
+  { kind: 'inside', src: IMG['svc-floor-mat'], spot: 'driver_mat', at: m2(fin - 5) }, { kind: 'inside', src: IMG['svc-seat-shampoo'], spot: 'back_seat', at: m2(fin - 4) },
+  { kind: 'inside', src: IMG['svc-boot-vacuum'], spot: 'boot', at: m2(fin - 3) }, { kind: 'inside', src: IMG['svc-dashboard'], spot: 'dashboard', at: m2(fin - 2) }];
 export const activeStage = (d: WashDoc) => ['on_the_way', 'arrived', 'washing'].includes(d.status);
 export function chipText(c: Car, d: WashDoc) {
   const w = d.washer?.name || c.washer;
