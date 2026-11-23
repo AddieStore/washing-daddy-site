@@ -16,7 +16,7 @@ import { CAR_SERVICES, PACKS, TRUST, SHOW_RATINGS, REFERRAL, packInfo, fromPrice
 import { GenericArt } from '../art/generic';
 import { ampm } from '../data/dates';
 import {
-  useApp, A, car, doc, act, go, openPage, openSheet, toast, svcQty, svcLines, liveHead, activeStage, chipText,
+  useApp, A, car, doc, act, go, openPage, openSheet, toast, svcQty, svcLines, liveHead, activeStage, chipText, STAGES, carryNote,
   homeConfig, instantStatus, selectedAddress, addrName, wallet, activePass, REAL,
   appCfg, feature, section, uiButtons, serviceCats, unavailable, configLoading, UiButton, isGuest } from '../state';
 import { Pressable3 as P3, FadeUp, AddButton, CartBar, Shimmer, useSkeleton, loaderPending, primerGate, setOrigin, SPRING, TAB_BAR_H } from '../ui/motion';
@@ -486,6 +486,26 @@ function Trust({ W }: { W: number }) {
   </>);
 }
 
+/* ---------- live status chain: on the way > reached > washing > done (or skipped, with the reason) ---------- */
+const CHAIN: [string, string][] = [['on_the_way', 'On the way'], ['arrived', 'Reached'], ['washing', 'Washing'], ['done', 'Done']];
+function StatusChain({ status, note }: { status: string; note?: string | null }) {
+  const at = STAGES.indexOf(status as any), skipped = status === 'skipped';
+  return (
+    <View style={{ marginTop: 6 }}>
+      {skipped ? <Txt weight={600} size={12} color={L.sec}>Skipped today</Txt> : (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          {CHAIN.map(([k, label], i) => { const on = STAGES.indexOf(k as any) <= at, cur = STAGES.indexOf(k as any) === at; return (
+            <View key={k} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: on ? L.pos : '#D4D4D8' }} />
+              <Txt weight={cur ? 600 : 400} size={11} color={on ? L.ink : L.mut}>{label}</Txt>
+              {i < CHAIN.length - 1 ? <View style={{ width: 8, height: 1, backgroundColor: '#D4D4D8' }} /> : null}
+            </View>); })}
+        </View>)}
+      {note ? <Txt size={12} color={L.sec} style={{ marginTop: 2, lineHeight: 16 }}>{note}</Txt> : null}
+    </View>
+  );
+}
+
 /* ---------- floating "washer assigned" mini card (only when the cart is empty) ---------- */
 function Assigned() {
   if (isGuest()) return null;
@@ -509,6 +529,7 @@ function Assigned() {
           {live ? <Pulse color={L.pos} size={8} /> : null}
           <Txt size={13} color={L.sec} numberOfLines={1} style={{ flexShrink: 1, lineHeight: 18 }}>{subTxt}</Txt>
         </View>
+        {d.remote && (d.status !== 'scheduled' || d.skip_reason) ? <StatusChain status={d.status} note={d.status === 'skipped' ? [d.skip_reason, carryNote(c, d)].filter(Boolean).join('. ') : carryNote(c, d)} /> : null}
         <Pressable3 label="View profile" onPress={openProfile} style={{ alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center' }}><Txt weight={600} size={12} color={L.accent}>View profile</Txt></Pressable3>
       </View>
       <Chev size={18} color={L.mut} strokeWidth={1.5} />

@@ -9,14 +9,16 @@ import { Art } from '../ui/art';
 import { Plate } from '../ui/Plate';
 import { Check, Arrow, Pin, Clock, Bell, Cart as CartIcon, Wallet } from '../ui/icons';
 import { sellablePlans, DEFAULT_PLAN, AREAS, SERVICES, PRODUCTS, SUPPORT, showPhone } from '../data/reference';
-import { PAUSE_MAX, canPause, pauseFits, pauseLeft } from '../data/model';
+import { extras, LABEL } from '../data/model';
+import { PAUSE_MAX, canPause, pauseFits, pauseLeft, SPOT_LABEL } from '../data/model';
 import { TODAY, addDays, fmt, iso, inr, ampm, parse } from '../data/dates';
 import { IMG, RATIO, src, ImgKey } from '../img';
 import {
   A, car, carImg, doc, planOf, maskPlate, fmtPhone, pName, cartLines, planPayDates, switchQuote, dayDetail, calendar, realAcct, chipText, payReal, pendingRef, refCode, inviteLink, autopayView,
-  act, toast, openSheet, closeSheet, go, sheetHooks, trackWasher, distance, useApp, Track,
+  photosOf, carryNote, canRateToday, ratedToday, act, toast, openSheet, closeSheet, go, sheetHooks, trackWasher, distance, useApp, Track,
 } from '../state';
 import { TrackMap } from './TrackMap';
+import { Stars, STAR_WORDS } from './bookings';
 
 /* ---------- small local helpers (white sheet, hairline cards, one accent for actions) ---------- */
 // sheets are always light: text defaults to ink, and the ink set below replaces the theme's per-surface one
@@ -102,17 +104,28 @@ function Day({ date }: { date: string }) {
   const past = date < ti, isToday = date === ti;
   const washed = cell ? cell.washed : past && c.status !== 'new' && !d.paused && !realAcct();
   const sub = fmt(dt, { weekday: 'long' });
+  if (d.real && d.doc && (washed || d.skip)) {
+    return (
+      <View>
+        <Eyebrow>{d.title}</Eyebrow>
+        <SheetTitle>{d.skip ? 'No wash this day' : 'Washed by ' + d.washer}</SheetTitle>
+        {d.skip ? <SheetSub>{[d.skip, d.carry].filter(Boolean).join('. ')}</SheetSub> : d.time ? <SheetSub>{d.time + (d.doc.minutes ? ` · ${d.doc.minutes} min` : '')}</SheetSub> : null}
+        {!d.skip ? <Rows>{d.steps.map((st, i) => <Row key={i} icon={<Check size={18} color={st.done ? P.ok : P.muted} strokeWidth={1.5} />} title={st.label} right={st.at ? <Txt weight={500} size={13} style={NUM}>{st.at}</Txt> : undefined} />)}</Rows> : null}
+        {!d.skip && d.carry ? <SheetSub>{d.carry}</SheetSub> : null}
+      </View>
+    );
+  }
   if (washed) {
     return (
       <View>
         <Eyebrow>{d.title}</Eyebrow>
         <SheetTitle>{'Washed by ' + d.washer}</SheetTitle>
         <Gap h={8} />
-        <Rows>{d.steps.map((s, i) => <Row key={i} icon={<Check size={18} color={P.ok} strokeWidth={1.5} />} title={s} right={i === 0 ? <Txt weight={500} size={13} style={NUM}>{d.time}</Txt> : undefined} />)}</Rows>
+        <Rows>{d.steps.map((st, i) => <Row key={i} icon={<Check size={18} color={P.ok} strokeWidth={1.5} />} title={st.label} right={i === 0 ? <Txt weight={500} size={13} style={NUM}>{st.at}</Txt> : undefined} />)}</Rows>
       </View>
     );
   }
-  const planned = ['Pressure wash', ...d.steps.slice(1, -1), 'Dried by hand'];
+  const planned = ['Pressure wash', ...extras(c, dt).map(k => LABEL[k]), 'Dried by hand'];
   const head = d.paused ? 'Paused' : isToday ? "Today's wash" : past ? 'No wash' : 'Upcoming wash';
   const note = d.paused ? 'No wash. Added to the end of your plan.'
     : past ? 'No wash was recorded for this day.'
@@ -130,29 +143,65 @@ function Day({ date }: { date: string }) {
 
 /* ---------- proof: before/after compare ---------- */
 // two photos at a time, side by side and small (Ravi's fix): before on the left, after on the right
+const photoTile = (img: any, label: string, key?: string) => (
+  <View key={key} style={{ flex: 1, maxWidth: 150 }}>
+    <View style={{ aspectRatio: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: P.line, backgroundColor: P.raised }}>
+      <Image source={img} resizeMode="cover" accessibilityLabel={label + ' photo'} style={{ width: '100%', height: '100%' }} />
+      <View style={{ position: 'absolute', left: 8, bottom: 8, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'rgba(23,23,23,.7)' }}><Txt weight={500} size={12} color="#FFFFFF">{label}</Txt></View>
+    </View>
+  </View>);
+const asSrc = (p: any) => (typeof p === 'string' ? { uri: p } : p);
 function PhotoPair() {
-  const tile = (img: any, label: string) => (
-    <View style={{ flex: 1, maxWidth: 150 }}>
-      <View style={{ aspectRatio: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: P.line, backgroundColor: P.raised }}>
-        <Image source={img} resizeMode="cover" accessibilityLabel={label + ' photo'} style={{ width: '100%', height: '100%' }} />
-        <View style={{ position: 'absolute', left: 8, bottom: 8, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'rgba(23,23,23,.7)' }}><Txt weight={500} size={12} color="#FFFFFF">{label}</Txt></View>
-      </View>
+  return <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>{photoTile(IMG.before, 'Before')}{photoTile(IMG.after, 'After')}</View>;
+}
+// real wash: the washer's photos grouped by kind (before, after, Sunday interior by spot, anything flagged)
+function RealPhotos({ photos }: { photos: ReturnType<typeof photosOf> }) {
+  const grid = (list: typeof photos, label: (p: (typeof photos)[number], i: number) => string) => (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>{list.map((p, i) => <View key={i} style={{ width: '46%', maxWidth: 150 }}>{photoTile(asSrc(p.src), label(p, i))}</View>)}</View>);
+  const before = photos.filter(p => p.kind === 'before'), after = photos.filter(p => p.kind === 'after'), inside = photos.filter(p => p.kind === 'inside' || (p.spot && p.kind !== 'before' && p.kind !== 'after')), issue = photos.filter(p => p.kind === 'issue');
+  return (
+    <View style={{ gap: 14 }}>
+      {before.length || after.length ? grid([...before, ...after], (p, i) => p.kind === 'before' ? 'Before' : after.length > 1 ? `After ${i - before.length + 1}` : 'After') : null}
+      {inside.length ? <View><Txt weight={500} size={13} color={P.muted} style={{ marginBottom: 8 }}>Inside</Txt>{grid(inside, p => (p.spot && SPOT_LABEL[p.spot]) || 'Inside')}</View> : null}
+      {issue.length ? <View><Txt weight={500} size={13} color={P.muted} style={{ marginBottom: 8 }}>Flagged by your washer</Txt>{grid(issue, () => 'Flagged')}</View> : null}
     </View>);
-  return <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>{tile(IMG.before, 'Before')}{tile(IMG.after, 'After')}</View>;
 }
 function Proof() {
-  const c = car(), d = doc(c);
+  const c = car(), d = doc(c), real = !!d.remote, photos = photosOf(d), cn = carryNote(c, d);
+  const stamp = real ? [d.started_at && 'Started ' + ampm(d.started_at), d.finished_at && 'finished ' + ampm(d.finished_at)].filter(Boolean).join(' · ') : '';
   return (
-    <View>
-      <SheetTitle>{'This morning, ' + (ampm(d.finished_at) || '6:40 AM')}</SheetTitle>
-      <SheetSub>How it looked before and after the wash.</SheetSub>
-      <PhotoPair />
+    <ScrollView style={{ maxHeight: 560 }} showsVerticalScrollIndicator={false}>
+      <SheetTitle>{real ? 'This morning' + (d.finished_at ? ', ' + ampm(d.finished_at) : '') : 'This morning, ' + (ampm(d.finished_at) || '6:40 AM')}</SheetTitle>
+      <SheetSub>{real ? (photos.length ? stamp || 'Photos from your washer.' : 'Photos show here once your washer uploads them.') : 'How it looked before and after the wash.'}</SheetSub>
+      {real ? (photos.length ? <RealPhotos photos={photos} /> : null) : <PhotoPair />}
       <Gap h={SP.l} />
       <Rows>
-        <Row title={'Washed by ' + c.washer} sub={c.parking} right={`${d.minutes || c.mins} min`} />
-        <Row title="Water used" sub="Pressure wash, no bucket" right="7 L" />
+        <Row title={'Washed by ' + (d.washer?.name || c.washer)} sub={c.parking} right={real ? (d.minutes ? `${d.minutes} min` : undefined) : `${d.minutes || c.mins} min`} />
+        {real ? (d.water_litres ? <Row title="Water used" sub="Pressure wash, no bucket" right={`${d.water_litres} L`} /> : null) : <Row title="Water used" sub="Pressure wash, no bucket" right="7 L" />}
+        {real && d.tasks.length ? d.tasks.map((t, i) => <Row key={i} icon={<Check size={18} color={t.done ? P.ok : P.muted} strokeWidth={1.5} />} title={t.label} right={t.done_at ? <Txt weight={500} size={13} style={NUM}>{ampm(t.done_at)}</Txt> : undefined} />) : null}
+        {cn ? <Row title={cn} /> : null}
       </Rows>
+      {real && d.washer_note ? <SheetSub>{d.washer_note}</SheetSub> : null}
       <Btn variant="ghost" label="Something missed? Tell us" onPress={() => sheets.issue()} style={{ marginTop: SP.l }} />
+    </ScrollView>
+  );
+}
+
+/* ---------- daily rating: ratings/{DATE}_{REG} ---------- */
+const RATE_GOOD = ['Spotless', 'On time', 'Polite'], RATE_BAD = ['Missed spots', 'Late', 'Water marks'];
+function RateDay() {
+  const c = car(), done = ratedToday(c), [n, setN] = useState(done ? done.stars : 0), [tag, setTag] = useState<string[]>([]);
+  return (
+    <View>
+      <SheetTitle>{done ? 'Thanks for rating' : "How was today's wash?"}</SheetTitle>
+      <SheetSub>{`${c.washer} sees this rating.`}</SheetSub>
+      <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+        <Stars n={n} size={40} gap={10} onPick={v => { if (!done) { setN(v); setTag([]); } }} />
+        <Txt weight={500} size={15} color={n ? P.ink : P.muted} style={{ marginTop: 10, minHeight: 20 }}>{n ? STAR_WORDS[n] : 'Tap a star'}</Txt>
+      </View>
+      {n && !done ? <Chips multi items={n < 4 ? RATE_BAD : RATE_GOOD} value={tag} onChange={setTag} /> : null}
+      {done ? <Btn variant="ghost" label="Done" onPress={closeSheet} style={{ marginTop: SP.m }} />
+        : <Btn variant="violet" label="Send rating" disabled={!n} onPress={() => { act.rate(n, tag.join(', ') || undefined); closeSheet(); }} style={{ marginTop: SP.m }} />}
     </View>
   );
 }
@@ -662,7 +711,8 @@ export const sheets = {
   deleteAccount: () => openSheet(<DeleteAccount />),
   refer: () => openSheet(<Refer />),
   day: (date: string) => openSheet(<Day date={date} />),
-  proof: () => { if (!car().img) { toast('Photos start with your first wash'); return; } openSheet(<Proof />); },
+  rateDay: () => { if (!canRateToday() && !ratedToday()) { toast('You can rate once the wash is done'); return; } openSheet(<RateDay />); },
+  proof: () => { if (!car().img && !photosOf(doc()).length) { toast('Photos start with your first wash'); return; } openSheet(<Proof />); },
   seePlans: () => { closeSheet(); go('plan'); },
 };
-sheetHooks.payPlan = sheets.payPlan; sheetHooks.note = sheets.note; sheetHooks.bookings = sheets.bookings; sheetHooks.orders = sheets.orders;
+sheetHooks.rateDay = sheets.rateDay; sheetHooks.payPlan = sheets.payPlan; sheetHooks.note = sheets.note; sheetHooks.bookings = sheets.bookings; sheetHooks.orders = sheets.orders;

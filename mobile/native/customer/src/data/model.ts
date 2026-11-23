@@ -77,7 +77,8 @@ export function weekPlan(c: Car) {
 export function detDays(c: Car) { const f = planOf(c).f; if (!f.det || f.det >= 16) return []; const d = ((hash(regOf(c)) >>> 9) % 28), gap = Math.floor(28 / f.det); return Array.from({ length: f.det }, (_, i) => (d + i * gap) % 28 + 1) }
 // Standard's foam wash is once a month (f.fm), on a fixed day of the month; must match the washer app's tasksFor
 export const foamDay = (c: Car) => (planOf(c).f.fm ? ((hash(regOf(c)) >>> 12) % 28) + 1 : 0);
-export function extras(c: Car, dt: Date): Extra[] { const k = [...weekPlan(c)[dayKey(dt)]]; if (foamDay(c) === dt.getDate() && !k.includes('foam')) k.push('foam'); if (detDays(c).includes(dt.getDate())) k.push('det'); return k }
+export function extras(c: Car, dt: Date): Extra[] { const k = [...weekPlan(c)[dayKey(dt)]]; if (dayKey(dt) === 'sun' && !k.includes('int')) k.push('int');   // Sunday interior is forced for every plan (CONTRACT v2)
+  if (foamDay(c) === dt.getDate() && !k.includes('foam')) k.push('foam'); if (detDays(c).includes(dt.getDate())) k.push('det'); return k }
 export const LABEL: Record<Extra, string> = { foam: 'Foam wash', int: 'Interior cleaning', tyre: 'Tyre & trim polish', det: 'Detailing' };
 
 /* ---------- pausing: a WD Pro (and up) perk, at most PAUSE_MAX days in any calendar month ---------- */
@@ -111,12 +112,15 @@ export function daysLeftOf(c: Car, real: boolean) {
    ===================================================================== */
 export type TaskKey = 'pressure' | 'foam' | 'interior' | 'tyre' | 'detailing' | 'dry';
 export type Status = 'scheduled' | 'on_the_way' | 'arrived' | 'washing' | 'done' | 'skipped';
-export type Photo = { kind: string; src: any; local?: 'before'; cut?: boolean };
+export type Photo = { kind: string; src: any; local?: 'before'; cut?: boolean; spot?: string; at?: string | null };
+export const SPOT_LABEL: Record<string, string> = { driver_mat: 'Driver mat', passenger_mat: 'Passenger mat', back_seat: 'Back seat', boot: 'Boot', dashboard: 'Dashboard' };
 export type WashDoc = {
   date: string; reg: string; car_label: string; washer: { id?: string; name: string; photo_url?: string };
   status: Status; eta?: string | null; on_the_way_at?: string | null; arrived_at?: string | null; started_at?: string | null; finished_at?: string | null;
   minutes?: number | null; tasks: { key: string; label: string; done: boolean; done_at?: string | null }[]; photos: Photo[];
   water_litres?: number | null; washer_note?: string | null; skip_reason?: string | null; customer_note_seen?: boolean;
+  slot_from?: string | null; slot_to?: string | null; sunday?: boolean; overdue_at?: string | null;
+  carried_from?: string | null; carried_task?: string | null; interior_carried_to?: string | null;
   remote?: boolean; first?: boolean; notStarted?: boolean;
 };
 export const TASK_LABEL: Record<string, string> = { pressure: 'Pressure wash', foam: 'Foam wash', interior: 'Interior cleaning', tyre: 'Tyre & trim polish', detailing: 'Detailing', dry: 'Dried by hand' };
@@ -135,7 +139,9 @@ export function fromContract(r: any): WashDoc {
     eta: hm(r.eta), on_the_way_at: hm(r.on_the_way_at), arrived_at: hm(r.arrived_at), started_at: hm(r.started_at), finished_at: hm(r.finished_at),
     minutes: numOrNull(r.minutes ?? (r.started_at && r.finished_at ? t2m(hm(r.finished_at)!) - t2m(hm(r.started_at)!) : null)),
     tasks: (Array.isArray(r.tasks) ? r.tasks : []).map((t: any) => ({ key: String(t.key), label: TASK_LABEL[t.key] || String(t.label || t.key), done: !!t.done, done_at: hm(t.done_at) })),
-    photos: (Array.isArray(r.photos) ? r.photos : []).map((p: any) => ({ kind: p.kind, src: safeImg(p.url) })).filter((p: Photo) => p.src),
+    photos: (Array.isArray(r.photos) ? r.photos : []).map((p: any) => ({ kind: String(p.kind || ''), src: safeImg(p.url), spot: p.spot ? String(p.spot) : undefined, at: hm(p.at) })).filter((p: Photo) => p.src),
+    slot_from: hm(r.slot_from), slot_to: hm(r.slot_to), sunday: !!r.sunday, overdue_at: hm(r.overdue_at),
+    carried_from: r.carried_from ? String(r.carried_from) : null, carried_task: r.carried_task ? String(r.carried_task) : null, interior_carried_to: r.interior_carried_to ? String(r.interior_carried_to) : null,
     water_litres: numOrNull(r.water_litres), washer_note: r.washer_note || '', skip_reason: r.skip_reason || '', customer_note_seen: !!r.customer_note_seen, remote: true };
 }
 export function planTasks(c: Car, d: Date): TaskKey[] { const w = extras(c, d); return ['pressure', ...w.map(k => KEYMAP[k]), 'dry'] }
