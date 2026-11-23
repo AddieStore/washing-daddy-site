@@ -22,6 +22,7 @@ import { FadeUp, TNUM, TimeChip, VioletBlock } from '../../screens/DayParts';
 import { openAddCar } from '../../screens/AddCar';
 import { openHelpSheet } from '../../screens/sheets';
 import { CheckInCard } from '../../screens/RoundTimeline';
+import { CheckOutCard } from '../../screens/CheckOutCard';
 import { RewardsMini } from '../../screens/RewardsCards';
 import { myTrust } from '../../screens/TrustData';
 import { SLOTS, slotRange } from '../../lib/slots';
@@ -407,6 +408,7 @@ export default function RoundScreen() {
           <FadeUp index={6} style={{ marginTop: 12 }}><RewardsMini /></FadeUp>
           {S.day?.checkin_at || !started ? <FadeUp index={7} style={{ marginTop: 12 }}><CheckInCard /></FadeUp> : null}
           <FadeUp index={8} style={{ marginTop: 12 }}><PrimaryAction started={started} /></FadeUp>
+          {started ? <FadeUp index={9} style={{ marginTop: 12 }}><CheckOutCard /></FadeUp> : null}
           <FadeUp index={9} style={{ marginTop: 16 }}><NextUp started={started} /></FadeUp>
           <RouteList />
         </View>

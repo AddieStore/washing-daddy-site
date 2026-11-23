@@ -21,7 +21,7 @@ export type Wash = {
   slot?: number; slot_from?: string; slot_to?: string; interior?: boolean; interior_from?: number | null; extra_minutes?: number;
   addons?: { key: string; at: string; minutes: number }[]; overdue_at?: string | null;
 };
-export type Req = { id: string; reg: string; kind: string; text: string; spots: string[]; created_at: string; status: string; seen_at?: string; done_at?: string };
+export type Req = { id: string; reg: string; kind: string; text: string; spots: string[]; created_at: string; status: string; seen_at?: string; done_at?: string; washer_reply?: string };
 export type Job = {
   id: string; washer_id?: string; status?: string; service?: string; price?: number; car?: string; reg?: string;
   area?: string; customer_name?: string; phone?: string; note?: string; lat?: number; lng?: number; date?: string;

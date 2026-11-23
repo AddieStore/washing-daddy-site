@@ -22,6 +22,8 @@ import { lateClips } from '../lib/hindiNumber';
 import { setupWashAlerts, alertsReady, scheduleWashAlerts, cancelWashAlerts, cancelAllWashAlerts, scheduleLateAlert, cancelLateAlert, scheduleMorningAlarm } from '../lib/washAlerts';
 import { ui } from '../ui/bus';
 import { registerPushToken, clearPushToken } from '../lib/pushToken';
+import { mirrorCheckIn, mirrorFirstCar, writeCheckOut, startHeartbeat, loadAttendance } from '../backend/attendance';
+import { buildLedger, ledgerWriter } from '../backend/earnings';
 import { requestPinToken, PIN_MSG, isPin } from '../lib/pinLogin';
 
 const { db, auth } = backend;
@@ -45,7 +47,7 @@ export const MODE = backend.mode;
 /* ---------------- persisted state ---------------- */
 type Session = { washerId: string | null; real?: boolean; name?: string; phone?: string; since?: string; at?: string };
 // slots/order/locked: the round as a timeline (lib/slots.ts): which slot each car sits in, the order, and whether the washer locked it
-type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash>; slots?: Record<string, number>; order?: string[]; locked?: boolean; locked_at?: string | null; checkin_at?: string | null; checkin_photo?: string | null; checkin_uniform?: Uniform | null };
+type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash>; slots?: Record<string, number>; order?: string[]; locked?: boolean; locked_at?: string | null; checkin_at?: string | null; checkin_photo?: string | null; checkin_uniform?: Uniform | null; checkout_at?: string | null };
 // the check-in selfie: shirt_match/shirt_share come from lib/shirt.ts; the cap is ticked by the washer and reviewed by the manager
 export type Uniform = { shirt_match: boolean; shirt_share: number; self_confirmed: true };
 type Selfie = { date: string; washer: string; url?: string; asset_id?: string };
@@ -68,7 +70,16 @@ function noteAttend(v: { in?: string; first?: string }, onlyIfNew = false) {
   save();
   const id = myDocId();
   if (id && id !== '+91') db.doc('checkins/' + DAY + '_' + id).update(v).catch(() => {});
+  if (id && id !== '+91' && v.first) mirrorFirstCar(db, { date: DAY, phone: id, name: me().name, at: v.first }).catch(() => {});
 }
+// the day's earnings ledger (earnings/{DATE}_{phone}), from the same Money logic the Paisa tab shows
+const ledger = ledgerWriter(db, () => {
+  const id = myDocId(); if (!id || id === '+91' || !S.day) return null;
+  return buildLedger({ phone: id, date: DAY,
+    washes: route().filter(c => W(c.reg)?.status === 'done').map(c => ({ reg: c.reg, amount: Money.perDay(c) })),
+    extras: Extra.doneOn(DAY).map(j => ({ id: j.id, amount: Money.share(j.price) })) });
+}, () => isoIST());
+let stopBeat: (() => void) | null = null;
 function save() {
   if (saveT) clearTimeout(saveT);
   saveT = setTimeout(() => { AsyncStorage.setItem(KEY, JSON.stringify(S)).catch(() => {}) }, 150);
@@ -495,9 +506,25 @@ export const act = {
     try {
       const id = myDocId();
       if (id && id !== '+91') await db.doc('checkins/' + DAY + '_' + id).set({ phone: id, name: me().name, date: DAY, at: day.checkin_at, ...(photo ? { photo } : {}), ...(uniform ? { uniform } : {}) });
+      if (id && id !== '+91') await mirrorCheckIn(db, { date: DAY, phone: id, name: me().name, at: day.checkin_at });
     } catch (e) { console.warn('checkin', e) }
     return true;
   },
+  // "Aaj ka kaam khatam": check-out with cars done / skipped / hours, and the day's earnings ledger
+  async checkOut() {
+    ensureDay(); const day = S.day!; if (day.checkout_at) return true;
+    const at = isoIST(), ws = Object.values(day.washes || {}).filter(Boolean) as Wash[];
+    day.checkout_at = at; save(); emit(); ui.haptic([20, 40, 20]); ui.toast(t('Aaj ka kaam khatam. Shukriya!'));
+    ledger.now();
+    try {
+      const id = myDocId();
+      if (id && id !== '+91') await writeCheckOut(db, { date: DAY, phone: id, name: me().name, at, from: day.checkin_at || day.startedAt,
+        done: ws.filter(w => w.status === 'done').length, skipped: ws.filter(w => w.status === 'skipped').length });
+    } catch (e) { console.warn('checkout', e) }
+    return true;
+  },
+  // optional note back to the customer on a request (requests/{id}.washer_reply)
+  reqReply(id: string, text: string) { const r = text.trim().slice(0, 300); if (r) Sync.setRequest(id, { washer_reply: r } as Partial<Req>) },
   startRound() {
     if (REAL && view.bookState === 'loading') { ui.toast(t('Gaadiyon ki list aa rahi hai, ek minute ruko')); return false }
     ensureDay(); const etas = Route.etaList();
@@ -556,7 +583,7 @@ export const act = {
     const end = isoIST();
     mutate(reg, d => { d.status = 'done'; d.finished_at = end; d.minutes = Math.max(1, Math.round((Date.parse(end) - Date.parse(d.started_at || end)) / 60000)); d.water_litres = litres });
     void cancelWashAlerts(reg); void cancelLateAlert(reg);
-    ui.haptic([20, 40, 20, 40, 60]); ui.confetti(1); Route.retime(); emit(); return true;
+    ui.haptic([20, 40, 20, 40, 60]); ui.confetti(1); Route.retime(); ledger.soon(); emit(); return true;
   },
   needPhoto(reg?: string) {
     const w = reg ? W(reg) : null; const n = w && isSundayIST(w.started_at) ? photoNeeds(w).missing.length : 0;
@@ -672,6 +699,7 @@ export const act = {
       await Promise.race([Sync.flush(), new Promise(r => setTimeout(r, 8000))]);
       if (outboxSize() && !discard) { ui.toast(t('Kuch update abhi bheje nahi gaye. Net aane pe phir try karo.')); return false }
     }
+    ledger.now(); if (stopBeat) { stopBeat(); stopBeat = null }
     Sync.stop(); stopWatch(); stopKit(); stopGps(); void cancelAllWashAlerts();
     const { theme, lang, lang_pref, onboarded } = S;
     S = { session: null, online: true, theme, lang, lang_pref, onboarded, day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
@@ -871,7 +899,18 @@ function enterApp() {
   if (MODE === 'demo') demoExtras();   // seeded before listening, so the sample jobs do not pop up as new
   Book.load();
   Sync.listen();
-  if (REAL) { startGps(); void registerPushToken() }
+  if (REAL) { startGps(); void registerPushToken(); startAttendanceSync() }
+}
+// heartbeat every 60 s, and the server attendance log comes back into S.attend (it is wiped on logout / lost on reinstall)
+function startAttendanceSync() {
+  if (!stopBeat) stopBeat = startHeartbeat(db, () => myDocId(), () => isoIST());
+  const id = myDocId(); if (!id || id === '+91') return;
+  void loadAttendance(db, id, addDaysStr(DAY, -62)).then(rows => {
+    if (!rows) return; S.attend = S.attend || {};
+    Object.entries(rows).forEach(([d, v]) => { const e = S.attend![d] = S.attend![d] || {}; if (v.in && !e.in) e.in = v.in; if (v.first && !e.first) e.first = v.first });
+    const t0 = rows[DAY]; if (t0?.in && S.day && !S.day.checkin_at) S.day.checkin_at = t0.in;
+    save(); emit();
+  });
 }
 
 /* ---------- live location for the customer's map (installed app only) ---------- */
