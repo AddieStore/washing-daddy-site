@@ -19,6 +19,7 @@ import {
 } from '../state';
 import { TrackMap } from './TrackMap';
 import { Stars, STAR_WORDS } from './bookings';
+import { DaySheet } from './DaySheet';
 
 /* ---------- small local helpers (white sheet, hairline cards, one accent for actions) ---------- */
 // sheets are always light: text defaults to ink, and the ink set below replaces the theme's per-surface one
@@ -710,9 +711,9 @@ export const sheets = {
   logout: () => openSheet(<Logout />),
   deleteAccount: () => openSheet(<DeleteAccount />),
   refer: () => openSheet(<Refer />),
-  day: (date: string) => openSheet(<Day date={date} />),
+  day: (date: string) => openSheet(<DaySheet date={date} onIssue={() => sheets.issue()} />),
   rateDay: () => { if (!canRateToday() && !ratedToday()) { toast('You can rate once the wash is done'); return; } openSheet(<RateDay />); },
-  proof: () => { if (!car().img && !photosOf(doc()).length) { toast('Photos start with your first wash'); return; } openSheet(<Proof />); },
+  proof: () => { if (!car().img && !photosOf(doc()).length) { toast('Photos start with your first wash'); return; } openSheet(<DaySheet date={iso(TODAY)} onIssue={() => sheets.issue()} />); },
   seePlans: () => { closeSheet(); go('plan'); },
 };
 sheetHooks.rateDay = sheets.rateDay; sheetHooks.payPlan = sheets.payPlan; sheetHooks.note = sheets.note; sheetHooks.bookings = sheets.bookings; sheetHooks.orders = sheets.orders;
