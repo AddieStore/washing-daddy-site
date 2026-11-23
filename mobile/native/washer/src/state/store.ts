@@ -75,7 +75,6 @@ function noteAttend(v: { in?: string; first?: string }, onlyIfNew = false) {
   if (id && id !== '+91') db.doc('checkins/' + DAY + '_' + id).update(v).catch(() => {});
   if (id && id !== '+91' && v.first) mirrorFirstCar(db, { date: DAY, phone: id, name: me().name, at: v.first }).catch(() => {});
 }
-<<<<<<< HEAD
 // A photo still waiting for its upload keeps its inline picture in its own AsyncStorage key (wd-ph:DATE_REG/n), not in S:
 // one 25-car round of photos in the single `wd-washer-v1` key could pass Android's AsyncStorage size limit and silently stop saving.
 const blobKey = (date: string, reg: string, n: number) => `wd-ph:${date}_${reg}/${n}`;
@@ -86,7 +85,6 @@ async function rehydratePhotos() {
     if (p.pending_upload && p.n != null && !p.url) { try { const u = await AsyncStorage.getItem(blobKey(d.date, d.reg, p.n)); if (u) p.url = u } catch (e) { } }
   }
 }
-=======
 // the day's earnings ledger (earnings/{DATE}_{phone}), from the same Money logic the Paisa tab shows
 const ledger = ledgerWriter(db, () => {
   const id = myDocId(); if (!id || id === '+91' || !S.day) return null;
@@ -95,7 +93,6 @@ const ledger = ledgerWriter(db, () => {
     extras: Extra.doneOn(DAY).map(j => ({ id: j.id, amount: Money.share(j.price) })) });
 }, () => isoIST());
 let stopBeat: (() => void) | null = null;
->>>>>>> claude/wd-v2-records
 function save() {
   if (saveT) clearTimeout(saveT);
   saveT = setTimeout(() => { AsyncStorage.setItem(KEY, JSON.stringify(S, slim)).catch(() => {}) }, 150);
