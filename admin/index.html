@@ -196,7 +196,7 @@ function gateCode(d) {
 }
 
 /* ---------------- data ---------------- */
-let W = [], C = [], N = [], X = [], K = {}, DOCS = {}, WAIT = {}, OPEN = new Set(), tab = 'washers', unsubs = [], q = '';
+let JC = {}, W = [], C = [], N = [], X = [], K = {}, DOCS = {}, WAIT = {}, OPEN = new Set(), tab = 'washers', unsubs = [], q = '';
 let PINS = {}, PINERR = false;   // washerpins/{+91number}: sign-in PIN status per washer (phone + PIN login, n8n workflow 12)
 function stop() { unsubs.forEach(u => { try { u() } catch (e) {} }); unsubs = [] }
 
@@ -220,6 +220,7 @@ async function signedIn(u) {
   unsubs.push(db.collection('washerkit').onSnapshot(sn => { K = {}; sn.docs.forEach(d => { K[d.id] = d.data().items || [] }); render() }, e => console.warn(e)));
   unsubs.push(db.collection('customers').onSnapshot(sn => { C = sn.docs.map(d => cleanCust({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
   unsubs.push(db.collection('newcars').onSnapshot(sn => { N = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
+  unsubs.push(db.collection('jobcodes').onSnapshot(sn => { JC = {}; sn.docs.forEach(d => { JC[d.id] = (d.data() || {}).code }); render() }, e => console.warn(e)));
   unsubs.push(db.collection('ondemand').onSnapshot(sn => { X = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => console.warn(e)));
   unsubs.push(db.collection('complaints').onSnapshot(sn => { Q = sn.docs.map(d => ({ id: d.id, ...d.data() })); render() }, e => { console.warn(e); QERR = true; render() }));
   // PIN status only (salt/hash are never shown); fails until the washerpins rule is published
@@ -503,18 +504,19 @@ function renderNewCars() {
 
 /* ---------------- extra (on-demand) work ---------------- */
 function extraCard(x) {
-  const st = x.status || 'offered', k = esc(x.id);
+  const st = x.status || 'new', k = esc(x.id);
   const pill = st === 'done' ? '<span class="pill a">Done</span>' : st === 'doing' ? '<span class="pill p">Doing it</span>' : '<span class="pill p">Given</span>';
   return `<div class="card"><div class="row"><div class="grow">
     <div class="nm">${esc(x.service || 'Extra work')} ${pill}</div>
     <div class="meta">${RUPEE(x.price)} · washer's half ${RUPEE(Math.round((Number(x.price) || 0) / 2))} · ${esc(ROUNDS[x.washer_id] ? ROUNDS[x.washer_id].split(' · ')[0] : x.washer_id || '')}</div>
     <div class="meta">${esc(x.car || x.reg || '')}${x.customer_name ? ' · ' + esc(x.customer_name) : ''}${x.area ? ' · ' + esc(x.area) : ''} · ${esc(x.date || '')}</div>
     ${x.note ? `<div class="meta">${esc(x.note)}</div>` : ''}
+    ${JC[x.id] && st !== 'done' ? `<div class="meta">Start code <b>${esc(JC[x.id])}</b></div>` : ''}
     ${x.photo ? `<img src="${esc(x.photo)}" alt="Photo from the washer" style="max-width:220px;border-radius:12px;margin-top:8px">` : ''}
     </div></div><div class="acts"><button class="btn ghost" data-a="rmextra" data-id="${k}">Remove</button></div></div>`;
 }
 function renderExtra() {
-  const open = X.filter(x => (x.status || 'offered') !== 'done').sort(byNew), done = X.filter(x => x.status === 'done').sort(byNew);
+  const open = X.filter(x => (x.status || 'new') !== 'done').sort(byNew), done = X.filter(x => x.status === 'done').sort(byNew);
   $('#bX').textContent = open.length || ''; $('#bX').dataset.n = open.length;
   const today = new Date(Date.now() + 19800000).toISOString().slice(0, 10);
   $('#t-extra').innerHTML = `
@@ -541,7 +543,7 @@ function render() {
   else if (tab === 'newcars') renderNewCars(); else if (tab === 'complaints') renderComplaints(); else renderExtra();
   const p = W.filter(w => (w.status || 'pending') === 'pending').length; $('#bW').textContent = p || '';
   const np = N.filter(n => (n.status || 'pending') === 'pending').length; $('#bN').textContent = np || '';
-  const xo = X.filter(x => (x.status || 'offered') !== 'done').length; $('#bX').textContent = xo || '';
+  const xo = X.filter(x => (x.status || 'new') !== 'done').length; $('#bX').textContent = xo || '';
   const qo = Q.filter(x => (x.status || 'open') === 'open').length; $('#bQ').textContent = qo || ''; $('#bQ').dataset.n = qo;
 }
 
@@ -710,12 +712,18 @@ document.addEventListener('click', e => {
     if (!service) { toast('Say what the work is'); return }
     if (!price) { toast('Put a price on it'); return }
     if (!washer) { toast('Choose whose round it goes to'); return }
-    act(b, () => db.collection('ondemand').doc().set({
-      washer_id: washer, service, price, date,
-      car: $('#xCar').value.trim(), customer_name: $('#xName').value.trim(), area: $('#xArea').value.trim(),
-      note: $('#xNote').value.trim(), status: 'offered',
-      created_at: nowIST(), created_by: WDAuth.phone(), updated_at: nowIST(),
-    }), `Given to ${washer}. ${RUPEE(Math.round(price / 2))} is his.`);
+    // status 'new' (the washer app and ops stageOf know it; 'offered' is not a status). The washer needs a start code to
+    // begin ('doing' rule checks jobcodes/{id}), so make the jobcodes doc in the same batch and show the code to give him.
+    const ref = db.collection('ondemand').doc(), code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, '0'), at = nowIST();
+    act(b, async () => {
+      await ref.set({
+        washer_id: washer, service, price, date,
+        car: $('#xCar').value.trim(), customer_name: $('#xName').value.trim(), area: $('#xArea').value.trim(),
+        note: $('#xNote').value.trim(), status: 'new',
+        created_at: at, created_by: WDAuth.phone(), updated_at: at,
+      });
+      await db.doc('jobcodes/' + ref.id).set({ code, phone: WDAuth.phone(), created_at: at });
+    }, `Given to ${washer}. ${RUPEE(Math.round(price / 2))} is his. Start code ${code}: tell the washer when he is at the car.`);
   }
 });
 </script>
