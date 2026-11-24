@@ -242,7 +242,7 @@ export function BigTitle({ children, em, size = 44, style }: { children?: React.
   );
 }
 
-export type ChipTone = 'violet' | 'green' | 'grey' | 'red' | 'dark';
+export type ChipTone = 'violet' | 'green' | 'grey' | 'red' | 'dark' | 'amber' | 'blue';
 /** Pronto Pill: full pill, 12 medium text on a quiet tint. */
 export function Chip({ children, icon, tone = 'violet', style }: { children?: React.ReactNode; icon?: IconName; tone?: ChipTone; style?: S<ViewStyle> }) {
   const { c, dark } = useTheme();
@@ -252,12 +252,14 @@ export function Chip({ children, icon, tone = 'violet', style }: { children?: Re
     grey: [dark ? c.tile2 : '#F1F1F4', c.fg2],
     red: [dark ? 'rgba(248,113,113,0.16)' : '#FEF2F2', dark ? '#FCA5A5' : '#dc2626'],
     dark: [c.primary, '#fff'],
+    amber: [dark ? 'rgba(255,186,8,0.16)' : '#FFF6DB', dark ? '#FFD66B' : '#9A6A00'],
+    blue: [dark ? 'rgba(46,139,255,0.18)' : '#EAF3FF', dark ? '#8DC1FF' : '#1D6FE0'],
   };
   const [bg, fg] = T[tone];
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 28, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: bg }, style]}>
-      {icon ? <Icon name={icon} size={14} color={fg} /> : null}
-      <Text style={{ fontFamily: F.medium, fontSize: 12, color: fg }}>{children}</Text>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 24, paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999, backgroundColor: bg }, style]}>
+      {icon ? <Icon name={icon} size={13} color={fg} /> : null}
+      <Text style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 16, color: fg }}>{children}</Text>
     </View>
   );
 }
@@ -316,52 +318,6 @@ export function XChip({ kind, label, small, style }: { kind?: XKind | string; la
       <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: small ? 11 : 12, color: t.fg }}>{label}</Text>
     </View>
   );
-}
-
-export function Row({
-  icon,
-  iconColor,
-  title,
-  subtitle,
-  right,
-  onPress,
-  divider,
-  style,
-}: {
-  icon?: IconName | React.ReactNode;
-  iconColor?: string;
-  title: string;
-  subtitle?: string;
-  right?: React.ReactNode;
-  onPress?: () => void;
-  /** bottom hairline (use on all but the last row; put the rows in one white Card with overflow hidden) */
-  divider?: boolean;
-  style?: S<ViewStyle>;
-}) {
-  const { c } = useTheme();
-  // Customer ListRow: 56px, 18px grey line icon, 15px title, chevron on tappable rows, hairline between rows.
-  const body = (
-    <>
-      {icon ? (
-        <View style={{ width: 24, alignItems: 'center' }}>
-          {typeof icon === 'string' ? <Icon name={icon as IconName} size={18} color={iconColor ?? c.fg3} /> : icon}
-        </View>
-      ) : null}
-      <View style={{ flex: 1, minWidth: 0, paddingVertical: 10 }}>
-        <Text style={{ fontFamily: F.semi, fontSize: 15, lineHeight: 22, letterSpacing: -0.1, color: c.fg }}>{title}</Text>
-        {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3, marginTop: 2 }}>{subtitle}</Text> : null}
-      </View>
-      {right}
-      {onPress && !right ? <Icon name="chevron" size={18} color={c.fg3} /> : null}
-    </>
-  );
-  const st: S<ViewStyle> = [
-    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, minHeight: 56 },
-    divider && { borderBottomWidth: 1, borderBottomColor: c.line },
-    style,
-  ];
-  if (onPress) return <Pressy onPress={onPress} scaleTo={0.99} accessibilityLabel={title} style={st}>{body}</Pressy>;
-  return <View style={st}>{body}</View>;
 }
 
 export function LegacyTile({ emoji, value, unit, label, style }: { emoji?: string; value: string | number; unit?: string; label?: string; style?: S<ViewStyle> }) {

@@ -55,8 +55,15 @@ export type Tokens = {
   heroTrack: string;   // ring track on the hero card
   heroInk: string;     // text on the hero card
   shadowColor: string; // soft card shadow colour
+  /** Reference-look tokens (v22 kit). */
+  canvas: string;      // page canvas (same as bg)
+  grey: string;        // the one grey: section labels, values, captions
+  navOn: string;       // selected pill in the floating tab bar
+  navOnInk: string;    // icon + label on navOn
+  navShadow: string;   // floating bar shadow colour
   violet: string;
   violet2: string;
+  /** Primary text colour (#141414 light, near-white dark). */
   ink: string;
   gold: string;
   cream: string;
@@ -69,7 +76,7 @@ export type Tokens = {
 const base = {
   violet: brand.violet,
   violet2: brand.violet2,
-  ink: brand.ink,
+  ink: '#141414',
   gold: brand.gold,
   cream: brand.cream,
   orange: brand.orange,
@@ -83,7 +90,7 @@ export const lightTokens: Tokens = {
   // Pronto look shared with the customer app (customer src/theme.ts + pages/parts.tsx): grey page, white floating cards, neutral ink ramp.
   // 2026-11-21: brand canvas from the customer app (customer src/theme.ts C.canvas / C.tabBar), white cards float on it.
   // 2026-11-24 feel pass (DESIGN-REFERENCE): neutral canvas, two text colours only (#141414 / #7A7A80), hairline #EDEDF0.
-  bg: '#F7F7F8',
+  bg: '#F6F6F7',
   stage: '#EFEFF2',
   fg: '#141414',
   fg2: '#7A7A80',
@@ -109,29 +116,40 @@ export const lightTokens: Tokens = {
   heroTrack: 'rgba(255,255,255,0.22)',
   heroInk: '#FFFFFF',
   shadowColor: '#1A1033',
+  canvas: '#F6F6F7',
+  grey: '#7A7A80',
+  navOn: '#1A1A1F',
+  navOnInk: '#FFFFFF',
+  navShadow: '#000000',
 };
 
 export const darkTokens: Tokens = {
   ...lightTokens,
-  bg: '#141415',
+  bg: '#101012',
+  canvas: '#101012',
+  ink: '#F4F4F5',
+  grey: '#9A9AA2',
+  navOn: '#F4F4F5',
+  navOnInk: '#141414',
+  navShadow: '#000000',
   stage: '#08080A',
   fg: '#F4F4F5',
   fg2: '#A1A1AA',
   fg3: '#A1A1AA',
-  line: 'rgba(255,255,255,0.10)',
-  tile: '#161618',
+  line: 'rgba(255,255,255,0.09)',
+  tile: '#1A1A1D',
   tile2: 'rgba(255,255,255,0.08)',
   accent: '#7A42F0',
   accentInk: '#FFFFFF',
   em: '#F4F4F5',
   barBg: 'rgba(14,14,16,0.88)',
-  tabBg: '#161618',
-  sheetBg: '#161618',
+  tabBg: '#1C1C1F',
+  sheetBg: '#1A1A1D',
   inputBg: 'rgba(255,255,255,0.06)',
   ok: '#5CE6B5',
   dash: 'rgba(244,244,245,0.32)',
   shadow: false,
-  card: '#161618',
+  card: '#1A1A1D',
   soft: '#232326',
   softInk: '#D4D4D8',
   primary: '#7A42F0',
