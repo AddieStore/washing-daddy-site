@@ -157,7 +157,7 @@ export default function Paisa() {
                 );
               })}
             </Group>
-          ) : <EmptyBlock icon="clock" title={t('Abhi kuch nahi')} text={t('Har khatam gaadi yahan time ke saath aayegi.')} />}
+          ) : <EmptyBlock art="history" icon="clock" title={t('Abhi kuch nahi')} text={t('Har khatam gaadi yahan time ke saath aayegi.')} />}
         </View>
       </PullToRefresh>
     </View>

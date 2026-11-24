@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Image, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { Button, CarArt, Chip, Empty, F, Group, Icon, PullToRefresh, Row, SectionLabel, StickyBar, Pressy, ui, useTheme } from '../ui';
+import { WorkingArt } from '../ui/art';
 import { CarPic } from '../screens/CarPhoto';
 import { Route, RT, W, act, route, photoSrc, carBy, ensureDay, openReqs, planName, skipAsk, S, useStore, DAY, view, MIN_PHOTOS, MIN_BEFORE, photoNeeds } from '../state/store';
 import { STATUS, navOf, telOf } from '../lib/data';
@@ -16,15 +17,6 @@ import { takePhoto } from '../lib/photo';
 import { WashGuide } from '../screens/WashGuide';
 import { HsrpPlate, InteriorButton, ExtrasRow, ReqCard, RoundIcon, ScreenBar, Shot, TaskRow, WashTimer, openNoteSheet, openPhotoSheet, openSkipSheet, openSuccessSheet, type ShotItem } from '../screens/JobParts';
 import { ReportSection, ReportSummary, StartCapture, newStartInfo, openLeaveSheet, saveStartInfo } from '../screens/JobReport';
-
-/* Optional character art: only used when src/ui/art exists at build time (Metro resolves require.context at bundle time). */
-let WorkingArt: React.ComponentType<{ size?: number }> | null = null;
-try {
-  // @ts-ignore require.context is provided by Metro
-  const ctx = require.context('../ui', false, /^\.\/art(\/index)?\.tsx?$/);
-  const k = ctx.keys()[0];
-  if (k) WorkingArt = ctx(k).WorkingArt || null;
-} catch { WorkingArt = null }
 
 const ORDER = ['scheduled', 'on_the_way', 'arrived', 'washing', 'done'];
 const STEPS: [string, string, string][] = [
@@ -262,8 +254,7 @@ export default function JobScreen() {
           <CarHeader reg={reg} st={st} />
           <Stepper steps={steps} />
 
-          {/* ===== WORKING ART SPOT: character art for the washing state (src/ui/art, optional) ===== */}
-          {st === 'washing' && WorkingArt ? <View style={{ alignItems: 'center' }}><WorkingArt size={160} /></View> : null}
+          {st === 'washing' ? <View style={{ alignItems: 'center' }}><WorkingArt width={220} /></View> : null}
 
           {reqs.map(q => <ReqCard key={q.id} q={q} customer={car.customer} />)}
           {late ? <NoteRow icon="warn" tone="red">{t('Late · slot khatam ho gaya')}</NoteRow> : null}

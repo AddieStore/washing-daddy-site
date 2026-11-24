@@ -178,8 +178,8 @@ export default function ExtraScreen() {
               {list.map((j, i) => <FadeUp key={j.id} index={i}><JobCard j={j} picked={target?.id === j.id && open_.length > 1} onPick={() => setPick(j.id)} /></FadeUp>)}
             </View>
           ) : isOnline()
-            ? <EmptyBlock icon="tabExtra" title={t('Abhi koi extra kaam nahi')} text={t('Customer ya Manager ka koi kaam aaya toh yahan dikhega.')} />
-            : <EmptyBlock icon="tabExtra" title={t('Aap offline ho')} text={t('Naye customer kaam nahi dikhenge. Round tab pe online karo.')} />}
+            ? <EmptyBlock art="jobs" icon="tabExtra" title={t('Abhi koi extra kaam nahi')} text={t('Customer ya Manager ka koi kaam aaya toh yahan dikhega.')} />
+            : <EmptyBlock art="jobs" icon="tabExtra" title={t('Aap offline ho')} text={t('Naye customer kaam nahi dikhenge. Round tab pe online karo.')} />}
 
           <SectionLabel>{done.length ? `${t('Ho gaye')} · ${rupee(earned)} ${t('ab tak')}` : t('Ho gaye')}</SectionLabel>
           {done.length ? (
