@@ -1,7 +1,7 @@
 /* WD Operations: rounds data (window.OPSB). Reads the washer-produced docs of the v2 contract
  * (/mnt/project-files/washer-functional-2026-11-23/CONTRACT.md): washes, attendance, earnings, earnings_payouts, ratings, complaints.
  * The only write is markPaid -> earnings_payouts/{YYYY-MM}_{+91phone} = {total, paid_at, ref}.
- * OPSB.S raw docs; OPSB.setDay(day), setMonth('YYYY-MM'); OPSB.on(fn); views: board(), attendance(), skips(), interiors(), ledger(), feedback(). */
+ * OPSB.S raw docs; OPSB.setDay(day), setMonth('YYYY-MM'); OPSB.on(fn); views: abandoned(), conditionMix(), issueCounts(), delays(), damage(), board(), attendance(), skips(), interiors(), ledger(), feedback(). */
 (() => {
 'use strict';
 const num = (v, d = 0) => { const n = parseFloat(v); return isFinite(n) ? n : d };
@@ -65,6 +65,21 @@ B.interiors = () => {   // Sunday interiors not done yet: carried to another day
   });
   return out.sort((a, b) => Number(a.done) - Number(b.done) || String(b.to).localeCompare(String(a.to)));
 };
+/* manager data (contract 2026-11-24): everything below reads the washes already loaded for the picked day */
+B.ISSUES = { no_water: 'No water', no_parking: 'Parking problem', key_problem: 'Key / gate problem', car_locked: 'Car locked', customer_rude: 'Customer behaviour', rain: 'Rain', supplies_low: 'Supplies low', car_damage: 'Mark already on car' };
+B.COND = { light: 'Light', normal: 'Normal', heavy: 'Heavy' };
+const carOf = w => ({ id: w.id, car: w.car_label || w.reg, reg: w.reg, washer: washerOf(w.washer_id).name });
+B.abandoned = () => dayWashes(B.day).filter(w => w.abandoned).map(w => ({ ...carOf(w), reason: w.abandoned.reason || '', minutes: num(w.abandoned.minutes), tasks: Array.isArray(w.abandoned.tasks_done) ? w.abandoned.tasks_done : [], note: w.abandoned.note || '' }));
+B.conditionMix = () => {
+  const m = {}; dayWashes(B.day).forEach(w => { if (!B.COND[w.condition]) return; const g = m[w.washer_id] = m[w.washer_id] || { washer: washerOf(w.washer_id).name, light: 0, normal: 0, heavy: 0, total: 0 }; g[w.condition]++; g.total++ });
+  return Object.values(m).sort((a, b) => b.heavy - a.heavy || a.washer.localeCompare(b.washer));
+};
+B.issueCounts = () => {
+  const m = {}; dayWashes(B.day).forEach(w => (Array.isArray(w.issues) ? w.issues : []).forEach(k => { (m[k] = m[k] || { key: k, label: B.ISSUES[k] || k, cars: [] }).cars.push(carOf(w)) }));
+  return Object.values(m).sort((a, b) => b.cars.length - a.cars.length);
+};
+B.delays = () => dayWashes(B.day).filter(w => w.delay_reason).map(w => ({ ...carOf(w), reason: w.delay_reason }));
+B.damage = () => dayWashes(B.day).filter(w => w.damage_note).map(w => ({ ...carOf(w), note: w.damage_note, photos: B.photos(w).filter(p => p.kind === 'issue') }));
 B.photos = w => (Array.isArray(w.photos) ? w.photos : []).filter(p => p && (p.url || p.asset_id)).map(p => ({ ...p, src: p.url || ('/_blob/' + p.asset_id) }));
 B.ledger = () => {
   const m = {};

@@ -122,8 +122,14 @@ export type WashDoc = {
   water_litres?: number | null; washer_note?: string | null; skip_reason?: string | null; customer_note_seen?: boolean;
   slot_from?: string | null; slot_to?: string | null; sunday?: boolean; overdue_at?: string | null;
   carried_from?: string | null; carried_task?: string | null; interior_carried_to?: string | null;
+  // manager data (contract 2026-11-24)
+  condition?: 'light' | 'normal' | 'heavy' | null; issues?: string[]; damage_note?: string | null; delay_reason?: string | null; customer_present?: boolean | null;
+  abandoned?: { at?: string | null; reason: string; minutes: number; tasks_done: string[]; note?: string | null } | null;
   remote?: boolean; first?: boolean; notStarted?: boolean;
 };
+export const COND_LABEL: Record<string, string> = { light: 'Lightly dusty', normal: 'Normally dirty', heavy: 'Very dirty' };
+export const ISSUE_LABEL: Record<string, string> = { no_water: 'No water was available', no_parking: 'Parking problem', key_problem: 'Key or gate problem', car_locked: 'Car was locked', customer_rude: 'Customer behaviour', rain: 'Rain', supplies_low: 'Supplies running low', car_damage: 'Mark already on the car' };
+export const ABANDON_LABEL: Record<string, string> = { 'Baarish': 'Rain', 'Paani khatam': 'Ran out of water', 'Customer ne roka': 'Customer asked to stop', 'Gaadi hat gayi': 'Car was moved', 'Tabiyat / emergency': 'Washer unwell or emergency', 'Saaman khatam': 'Ran out of supplies', 'Aur koi wajah': 'Other reason' };
 export const TASK_LABEL: Record<string, string> = { pressure: 'Pressure wash', foam: 'Foam wash', interior: 'Interior cleaning', tyre: 'Tyre & trim polish', detailing: 'Detailing', dry: 'Dried by hand' };
 export const TASK_SUB: Record<string, string> = { pressure: 'Roof to rims, no cloth touches the paint', foam: 'Snow foam lifts the dust first', interior: 'Mats, dashboard, seats', tyre: 'Satin finish, not greasy', detailing: 'Clay, polish and wax', dry: 'Microfibre only' };
 const KEYMAP: Record<Extra, TaskKey> = { foam: 'foam', int: 'interior', tyre: 'tyre', det: 'detailing' };
@@ -143,7 +149,11 @@ export function fromContract(r: any): WashDoc {
     photos: (Array.isArray(r.photos) ? r.photos : []).map((p: any) => ({ kind: String(p.kind || ''), src: safeImg(p.url), spot: p.spot ? String(p.spot) : undefined, at: hm(p.at) })).filter((p: Photo) => p.src),
     slot_from: hm(r.slot_from), slot_to: hm(r.slot_to), sunday: !!r.sunday, overdue_at: hm(r.overdue_at),
     carried_from: r.carried_from ? String(r.carried_from) : null, carried_task: r.carried_task ? String(r.carried_task) : null, interior_carried_to: r.interior_carried_to ? String(r.interior_carried_to) : null,
-    water_litres: numOrNull(r.water_litres), washer_note: r.washer_note || '', skip_reason: r.skip_reason || '', customer_note_seen: !!r.customer_note_seen, remote: true };
+    water_litres: numOrNull(r.water_litres), washer_note: r.washer_note || '', skip_reason: r.skip_reason || '', customer_note_seen: !!r.customer_note_seen,
+    condition: ['light', 'normal', 'heavy'].includes(r.condition) ? r.condition : null, issues: (Array.isArray(r.issues) ? r.issues : []).map(String).filter((k: string) => ISSUE_LABEL[k]),
+    damage_note: r.damage_note ? String(r.damage_note) : null, delay_reason: r.delay_reason ? String(r.delay_reason) : null, customer_present: typeof r.customer_present === 'boolean' ? r.customer_present : null,
+    abandoned: r.abandoned && typeof r.abandoned === 'object' ? { at: hm(r.abandoned.at), reason: String(r.abandoned.reason || ''), minutes: numOrNull(r.abandoned.minutes) || 0, tasks_done: (Array.isArray(r.abandoned.tasks_done) ? r.abandoned.tasks_done : []).map(String), note: r.abandoned.note ? String(r.abandoned.note) : null } : null,
+    remote: true };
 }
 export function planTasks(c: Car, d: Date): TaskKey[] { const w = extras(c, d); return ['pressure', ...w.map(k => KEYMAP[k]), 'dry'] }
 
