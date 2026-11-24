@@ -530,7 +530,17 @@ function fbView() {
   const l = OPSB.feedback(); if (!l.length) return rsl(OPSB.S.loaded.rat) || empty('No low ratings or open complaints.');
   return `<div class="cardlist">${l.map(x => `<div class="rowc plain"><div class="gr"><b>${x.kind === 'rating' ? '&#9733;'.repeat(num(x.stars)) + ' rating' : 'Complaint' + (x.type ? ': ' + esc(x.type) : '')}</b><span class="s">${esc(x.reg || '')}${x.date ? ' · ' + esc(dShort(x.date)) : ''}${x.washer ? ' · ' + esc(x.washer) : ''}${x.tag ? ' · ' + esc(x.tag) : ''}</span>${x.text ? `<span class="s">${esc(x.text)}</span>` : ''}</div><span class="pill ${x.kind === 'rating' ? 'amber' : 'red'}">${x.kind === 'rating' ? 'Low' : esc(x.status)}</span></div>`).join('')}</div>`;
 }
-const ROUNDS = { board: boardView, att: attView, skips: skipView, int: intView, earn: earnView, fb: fbView };
+function mgrView() {
+  const L = OPSB.S.loaded.washes; if (!L) return rsl(L);
+  const ab = OPSB.abandoned(), cm = OPSB.conditionMix(), ic = OPSB.issueCounts(), dl = OPSB.delays(), dm = OPSB.damage(), none = t => `<div class="mini" style="color:var(--grey)">${t}</div>`;
+  const carBtn = x => `<button type="button" class="rowc" data-act="wash" data-id="${esc(x.id)}"><div class="gr"><b>${esc(x.car)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)}</span>`;
+  return `<div class="sec"><h3>Abandoned jobs</h3></div>` + (ab.length ? `<div class="cardlist">${ab.map(x => carBtn(x) + `<span class="s">${esc(x.reason || 'No reason')} · ${x.minutes} min spent</span><span class="s">Done: ${x.tasks.length ? esc(x.tasks.map(lbl).join(', ')) : 'nothing'}${x.note ? ' · ' + esc(x.note) : ''}</span></div><span class="pill red">Stopped</span></button>`).join('')}</div>` : none('No abandoned jobs on ' + dShort(OPSB.day) + '.'))
+  + `<div class="sec"><h3>Car condition per washer</h3></div>` + (cm.length ? `<div class="cardlist">${cm.map(x => `<div class="rowc plain"><div class="gr"><b>${esc(x.washer)}</b><span class="s">${x.total} cars</span></div><span class="pill">Light ${x.light}</span><span class="pill blue">Normal ${x.normal}</span><span class="pill ${x.heavy ? 'amber' : ''}">Heavy ${x.heavy}</span></div>`).join('')}</div>` : none('No condition recorded yet.'))
+  + `<div class="sec"><h3>Issues by type</h3></div>` + (ic.length ? `<div class="cardlist">${ic.map(x => `<div class="rowc plain"><div class="gr"><b>${esc(x.label)}</b><span class="s">${x.cars.map(c => esc(c.car + ' (' + c.reg + ')')).join(', ')}</span></div><span class="pill amber">${x.cars.length}</span></div>`).join('')}</div>` : none('No issues reported.'))
+  + `<div class="sec"><h3>Delay reasons</h3></div>` + (dl.length ? `<div class="cardlist">${dl.map(x => `<div class="rowc plain"><div class="gr"><b>${esc(x.car)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)}</span><span class="s">${esc(x.reason)}</span></div></div>`).join('')}</div>` : none('No delay reasons.'))
+  + `<div class="sec"><h3>Damage notes</h3></div>` + (dm.length ? `<div class="cardlist">${dm.map(x => `<div class="rowc plain" style="align-items:flex-start"><div class="gr"><b>${esc(x.car)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)}</span><span class="s">${esc(x.note)}</span><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${x.photos.filter(p => safeSrc(p.src)).map(p => `<img src="${esc(p.src)}" alt="Issue photo" data-act="zoom" data-src="${esc(p.src)}" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:10px;cursor:pointer">`).join('')}</div></div></div>`).join('')}</div>` : none('No damage notes.'));
+}
+const ROUNDS = { mgr: mgrView, board: boardView, att: attView, skips: skipView, int: intView, earn: earnView, fb: fbView };
 function washSheet(el) {
   const w = OPSB.S.washes[UI.sheet.id]; if (!w) return setHTML(R('sum', el), empty('This wash is gone.'));
   const ph = OPSB.photos(w).filter(p => safeSrc(p.src)), grp = (title, list) => list.length ? `<div class="sh-sec">${title}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${list.map(p => `<figure style="margin:0;width:104px"><img src="${esc(p.src)}" alt="${esc(title)}" data-act="zoom" data-src="${esc(p.src)}" loading="lazy" style="width:104px;height:104px;object-fit:cover;border-radius:12px;cursor:pointer"><figcaption style="font-size:11px;color:var(--grey)">${p.spot ? esc(SPOTS[p.spot] || lbl(p.spot)) + ' · ' : ''}${esc(OPS.fmtTime(p.at))}${p.pending_upload ? ' · uploading' : ''}</figcaption></figure>`).join('')}</div>` : '';
@@ -645,7 +655,7 @@ const SECS = {
       <div class="seg" role="tablist" data-r="rtabs"></div><div data-r="rbody"></div>`,
     init() { const d = $('#rDay'); d.value = OPSB.day; d.onchange = () => d.value && OPSB.setDay(d.value) },
     update(m = $('#main')) {
-      const T = [['board', 'Board'], ['att', 'Attendance'], ['skips', 'Skips'], ['int', 'Interiors'], ['earn', 'Earnings'], ['fb', 'Low ratings']];
+      const T = [['board', 'Board'], ['mgr', 'Issues'], ['att', 'Attendance'], ['skips', 'Skips'], ['int', 'Interiors'], ['earn', 'Earnings'], ['fb', 'Low ratings']];
       setHTML(R('rtabs', m), T.map(([v, l]) => `<button type="button" role="tab" aria-selected="${UI.rd.tab === v}" class="${UI.rd.tab === v ? 'on' : ''}" data-act="rtab" data-v="${v}">${l}</button>`).join(''));
       const d = $('#rDay', m); if (d && document.activeElement !== d && d.value !== OPSB.day) d.value = OPSB.day;
       setHTML(R('rbody', m), ROUNDS[UI.rd.tab]());

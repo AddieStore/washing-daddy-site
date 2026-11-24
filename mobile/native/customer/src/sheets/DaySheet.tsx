@@ -7,7 +7,7 @@ import { C, SP } from '../theme';
 import { Txt as KTxt, TxtProps } from '../ui/kit';
 import { P, NUM, Tap, POutline } from '../ui/pr';
 import { IMG } from '../img';
-import { SPOT_LABEL, Photo } from '../data/model';
+import { SPOT_LABEL, Photo, COND_LABEL, ISSUE_LABEL, ABANDON_LABEL, TASK_LABEL } from '../data/model';
 import { TODAY, fmt, iso, parse, ampm, t2m, hm } from '../data/dates';
 import { car, doc, dayDetail, realAcct, photosOf, carryNote, ratedToday, requestsFor, history7, activeStage } from '../state';
 
@@ -33,11 +33,15 @@ type Model = {
   washer: string; photo: any; car: string; plate: string; minutes: number | null; rating: { stars: number; tag?: string } | null;
   before: Ph | null; after: Ph | null; spots: { key: string; ph: Ph | null }[]; flagged: Ph[]; showSpots: boolean; photoCount: number;
   on: string | null; arr: string | null; st: string | null; fin: string | null; tasks: Task[]; water: number | null; note: string | null; skip: string | null; carry: string | null; acks: Ack[]; live: boolean;
+  cond: string | null; issues: string[]; damage: string | null; stopped: { reason: string; minutes: number; tasks: string[]; note: string | null } | null;
 };
 
 const m2 = (m: number) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(Math.round(m % 60)).padStart(2, '0');
 
-function buildModel(date: string): Model {
+function buildModel(date: string): Model { return { cond: null, issues: [], damage: null, stopped: null, ...build0(date) } as Model }
+const reasonOf = (r: string) => ABANDON_LABEL[r] || r;
+type Part = Omit<Model, 'cond' | 'issues' | 'damage' | 'stopped'> & Partial<Pick<Model, 'cond' | 'issues' | 'damage' | 'stopped'>>;
+function build0(date: string): Part {
   const c = car(), real = realAcct(), dt = parse(date), ti = iso(TODAY), isToday = date === ti, dd = dayDetail(date, c);
   const base = { date, title: dd.title, washer: dd.washer || c.washer, car: c.name, plate: c.plate || '' };
   const empty = { before: null, after: null, spots: [] as Model['spots'], flagged: [] as Ph[], showSpots: false, photoCount: 0, on: null, arr: null, st: null, fin: null, tasks: [] as Task[], water: null, note: null, skip: null, carry: null, acks: [] as Ack[], live: false, minutes: null, rating: null, photo: null };
@@ -75,14 +79,27 @@ function buildModel(date: string): Model {
     const skipped = d.status === 'skipped';
     const live = !!activeStage(d);
     const photoCount = (before ? 1 : 0) + (after ? 1 : 0) + sp.filter(s => s.ph).length + flagged.length;
-    return { ...base, status: skipped ? 'skipped' : live ? 'live' : d.status === 'done' ? 'done' : 'upcoming', badge: skipped ? 'Skipped' : live ? 'Live now' : d.status === 'done' ? 'Done' : 'Scheduled',
-      washer: d.washer?.name || base.washer, photo: d.washer?.photo_url ? { uri: d.washer.photo_url } : real ? null : IMG.washerCut, minutes: d.minutes || null, rating: ratingFor(),
+    const ab = d.abandoned ? { reason: reasonOf(d.abandoned.reason), minutes: d.abandoned.minutes || 0, tasks: (d.abandoned.tasks_done || []).map(k => TASK_LABEL[k] || k), note: d.abandoned.note || null } : null;
+    const x = { cond: d.condition ? COND_LABEL[d.condition] : null, issues: (d.issues || []).map(k => ISSUE_LABEL[k]).filter(Boolean), damage: d.damage_note || null, stopped: ab };
+    return { ...base, ...x, status: skipped ? 'skipped' : live ? 'live' : d.status === 'done' ? 'done' : 'upcoming', badge: ab ? 'Wash could not be completed' : skipped ? 'Skipped' : live ? 'Live now' : d.status === 'done' ? 'Done' : 'Scheduled',
+      washer: d.washer?.name || base.washer, photo: d.washer?.photo_url ? { uri: d.washer.photo_url } : real ? null : IMG.washerCut, minutes: ab ? ab.minutes || null : d.minutes || null, rating: ratingFor(),
       before, after, spots: sp, flagged, showSpots: sunday || hasSpot || (demoToday && sunday), photoCount, on: d.on_the_way_at || null, arr: d.arrived_at || null, st: d.started_at || null, fin: d.finished_at || null,
-      tasks, water: d.water_litres || null, note: d.washer_note || null, skip: skipped ? d.skip_reason || 'Your washer marked this day as skipped.' : null, carry, acks, live };
+      tasks: ab ? tasks.filter(t => t.done) : tasks, water: d.water_litres || null, note: d.washer_note || null, skip: ab ? null : skipped ? d.skip_reason || 'Your washer marked this day as skipped.' : null, carry, acks, live };
   }
 
   // ---- demo account, an earlier day: sample data so every part of the sheet shows
   if (dd.paused) return { ...base, ...empty, status: 'paused', badge: 'Paused', skip: 'Paused by you. The day is added to the end of your plan.', acks };
+  const ago = Math.round((TODAY.getTime() - dt.getTime()) / 864e5), mins0 = c.mins || 11, fin0 = t2m(dd.time.replace(/ [AP]M/, '')) || 398;
+  if (ago === 2) { // demo: a wash that was stopped halfway
+    const st0 = fin0 - mins0, done = dd.steps.slice(0, 2).map((s, i) => ({ key: keyOf(s.label), label: s.label, done: true, at: m2(st0 + 3 * (i + 1)) }));
+    return { ...base, ...empty, status: 'skipped', badge: 'Wash could not be completed', photo: IMG.washerCut, minutes: 6, rating: null, st: m2(st0), on: m2(st0 - 9), arr: m2(st0 - 1), tasks: done,
+      stopped: { reason: 'Rain', minutes: 6, tasks: done.map(t => t.label), note: null }, cond: COND_LABEL.normal, acks, carry: 'Nothing was lost. Your washer comes back for your car next morning.', live: false };
+  }
+  if (ago === 4) { // demo: finished, with a few things the washer noticed
+    const r = build1(date); return { ...r, cond: COND_LABEL.heavy, issues: [ISSUE_LABEL.no_parking, ISSUE_LABEL.car_damage], damage: 'Small scratch on the rear bumper, seen before the wash.' };
+  }
+  return build1(date);
+  function build1(date: string): Part {
   const hist = history7(c).find(h => iso(h[0]) === date);
   if (hist && !/ · \d+ min$/.test(hist[1])) return { ...base, ...empty, status: 'skipped', badge: 'Skipped', skip: hist[1], carry: /locked|key/i.test(hist[1]) ? 'Nothing was lost. Tomorrow the washer comes back for your car.' : null, photo: IMG.washerCut, rating: null, acks };
   if (date > ti) return { ...base, ...empty, status: 'upcoming', badge: 'Upcoming', skip: `${dd.washer} comes between 5:30 and 7:30 AM. Photos and each step show here on the day.`, acks };
@@ -95,7 +112,8 @@ function buildModel(date: string): Model {
   const before: Ph = { src: IMG.before, label: 'Before', at: m2(start - 1) }, after: Ph = { src: IMG.after, label: 'After', at: m2(fin) };
   return { ...base, status: 'done', badge: 'Done', photo: IMG.washerCut, minutes: mins, rating: ratingFor(), before, after, spots: sp, flagged: [], showSpots: sunday, photoCount: 2 + (sunday ? 5 : 0),
     on: m2(start - 9), arr: m2(start - 1), st: m2(start), fin: m2(fin), tasks, water: 7, note: h5(date) % 3 === 0 ? 'All good today. Gate was open, parked in the usual spot.' : null, skip: null,
-    carry: dt.getDay() === 1 ? `Sunday interior done ${fmt(dt, { weekday: 'long' })}` : null, acks, live: false };
+    carry: dt.getDay() === 1 ? `Sunday interior done ${fmt(dt, { weekday: 'long' })}` : null, acks, live: false, cond: COND_LABEL.normal, issues: [], damage: null, stopped: null };
+  }
 }
 
 /* ---------- pieces ---------- */
@@ -112,7 +130,7 @@ const Stat = ({ v, l }: { v: string; l: string }) => (
   </View>);
 
 function Hero({ m }: { m: Model }) {
-  const badgeBg = m.status === 'live' ? SAFFRON : m.status === 'done' ? '#DCFCE7' : 'rgba(255,255,255,0.9)', badgeFg = m.status === 'live' ? '#3B2A00' : m.status === 'done' ? '#15803D' : '#525252';
+  const badgeBg = m.stopped ? '#FEE2E2' : m.status === 'live' ? SAFFRON : m.status === 'done' ? '#DCFCE7' : 'rgba(255,255,255,0.9)', badgeFg = m.stopped ? '#B91C1C' : m.status === 'live' ? '#3B2A00' : m.status === 'done' ? '#15803D' : '#525252';
   const initials = (m.washer || 'W').trim().slice(0, 1).toUpperCase();
   return (
     <View style={{ borderRadius: 20, overflow: 'hidden', padding: 16 }}>
@@ -126,6 +144,7 @@ function Hero({ m }: { m: Model }) {
         <Txt weight={600} size={20} color="#fff" style={{ flex: 1 }}>{m.title}</Txt>
         <View style={{ backgroundColor: badgeBg, borderRadius: 10, paddingVertical: 4, paddingHorizontal: 10 }}><Txt weight={600} size={12} color={badgeFg}>{m.badge}</Txt></View>
       </View>
+      {m.stopped ? <Txt size={13} color="rgba(255,255,255,0.9)" style={{ marginTop: 8 }}>{`Wash could not be completed: ${m.stopped.reason} (${m.stopped.minutes} min spent)`}</Txt> : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14 }}>
         <View style={{ width: 52, height: 52, borderRadius: 26, borderWidth: 2, borderColor: SAFFRON, overflow: 'hidden', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
           {m.photo ? <Image source={m.photo} resizeMode="cover" accessibilityLabel={m.washer + ' photo'} style={{ width: 52, height: 52 }} /> : <Txt weight={600} size={20} color={C.violet}>{initials}</Txt>}
@@ -205,7 +224,8 @@ function nodesOf(m: Model): Node[] {
   if (m.arr) raw.push({ key: 'arr', ...STAGE_STYLE.arrived, title: 'Reached your car', at: m.arr, done: true });
   if (m.st) raw.push({ key: 'st', ...STAGE_STYLE.started, title: 'Wash started', at: m.st, done: true });
   m.tasks.forEach((t, i) => { const s = TASK_STYLE[t.key] || TASK_STYLE.other; raw.push({ key: 't' + i, c: s.c, i: s.i, title: t.label, sub: t.done ? undefined : 'Next', at: t.at, done: t.done }); });
-  if (m.fin) raw.push({ key: 'fin', ...STAGE_STYLE.finished, title: m.minutes ? `Finished in ${m.minutes} min` : 'Finished', sub: 'Photos sent here and on WhatsApp', at: m.fin, done: true });
+  if (m.stopped) raw.push({ key: 'stop', c: '#DC2626', i: '⏹', title: 'Stopped', sub: `${m.stopped.reason} · ${m.stopped.minutes} min spent`, at: null, done: true });
+  if (m.fin && !m.stopped) raw.push({ key: 'fin', ...STAGE_STYLE.finished, title: m.minutes ? `Finished in ${m.minutes} min` : 'Finished', sub: 'Photos sent here and on WhatsApp', at: m.fin, done: true });
   let prev: string | null = null;
   return raw.map(n => { const g = n.at && prev ? dur(prev, n.at) : null; if (n.at) prev = n.at; return { ...n, gap: g }; });
 }
@@ -254,7 +274,7 @@ function Stem({ m }: { m: Model }) {
             <Defs><LinearGradient id="stem" x1="0" y1="0" x2="0" y2="1">{stops.map((s, i) => <Stop key={i} offset={String(s.o)} stopColor={s.c} />)}</LinearGradient></Defs>
             <Rect x={0} y={0} width={4} height={h - 36} rx={2} fill="url(#stem)" opacity={0.85} />
           </Svg>) : null}
-        {nodes.map((n, i) => <StemRow key={n.key} n={n} i={i} last={i === nodes.length - 1} pulse={i === cur && (m.live || n.key === 'fin')} />)}
+        {nodes.map((n, i) => <StemRow key={n.key} n={n} i={i} last={i === nodes.length - 1} pulse={i === cur && (m.live || n.key === 'fin' || n.key === 'stop')} />)}
       </View>
     </Card>);
 }
@@ -271,6 +291,10 @@ function Details({ m }: { m: Model }) {
     <Card>
       <Head icon="📋" title="Details" />
       {m.skip ? <DRow icon={m.status === 'paused' ? '⏸' : m.status === 'skipped' ? '🚫' : 'ℹ'} tone="#EA580C" title={m.status === 'skipped' ? 'No wash this day' : m.status === 'paused' ? 'Paused' : 'Status'} sub={m.skip} /> : null}
+      {m.stopped ? <DRow icon="⏹" tone="#DC2626" title="Wash could not be completed" sub={`${m.stopped.reason} · ${m.stopped.minutes} min spent${m.stopped.tasks.length ? '. Done: ' + m.stopped.tasks.join(', ') : '. No steps were finished.'}${m.stopped.note ? '. ' + m.stopped.note : ''}`} /> : null}
+      {m.cond ? <DRow icon="🚗" tone="#7C3AED" title="Car condition" sub="As seen by your washer on arrival" right={m.cond} /> : null}
+      {m.issues.length ? <DRow icon="⚠" tone="#EA580C" title="What your washer ran into" sub={m.issues.join(', ')} /> : null}
+      {m.damage ? <DRow icon="🔍" tone="#DC2626" title="Mark noted before the wash" sub={m.damage} /> : null}
       {m.carry ? <DRow icon="🧽" tone="#F59E0B" title={m.carry} sub="Interior is never lost on a Sunday" /> : null}
       {m.tasks.length ? <View style={{ marginTop: 4 }}><Txt weight={600} size={12} color={P.muted} style={{ marginTop: 4 }}>TASKS DONE</Txt>
         {m.tasks.map((t, i) => <DRow key={i} icon={t.done ? '✓' : '○'} tone={(TASK_STYLE[t.key] || TASK_STYLE.other).c} title={t.label} right={t.at ? ampm(t.at) : t.done ? undefined : 'Pending'} />)}</View> : null}
