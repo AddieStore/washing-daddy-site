@@ -1,39 +1,31 @@
-// "Where he works": a 3D map of the societies on his round, in the brand colours. MapLibre GL JS (pinned from a CDN)
-// with free OpenFreeMap vector tiles (no key anywhere), restyled at runtime: lavender land, violet water tint, white
-// roads with violet casing, mint parks, extruded violet buildings. It runs in a WebView on the phone and in an
-// iframe on web. If the script or the tiles do not arrive within 6 seconds, a drawn static map (same markers, built from
-// the same lat/lng) stays on screen instead, so the screen never looks broken.
+// "Where he works": the societies on his round on a real Google map, in the brand colours (lavender land, violet markers
+// with a car-count badge, mint 'me' dot). The Maps JavaScript API runs in a WebView on the phone (key from extra.googleMapsKey,
+// set from the GOOGLE_MAPS_API_KEY build secret) and in an iframe on web. Why not react-native-maps: a WebView is already
+// in the app and adds no native dependency. If the key is missing, rejected, or the script does not arrive within 6 seconds,
+// a drawn static map (same markers, from the same lat/lng) stays on screen. Under the map a button always opens Google Maps.
 import React, { useMemo } from 'react';
-import { Platform, View } from 'react-native';
+import { Linking, Platform, Pressable, Text, View } from 'react-native';
+import Constants from 'expo-constants';
 import { WebView } from 'react-native-webview';
 import { useReducedMotion, useTheme } from '../ui';
 import { t } from '../lib/i18n';
 import type { LatLng, Place } from '../lib/places';
 
-export const MAPLIBRE_VERSION = '4.7.1';
 export const MAP_TIMEOUT_MS = 6000;
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
+const KEY = String((Constants.expoConfig?.extra as { googleMapsKey?: string } | undefined)?.googleMapsKey || '').trim();
 
 const PAGE = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@__VER__/dist/maplibre-gl.css">
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:__LAND__;font-family:-apple-system,Roboto,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}
 #fb,#map{position:absolute;inset:0;width:100%;height:100%}
 #map{opacity:0;transition:opacity .5s}
 #map.on{opacity:1}
-.mk{position:relative;width:38px;height:38px;border-radius:50%;background:#5409DA;border:3px solid #fff;box-shadow:0 3px 10px rgba(17,17,20,.45);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
-.mk svg{width:16px;height:16px}
-.bd{position:absolute;top:-9px;right:-9px;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:10px;background:#fff;color:#5409DA;border:2px solid #5409DA;font:800 11px/16px sans-serif;text-align:center}
-.me{width:20px;height:20px;border-radius:50%;background:#14C08A;border:3px solid #fff;box-shadow:0 0 0 0 rgba(20,192,138,.55);animation:pl 2s infinite}
-.noanim .me{animation:none}
-@keyframes pl{70%{box-shadow:0 0 0 14px rgba(20,192,138,0)}100%{box-shadow:0 0 0 0 rgba(20,192,138,0)}}
 #card{position:absolute;left:10px;right:10px;bottom:10px;max-height:46%;overflow:auto;background:__CARD__;color:__INK__;border-radius:18px;padding:12px 14px;box-shadow:0 6px 24px rgba(17,17,20,.28);display:none;z-index:5}
 #card h4{margin:0 28px 6px 0;font:700 14px/18px sans-serif}
 #card .r{display:flex;justify-content:space-between;gap:10px;font:600 13px/24px sans-serif;border-top:1px solid __LINE__}
 #card .r span:last-child{opacity:.7;text-align:right}
 #x{position:absolute;top:6px;right:6px;width:30px;height:30px;border:0;border-radius:15px;background:__LINE__;color:__INK__;font:700 16px/30px sans-serif;cursor:pointer}
 #note{position:absolute;top:10px;left:10px;right:10px;z-index:4;display:none;background:__CARD__;color:__INK__;border-radius:12px;padding:6px 10px;font:600 12px/16px sans-serif;box-shadow:0 2px 10px rgba(17,17,20,.2)}
-.maplibregl-ctrl-attrib{font-size:10px}
 </style></head><body>
 <svg id="fb" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice"></svg>
 <div id="map"></div>
@@ -44,12 +36,11 @@ var CFG=__CFG__;
 var D=CFG.dark,P=D?{land:'#17171A',land2:'#1E1E22',water:'#1F2A3A',park:'#12362F',road:'#33333A',casing:'#52525B',minor:'#26262B',label:'#D4D4D8',b0:'#8A55F5',b1:'#6E33F0',b2:'#4C1DB8'}
  :{land:'#F1F1F3',land2:'#E9E9EC',water:'#CFDCEB',park:'#D3F1E3',road:'#FFFFFF',casing:'#C4C4CC',minor:'#F7F7F8',label:'#3F3F46',b0:'#6A2BE6',b1:'#5409DA',b2:'#3D07A8'};
 var NS='http://www.w3.org/2000/svg',map=null,ready=false,failed=false,pts=CFG.places.slice();
-if(CFG.reduce)document.body.className='noanim';
 function el(n,a,p){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
 function showCard(pl){document.getElementById('ch').textContent=pl.label;var l=document.getElementById('cl');l.innerHTML='';
  pl.cars.forEach(function(c){var r=document.createElement('div');r.className='r';var a=document.createElement('span');a.textContent=c.plate;var b=document.createElement('span');b.textContent=c.model;r.appendChild(a);r.appendChild(b);l.appendChild(r)});
- document.getElementById('card').style.display='block';paused=true}
-document.getElementById('x').onclick=function(){document.getElementById('card').style.display='none';resume(1500)};
+ document.getElementById('card').style.display='block'}
+document.getElementById('x').onclick=function(){document.getElementById('card').style.display='none'};
 /* ---- static fallback, drawn from the same lat/lng ---- */
 function drawFallback(){
  var s=document.getElementById('fb'),W=360,H=300;s.setAttribute('viewBox','0 0 '+W+' '+H);s.innerHTML='';
@@ -74,87 +65,41 @@ function drawFallback(){
 }
 drawFallback();
 function note(msg){var n=document.getElementById('note');n.textContent=msg;n.style.display='block'}
-function fail(){if(ready||failed)return;failed=true;try{if(map)map.remove()}catch(e){}document.getElementById('map').style.display='none';note(CFG.tr.offline)}
+function fail(){if(ready||failed)return;failed=true;document.getElementById('map').style.display='none';note(CFG.tr.offline)}
 setTimeout(fail,__MS__);
-/* ---- 3D map ---- */
-var paused=false,rt=null,last=0;
-function resume(ms){clearTimeout(rt);rt=setTimeout(function(){paused=false},ms)}
-function spin(ts){if(ready&&!paused&&!CFG.reduce&&ts-last>33){if(last)map.setBearing(map.getBearing()+(ts-last)*.002);last=ts}else if(!last||paused)last=ts;requestAnimationFrame(spin)}
-function sp(id,k,v){try{map.setPaintProperty(id,k,v)}catch(e){}}
-function restyle(){
- var st=map.getStyle(),bsrc=null,firstSym=null;
- st.layers.forEach(function(l){
-  var id=l.id,sl=l['source-layer']||'',ty=l.type;
-  try{
-   if(sl==='building'&&l.source)bsrc=l.source;
-   if(ty==='symbol'&&!firstSym)firstSym=id;
-   if(ty==='background')sp(id,'background-color',P.land);
-   else if(ty==='fill'){
-    if(sl==='water')sp(id,'fill-color',P.water);
-    else if(sl==='building')map.setLayoutProperty(id,'visibility','none');
-    else if(sl==='park'||/park|grass|wood|forest|garden|pitch|golf|cemetery/.test(id)){sp(id,'fill-color',P.park);sp(id,'fill-opacity',1)}
-    else if(sl==='transportation')sp(id,'fill-color',P.road);
-    else{sp(id,'fill-color',P.land2)}
-   }else if(ty==='line'){
-    if(sl==='waterway')sp(id,'line-color',P.water);
-    else if(sl==='transportation'){sp(id,'line-color',/casing/.test(id)?P.casing:/rail|ferry|path|track|pedestrian|steps/.test(id)?P.minor:P.road);sp(id,'line-opacity',1)}
-    else if(sl==='boundary')sp(id,'line-color',P.casing);
-   }else if(ty==='symbol'){
-    if(/^poi|housenumber|^airport|aerodrome/.test(id))map.setLayoutProperty(id,'visibility','none');
-    else{sp(id,'text-color',P.label);sp(id,'text-halo-color',P.land);sp(id,'icon-opacity',0)}
-   }else if(ty==='fill-extrusion')map.setLayoutProperty(id,'visibility','none');
-  }catch(e){}
- });
- var h=['coalesce',['get','render_height'],8];
- try{map.addLayer({id:'wd-3d',type:'fill-extrusion',source:bsrc||'openmaptiles','source-layer':'building',minzoom:13,
-  paint:{'fill-extrusion-color':['interpolate',['linear'],h,0,P.b0,25,P.b1,90,P.b2],'fill-extrusion-height':h,
-  'fill-extrusion-base':['coalesce',['get','render_min_height'],0],'fill-extrusion-opacity':.85,'fill-extrusion-vertical-gradient':true}},firstSym||undefined)}catch(e){}
- try{map.setLight({anchor:'viewport',color:'#ffffff',intensity:.4,position:[1.2,200,45]})}catch(e){}
-}
-function mark(){
- pts.forEach(function(p){var e=document.createElement('div');e.className='mk';e.setAttribute('role','button');e.setAttribute('aria-label',p.label);
-  e.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.4" fill="#fff"/></svg>';
-  var b=document.createElement('div');b.className='bd';b.textContent=p.cars.length;e.appendChild(b);
-  e.addEventListener('click',function(ev){ev.stopPropagation();showCard(p)});
-  new maplibregl.Marker({element:e}).setLngLat([p.lng,p.lat]).addTo(map)});
- if(CFG.me){var m=document.createElement('div');m.className='me';m.title=CFG.tr.you;new maplibregl.Marker({element:m}).setLngLat([CFG.me.lng,CFG.me.lat]).addTo(map)}
-}
-function start(){
- if(!window.maplibregl)return fail();
- var q=pts.concat(CFG.me?[CFG.me]:[]);if(!q.length)return fail();
+/* ---- Google map ---- */
+var GS=D?[{elementType:'geometry',stylers:[{color:'#17171A'}]},{elementType:'labels.icon',stylers:[{visibility:'off'}]},{elementType:'labels.text.fill',stylers:[{color:'#A1A1AA'}]},{elementType:'labels.text.stroke',stylers:[{color:'#17171A'},{weight:3}]},{featureType:'poi',stylers:[{visibility:'off'}]},{featureType:'poi.park',stylers:[{visibility:'on'}]},{featureType:'poi.park',elementType:'geometry',stylers:[{color:'#12362F'}]},{featureType:'poi.park',elementType:'labels',stylers:[{visibility:'off'}]},{featureType:'road',elementType:'geometry.fill',stylers:[{color:'#33333A'}]},{featureType:'road',elementType:'geometry.stroke',stylers:[{color:'#52525B'}]},{featureType:'transit',stylers:[{visibility:'off'}]},{featureType:'water',elementType:'geometry',stylers:[{color:'#1F2A3A'}]}]
+ :[{elementType:'geometry',stylers:[{color:'#F1F1F3'}]},{elementType:'labels.icon',stylers:[{visibility:'off'}]},{elementType:'labels.text.fill',stylers:[{color:'#3F3F46'}]},{elementType:'labels.text.stroke',stylers:[{color:'#F7F7F8'},{weight:3}]},{featureType:'poi',stylers:[{visibility:'off'}]},{featureType:'poi.park',stylers:[{visibility:'on'}]},{featureType:'poi.park',elementType:'geometry',stylers:[{color:'#D3F1E3'}]},{featureType:'poi.park',elementType:'labels',stylers:[{visibility:'off'}]},{featureType:'landscape.man_made',elementType:'geometry.fill',stylers:[{color:'#E4DBFA'}]},{featureType:'road',elementType:'geometry.fill',stylers:[{color:'#FFFFFF'}]},{featureType:'road',elementType:'geometry.stroke',stylers:[{color:'#C9B6F5'}]},{featureType:'transit',stylers:[{visibility:'off'}]},{featureType:'water',elementType:'geometry',stylers:[{color:'#CFDCEB'}]}];
+function pin(n){var svg='<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><circle cx="24" cy="26" r="18" fill="#5409DA" stroke="#fff" stroke-width="3"/><path d="M24 36s7-6 7-11.5a7 7 0 0 0-14 0C17 30 24 36 24 36z" fill="none" stroke="#fff" stroke-width="2.2"/><circle cx="24" cy="24.5" r="2.4" fill="#fff"/><circle cx="39" cy="11" r="10" fill="#fff" stroke="#5409DA" stroke-width="2.5"/><text x="39" y="15.2" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="800" fill="#5409DA">'+n+'</text></svg>';return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg)}
+function initMap(){
+ if(failed)return;
+ var q=pts.concat(CFG.me?[CFG.me]:[]);if(!q.length||!window.google||!google.maps)return fail();
  try{
-  map=new maplibregl.Map({container:'map',style:CFG.style,center:[q[0].lng,q[0].lat],zoom:14.5,pitch:60,bearing:-18,maxPitch:75,fadeDuration:0,attributionControl:false});
- }catch(e){return fail()}
- map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-left');
- var styled=false;
- map.on('error',function(e){if(!styled&&!ready)fail()});
- map.on('style.load',function(){restyle();styled=true});
- map.on('load',function(){
-  if(failed)return;ready=true;document.getElementById('map').className='on';mark();
-  document.getElementById('fb').style.display='none';
-  try{
-   if(q.length>1){var b=new maplibregl.LngLatBounds();q.forEach(function(p){b.extend([p.lng,p.lat])});map.fitBounds(b,{padding:{top:70,bottom:80,left:50,right:50},maxZoom:15.6,pitch:60,bearing:-18,duration:0})}
-   else map.jumpTo({center:[q[0].lng,q[0].lat],zoom:15.4,pitch:60,bearing:-18});
-  }catch(e){}
-  requestAnimationFrame(spin);
- });
- ['mousedown','touchstart','wheel'].forEach(function(ev){document.getElementById('map').addEventListener(ev,function(){paused=true},{passive:true})});
- ['mouseup','touchend','touchcancel'].forEach(function(ev){document.getElementById('map').addEventListener(ev,function(){resume(5000)},{passive:true})});
+  map=new google.maps.Map(document.getElementById('map'),{center:{lat:q[0].lat,lng:q[0].lng},zoom:15,styles:GS,backgroundColor:P.land,disableDefaultUI:true,zoomControl:true,gestureHandling:'greedy',clickableIcons:false,keyboardShortcuts:false,rotateControl:false,tilt:0});
+  pts.forEach(function(p){var m=new google.maps.Marker({position:{lat:p.lat,lng:p.lng},map:map,title:p.label,icon:{url:pin(p.cars.length),scaledSize:new google.maps.Size(50,50),anchor:new google.maps.Point(24,26)}});m.addListener('click',function(){showCard(p)})});
+  if(CFG.me)new google.maps.Marker({position:{lat:CFG.me.lat,lng:CFG.me.lng},map:map,title:CFG.tr.you,clickable:false,zIndex:1,icon:{path:google.maps.SymbolPath.CIRCLE,scale:8,fillColor:'#14C08A',fillOpacity:1,strokeColor:'#fff',strokeWeight:3}});
+  if(q.length>1){var b=new google.maps.LatLngBounds();q.forEach(function(p){b.extend({lat:p.lat,lng:p.lng})});map.fitBounds(b,{top:60,bottom:60,left:40,right:40});google.maps.event.addListenerOnce(map,'idle',function(){if(map.getZoom()>16)map.setZoom(16)})}
+  map.addListener('click',function(){document.getElementById('card').style.display='none'});
+  google.maps.event.addListenerOnce(map,'tilesloaded',function(){if(failed)return;ready=true;document.getElementById('map').className='on';document.getElementById('fb').style.display='none'});
+ }catch(e){fail()}
 }
-var sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/maplibre-gl@__VER__/dist/maplibre-gl.js';sc.onload=start;sc.onerror=fail;document.head.appendChild(sc);
+window.initMap=initMap;
+window.gm_authFailure=function(){ready=false;fail()};
+if(!CFG.key)fail();
+else{var sc=document.createElement('script');sc.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(CFG.key)+'&callback=initMap&loading=async';sc.async=true;sc.onerror=fail;document.head.appendChild(sc)}
 </script></body></html>`;
 
 export type MapProps = { places: Place[]; me?: LatLng | null; height?: number };
 
-export function mapHtml(places: Place[], me: LatLng | null | undefined, dark: boolean, reduce: boolean, opts?: { style?: string; ms?: number; lib?: string }) {
+export function mapHtml(places: Place[], me: LatLng | null | undefined, dark: boolean, reduce: boolean, opts?: { key?: string; ms?: number }) {
   const cfg = {
     places: places.map((p) => ({ id: p.id, label: p.label, lat: p.lat, lng: p.lng, cars: p.cars })),
-    me: me || null, dark, reduce, style: opts?.style || STYLE_URL,
+    me: me || null, dark, reduce, key: opts?.key ?? KEY,
     tr: { offline: t('Map nahi khula. Simple naksha dikha rahe hain'), you: t('Meri location') },
   };
   const json = JSON.stringify(cfg).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   const c = dark ? { land: '#17171A', card: '#1E1E22', ink: '#F4F4F5', line: 'rgba(255,255,255,.14)' } : { land: '#F1F1F3', card: '#FFFFFF', ink: '#111114', line: 'rgba(17,17,20,.12)' };
-  let html = PAGE.replace(/__VER__/g, opts?.lib || MAPLIBRE_VERSION).replace('__MS__', String(opts?.ms ?? MAP_TIMEOUT_MS))
+  let html = PAGE.replace('__MS__', String(opts?.ms ?? MAP_TIMEOUT_MS))
     .replace(/__LAND__/g, c.land).replace(/__CARD__/g, c.card).replace(/__INK__/g, c.ink).replace(/__LINE__/g, c.line);
   html = html.replace('__CFG__', () => json);
   return html;
@@ -163,23 +108,47 @@ export function mapHtml(places: Place[], me: LatLng | null | undefined, dark: bo
 export default function MapView({ places, me, height = 340 }: MapProps) {
   const { dark } = useTheme();
   const reduce = useReducedMotion();
-  const html = useMemo(() => mapHtml(places, me, dark, reduce), [places, me, dark, reduce]);
+  // memoised on values, not object identity: a new html/source object on every render makes the WebView reload in a loop
+  const sig = JSON.stringify([places, me?.lat, me?.lng, dark, reduce]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const html = useMemo(() => mapHtml(places, me, dark, reduce), [sig]);
+  const source = useMemo(() => ({ html, baseUrl: 'https://washingdaddy.com/' }), [html]);
+  const first = places[0] || null;
+  const open = () => {
+    const q = first ? `${first.lat},${first.lng}` : me ? `${me.lat},${me.lng}` : '';
+    if (!q) return;
+    const url = `https://www.google.com/maps/search/?api=1&query=${q}`;
+    if (Platform.OS === 'web') (globalThis as { open?: (u: string, t: string) => void }).open?.(url, '_blank');
+    else Linking.openURL(url).catch(() => {});
+  };
   const box = { height, borderRadius: 16, overflow: 'hidden' as const, backgroundColor: dark ? '#17171A' : '#F1F1F3' };
   const label = t('Jahan aap kaam karte ho');
+  const btn = (
+    <Pressable onPress={open} accessibilityRole="link" accessibilityLabel={t('Google Maps mein kholo')}
+      style={{ marginTop: 10, minHeight: 48, borderRadius: 14, borderWidth: 2, borderColor: '#5409DA', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
+      <Text style={{ color: dark ? '#C9B6F5' : '#5409DA', fontSize: 15, fontWeight: '700' }}>{t('Google Maps mein kholo')}</Text>
+    </Pressable>
+  );
   if (Platform.OS === 'web') {
     return (
-      <View style={box} accessibilityLabel={label}>
-        {React.createElement('iframe', { title: label, srcDoc: html, sandbox: 'allow-scripts', style: { border: 0, width: '100%', height: '100%', display: 'block' } })}
+      <View>
+        <View style={box} accessibilityLabel={label}>
+          {React.createElement('iframe', { title: label, srcDoc: html, sandbox: 'allow-scripts', style: { border: 0, width: '100%', height: '100%', display: 'block' } })}
+        </View>
+        {btn}
       </View>
     );
   }
   return (
+    <View>
     <View style={box} accessibilityLabel={label}>
       <WebView
-        originWhitelist={['*']} source={{ html, baseUrl: 'https://washingdaddy.com/' }} javaScriptEnabled domStorageEnabled
+        originWhitelist={['*']} source={source} javaScriptEnabled domStorageEnabled
         scrollEnabled={false} nestedScrollEnabled bounces={false} overScrollMode="never" setSupportMultipleWindows={false}
         style={{ flex: 1, backgroundColor: 'transparent' }}
       />
+    </View>
+    {btn}
     </View>
   );
 }
