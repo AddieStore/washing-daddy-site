@@ -36,18 +36,18 @@ type StepKey = 'lang' | 'loc' | 'notif' | 'battery' | 'partner';
 /* ---------------- shared pieces ---------------- */
 /** Violet gradient + soft glows behind the whole screen (customer BrandBg, drawn with react-native-svg). */
 function BrandBg() {
+  const { dark } = useTheme();
   const [box, setBox] = useState({ w: 390, h: 844 });
   return (
     <View pointerEvents="none" onLayout={e => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })} style={StyleSheet.absoluteFill}>
       <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill}>
         <Defs>
-          <SvgGradient id="wob" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor="#6A1BF2" /><Stop offset="0.5" stopColor="#5409DA" /><Stop offset="1" stopColor="#36058F" />
+          <SvgGradient id="wob" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={dark ? '#241A40' : '#E3D8FF'} /><Stop offset="1" stopColor={dark ? '#1A1330' : '#F7F3FF'} />
           </SvgGradient>
         </Defs>
         <Rect x={0} y={0} width={box.w} height={box.h} fill="url(#wob)" />
-        <Circle cx={box.w + 10} cy={50} r={130} fill="#fff" fillOpacity={0.07} />
-        <Circle cx={-10} cy={260} r={85} fill={SAFFRON} fillOpacity={0.1} />
+        <Circle cx={box.w + 10} cy={50} r={130} fill="#5409DA" fillOpacity={0.05} />
       </Svg>
     </View>
   );
@@ -83,12 +83,13 @@ function Note({ children, tone = 'warn' }: { children: React.ReactNode; tone?: '
 
 /** Headline with one saffron word: `hl` when the (translated) title still contains it, otherwise the last word. */
 function Headline({ title, hl, size = 30 }: { title: string; hl?: string; size?: number }) {
+  const { c } = useTheme();
   const at = hl && title.includes(hl) ? title.indexOf(hl) : title.lastIndexOf(' ') + 1;
   const len = hl && title.includes(hl) ? hl.length : title.length - at;
   const base = { fontFamily: F.bold, fontSize: size, lineHeight: Math.round(size * 1.27), textAlign: 'center' as const };
   return (
-    <Text accessibilityRole="header" accessibilityLabel={title} style={[base, { color: '#fff' }]}>
-      {title.slice(0, at)}<Text style={{ color: SAFFRON }}>{title.slice(at, at + len)}</Text>{title.slice(at + len)}
+    <Text accessibilityRole="header" accessibilityLabel={title} style={[base, { color: c.fg }]}>
+      {title.slice(0, at)}<Text style={{ color: c.primary }}>{title.slice(at, at + len)}</Text>{title.slice(at + len)}
     </Text>
   );
 }
@@ -105,12 +106,12 @@ function Frame({ art, title, hl, text, body, actions, headSize, compact }: {
         <View style={{ alignItems: 'center', justifyContent: 'center' }}>{art}</View>
         <Rise delay={80} style={{ marginTop: 12, alignItems: 'center' }}>
           <Headline title={title} hl={hl} size={headSize} />
-          <Text style={{ fontFamily: F.body, fontSize: 15, lineHeight: 22, color: 'rgba(255,255,255,0.86)', textAlign: 'center', marginTop: 8, maxWidth: 340 }}>{text}</Text>
+          <Text style={{ fontFamily: F.body, fontSize: 15, lineHeight: 22, color: c.fg3, textAlign: 'center', marginTop: 8, maxWidth: 340 }}>{text}</Text>
         </Rise>
       </View>
       <Rise delay={140} distance={48} duration={380}>
         <View style={{ backgroundColor: c.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: compact ? 20 : 24, paddingBottom: Math.max(insets.bottom, 12) + 16,
-          ...(Platform.OS === 'web' ? ({ boxShadow: '0px -8px 24px rgba(26,6,80,0.28)' } as any) : { shadowColor: '#1A0650', shadowOpacity: 0.28, shadowRadius: 24, shadowOffset: { width: 0, height: -8 }, elevation: 12 }) }}>
+          ...(Platform.OS === 'web' ? ({ boxShadow: '0px -6px 20px rgba(84,9,218,0.10)' } as any) : { shadowColor: '#5409DA', shadowOpacity: 0.1, shadowRadius: 20, shadowOffset: { width: 0, height: -8 }, elevation: 12 }) }}>
           {body}
           {actions}
         </View>
@@ -123,7 +124,7 @@ function Frame({ art, title, hl, text, body, actions, headSize, compact }: {
 function Disc({ size = 116, children }: { size?: number; children?: React.ReactNode }) {
   const r = size + 36;
   return (
-    <View style={{ width: r, height: r, borderRadius: r / 2, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ width: r, height: r, borderRadius: r / 2, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}>
       <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         {children}
       </View>
@@ -210,7 +211,7 @@ function WasherArt({ size }: { size: number }) {
     <View style={{ width: size + 80, height: size + 30, alignItems: 'center', justifyContent: 'center' }}>
       <Pulse size={size + 6} color="#FFFFFF" />
       <Float amp={6} period={2600} sway={2}>
-        <View style={{ width: size + 16, height: size + 16, borderRadius: (size + 16) / 2, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size + 16, height: size + 16, borderRadius: (size + 16) / 2, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}>
         <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#ECECEF', overflow: 'hidden', borderWidth: 3, borderColor: '#fff' }}>
           <Image source={WASHER_IMG} accessibilityLabel={t('Washing Daddy washer')} resizeMode="cover" style={{ position: 'absolute', left: 0, top: size * 0.06, width: '100%', height: '100%' }} />
         </View>
@@ -510,6 +511,7 @@ function PartnerStep() {
 /* ---------------- progress ---------------- */
 /** Back button, one thin saffron bar that fills as the steps go, and "2/5", all on the violet top. */
 function Progress({ i, n, onBack }: { i: number; n: number; onBack?: () => void }) {
+  const { c } = useTheme();
   const p = useRef(new Animated.Value(i + 1)).current;
   const rm = useReducedMotion();
   useEffect(() => {
@@ -520,14 +522,14 @@ function Progress({ i, n, onBack }: { i: number; n: number; onBack?: () => void 
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, minHeight: 60 }}>
       {onBack ? (
         <Pressable accessibilityLabel={t('Peeche')} accessibilityRole="button" onPress={onBack} hitSlop={8}
-          style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="back" size={22} color="#fff" />
+          style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(84,9,218,0.10)', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="back" size={22} color={c.primary} />
         </Pressable>
       ) : <View style={{ width: 44, height: 44 }} />}
-      <View accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: n, now: i + 1 }} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.28)', overflow: 'hidden' }}>
-        <Animated.View style={{ height: 4, borderRadius: 2, backgroundColor: SAFFRON, width: p.interpolate({ inputRange: [0, n], outputRange: ['0%', '100%'], extrapolate: 'clamp' }) }} />
+      <View accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: n, now: i + 1 }} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(84,9,218,0.14)', overflow: 'hidden' }}>
+        <Animated.View style={{ height: 4, borderRadius: 2, backgroundColor: c.primary, width: p.interpolate({ inputRange: [0, n], outputRange: ['0%', '100%'], extrapolate: 'clamp' }) }} />
       </View>
-      <Text style={{ fontFamily: F.semi, fontSize: 13, color: '#fff', minWidth: 32, textAlign: 'right', fontVariant: ['tabular-nums'] }}>{i + 1}/{n}</Text>
+      <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg, minWidth: 32, textAlign: 'right', fontVariant: ['tabular-nums'] }}>{i + 1}/{n}</Text>
     </View>
   );
 }
@@ -554,7 +556,7 @@ export default function Onboarding() {
   const next = () => go(1);
   return (
     <View style={{ flex: 1, backgroundColor: c.stage, alignItems: 'center' }}>
-      <View style={{ flex: 1, width: '100%', maxWidth: 440, backgroundColor: '#36058F' }}>
+      <View style={{ flex: 1, width: '100%', maxWidth: 440, backgroundColor: c.card }}>
         <BrandBg />
         <View style={{ height: insets.top }} />
         <Progress i={i} n={steps.length} onBack={i > 0 ? () => go(-1) : undefined} />

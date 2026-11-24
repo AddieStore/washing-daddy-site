@@ -3,7 +3,7 @@
 // arrows. Then locks the round. Core RN only (PanResponder + Animated), so it works with touch and with a mouse.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, PanResponder, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, DashCard, F, Icon, Pressy, SuccessTick, brand, cardShadow, sheet, ui, useReducedMotion, useTheme } from '../ui';
+import { Button, Chip, F, Group, Icon, cardShadow, Pressy, Row, StickyBar, StatusPill, brand, sheet, ui, useReducedMotion, useTheme } from '../ui';
 import { Route, S, W, act, carBy, planName, route, useStore } from '../state/store';
 import { STATUS } from '../lib/data';
 import { SLOTS, SLOT_COUNT, lists, place, slotRange } from '../lib/slots';
@@ -48,19 +48,17 @@ export function CheckInCard() {
   const at = S.day?.checkin_at;
   if (at) {
     return (
-      <DashCard style={st.checked}>
-        <SuccessTick size={36} />
-        <Text accessibilityRole="text" style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: c.fg, flex: 1 }}>{t('Hub pahunch gaye')} · {t12(at)}</Text>
-      </DashCard>
+      <Group>
+        <Row icon="check" label={t('Hub pahunch gaye')} right={<Chip tone="green" icon="check">{t12(at)}</Chip>} />
+      </Group>
     );
   }
   if (S.day?.started) return null;
   return (
-    <DashCard onPress={openAttendance} accessibilityLabel={t('Hub pahunch gaya')} style={st.checked}>
-      <View style={st.tile}><Icon name="pin" size={18} color={c.primary} /></View>
-      <Text style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: c.fg, flex: 1 }}>{t('Hub pahunch gaya')}</Text>
-      <View style={st.checkGo}><Icon name="check" size={18} color="#fff" /></View>
-    </DashCard>
+    <Group>
+      <Row icon="pin" label={t('Hub pahunch gaya')} sub={t('Round se pehle hub par check-in karo')} onPress={openAttendance}
+        right={<View style={st.checkGo}><Icon name="check" size={18} color="#fff" /></View>} />
+    </Group>
   );
 }
 
@@ -86,13 +84,13 @@ function SlotSheet({ reg, close }: { reg: string; close: () => void }) {
   return (
     <View>
       <SheetTitle title={t('Slot chuno')} sub={car ? `${car.plate} · ${car.model}` : undefined} />
-      <View style={[{ borderRadius: 16, backgroundColor: c.card, borderWidth: c.shadow ? 0 : 1, borderColor: c.line, overflow: 'hidden' }, cardShadow(c)]}>
+      <Group>
         {SLOTS.map((s, i) => (
           <Row key={i} first={i === 0} on={cur === i} label={slotLabel(i)} onPress={() => pick(i)}
             sub={t(`Slot ${i + 1} · ${lay.slots[i].length} gaadi`)} />
         ))}
         <Row on={cur == null} label={t('Slot mein nahi (pool)')} onPress={() => pick(null)} />
-      </View>
+      </Group>
     </View>
   );
 }
@@ -182,7 +180,7 @@ function CarCard({ reg, target, zone, idx, count, locked, dragging, ctl }: {
       {...(can ? body.panHandlers : {})}
       {...touch}
       accessibilityLabel={`${car.plate} ${car.model}`}
-      style={[st.card, { top, backgroundColor: c.card, borderColor: dragging ? c.primary : late ? brand.red : 'transparent', zIndex: dragging ? 50 : 1, opacity: dim ? 0.7 : 1, transform: [{ scale: sc }] }, dragging ? shadow : cardShadow(c), web && dragging ? ({ cursor: 'grabbing' } as any) : null]}>
+      style={[st.card, { top, backgroundColor: c.card, borderColor: dragging ? c.primary : late ? brand.red : c.line, zIndex: dragging ? 50 : 1, opacity: dim ? 0.7 : 1, transform: [{ scale: sc }] }, dragging ? shadow : cardShadow(c), web && dragging ? ({ cursor: 'grabbing' } as any) : null]}>
       <View {...(can ? handle.panHandlers : {})} accessibilityLabel={t('Pakad ke khischo')} style={[st.grip, NOT_DRAG]}>
         {can ? [0, 1, 2].map(i => <View key={i} style={{ flexDirection: 'row', gap: 3 }}>
           <View style={[st.dot, { backgroundColor: c.fg3 }]} /><View style={[st.dot, { backgroundColor: c.fg3 }]} /></View>)
@@ -213,7 +211,7 @@ function CarCard({ reg, target, zone, idx, count, locked, dragging, ctl }: {
         ) : (
           <>
             {eta ? <Text style={{ fontFamily: F.black, fontSize: 15, color: c.fg, fontVariant: ['tabular-nums'] }}>{short12(hm12(eta))}</Text> : null}
-            <View style={[st.pill, { backgroundColor: c.tile2 }]}><Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 11, color: c.fg2 }}>{t(pill)}</Text></View>
+            <StatusPill status={wd ? wd.status : 'scheduled'} label={t(pill)} style={{ maxWidth: 78 }} />
           </>
         )}
       </View>
@@ -329,46 +327,22 @@ export function RoundTimeline({ scroll, onBusy }: { scroll: ScrollCtl; onBusy: (
 }
 
 /* ---------------- sticky lock bar ---------------- */
-export function LockBar({ bottom }: { bottom: number }) {
+export function LockBar({ bottom: _bottom }: { bottom?: number }) {
   useStore();
   const { c } = useTheme();
-  const rm = useReducedMotion();
   const regs = route(), locked = Route.isLocked();
   const open = regs.filter(x => Route.slotOf(x.reg) == null).length;
   const finished = regs.length > 0 && regs.every(x => { const w = W(x.reg); return w && ['done', 'skipped'].includes(w.status) });
   const can = regs.length > 0 && open === 0;
-  const pulse = useRef(new Animated.Value(1)).current, prev = useRef(false);
-  useEffect(() => {
-    if (can && !prev.current && !locked && !rm) {
-      Animated.sequence(Array.from({ length: 3 }, () => Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.04, duration: 420, easing: Easing.out(Easing.quad), useNativeDriver: ND }),
-        Animated.timing(pulse, { toValue: 1, duration: 420, easing: Easing.in(Easing.quad), useNativeDriver: ND }),
-      ]))).start();
-    }
-    prev.current = can;
-  }, [can, locked, rm, pulse]);
   if (!regs.length || finished) return null;
+  if (locked) {
+    return (
+      <StickyBar summaryLabel={t('Round locked')} summary={t('Customers ko time dikh raha hai')} label={t('Unlock karo')} variant="ghost" onPress={() => act.unlockRound()} />
+    );
+  }
   return (
-    <View pointerEvents="box-none" style={[st.barWrap, { bottom }]}>
-      <View style={[st.bar, { backgroundColor: c.card, borderColor: locked ? brand.mint : 'transparent' }]}>
-        {locked ? (
-          <>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 18 }}>🔒</Text>
-              <Text accessibilityRole="alert" style={{ flex: 1, fontFamily: F.bold, fontSize: 14, color: c.fg }}>{t('Round locked · customers ko time dikh raha hai')}</Text>
-            </View>
-            <Button variant="ghost" label={t('Unlock karo')} onPress={() => act.unlockRound()} style={{ minHeight: 48, paddingVertical: 8 }} />
-          </>
-        ) : (
-          <>
-            {!can ? <Text style={{ fontFamily: F.bold, fontSize: 13, color: c.fg2, textAlign: 'center' }}>{t(`${open} gaadi slot mein nahi`)}</Text> : null}
-            <Animated.View style={{ transform: [{ scale: pulse }] }}>
-              <Button variant="violet" label={t('Round lock karo')} disabled={!can} onPress={() => act.lockRound()} style={{ minHeight: 52, paddingVertical: 10 }} />
-            </Animated.View>
-          </>
-        )}
-      </View>
-    </View>
+    <StickyBar summaryLabel={can ? t('Sab gaadi slot mein hain') : t('Slot baaki')} summary={can ? `${regs.length} ${t('gaadi')}` : `${open} ${t('gaadi')}`}
+      label={t('Round lock karo')} disabled={!can} onPress={() => act.lockRound()} />
   );
 }
 
