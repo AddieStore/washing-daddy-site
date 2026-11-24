@@ -5,11 +5,11 @@ import { FloatingTabBar, type IconName } from '../../ui';
 import { Extra, openReqs, route, useStore } from '../../state/store';
 import { t } from '../../lib/i18n';
 
-const TABS: { name: string; label: string; icon: IconName }[] = [
-  { name: 'index', label: 'Round', icon: 'tabRound' },
-  { name: 'extra', label: 'Extra', icon: 'tabExtra' },
-  { name: 'paisa', label: 'Paisa', icon: 'tabPaisa' },
-  { name: 'profile', label: 'Profile', icon: 'tabMe' },
+const TABS: { name: string; label: string; icon: IconName; tone: string }[] = [
+  { name: 'index', tone: '#5409DA', label: 'Round', icon: 'tabRound' },
+  { name: 'extra', tone: '#F07A00', label: 'Extra', icon: 'tabExtra' },
+  { name: 'paisa', tone: '#0E9F6E', label: 'Paisa', icon: 'tabPaisa' },
+  { name: 'profile', tone: '#2563EB', label: 'Profile', icon: 'tabMe' },
 ];
 type BottomTabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>['tabBar']>>[0];
 
@@ -24,7 +24,7 @@ function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
     const ev = emitter.emit({ type: 'tabPress', target: rt.key, canPreventDefault: true });
     if (name !== active && !ev.defaultPrevented) navigateToTab(rt.key);
   };
-  return <FloatingTabBar active={active} onSelect={select} tabs={TABS.map((tb) => ({ key: tb.name, label: t(tb.label), icon: tb.icon, badge: badge[tb.name] || 0 }))} />;
+  return <FloatingTabBar active={active} onSelect={select} tabs={TABS.map((tb) => ({ key: tb.name, label: t(tb.label), icon: tb.icon, tone: tb.tone, badge: badge[tb.name] || 0 }))} />;
 }
 
 export default function TabsLayout() {
