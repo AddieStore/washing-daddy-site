@@ -1,9 +1,9 @@
 // Profile tab sections: assigned clothes, my kit (add-only), my documents (read-only, set by Daddy).
 import React, { useState } from 'react';
-import { Image, Text, View } from 'react-native';
-import { Button, ChipPicker, F, Field, Icon, LinkButton, Pressy, StatusPill, brand, sheet, ui, useTheme } from '../ui';
-import { PRow, PSection, RowsCard, TNUM, WCard } from './ProntoBits';
-import { Kit, addKitItem, clothesHave, useStore } from '../state/store';
+import { Image, StyleSheet, Text, View } from 'react-native';
+import { Button, Chip, ChipPicker, F, Field, Group, Icon, LinkButton, Pressy, Row, SectionLabel, brand, sheet, ui, useTheme } from '../ui';
+import { TNUM } from './ProntoBits';
+import { DOC_KINDS, Docs, Kit, addKitItem, clothesHave, useStore } from '../state/store';
 import { KIT_KINDS, type KitKind } from '../lib/data';
 import { t } from '../lib/i18n';
 import { takePhoto } from '../lib/photo';
@@ -17,94 +17,109 @@ const fmtDate = (iso?: string) => {
 };
 const kindLabel = (k: KitKind) => t(KIT_KINDS.find(x => x.kind === k)?.label ?? 'Aur saaman');
 
-function useBox() {
-  const { c } = useTheme();
-  return { c, box: { padding: 0, overflow: 'hidden' } as const };
-}
-
-/** Titled block on the page background (title 18 semibold, optional grey meta on the right). */
-function Section({ title, meta, children }: { title: string; meta?: string; children?: React.ReactNode }) {
-  return (
-    <View style={{ marginTop: 0 }}>
-      <PSection title={title} note={meta} style={{ marginTop: 12 }} />
-      {children}
-    </View>
-  );
-}
-
 function Note({ children }: { children: React.ReactNode }) {
   const { c } = useTheme();
-  return <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, marginTop: 8 }}>{children}</Text>;
+  return <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.grey, marginTop: 8, marginLeft: 4 }}>{children}</Text>;
 }
 
 /* ---------- 1. Mere kapde ---------- */
 export function ClothesCard() {
   useStore();
-  const { c, box } = useBox();
+  const { c } = useTheme();
   const given = Kit.profile?.assigned_clothes;
   const own = clothesHave();
   const cell = (n: string | number, label: string) => (
-    <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 16 }}>
-      <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3 }} numberOfLines={2}>{label}</Text>
-      <Text style={[TNUM, { fontFamily: F.black, fontSize: 30, lineHeight: 36, letterSpacing: -0.5, color: c.fg, marginTop: 4 }]}>{n}</Text>
+    <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 16 }}>
+      <Text style={{ fontFamily: F.medium, fontSize: 13, color: c.grey }} numberOfLines={2}>{label}</Text>
+      <Text style={[TNUM, { fontFamily: F.bold, fontSize: 28, lineHeight: 34, letterSpacing: -0.5, color: c.fg, marginTop: 2 }]}>{n}</Text>
     </View>
   );
   return (
-    <Section title={t('Mere kapde')}>
-      <WCard style={[box, { flexDirection: 'row' }]}>
-        {cell(given == null ? '—' : given, t('Daddy ne diye'))}
-        <View style={{ width: 1, backgroundColor: c.line, marginVertical: 16 }} />
-        {cell(own, t('Maine khud add kiye'))}
-      </WCard>
+    <View>
+      <SectionLabel style={{ marginTop: 8 }}>{t('Mere kapde')}</SectionLabel>
+      <Group>
+        <View style={{ flexDirection: 'row' }}>
+          {cell(given == null ? '—' : given, t('Daddy ne diye'))}
+          <View style={{ width: StyleSheet.hairlineWidth * 2, backgroundColor: c.line }} />
+          {cell(own, t('Maine khud add kiye'))}
+        </View>
+      </Group>
       {given == null ? <Note>{t('Daddy abhi kapde assign kar rahe hain')}</Note> : null}
-    </Section>
+    </View>
   );
 }
 
 /* ---------- 2. Mera saaman ---------- */
-export function KitCard() {
+export function KitCard({ onAdd }: { onAdd?: () => void }) {
   useStore();
-  const { c } = useBox();
+  const { c } = useTheme();
   const items = Kit.items;
   return (
-    <Section title={t('Mera saaman')} meta={Kit.loaded ? undefined : t('Aa raha hai…')}>
+    <View>
+      <SectionLabel>{Kit.loaded ? t('Mera saaman') : `${t('Mera saaman')} · ${t('Aa raha hai…')}`}</SectionLabel>
       {items.length === 0 ? (
-        <WCard style={{ padding: 16 }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg2 }}>{t('Abhi koi saaman add nahi kiya')}</Text>
-        </WCard>
+        <Group>
+          <Row icon="kit" label={t('Abhi koi saaman add nahi kiya')} />
+        </Group>
       ) : (
-        <View style={{ gap: 16 }}>
+        <View style={{ gap: 4 }}>
           {KIT_KINDS.filter(k => items.some(i => i.kind === k.kind)).map(k => (
-            <View key={k.kind} style={{ gap: 8 }}>
-              <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3, paddingHorizontal: 4 }}>{kindLabel(k.kind)}</Text>
-              <RowsCard>
-                {items.filter(i => i.kind === k.kind).map((i, n, arr) => (
-                  <PRow key={i.id} leading={<Thumb uri={Kit.photos?.[i.id]} />} title={i.name} sub={`${t('Add kiya')} ${fmtDate(i.at)}`} last={n === arr.length - 1}
-                    right={<Text style={[TNUM, { fontFamily: F.bold, fontSize: 18, color: c.fg }]}>× {i.qty}</Text>} />
+            <View key={k.kind}>
+              <Text style={{ fontFamily: F.medium, fontSize: 12, color: c.grey, marginLeft: 4, marginTop: 8, marginBottom: 6 }}>{kindLabel(k.kind)}</Text>
+              <Group>
+                {items.filter(i => i.kind === k.kind).map(i => (
+                  <Row key={i.id} icon={<Thumb uri={Kit.photos?.[i.id]} />} label={i.name} sub={`${t('Add kiya')} ${fmtDate(i.at)}`}
+                    right={<Text style={[TNUM, { fontFamily: F.bold, fontSize: 16, color: c.fg }]}>× {i.qty}</Text>} />
                 ))}
-              </RowsCard>
+              </Group>
             </View>
           ))}
         </View>
       )}
-      <View style={{ marginTop: 12 }}>
-        <Button label={t('Saaman add karo')} variant="violet" icon="plus" onPress={openAddKit} />
+      <View style={{ marginTop: 16 }}>
+        <Button label={t('Saaman add karo')} variant="violet" icon="plus" onPress={onAdd ?? openAddKit} />
       </View>
       <Note>{t('Ek baar add kiya to hata nahi sakte')}</Note>
-    </Section>
+    </View>
   );
 }
 
 function Thumb({ uri }: { uri?: string }) {
   const { c } = useTheme();
   return (
-    <View style={{ width: 48, height: 48, borderRadius: 12, overflow: 'hidden', backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center' }}>
-      {uri ? <Image source={{ uri }} style={{ width: 48, height: 48 }} resizeMode="cover" /> : <Icon name="cam" size={20} color={c.fg3} />}
+    <View style={{ width: 40, height: 40, borderRadius: 10, overflow: 'hidden', backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center' }}>
+      {uri ? <Image source={{ uri }} style={{ width: 40, height: 40 }} resizeMode="cover" /> : <Icon name="cam" size={18} color={c.grey} />}
     </View>
   );
 }
 
 function openAddKit() { sheet.open(close => <AddKitBody close={close} />) }
+
+/** Kit sheet from Profile > Mera saaman: clothes, items by kind, add button. */
+export function openKitSheet() {
+  sheet.open(close => (
+    <View>
+      <SheetTitle title={t('Mera saaman')} action={t('Add')} actionIcon="plus" onAction={() => sheet.open(cl => <AddKitBody close={() => { cl(); openKitSheet() }} />)} />
+      <ClothesCard />
+      <KitCard onAdd={() => sheet.open(cl => <AddKitBody close={() => { cl(); openKitSheet() }} />)} />
+      <View style={{ alignItems: 'center' }}><LinkButton label={t('Band karo')} onPress={close} /></View>
+    </View>
+  ));
+}
+
+/** Documents sheet from Profile > Mere documents. */
+export function openDocsSheet() {
+  sheet.open(close => (
+    <View>
+      <SheetTitle title={t('Mere documents')} sub={t('Daddy ki taraf se verify hote hain')} />
+      <DocsCard />
+      <View style={{ alignItems: 'center' }}><LinkButton label={t('Band karo')} onPress={close} /></View>
+    </View>
+  ));
+}
+
+export const kitCount = () => Kit.items.reduce((n, i) => n + (i.qty || 0), 0);
+export const docsApproved = () => DOC_KINDS.filter(k => Docs.items[k.kind]?.status === 'verified').length;
 
 function AddKitBody({ close }: { close: () => void }) {
   const { c } = useTheme();
@@ -135,15 +150,15 @@ function AddKitBody({ close }: { close: () => void }) {
   };
   const stepBtn = (label: string, d: number, off: boolean) => (
     <Pressy onPress={() => setQty(q => Math.min(999, Math.max(1, q + d)))} disabled={off} accessibilityLabel={label}
-      style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
-      <Text style={{ fontFamily: F.black, fontSize: 24, color: c.softInk }}>{d > 0 ? '+' : '−'}</Text>
+      style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center', opacity: off ? 0.4 : 1 }}>
+      <Text style={{ fontFamily: F.bold, fontSize: 24, color: c.fg }}>{d > 0 ? '+' : '−'}</Text>
     </Pressy>
   );
   if (step === 'confirm') {
     return (
       <View>
         <SheetTitle title={t('Pakka add karein?')} sub={t('Ek baar add kiya to hata nahi sakte. Naam aur ginti dobara check kar lo.')} />
-        <View style={{ padding: 16, borderRadius: 16, backgroundColor: c.soft, marginBottom: 12 }}>
+        <View style={{ padding: 16, borderRadius: 16, backgroundColor: c.canvas, marginBottom: 12 }}>
           <Text style={{ fontFamily: F.bold, fontSize: 18, color: c.fg }}>{nm} × {qty}</Text>
           <Text style={{ fontFamily: F.body, fontSize: 13.5, color: c.fg2, marginTop: 2 }}>{kindLabel(kind)}</Text>
           {shot ? <Image source={{ uri: shot.preview }} style={{ width: 72, height: 72, borderRadius: 18, marginTop: 10 }} resizeMode="cover" /> : null}
@@ -153,7 +168,7 @@ function AddKitBody({ close }: { close: () => void }) {
       </View>
     );
   }
-  const lab = { fontFamily: F.semi, fontSize: 13, color: c.fg2, marginTop: 16, marginBottom: 8 } as const;
+  const lab = { fontFamily: F.semi, fontSize: 13, color: c.grey, marginTop: 16, marginBottom: 8 } as const;
   return (
     <View>
       <SheetTitle title={t('Saaman add karo')} sub={t('Jo saaman aapke paas hai wo likho.')} />
@@ -175,7 +190,7 @@ function AddKitBody({ close }: { close: () => void }) {
         </View>
       ) : (
         <Pressy onPress={snap} accessibilityLabel={t('Photo lo')} scaleTo={0.96}
-          style={{ height: 96, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          style={{ height: 96, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: c.dash, backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
           <Icon name="cam" size={28} color={c.fg2} />
           <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg2 }}>{t('Photo lo')}</Text>
         </Pressy>
@@ -192,51 +207,39 @@ function AddKitBody({ close }: { close: () => void }) {
 /* ---------- 3. Mere documents ---------- */
 export function DocsCard() {
   useStore();
-  const { c, box } = useBox();
+  const { c } = useTheme();
   const p = Kit.profile;
   const last4 = /^\d{4}$/.test(p?.aadhaar_last4 ?? '') ? p!.aadhaar_last4! : '';
   const pcc = p?.pcc;
-  const pill = pcc?.status === 'clear' ? <StatusPill status="done" label={t('Verified')} />
-    : pcc?.status === 'rejected' ? <StatusPill status="skipped" label={t('Reject hua')} />
-    : pcc ? <StatusPill status="arrived" label={t('Pending')} /> : null;
-  const head = (label: string, right?: React.ReactNode) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-      <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3 }}>{label}</Text>
-      {right}
-    </View>
-  );
-  const wait = <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg2, marginTop: 6 }}>{t('Daddy abhi verify kar rahe hain')}</Text>;
-  const sub = { fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 4 } as const;
+  const pcChip = pcc?.status === 'clear' ? <Chip tone="green">{t('Verified')}</Chip>
+    : pcc?.status === 'rejected' ? <Chip tone="red">{t('Reject hua')}</Chip>
+    : pcc ? <Chip tone="amber">{t('Pending')}</Chip> : <Chip tone="grey">{t('Baaki')}</Chip>;
+  const aaChip = last4 && p?.aadhaar_verified_at ? <Chip tone="green">{t('Verified')}</Chip> : <Chip tone="grey">{last4 ? t('Pending') : t('Baaki')}</Chip>;
+  const wait = t('Daddy abhi verify kar rahe hain');
+  const pccSub = !pcc ? wait
+    : pcc.status === 'rejected' ? t('Daddy se baat karo')
+    : pcc.status === 'pending' ? wait
+    : [`${pcc.status === 'clear' ? t('Verified') : t('Check hua')} ${fmtDate(pcc.verified_at)}`.trim(), pcc.ref ? `${t('Ref')}: ${pcc.ref}` : ''].filter(Boolean).join(' · ');
   return (
-    <Section title={t('Mere documents')}>
-      <WCard style={box}>
-        <View style={{ padding: 16 }}>
-          {head(t('Aadhaar'), last4 && p?.aadhaar_verified_at ? <StatusPill status="done" label={t('Verified')} /> : null)}
-          {last4 ? (
-            <>
-              <Text accessibilityLabel={t('Aadhaar') + ' ' + last4} style={{ fontFamily: F.bold, fontSize: 22, lineHeight: 30, letterSpacing: 1.2, color: c.fg, marginTop: 4 }}>XXXX XXXX {last4}</Text>
-              {p?.aadhaar_verified_at ? <Text style={sub}>{t('Verified')} {fmtDate(p.aadhaar_verified_at)}</Text> : <Text style={sub}>{t('Daddy abhi verify kar rahe hain')}</Text>}
-            </>
-          ) : wait}
-        </View>
-        <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: c.line }}>
-          {head(t('Police clearance (PCC)'), pill)}
-          {pcc ? (
-            <>
-              {pcc.status === 'clear' || pcc.verified_at ? <Text style={[sub, { marginTop: 6 }]}>{pcc.status === 'clear' ? t('Verified') : t('Check hua')} {fmtDate(pcc.verified_at)}</Text> : null}
-              {pcc.ref ? <Text style={sub}>{t('Ref')}: {pcc.ref}</Text> : null}
-              {pcc.status === 'pending' ? wait : null}
-              {pcc.status === 'rejected' ? <Text style={{ fontFamily: F.semi, fontSize: 13.5, color: brand.red, marginTop: 6 }}>{t('Daddy se baat karo')}</Text> : null}
-            </>
-          ) : wait}
-        </View>
-      </WCard>
-      <View style={{ height: 12 }} />
-      <DocsPanel />
-    </Section>
+    <View>
+      <SectionLabel style={{ marginTop: 8 }}>{t('Daddy ne verify kiye')}</SectionLabel>
+      <Group>
+        <Row icon="id" label={last4 ? `${t('Aadhaar')}  XXXX ${last4}` : t('Aadhaar')} sub={last4 ? (p?.aadhaar_verified_at ? `${t('Verified')} ${fmtDate(p.aadhaar_verified_at)}` : wait) : wait} right={aaChip} />
+        <Row icon="shield" label={t('Police clearance (PCC)')} sub={pccSub} right={pcChip} />
+      </Group>
+      <SectionLabel>{t('Mere documents')}</SectionLabel>
+      <DocsPanel reopen={openDocsSheet} />
+    </View>
   );
 }
 
+/** Compat: the Profile tab now links to the two sheets; this renders those two entry rows as one Group. */
 export function KitSections() {
-  return <><ClothesCard /><KitCard /><DocsCard /></>;
+  useStore();
+  return (
+    <Group>
+      <Row icon="kit" label={t('Mera saaman')} value={String(kitCount())} onPress={openKitSheet} />
+      <Row icon="doc" label={t('Mere documents')} value={`${docsApproved()}/${DOC_KINDS.length}`} onPress={openDocsSheet} />
+    </Group>
+  );
 }

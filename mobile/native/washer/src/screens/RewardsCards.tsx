@@ -3,9 +3,10 @@
 // complaints/ratings (lib/complaints.ts); nothing moves money in the app, the manager pays at month end.
 import React, { useEffect } from 'react';
 import { Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { F, Icon, Ring, brand, useTheme } from '../ui';
-import { IconTile, PRow, TNUM, WCard } from './ProntoBits';
+import { Chip, F, Group, HeaderIconButton, Ring, Row, ScreenTitle, brand, useTheme } from '../ui';
+import { TNUM } from './ProntoBits';
 import { DAY, attendLog, cleanNow, loadMonthRatings, Complaints } from '../state/store';
 import { BEST, CLEAN_MIN_AVG, EARLY_DAYS } from '../lib/rewards';
 import { outlook } from '../lib/rewardsView';
@@ -67,37 +68,43 @@ function MiniRing({ fraction, value, label, tone, title, line }: { fraction: num
   const { c } = useTheme();
   const col = useToneColors();
   return (
-    <View style={{ flex: 1, alignItems: 'center', gap: 8 }}>
-      <Ring size={76} stroke={9} fraction={fraction} value={value} label={label} color={col.ring[tone]} track={c.soft} ink={c.fg} disc="transparent" />
+    <View style={{ flex: 1, alignItems: 'center', gap: 6 }}>
+      <Ring size={68} stroke={8} fraction={fraction} value={value} label={label} color={col.ring[tone]} track={c.soft} ink={c.fg} disc="transparent" />
       <Text style={{ fontFamily: F.semi, fontSize: 13, lineHeight: 18, color: c.fg, textAlign: 'center' }}>{title}</Text>
-      <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: line.tone === 'dead' ? brand.red : c.fg3, textAlign: 'center' }}>{line.text}</Text>
+      <Text numberOfLines={3} style={{ fontFamily: F.body, fontSize: 11.5, lineHeight: 15, color: line.tone === 'dead' ? brand.red : c.grey, textAlign: 'center' }}>{line.text}</Text>
     </View>
   );
 }
 
-/** Paisa tab: both bonuses side by side with what is still possible. Opens the rewards screen. */
+/** Back button + plain large title for pushed screens (Bonus, Customer feedback). */
+export function BackTitle({ title, subtitle, onBack }: { title: string; subtitle?: string; onBack: () => void }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View>
+      <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 16, flexDirection: 'row' }}>
+        <HeaderIconButton icon="back" label={t('Round par wapas')} onPress={onBack} />
+      </View>
+      <ScreenTitle title={title} subtitle={subtitle} style={{ paddingTop: 12 }} />
+    </View>
+  );
+}
+
+/** Paisa tab: one Group. Header row (what is possible) + the three bonuses side by side. Opens the rewards screen. */
 export function RewardsCard() {
   const { c } = useTheme();
   const o = useOutlook(), m = o.r.month, cr = cleanRing(o), cl = cleanLine(o);
   return (
-    <WCard onPress={openRewards} label={t('Attendance aur bonus')} scaleTo={0.98} style={{ padding: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <IconTile icon="gift" />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 22, color: c.fg }}>{t('Attendance aur bonus')}</Text>
-          <Text numberOfLines={2} style={[TNUM, { fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3, marginTop: 2 }]}>
-            {t('Teeno saath')} {rupee(BEST)} · {t('Abhi mumkin')} {rupee(o.possible)}
-          </Text>
-        </View>
-        <Icon name="chevron" size={18} color={c.fg3} />
-      </View>
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+    <Group>
+      <Row icon="gift" label={t('Attendance aur bonus')} sub={`${t('Teeno saath')} ${rupee(BEST)} · ${t('Abhi mumkin')} ${rupee(o.possible)}`} onPress={openRewards} />
+      <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 16 }}>
         <MiniRing fraction={o.streak / EARLY_DAYS} value={o.streak} label={`/${EARLY_DAYS}`} tone={earlyLine(o).tone} title={t('Early bird')} line={earlyLine(o)} />
         <MiniRing fraction={m.total ? m.came / m.total : 0} value={m.came} label={`/${m.total}`} tone={monthLine(o).tone} title={t('Poora mahina')} line={monthLine(o)} />
         <MiniRing fraction={cr.fraction} value={cr.value} label={cr.unit.length > 8 ? '' : cr.unit} tone={cl.tone} title={t('No complaint')} line={cl} />
       </View>
-      <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, marginTop: 16, textAlign: 'center' }}>{t('Bonus Manager mahine ke end mein deta hai')}</Text>
-    </WCard>
+      <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+        <Text style={[TNUM, { fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.grey, textAlign: 'center' }]}>{t('Bonus Manager mahine ke end mein deta hai')}</Text>
+      </View>
+    </Group>
   );
 }
 
@@ -105,15 +112,18 @@ export function RewardsCard() {
 export function RewardsMini() {
   const o = useOutlook(), m = o.r.month, cl = o.r.clean;
   return (
-    <WCard>
-      <PRow
-        tile
+    <Group>
+      <Row
         icon="gift"
-        last
-        title={t('Bonus')}
+        label={t('Bonus')}
         sub={`${t('Early bird')} ${o.streak}/${EARLY_DAYS} · ${t('Poora mahina')} ${m.came}/${m.total} · ${t('No complaint')} ${cl.known ? (cl.eligible ? '✓' : cl.complaints) : '–'}`}
         onPress={openRewards}
       />
-    </WCard>
+    </Group>
   );
+}
+
+/** Small status chip for a bonus line. */
+export function LineChip({ line }: { line: Line }) {
+  return <Chip tone={line.tone === 'ok' ? 'green' : line.tone === 'dead' ? 'red' : 'violet'}>{line.tone === 'ok' ? t('Pakka') : line.tone === 'dead' ? t('Nahi mila') : t('Chal raha hai')}</Chip>;
 }

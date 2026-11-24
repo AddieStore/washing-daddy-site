@@ -2,20 +2,14 @@
 // Shared by the onboarding "Profile" step and the Profile tab ("Mere documents"). Data layer: state/store.ts (Docs, uploadDoc).
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Text, View } from 'react-native';
-import { F, Icon, LinkButton, Pressy, brand, sheet, ui, useTheme, type IconName } from '../ui';
+import { Chip, F, Group, Icon, LinkButton, Pressy, Row, brand, sheet, ui, useTheme, type IconName } from '../ui';
 import { DOC_KINDS, Docs, uploadDoc, useStore, watchDocs, type DocItem, type DocKind } from '../state/store';
 import { pickDocument } from '../lib/docs';
 import { t } from '../lib/i18n';
 import { SheetTitle } from './sheets';
-import { WCard } from './ProntoBits';
 
 type Tone = 'ok' | 'wait' | 'todo' | 'bad';
-const TONES: Record<Tone, { bg: string; fg: string }> = {
-  ok: { bg: 'rgba(22,163,74,0.12)', fg: '#15803d' },
-  wait: { bg: 'rgba(84,9,218,0.08)', fg: '#5409DA' },
-  todo: { bg: 'rgba(84,9,218,0.08)', fg: '#5409DA' },
-  bad: { bg: 'rgba(232,56,79,0.14)', fg: '#c0182f' },
-};
+const CHIP: Record<Tone, 'green' | 'violet' | 'grey' | 'red'> = { ok: 'green', wait: 'violet', todo: 'grey', bad: 'red' };
 function statusOf(d?: DocItem): { label: string; tone: Tone } {
   if (!d) return { label: t('Baaki'), tone: 'todo' };
   if (d.status === 'verified') return { label: t('Verified'), tone: 'ok' };
@@ -32,18 +26,17 @@ export function docsSummary(items: Partial<Record<DocKind, DocItem>> = Docs.item
   return Object.keys(items).length ? { label: t('Adhoora'), tone: 'wait' } : { label: t('Baaki'), tone: 'todo' };
 }
 
-/** Primary button, customer look: 56 high, radius 16, violet with a violet glow; lilac while busy / not ready. `ghost` is the white-card secondary with violet text. */
+/** Primary button, reference look: 52 high, radius 14, flat brand violet; `ghost` is the white outlined secondary. */
 export function Cta({ label, onPress, busy, ready = true, icon, arrow, ghost, style }: {
   label: string; onPress: () => void; busy?: boolean; ready?: boolean; icon?: IconName; arrow?: boolean; ghost?: boolean; style?: object;
 }) {
   const { c, dark } = useTheme();
   const off = !!busy || !ready;
-  const fg = ghost ? c.primary : off ? (dark ? c.fg3 : '#6B6483') : '#fff';
+  const fg = ghost ? c.fg : off ? (dark ? c.fg3 : '#6B6483') : '#fff';
   return (
     <Pressy onPress={onPress} disabled={busy} accessibilityLabel={label} scaleTo={0.97}
-      style={[{ minHeight: 56, borderRadius: 16, backgroundColor: ghost ? c.card : off ? (dark ? c.tile2 : '#E6E0F5') : c.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
-        ghost ? { borderWidth: 1.5, borderColor: 'rgba(84,9,218,0.18)' } : null,
-        !off && !ghost && { shadowColor: '#5409DA', shadowOpacity: 0.32, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4 }, style]}>
+      style={[{ minHeight: 52, borderRadius: 14, backgroundColor: ghost ? c.card : off ? (dark ? c.tile2 : '#E6E0F5') : c.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16 },
+        ghost ? { borderWidth: 1, borderColor: c.line } : null, style]}>
       {icon && !busy ? <Icon name={icon} size={18} color={fg} /> : null}
       <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 16, color: fg, textAlign: 'center', flexShrink: 1 }}>{label}</Text>
       {arrow && !busy ? <Icon name="arrow" size={18} color={fg} /> : null}
@@ -54,18 +47,18 @@ export function Cta({ label, onPress, busy, ready = true, icon, arrow, ghost, st
 function Thumb({ d }: { d?: DocItem }) {
   const { c } = useTheme();
   return (
-    <View style={{ width: 56, height: 56, borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}>
-      {!d ? <Icon name={'cam' as IconName} size={22} color={c.primary} />
-        : d.mime === 'application/pdf' ? <Text style={{ fontSize: 26 }}>📄</Text>
-        : <Image source={{ uri: d.data }} style={{ width: 56, height: 56 }} resizeMode="cover" accessibilityIgnoresInvertColors />}
+    <View style={{ width: 44, height: 44, borderRadius: 10, overflow: 'hidden', backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center' }}>
+      {!d ? <Icon name={'cam' as IconName} size={20} color={c.grey} />
+        : d.mime === 'application/pdf' ? <Icon name="doc" size={22} color={c.grey} />
+        : <Image source={{ uri: d.data }} style={{ width: 44, height: 44 }} resizeMode="cover" accessibilityIgnoresInvertColors />}
     </View>
   );
 }
 
-const OPTIONS: { source: 'camera' | 'gallery' | 'pdf'; label: string; emoji: string }[] = [
-  { source: 'camera', label: 'Camera se photo', emoji: '📷' },
-  { source: 'gallery', label: 'Gallery se photo', emoji: '🖼️' },
-  { source: 'pdf', label: 'PDF chuno', emoji: '📄' },
+const OPTIONS: { source: 'camera' | 'gallery' | 'pdf'; label: string; icon: IconName }[] = [
+  { source: 'camera', label: 'Camera se photo', icon: 'cam' },
+  { source: 'gallery', label: 'Gallery se photo', icon: 'note' },
+  { source: 'pdf', label: 'PDF chuno', icon: 'doc' },
 ];
 
 function ChooseSheet({ kind, label, close, onDone }: { kind: DocKind; label: string; close: () => void; onDone?: () => void }) {
@@ -88,18 +81,14 @@ function ChooseSheet({ kind, label, close, onDone }: { kind: DocKind; label: str
   return (
     <View>
       <SheetTitle title={label} sub={t('Saaf photo ya PDF chuno. Poora document dikhna chahiye.')} />
-      <View style={{ gap: 12 }}>
+      <Group>
         {OPTIONS.map(o => (
-          <Pressy key={o.source} scaleTo={0.97} disabled={!!busy} accessibilityLabel={t(o.label)} onPress={() => go(o.source)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, paddingHorizontal: 12, borderRadius: 16, backgroundColor: c.inputBg, opacity: busy && busy !== o.source ? 0.5 : 1 }}>
-            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 24 }}>{o.emoji}</Text></View>
-            <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 16, color: c.fg }}>{t(o.label)}</Text>
-            {busy === o.source ? <ActivityIndicator color={brand.violet} /> : <Icon name="chevron" size={18} color={c.fg3} />}
-          </Pressy>
+          <Row key={o.source} icon={o.icon} label={t(o.label)} onPress={() => { if (!busy) void go(o.source) }}
+            right={busy === o.source ? <ActivityIndicator color={c.primary} /> : undefined} style={{ opacity: busy && busy !== o.source ? 0.5 : 1 }} />
         ))}
-      </View>
-      {busy ? <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.semi, fontSize: 13, color: c.fg2, textAlign: 'center', marginTop: 12 }}>{t('Bhej rahe hain…')}</Text> : null}
-      <View style={{ alignItems: 'center' }}><LinkButton label={t('Rehne do')} color={c.primary} onPress={() => { if (!busy) { close(); onDone?.() } }} /></View>
+      </Group>
+      {busy ? <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.medium, fontSize: 13, color: c.grey, textAlign: 'center', marginTop: 12 }}>{t('Bhej rahe hain…')}</Text> : null}
+      <View style={{ alignItems: 'center' }}><LinkButton label={t('Rehne do')} onPress={() => { if (!busy) { close(); onDone?.() } }} /></View>
     </View>
   );
 }
@@ -114,38 +103,31 @@ export function DocsPanel({ reopen }: { reopen?: () => void }) {
   useEffect(() => { watchDocs() }, []);
   return (
     <View>
-      <WCard>
-        {DOC_KINDS.map((k, i) => {
+      <Group>
+        {DOC_KINDS.map(k => {
           const d = Docs.items[k.kind];
           const s = statusOf(d);
           const locked = d?.status === 'verified';
           const label = t(k.label);
+          const sub = d?.status === 'rejected' && d.note ? d.note : d?.mime === 'application/pdf' ? d.name : undefined;
           return (
-            <View key={k.kind} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderTopWidth: i ? 1 : 0, borderTopColor: 'rgba(84,9,218,0.10)' }}>
-              <Thumb d={d} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 22, color: c.fg }}>{label}</Text>
-                {d?.mime === 'application/pdf' ? <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 1 }}>{d.name}</Text> : null}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 }}>
-                  <View style={{ paddingVertical: 2, paddingHorizontal: 8, borderRadius: 8, backgroundColor: TONES[s.tone].bg }}>
-                    <Text style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: TONES[s.tone].fg }}>{s.label}</Text>
-                  </View>
-                  {locked ? <Text accessibilityLabel={t('Verify ho chuka, badal nahi sakte')} style={{ fontSize: 14 }}>🔒</Text> : null}
+            <Row key={k.kind} icon={<Thumb d={d} />} label={label} sub={sub}
+              right={
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {d ? <Chip tone={CHIP[s.tone]}>{s.label}</Chip> : null}
+                  {locked ? <Icon name="shield" size={16} color={c.grey} /> : (
+                    <Pressy scaleTo={0.95} accessibilityRole="button" accessibilityLabel={(d ? t('Badlo') : t('Upload karo')) + ' ' + label}
+                      onPress={() => sheet.open(close => <ChooseSheet kind={k.kind} label={label} close={close} onDone={reopen} />)}
+                      style={{ minHeight: 36, paddingHorizontal: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: d ? c.card : c.primary, borderWidth: d ? 1 : 0, borderColor: c.line }}>
+                      <Text style={{ fontFamily: F.medium, fontSize: 13, color: d ? c.fg : '#fff' }}>{d ? t('Badlo') : t('Upload')}</Text>
+                    </Pressy>
+                  )}
                 </View>
-                {d?.status === 'rejected' && d.note ? <Text style={{ fontFamily: F.semi, fontSize: 12.5, color: '#dc2626', marginTop: 4 }}>{d.note}</Text> : null}
-              </View>
-              {locked ? null : (
-                <Pressy scaleTo={0.95} accessibilityRole="button" accessibilityLabel={(d ? t('Badlo') : t('Upload karo')) + ' ' + label}
-                  onPress={() => sheet.open(close => <ChooseSheet kind={k.kind} label={label} close={close} onDone={reopen} />)}
-                  style={{ minHeight: 44, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: d ? 'rgba(84,9,218,0.08)' : c.primary }}>
-                  <Text style={{ fontFamily: F.semi, fontSize: 14, color: d ? c.primary : '#fff' }}>{d ? t('Badlo') : t('Upload karo')}</Text>
-                </Pressy>
-              )}
-            </View>
+              } />
           );
         })}
-      </WCard>
-      <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, marginTop: 8 }}>{t('Aapke documents sirf Washing Daddy team verify karne ke liye dekhegi.')}</Text>
+      </Group>
+      <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.grey, marginTop: 8, marginLeft: 4 }}>{t('Aapke documents sirf Washing Daddy team verify karne ke liye dekhegi.')}</Text>
     </View>
   );
 }
