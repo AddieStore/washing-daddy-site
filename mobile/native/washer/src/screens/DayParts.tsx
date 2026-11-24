@@ -1,11 +1,10 @@
-// Pieces shared by the Round, Today and Day screens: the Pronto look (violet gradient block, staggered rise, summary cards, booking-style car rows).
+// Pieces shared by the Today and Day screens (and the Round tab's FadeUp): staggered rise, summary Group, car rows as ONE Group.
 // Presentational; data comes in as DayData.
-import React, { useEffect, useId, useRef } from 'react';
-import { Animated, Easing, Platform, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Platform, StyleProp, Text, View, ViewStyle } from 'react-native';
 import { CarPic } from './CarPhoto';
 import { carBy } from '../state/store';
-import { CarArt, DashCard, F, Icon, Plate, StatusPill, brand, useReducedMotion, useTheme } from '../ui';
+import { CarArt, Chip, F, Group, Icon, Plate, Pressy, Row, brand, useReducedMotion, useTheme } from '../ui';
 import { STATUS } from '../lib/data';
 import { SLOTS } from '../lib/slots';
 import { hm12, rupee, short12, t12 } from '../lib/time';
@@ -29,159 +28,66 @@ export function FadeUp({ index = 0, children, style }: { index?: number; childre
   return <Animated.View style={[style, { opacity: a, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] }]}>{children}</Animated.View>;
 }
 
-/** Flat brand fill (#5409DA) filling its parent. Kept under the old name; no gradient. */
-export function VioletFill() {
-  return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#5409DA' }]} />;
-}
-
-/** Flat brand block; children sit on top. Cards below overlap it with marginTop -36. */
-export function VioletBlock({ children, style, radius = 0 }: { children?: React.ReactNode; style?: StyleProp<ViewStyle>; radius?: number }) {
-  return (
-    <View style={[{ overflow: 'hidden', borderBottomLeftRadius: radius, borderBottomRightRadius: radius }, style]}>
-      <VioletFill />
-      {children}
-    </View>
-  );
-}
-
 const tm = (iso: string | null) => (iso ? t12(iso) : '');
+const TONE: Record<string, 'violet' | 'green' | 'grey' | 'amber'> = { scheduled: 'grey', on_the_way: 'violet', arrived: 'violet', washing: 'violet', done: 'green', skipped: 'amber' };
 
-function MiniStat({ label, value, unit, icon, tone }: { label: string; value: string | number; unit?: string; icon: 'check' | 'warn' | 'flag'; tone: string }) {
-  const { c } = useTheme();
-  return (
-    <DashCard style={{ flex: 1, padding: 12, gap: 8 }}>
-      <View style={{ width: 32, height: 32, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(84,9,218,0.08)' }}>
-        <Icon name={icon} size={16} color={tone} />
-      </View>
-      <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 22, lineHeight: 28, letterSpacing: -0.3, color: c.fg, ...TNUM }}>
-        {value}{unit ? <Text style={{ fontFamily: F.medium, fontSize: 12, color: c.fg3 }}> {unit}</Text> : null}
-      </Text>
-      <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3 }}>{label}</Text>
-    </DashCard>
-  );
-}
-
+/** The day's numbers as ONE Group: earning, cars, skipped, first start / last finish. */
 export function DaySummary({ d, earnLabel }: { d: DayData; earnLabel: string }) {
-  const { c } = useTheme();
   return (
-    <View style={{ gap: 12 }}>
-      <FadeUp index={0}>
-        <View style={{ borderRadius: 16, overflow: 'hidden', padding: 20, shadowColor: '#1A1033', shadowOpacity: 0.16, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 4 }}>
-          <VioletFill />
-          <View pointerEvents="none" style={{ position: 'absolute', right: -32, top: -40, width: 136, height: 136, borderRadius: 68, backgroundColor: '#fff', opacity: 0.08 }} />
-          <Text style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: 'rgba(255,255,255,0.78)' }}>{earnLabel}</Text>
-          <Text numberOfLines={1} style={{ fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: '#fff', marginTop: 4, ...TNUM }}>{rupee(d.earn)}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, height: 24, paddingHorizontal: 8, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.16)' }}>
-              <Icon name="check" size={13} color="#fff" />
-              <Text style={{ fontFamily: F.semi, fontSize: 12, color: '#fff', ...TNUM }}>{d.done} / {d.total}</Text>
-            </View>
-            <Text numberOfLines={1} style={{ flex: 1, fontFamily: F.body, fontSize: 12, color: 'rgba(255,255,255,0.78)' }}>{t('Gaadi ho gayi')}</Text>
-          </View>
-        </View>
-      </FadeUp>
-      <FadeUp index={1} style={{ flexDirection: 'row', gap: 12 }}>
-        <MiniStat label={t('Gaadi ho gayi')} value={d.done} unit={`/ ${d.total}`} icon="check" tone={c.ok} />
-        <MiniStat label={t('Skip')} value={d.skipped} icon="warn" tone={brand.red} />
-        <MiniStat label={t('Baaki')} value={d.left} icon="flag" tone={c.primary} />
-      </FadeUp>
-      <FadeUp index={2}>
-        <DashCard style={{ padding: 16, flexDirection: 'row', gap: 12 }}>
-          {[[t('Pehli shuruat'), d.first], [t('Aakhri khatam'), d.last]].map(([k, v], i) => (
-            <View key={i} style={{ flex: 1 }}>
-              <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3 }}>{k}</Text>
-              <Text style={{ fontFamily: F.black, fontSize: 22, lineHeight: 28, letterSpacing: -0.3, color: c.fg, ...TNUM }}>{v ? tm(v as string) : '–'}</Text>
-            </View>
-          ))}
-        </DashCard>
-      </FadeUp>
-    </View>
+    <FadeUp index={0}>
+      <Group>
+        <Row icon="gift" label={earnLabel} right={<Text style={{ fontFamily: F.bold, fontSize: 18, color: '#141414', ...TNUM }}>{rupee(d.earn)}</Text>} />
+        <Row icon="car" label={t('Gaadi ho gayi')} value={`${d.done} / ${d.total}`} />
+        {d.skipped ? <Row icon="warn" label={t('Skip')} value={`${d.skipped}`} /> : null}
+        {d.left ? <Row icon="flag" label={t('Baaki')} value={`${d.left}`} /> : null}
+        <Row icon="clock" label={t('Pehli shuruat')} value={d.first ? tm(d.first) : '–'} />
+        <Row icon="clock" label={t('Aakhri khatam')} value={d.last ? tm(d.last) : '–'} />
+      </Group>
+    </FadeUp>
   );
 }
 
-function Meta({ k, v }: { k: string; v: string }) {
-  const { c } = useTheme();
-  return (
-    <View>
-      <Text style={{ fontFamily: F.body, fontSize: 11, lineHeight: 16, color: c.fg3 }}>{k}</Text>
-      <Text style={{ fontFamily: F.semi, fontSize: 13, lineHeight: 20, color: c.fg, ...TNUM }}>{v || '–'}</Text>
-    </View>
-  );
-}
-
-/** Time chip (violet tint, radius 8), as on the customer's booking cards. */
+/** Time chip (violet tint). */
 export function TimeChip({ text }: { text: string }) {
-  const { c } = useTheme();
   if (!text) return null;
-  return (
-    <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, height: 24, paddingHorizontal: 8, borderRadius: 8, backgroundColor: 'rgba(84,9,218,0.08)' }}>
-      <Icon name="clock" size={12} color={c.primary} />
-      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12, color: c.primary, ...TNUM }}>{text}</Text>
-    </View>
-  );
+  return <Chip tone="violet" icon="clock"><Text style={TNUM}>{text}</Text></Chip>;
 }
 
-export function DayRowCard({ r, onPress }: { r: DayRow; onPress?: () => void }) {
+/** One car row: plate, model, status chip, chevron when it opens the job. Second line: customer / slot / times, earning for done cars. */
+export function DayCarRow({ r, onPress }: { r: DayRow; onPress?: () => void }) {
   const { c } = useTheme();
   const slot = r.slot != null && SLOTS[r.slot] ? `${short12(hm12(SLOTS[r.slot].from))} – ${short12(hm12(SLOTS[r.slot].to))}` : '';
   const skip = r.status === 'skipped', car = carBy(r.reg);
-  return (
-    <DashCard onPress={onPress} accessibilityLabel={`${r.plate} ${r.model}`} style={{ padding: 16, gap: 12, opacity: skip ? 0.85 : 1 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 17, lineHeight: 24, color: c.fg }}>{r.model}</Text>
-          <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3 }}>{r.customer || ''}</Text>
+  const times = skip ? (r.skipReason ? t(r.skipReason) : '') : [r.started ? `${tm(r.started)}${r.finished ? ' – ' + tm(r.finished) : ''}` : r.eta ? hm12(r.eta) : '', r.minutes ? `${r.minutes} min` : ''].filter(Boolean).join(' · ');
+  const body = (
+    <>
+      <CarPic reg={r.reg} w={56} h={44} size={22} radius={10}>{car ? <CarArt car={car} width={56} height={24} /> : <Text style={{ fontSize: 20 }}>🚗</Text>}</CarPic>
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Plate reg={r.plate} style={{ paddingVertical: 1, paddingHorizontal: 6 }} />
+          {r.status === 'done' ? <Text style={{ fontFamily: F.bold, fontSize: 13, color: c.ok, ...TNUM }}>{rupee(r.earn)}</Text> : null}
         </View>
-        <StatusPill status={r.status} label={t(STATUS[r.status])} />
+        <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 20, color: c.fg }}>{r.model}{r.customer ? <Text style={{ fontFamily: F.body, color: c.grey }}> · {r.customer}</Text> : null}</Text>
+        {times || slot ? <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: skip ? brand.red : c.grey, ...TNUM }}>{times || slot}</Text> : null}
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, borderRadius: 12, backgroundColor: c.bg }}>
-        <CarPic reg={r.reg} w={64} h={44} size={24} radius={12}>{car ? <CarArt car={car} width={64} height={27} /> : <Text style={{ fontSize: 22 }}>🚗</Text>}</CarPic>
-        <View style={{ flex: 1, minWidth: 0, gap: 6, alignItems: 'flex-start' }}>
-          <Plate reg={r.plate} />
-          {slot ? <TimeChip text={slot} /> : null}
-        </View>
+      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+        <Chip tone={TONE[r.status] || 'grey'}>{t(STATUS[r.status])}</Chip>
+        {r.stars ? <Text accessibilityLabel={`${r.stars}/5`} style={{ fontFamily: F.black, fontSize: 12, letterSpacing: 1, color: brand.gold }}>{'★'.repeat(r.stars)}</Text> : r.photos ? <Text style={{ fontFamily: F.medium, fontSize: 12, color: c.grey }}>{r.photos} {t('photo')}</Text> : null}
       </View>
-      {skip ? (
-        r.skipReason ? <Text style={{ fontFamily: F.semi, fontSize: 13, color: brand.red }}>{t(r.skipReason)}</Text> : null
-      ) : (
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-          <Meta k={t('Tay samay')} v={r.eta ? hm12(r.eta) : ''} />
-          <Meta k={t('Shuru')} v={tm(r.started)} />
-          <Meta k={t('Khatam')} v={tm(r.finished)} />
-          <Meta k={t('Time')} v={r.minutes ? `${r.minutes} min` : ''} />
-        </View>
-      )}
-      {r.status === 'done' || r.photos || r.stars ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, borderTopColor: c.line, paddingTop: 12 }}>
-          {r.status === 'done' ? <Text style={{ fontFamily: F.black, fontSize: 16, color: c.ok, ...TNUM }}>{rupee(r.earn)}</Text> : null}
-          {r.photos ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Icon name="cam" size={15} color={c.fg3} />
-              <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg2 }}>{r.photos}</Text>
-            </View>
-          ) : null}
-          <View style={{ flex: 1 }} />
-          {r.stars ? <Text accessibilityLabel={`${r.stars}/5`} style={{ fontFamily: F.black, fontSize: 14, letterSpacing: 1, color: brand.gold }}>{'★'.repeat(r.stars)}<Text style={{ color: c.line }}>{'★'.repeat(5 - r.stars)}</Text></Text> : null}
-        </View>
-      ) : null}
-    </DashCard>
+      {onPress ? <Icon name="chevron" size={18} color={c.grey} /> : null}
+    </>
   );
+  const st = { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12, minHeight: 68, paddingHorizontal: 16, paddingVertical: 8, opacity: skip ? 0.85 : 1 };
+  if (onPress) return <Pressy onPress={onPress} accessibilityLabel={`${r.plate} ${r.model}`} scaleTo={0.99} style={st}>{body}</Pressy>;
+  return <View accessibilityLabel={`${r.plate} ${r.model}`} style={st}>{body}</View>;
 }
 
-/** Timeline entry like the customer's "My bookings": hollow violet dot + time on the left, a line down to the next card. */
-export function TimelineRow({ time, sub, last, children }: { time: string; sub?: string; last?: boolean; children?: React.ReactNode }) {
-  const { c } = useTheme();
+/** The cars of a day as ONE Group of rows. */
+export function DayCarGroup({ rows, onPress }: { rows: DayRow[]; onPress?: (r: DayRow) => void }) {
+  if (!rows.length) return null;
   return (
-    <View style={{ flexDirection: 'row', gap: 12 }}>
-      <View style={{ width: 20, alignItems: 'center' }}>
-        <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: c.primary, backgroundColor: c.bg, marginTop: 2 }} />
-        {!last ? <View style={{ flex: 1, width: 2, marginTop: 4, backgroundColor: 'rgba(84,9,218,0.15)' }} /> : null}
-      </View>
-      <View style={{ flex: 1, minWidth: 0, paddingBottom: 16 }}>
-        <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 20, color: c.fg, ...TNUM }}>{time || '–'}</Text>
-        {sub ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3, marginBottom: 8 }}>{sub}</Text> : <View style={{ height: 8 }} />}
-        {children}
-      </View>
-    </View>
+    <FadeUp index={2}>
+      <Group>{rows.map((r) => <DayCarRow key={r.reg} r={r} onPress={onPress ? () => onPress(r) : undefined} />)}</Group>
+    </FadeUp>
   );
 }

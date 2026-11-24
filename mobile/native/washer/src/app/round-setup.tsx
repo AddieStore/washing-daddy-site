@@ -2,7 +2,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Footer, useTheme } from '../ui';
+import { useTheme } from '../ui';
 import { useStore } from '../state/store';
 import { t } from '../lib/i18n';
 import { ScreenBar } from '../screens/JobParts';
@@ -25,11 +25,10 @@ export default function RoundSetup() {
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <ScreenBar title={t('Apna round set karo')} back />
       <ScrollView ref={sref} scrollEnabled={!busy} onScroll={(e) => { sy.current = e.nativeEvent.contentOffset.y }} scrollEventThrottle={16}
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 + insets.bottom }} showsVerticalScrollIndicator={false}>
         <RoundTimeline scroll={scroll} onBusy={setBusy} />
-        <View style={{ marginHorizontal: -16, marginTop: 'auto' }}><Footer bottomPad={130} /></View>
       </ScrollView>
-      <LockBar bottom={insets.bottom + 12} />
+      <LockBar />
     </View>
   );
 }
