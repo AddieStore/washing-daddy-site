@@ -239,8 +239,9 @@ export function history7(c: Car = car()): [Date, string, string][] {
     const dt = addDays(TODAY, -i), r = remote.find(x => x.date === iso(dt));
     if (c.status === 'new') break;
     if (realAcct() && !r) continue;
-    if (r) { h.push([dt, r.status === 'skipped' ? (r.skip_reason || 'Skipped') : `${r.washer?.name || c.washer} · ${ampm(r.finished_at) || 'washed'} · ${r.minutes || 0} min`, r.tasks.filter(t => !['pressure', 'dry'].includes(t.key)).map(t => t.label).join(', ')]); continue }
+    if (r) { h.push([dt, r.abandoned ? `Wash could not be completed${r.abandoned.reason ? ': ' + r.abandoned.reason : ''}` : r.status === 'skipped' ? (r.skip_reason || 'Skipped') : `${r.washer?.name || c.washer} · ${ampm(r.finished_at) || 'washed'} · ${r.minutes || 0} min`, r.tasks.filter(t => !['pressure', 'dry'].includes(t.key)).map(t => t.label).join(', ')]); continue }
     if (isPaused(c, dt)) { h.push([dt, 'Paused by you', '']); continue }
+    if (!REAL && c.img === 'scorpio' && i === 2) { h.push([dt, 'Wash could not be completed: Rain', '']); continue }   // demo only: a wash stopped halfway (matches the day sheet)
     if (!REAL && c.img === 'scorpio' && i === 3) { h.push([dt, 'Gate was locked and no key was left', '']); continue }   // demo only: a skipped morning with the washer's reason
     const ex = planTasks(c, dt).filter(k => !['pressure', 'dry'].includes(k)).map(k => TASK_LABEL[k]), f = t2m('06:36') + ((hash(c.plate + i) % 9) - 4);
     h.push([dt, `${c.washer} · ${ampm(m2t(f))} · ${9 + (hash(c.plate + i) % 4)} min`, ex.join(', ')]);

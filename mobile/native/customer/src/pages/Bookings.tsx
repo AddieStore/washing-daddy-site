@@ -160,7 +160,7 @@ function WashNotices() {
 }
 function DailyCard({ r }: { r: DailyRow }) {
   const live = r.status === 'live', done = r.status === 'done', skip = r.status === 'skipped';
-  const tone = skip ? G.mute : done ? G.pos : C.violet, badge = live ? 'Live now' : done ? 'Done' : skip ? 'Skipped' : 'Scheduled';
+  const tone = skip ? G.mute : done ? G.pos : C.violet, badge = live ? 'Live now' : done ? 'Done' : skip ? (r.note?.startsWith('Wash could not') ? 'Stopped' : 'Skipped') : 'Scheduled';
   const isToday = r.date === iso(TODAY);
   const facts = [r.washer, r.time ? `Finished ${r.time}` : '', r.mins ? `${r.mins} min` : '', r.litres ? `${r.litres} L water` : '', r.photos ? `${r.photos} photo${r.photos > 1 ? 's' : ''}` : ''].filter(Boolean);
   return (

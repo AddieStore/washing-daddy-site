@@ -267,7 +267,7 @@ function Stem({ m }: { m: Model }) {
   const stops = nodes.map((n, i) => ({ o: nodes.length > 1 ? i / (nodes.length - 1) : 0, c: n.c }));
   return (
     <Card>
-      <Head icon="⏱" title="Time stem" right={m.minutes ? `${m.minutes} min on site` : undefined} />
+      <Head icon="⏱" title="Timeline" right={m.minutes ? `${m.minutes} min on site` : undefined} />
       <View onLayout={e => setH(e.nativeEvent.layout.height)}>
         {h > 0 && nodes.length > 1 ? (
           <Svg width={4} height={h - 36} style={{ position: 'absolute', left: 16, top: 18 }}>
