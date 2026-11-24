@@ -1,7 +1,7 @@
 // The car screen: pushed from the round. Stage, stepper, requests, the one main action, tasks, photos, note, skip.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Image, Linking, StyleSheet, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { ActivityIndicator, Animated, BackHandler, Easing, Image, Linking, StyleSheet, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { DotBg, F, Footer, Icon, PullToRefresh, R, brand, cardBox, cardShadow, ui, useTheme } from '../ui';
 import { DashCard, IconBubble } from '../ui/dash';
 import { CarPic } from '../screens/CarPhoto';
@@ -20,6 +20,7 @@ import { myPhotoSource, myTrust } from '../screens/TrustData';
 import { VerifiedStrip } from '../ui/trust';
 import { me } from '../state/store';
 import { ScreenBar, HeroBar, VioletHero, PrimaryButton, ReqCard, Shot, TaskRow, WashTimer, InteriorButton, ExtrasRow, openNoteSheet, openPhotoSheet, openSkipSheet, openSuccessSheet, type ShotItem } from '../screens/JobParts';
+import { ReportSection, ReportSummary, StartCapture, newStartInfo, openLeaveSheet, saveStartInfo } from '../screens/JobReport';
 
 const ORDER = ['scheduled', 'on_the_way', 'arrived', 'washing', 'done'];
 const STEPS: [string, string, StepItem['icon'], string][] = [
@@ -50,7 +51,7 @@ function SecHead({ title, meta }: { title: string; meta?: string }) {
   );
 }
 
-function Stage({ reg, st }: { reg: string; st: string }) {
+function Stage({ reg, st, onBack }: { reg: string; st: string; onBack: () => void }) {
   const { width } = useWindowDimensions();
   const c0 = carBy(reg)!, wd = W(reg);
   const enter = useRef(new Animated.Value(0)).current;
@@ -86,7 +87,7 @@ function Stage({ reg, st }: { reg: string; st: string }) {
   const slotTxt = wd && wd.slot_from && wd.slot_to ? `${t('Slot')} ${fmt(wd.slot_from)} – ${fmt(wd.slot_to)}` : null;
   return (
     <VioletHero style={{ paddingBottom: 56 }}>
-      <HeroBar title={c0.house} />
+      <HeroBar title={c0.house} onBack={onBack} />
       <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <HChip>{chipA}</HChip>
@@ -196,12 +197,36 @@ export default function JobScreen() {
   useEffect(() => { lastReg.current = reg || null }, [reg]);
 
   const goPaisa = () => router.navigate('/paisa' as any);
-  const goRound = () => { if (router.canGoBack()) router.back(); else router.navigate('/') };
+  const leave = () => { if (router.canGoBack()) router.back(); else router.navigate('/') };
+  // A started wash (status washing) cannot be left silently: every way out opens the finish / abandon sheet.
+  const guarded = st === 'washing';
+  const guardRef = useRef(false);
+  guardRef.current = guarded;
+  const allowRef = useRef(false);
+  const ask = () => { if (reg) openLeaveSheet(reg, () => { allowRef.current = true; leave() }) };
+  const askRef = useRef(ask);
+  askRef.current = ask;
+  const goRound = () => { if (guarded) ask(); else leave() };
+  const navigation = useNavigation() as any;
+  useEffect(() => navigation.addListener('beforeRemove', (e: any) => {
+    if (!guardRef.current || allowRef.current) return;
+    e.preventDefault();
+    askRef.current();
+  }), [navigation]);
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!guardRef.current) return false;
+      askRef.current(); return true;
+    });
+    return () => sub.remove();
+  }, []));
+  const startInfo = useRef(newStartInfo());
+  useEffect(() => { startInfo.current = newStartInfo() }, [reg]);
 
   if (!reg || !car) {
     return (
       <View style={{ flex: 1, backgroundColor: th.bg }}>
-        <ScreenBar title={t('Abhi')} back />
+        <ScreenBar title={t('Abhi')} back onBack={leave} />
         <View style={{ padding: 16 }}>
           {S.day?.started
             ? <Empty title={t('Koi gaadi baaki nahi')} text={t('Aaj ka round poora. Shabash!')} />
@@ -299,7 +324,8 @@ export default function JobScreen() {
                 : <Button variant="gold" icon="flag" label={t('Pahuncha · gaadi ke paas')} onPress={() => act.arrived(reg)} />}
             </View>
           ) : null}
-          <SlideToConfirm label={t('Wash shuru karo')} resetKey={reg + st} onDone={() => act.startWash(reg)} />
+          <StartCapture key={reg} info={startInfo} />
+          <SlideToConfirm label={t('Wash shuru karo')} resetKey={reg + st} onDone={() => { act.startWash(reg); saveStartInfo(reg, startInfo.current, wd.issues) }} />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 }}>
             <Icon name="pin" size={18} color={th.fg2} />
             <Text style={{ flexShrink: 1, fontFamily: F.semi, fontSize: 14, color: th.fg2 }}>{car.house}{car.spot ? ' · ' + car.spot : ''}{car.keys ? ' · ' + car.keys : ''}</Text>
@@ -328,6 +354,7 @@ export default function JobScreen() {
               {stars ? stat('★'.repeat(stars), t('Rating')) : null}
             </View>
           </View>
+          <ReportSummary wd={wd} />
           <View style={{ marginTop: 14 }}>
             {nxReg && nxCar
               ? <Button variant="gold" iconRight="arrow" label={t(`Agli gaadi: ${nxCar.model}`)} onPress={() => act.setCurrent(nxReg)} />
@@ -353,7 +380,7 @@ export default function JobScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: th.bg }}>
       <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
-        <Stage reg={reg} st={st} />
+        <Stage reg={reg} st={st} onBack={goRound} />
         <PartnerStrip />
         <View style={{ paddingHorizontal: 16 }}>
           <DashCard style={{ marginTop: 12, paddingVertical: 8, paddingHorizontal: 8 }}><StepTrack steps={steps} /></DashCard>
@@ -388,6 +415,13 @@ export default function JobScreen() {
           {st === 'washing' && wd?.started_at && !isSundayIST(wd.started_at)
             ? (wd.interior ? <ExtrasRow addons={wd.addons || []} compact /> : <InteriorButton reg={reg} />)
             : null}
+
+          {wd && st === 'washing' ? (
+            <>
+              <SecHead title={t('Report')} meta={t('Kuch hua to yahan tap karo')} />
+              <ReportSection reg={reg} wd={wd} />
+            </>
+          ) : null}
 
           <SecHead title={t('Photo')} meta={t(`Pehle ki 1 aur baad ki kam se kam ${MIN_PHOTOS} photo zaroori`)} />
           <View style={{ flexDirection: 'row', gap: 10 }}>

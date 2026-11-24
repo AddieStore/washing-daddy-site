@@ -21,11 +21,11 @@ export function LiveSyncChip() {
   return <SyncChip state={state} text={t(label)} onPress={() => ui.toast(t(long))} />;
 }
 
-export function ScreenBar({ title, back }: { title: string; back?: boolean }) {
+export function ScreenBar({ title, back, onBack }: { title: string; back?: boolean; onBack?: () => void }) {
   const { c } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const goBack = () => { if (router.canGoBack()) router.back(); else router.navigate('/') };
+  const goBack = onBack || (() => { if (router.canGoBack()) router.back(); else router.navigate('/') });
   return (
     <View style={{ paddingTop: insets.top + 12, paddingBottom: 8, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.bg }}>
       {back ? (
@@ -60,10 +60,10 @@ export function VioletHero({ children, style }: { children?: React.ReactNode; st
 }
 
 /** Back circle + title + sync chip, on the violet hero. */
-export function HeroBar({ title }: { title: string }) {
+export function HeroBar({ title, onBack }: { title: string; onBack?: () => void }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const goBack = () => { if (router.canGoBack()) router.back(); else router.navigate('/') };
+  const goBack = onBack || (() => { if (router.canGoBack()) router.back(); else router.navigate('/') });
   return (
     <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <Pressy onPress={goBack} accessibilityLabel={t('Round par wapas')} hitSlop={6} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' }}>
