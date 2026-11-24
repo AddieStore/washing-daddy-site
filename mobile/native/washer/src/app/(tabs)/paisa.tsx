@@ -43,24 +43,9 @@ function PayRow({ car, last }: { car: Car; last?: boolean }) {
   );
 }
 
-/** Violet gradient balance card (customer WD Money hero): diagonal gradient drawn with Svg, faint circle top-right. */
+/** Flat brand balance card: no gradient, no glow. */
 function GradCard({ children }: { children?: React.ReactNode }) {
-  const [box, setBox] = useState({ w: 358, h: 180 });
-  return (
-    <View onLayout={e => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
-      style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#5409DA', padding: 20, shadowColor: '#5409DA', shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 6 }}>
-      <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Defs>
-          <SvgGradient id="gc" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor="#6A1BF2" /><Stop offset="0.5" stopColor="#5409DA" /><Stop offset="1" stopColor="#36058F" />
-          </SvgGradient>
-        </Defs>
-        <Rect x={0} y={0} width={box.w} height={box.h} fill="url(#gc)" />
-        <Circle cx={box.w - 6} cy={10} r={96} fill="#fff" fillOpacity={0.07} />
-      </Svg>
-      {children}
-    </View>
-  );
+  return <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: '#5409DA', padding: 20 }}>{children}</View>;
 }
 
 export default function Paisa() {
@@ -125,7 +110,7 @@ export default function Paisa() {
                     {target ? `${t('Poora mahina chale to')} ${rupee(target)}` : t('Is mahine ab tak')}
                   </Text>
                 </View>
-                <Ring size={84} stroke={9} fraction={target ? month / target : 0} value={cn.done} label={`/${cn.total} ${t('gaadi')}`} color="#FFD166" track="rgba(255,255,255,0.22)" ink="#fff" labelColor="rgba(255,255,255,0.75)" />
+                <Ring size={84} stroke={9} fraction={target ? month / target : 0} value={cn.done} label={`/${cn.total} ${t('gaadi')}`} color="#FFFFFF" track="rgba(255,255,255,0.22)" ink="#fff" labelColor="rgba(255,255,255,0.75)" />
               </View>
               <View style={{ alignSelf: 'flex-start', marginTop: 14, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 }}>
                 <Text style={[{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: '#fff' }, { fontVariant: ['tabular-nums'] }]}>

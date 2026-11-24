@@ -78,7 +78,7 @@ function PlaceChip() {
   if (g.status === 'denied') {
     return (
       <Pressy onPress={openLocationSettings} accessibilityLabel={t('Location chalu karo')} scaleTo={0.96} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
-        {chip(t('Location chalu karo'), '#FFD166')}
+        {chip(t('Location chalu karo'), '#FFFFFF')}
       </Pressy>
     );
   }
@@ -116,8 +116,8 @@ function RoundHeader({ top, greeting, name, avatar, verified }: { top: number; g
       <FadeUp index={1} style={{ marginTop: 20 }}>
         <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)' }}>{greeting}</Text>
         <Pressy onPress={() => router.push('/today')} accessibilityLabel={t('Aaj ka round')} scaleTo={0.98}>
-          <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, letterSpacing: -0.4, color: '#fff' }}>
-            {name}{'\n'}<Text style={{ color: '#FFD166' }}>{t('Aaj ka round')}</Text>
+          <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 28, lineHeight: 36, letterSpacing: -0.8, color: '#fff' }}>
+            {name}{'\n'}<Text style={{ color: 'rgba(255,255,255,0.72)' }}>{t('Aaj ka round')}</Text>
           </Text>
         </Pressy>
       </FadeUp>
@@ -141,12 +141,11 @@ function HeroCards({ started }: { started: boolean }) {
     : left ? t(`${left} baaki · ${cn.skipped ? cn.skipped + ' skip · ' : ''}aakhri ~${hm12(last)}`)
     : t('Round poora! Shabash.');
   const title = started ? (left ? `${left} ${t('gaadi')}` : t('Round poora! Shabash.')) : `${cn.total} ${t('gaadi')}`;
-  const tile = { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' } as const;
   return (
     <View style={{ flexDirection: 'row', gap: 12 }}>
-      <View style={{ flex: 1, flexBasis: 0, minWidth: 0 }}><DashCard onPress={() => router.push('/today')} accessibilityLabel={title} style={{ padding: 16, minHeight: 148, borderRadius: 20 }}>
+      <View style={{ flex: 1, flexBasis: 0, minWidth: 0 }}><DashCard onPress={() => router.push('/today')} accessibilityLabel={title} style={{ padding: 16, minHeight: 148, borderRadius: 16 }}>
         <Text style={{ fontFamily: F.semi, fontSize: 15, lineHeight: 22, color: c.fg, paddingRight: 44 }}>{t('Aaj ka round')}</Text>
-        <Text numberOfLines={2} style={{ fontFamily: F.bold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3, color: '#16a34a', marginTop: 2, paddingRight: 40, ...TNUM }}>{title}</Text>
+        <Text numberOfLines={2} style={{ fontFamily: F.bold, fontSize: 22, lineHeight: 28, letterSpacing: -0.5, color: c.fg, marginTop: 2, paddingRight: 40, ...TNUM }}>{title}</Text>
         <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, marginTop: 4 }}>{sub}</Text>
         <View style={{ position: 'absolute', right: 12, top: 12 }}>
           <Ring size={44} stroke={5} fraction={cn.total ? cn.done / cn.total : 0} value={cn.done} color={c.primary} track={c.soft} ink={c.fg} />
@@ -155,11 +154,10 @@ function HeroCards({ started }: { started: boolean }) {
           <Text style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 18, color: c.primary, flexShrink: 1 }} numberOfLines={1}>{dayShort(DAY, isHindi())} · {w.areas.split(' · ')[0]}</Text>
         </View>
       </DashCard></View>
-      <View style={{ flex: 1, flexBasis: 0, minWidth: 0 }}><DashCard onPress={() => router.push('/paisa' as any)} accessibilityLabel={t('Aaj ki kamai')} style={{ padding: 16, minHeight: 148, borderRadius: 20 }}>
+      <View style={{ flex: 1, flexBasis: 0, minWidth: 0 }}><DashCard onPress={() => router.push('/paisa' as any)} accessibilityLabel={t('Aaj ki kamai')} style={{ padding: 16, minHeight: 148, borderRadius: 16 }}>
         <Text style={{ fontFamily: F.semi, fontSize: 15, lineHeight: 22, color: c.fg }}>{t('Aaj ki kamai')}</Text>
-        <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 24, lineHeight: 32, letterSpacing: -0.3, color: c.primary, marginTop: 2, ...TNUM }}>{rupee(Money.today())}</Text>
+        <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 24, lineHeight: 32, letterSpacing: -0.5, color: c.fg, marginTop: 2, ...TNUM }}>{rupee(Money.today())}</Text>
         <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, marginTop: 4, paddingRight: 44, ...TNUM }}>{cn.done} / {cn.total} {t('Gaadi ho gayi')}</Text>
-        <View style={[tile, { position: 'absolute', right: 12, bottom: 12 }]}><Icon name="star" size={22} color={c.primary} /></View>
       </DashCard></View>
     </View>
   );

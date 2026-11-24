@@ -1,5 +1,5 @@
 // Bottom tabs: Round, Extra, [raised add-car button], Paisa, Profile, on a white rounded bar.
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,26 +16,19 @@ const TABS: { name: string; label: string; icon: IconName }[] = [
 ];
 const LEFT = TABS.slice(0, 2);
 const RIGHT = TABS.slice(2);
-const MID = 76; // gap in the bar under the raised centre button
+const MID = 68; // gap in the bar under the raised centre button
 type BottomTabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>['tabBar']>>[0];
 
-// One tab (customer TabBar): every cell has the same width and the same icon-over-label layout, selected or not, so nothing shifts.
-// Selection = a violet-tint pill behind the icon only (fades/scales in) plus the violet label. Tapping gives a press-down spring.
+// One tab: icon over label, same layout selected or not so nothing shifts. Active = brand colour on icon + label only (no pill, no fill).
 function TabCell({ tb, on, n, onPress }: { tb: (typeof TABS)[number]; on: boolean; n: number; onPress: () => void }) {
   const { c, dark } = useTheme();
   const rm = useReducedMotion();
-  const sel = useRef(new Animated.Value(on ? 1 : 0)).current;
   const press = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (rm) { sel.setValue(on ? 1 : 0); return }
-    Animated.spring(sel, { toValue: on ? 1 : 0, speed: 16, bounciness: 4, useNativeDriver: false }).start();
-  }, [on, rm, sel]);
-  const down = (v: number) => { if (rm) return; Animated.spring(press, { toValue: v, speed: 40, bounciness: 0, useNativeDriver: false }).start() };
-  const scale = press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.92] });
-  const pillScale = sel.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
+  const down = (v: number) => { if (rm) return; Animated.timing(press, { toValue: v, duration: v ? 90 : 160, useNativeDriver: false }).start() };
+  const scale = press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.94] });
   const col = on ? (dark ? '#CDB6FF' : c.primary) : c.fg3;
   return (
-    <View style={{ flex: 1, minHeight: 54 }}>
+    <View style={{ flex: 1, minHeight: 52 }}>
       <Pressable
         onPress={onPress}
         onPressIn={() => down(1)}
@@ -48,9 +41,8 @@ function TabCell({ tb, on, n, onPress }: { tb: (typeof TABS)[number]; on: boolea
       >
         <Animated.View style={[s.cellIn, { transform: [{ scale }] }]}>
           <View style={s.icWrap}>
-            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: 16, backgroundColor: dark ? 'rgba(139,92,246,0.26)' : 'rgba(84,9,218,0.11)', opacity: sel, transform: [{ scaleX: pillScale }] }]} />
             <Icon name={tb.icon} size={24} color={col} active={on} />
-            {n > 0 ? <View style={s.badge}><Text style={s.badgeTxt}>{n}</Text></View> : null}
+            {n > 0 ? <View style={[s.badge, { borderColor: c.tabBg }]}><Text style={s.badgeTxt}>{n}</Text></View> : null}
           </View>
           <Text numberOfLines={1} style={[s.lbl, { color: col, fontFamily: on ? F.semi : F.medium }]}>{t(tb.label)}</Text>
         </Animated.View>
@@ -82,7 +74,7 @@ function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
 
   return (
     <View pointerEvents="box-none" style={s.outer}>
-      <View style={[s.bar, { backgroundColor: c.tabBg, borderTopColor: dark ? c.line : 'rgba(84,9,218,0.10)', paddingBottom: 4 + insets.bottom, shadowColor: '#1A1033', shadowOpacity: dark ? 0 : 0.07 }]}>
+      <View style={[s.bar, { backgroundColor: c.tabBg, borderTopColor: c.line, paddingBottom: 4 + insets.bottom }]}>
         {LEFT.map(cell)}
         <View style={{ width: MID }} />
         {RIGHT.map(cell)}
@@ -91,9 +83,9 @@ function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
         onPress={() => { ui.haptic(10); openAddCar(); }}
         accessibilityRole="button"
         accessibilityLabel={t('Nayi gaadi add karo')}
-        style={({ pressed }) => [s.fab, { bottom: 20 + insets.bottom, backgroundColor: c.primary, borderColor: c.tabBg, transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+        style={({ pressed }) => [s.fab, { bottom: 18 + insets.bottom, backgroundColor: c.primary, borderColor: c.tabBg, opacity: pressed ? 0.88 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
       >
-        <Icon name="plus" size={28} color="#FFFFFF" />
+        <Icon name="plus" size={26} color="#FFFFFF" />
       </Pressable>
     </View>
   );
@@ -112,15 +104,13 @@ const s = StyleSheet.create({
   bar: {
     width: '100%', maxWidth: 480, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 4, paddingHorizontal: 6,
     borderTopWidth: 1,
-    shadowRadius: 12, shadowOffset: { width: 0, height: -3 }, elevation: 10,
   },
   cellIn: { alignItems: 'center', gap: 3 },
-  icWrap: { width: 56, height: 30, alignItems: 'center', justifyContent: 'center' },
+  icWrap: { width: 40, height: 28, alignItems: 'center', justifyContent: 'center' },
   lbl: { fontSize: 11, lineHeight: 14 },
   fab: {
-    position: 'absolute', alignSelf: 'center', width: 62, height: 62, borderRadius: 31, borderWidth: 4, alignItems: 'center', justifyContent: 'center',
-    shadowColor: brand.violet, shadowOpacity: 0.42, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 12,
+    position: 'absolute', alignSelf: 'center', width: 56, height: 56, borderRadius: 28, borderWidth: 4, alignItems: 'center', justifyContent: 'center',
   },
-  badge: { position: 'absolute', top: -4, right: 6, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: brand.violet, alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', top: -4, right: -2, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, borderWidth: 2, backgroundColor: brand.violet, alignItems: 'center', justifyContent: 'center' },
   badgeTxt: { fontFamily: F.bold, fontSize: 10, color: '#fff' },
 });

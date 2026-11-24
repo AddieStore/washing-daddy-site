@@ -41,11 +41,11 @@ function ProfileHead() {
           </View>
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={2} style={{ fontFamily: F.bold, fontSize: 26, lineHeight: 34, color: '#fff' }}>{w.name}</Text>
+          <Text numberOfLines={2} style={{ fontFamily: F.bold, fontSize: 26, lineHeight: 32, letterSpacing: -0.8, color: '#fff' }}>{w.name}</Text>
           <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)' }}>{t('Washing Daddy washer')} · {w.areas}</Text>
           <Pressable onPress={openPhotoChooser} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('Profile photo badlo')} style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-            <Text style={{ fontFamily: F.semi, fontSize: 14, color: '#FFD166' }}>{t('Profile photo badlo')}</Text>
-            <Icon name="chevron" size={14} color="#FFD166" />
+            <Text style={{ fontFamily: F.semi, fontSize: 14, color: '#fff' }}>{t('Profile photo badlo')}</Text>
+            <Icon name="chevron" size={14} color="#fff" />
           </Pressable>
         </View>
       </FadeUp>
@@ -59,10 +59,10 @@ function TrustCard() {
   const sf = myPhoto();
   const tr = myTrust();
   return (
-    <WCard style={{ padding: 16, alignItems: 'center' }}>
+    <WCard style={{ padding: 16 }}>
       <VerifiedBadge verified={tr.verified} label={t(tr.verified ? 'WD Verified' : 'Verification baaki')} />
       <TrustRow
-        style={{ justifyContent: 'center', marginTop: 12 }}
+        style={{ marginTop: 12 }}
         pendingLabel={t('baaki')}
         items={[
           { key: 'id', icon: 'id', label: t('ID verified'), earned: tr.id },
@@ -72,16 +72,14 @@ function TrustCard() {
         ]}
       />
       <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, textAlign: 'center', marginTop: 12 }}>{t('Sirf WD team ke check kiye hue badge hi dikhte hain')}</Text>
-      <View style={{ marginTop: 12, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: sf ? tint(c.ok, 0.12) : c.soft }}>
-        <Text style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 16, color: sf ? c.ok : c.softInk, textAlign: 'center' }}>
-          {sf ? t('✓ Profile photo set hai. Customers ko dikhegi.') : t('Camera icon se apni photo lagao — customer dekhega kaun aaya.')}
-        </Text>
-      </View>
+      <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, marginTop: 4 }}>
+        {sf ? t('✓ Profile photo set hai. Customers ko dikhegi.') : t('Camera icon se apni photo lagao — customer dekhega kaun aaya.')}
+      </Text>
       <View style={{ flexDirection: 'row', gap: 12, marginTop: 16, alignSelf: 'stretch' }}>
         {([
-          ['check', c.primary, (w.lifetime + Route.counts().done).toLocaleString('en-IN'), t('Gaadi dhoyi')],
-          ['star', dark ? '#FFD566' : '#8A5B00', String(w.rating), t('Rating')],
-          ['flag', dark ? '#5CE6B5' : '#0B7A57', String(w.since), t('Se saath')],
+          ['check', c.fg, (w.lifetime + Route.counts().done).toLocaleString('en-IN'), t('Gaadi dhoyi')],
+          ['star', c.fg, String(w.rating), t('Rating')],
+          ['flag', c.fg, String(w.since), t('Se saath')],
         ] as const).map(([ic, tone, v, l]) => (
           <View key={l} accessible accessibilityLabel={`${l} ${v}`} style={{ flex: 1, gap: 8, padding: 12, borderRadius: 12, backgroundColor: c.soft }}>
             <IconTile icon={ic} tone={tone} />

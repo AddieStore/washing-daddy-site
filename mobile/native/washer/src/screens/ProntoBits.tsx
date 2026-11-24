@@ -71,8 +71,8 @@ export function WCard({ children, style, onPress, label, scaleTo = 0.97 }: { chi
 export function PSection({ title, note, style }: { title: string; note?: string; style?: StyleProp<ViewStyle> }) {
   const { c } = useTheme();
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginTop: 24, marginBottom: 12 }, style]}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 18, lineHeight: 24, color: c.fg, flexShrink: 1 }}>{title}</Text>
+    <View style={[{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginTop: 28, marginBottom: 12 }, style]}>
+      <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 20, lineHeight: 26, letterSpacing: -0.5, color: c.fg, flexShrink: 1 }}>{title}</Text>
       {note ? <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3, flexShrink: 0 }} numberOfLines={1}>{note}</Text> : null}
     </View>
   );

@@ -29,27 +29,16 @@ export function FadeUp({ index = 0, children, style }: { index?: number; childre
   return <Animated.View style={[style, { opacity: a, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] }]}>{children}</Animated.View>;
 }
 
-/** Violet gradient (#6A1BF2 -> #5409DA -> #36058F, top-left to bottom-right) filling its parent. */
+/** Flat brand fill (#5409DA) filling its parent. Kept under the old name; no gradient. */
 export function VioletFill() {
-  const id = useId().replace(/[^a-zA-Z0-9]/g, '');
-  return (
-    <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none" pointerEvents="none">
-      <Defs>
-        <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#6A1BF2" /><Stop offset="0.5" stopColor="#5409DA" /><Stop offset="1" stopColor="#36058F" />
-        </LinearGradient>
-      </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
-    </Svg>
-  );
+  return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#5409DA' }]} />;
 }
 
-/** Violet block with a faint white circle top right; children sit on top. Cards below overlap it with marginTop -36. */
+/** Flat brand block; children sit on top. Cards below overlap it with marginTop -36. */
 export function VioletBlock({ children, style, radius = 0 }: { children?: React.ReactNode; style?: StyleProp<ViewStyle>; radius?: number }) {
   return (
     <View style={[{ overflow: 'hidden', borderBottomLeftRadius: radius, borderBottomRightRadius: radius }, style]}>
       <VioletFill />
-      <View pointerEvents="none" style={{ position: 'absolute', right: -40, top: -48, width: 176, height: 176, borderRadius: 88, backgroundColor: '#fff', opacity: 0.08 }} />
       {children}
     </View>
   );

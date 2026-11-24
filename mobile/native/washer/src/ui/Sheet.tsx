@@ -44,9 +44,9 @@ export function Sheet({
   useEffect(() => {
     if (visible) {
       setMounted(true);
-      Animated.timing(t, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+      Animated.spring(t, { toValue: 1, speed: 18, bounciness: 0, useNativeDriver: true }).start();
     } else if (mounted) {
-      Animated.timing(t, { toValue: 0, duration: 260, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(
+      Animated.timing(t, { toValue: 0, duration: 220, easing: Easing.bezier(0.4, 0, 1, 1), useNativeDriver: true }).start(
         ({ finished }) => {
           if (finished) setMounted(false);
         },
@@ -56,13 +56,13 @@ export function Sheet({
   }, [visible]);
 
   if (!mounted) return null;
-  const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [height, 0] });
+  const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [height, 0], extrapolate: 'clamp' });
   const bottomPad = 24 + (kb ? 0 : insets?.bottom ?? 0);
 
   return (
     <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.fill}>
-        <Animated.View style={[s.scrim, { opacity: t }]}>
+        <Animated.View style={[s.scrim, { opacity: t.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' }) }]}>
           <Pressable style={s.fill} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
         </Animated.View>
         <View style={s.bottom} pointerEvents="box-none">
@@ -76,14 +76,14 @@ export function Sheet({
               },
             ]}
           >
-            <View style={[s.grab, { backgroundColor: c.fg3, opacity: 0.4 }]} />
+            <View style={[s.grab, { backgroundColor: c.fg3, opacity: 0.35 }]} />
             <ScrollView
               bounces={false}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomPad }}
             >
-              {title ? <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 20, lineHeight: 28, color: c.fg, marginBottom: 12 }}>{title}</Text> : null}
+              {title ? <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 20, lineHeight: 26, letterSpacing: -0.5, color: c.fg, marginTop: 4, marginBottom: 16 }}>{title}</Text> : null}
               {children}
             </ScrollView>
           </Animated.View>
@@ -95,21 +95,21 @@ export function Sheet({
 
 const s = StyleSheet.create({
   fill: { flex: 1 },
-  scrim: { ...StyleSheet.absoluteFill as object, backgroundColor: 'rgba(23,23,23,0.4)' },
+  scrim: { ...StyleSheet.absoluteFill as object, backgroundColor: 'rgba(20,20,20,0.45)' },
   bottom: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
   sheet: {
     width: '100%',
     maxWidth: 440,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    shadowColor: '#1A1033',
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: -6 },
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -4 },
     elevation: 12,
-    paddingTop: 10,
+    paddingTop: 8,
   },
-  grab: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 4, marginBottom: 12 },
+  grab: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 4, marginBottom: 16 },
 });
 
 /* ---------- imperative host ---------- */

@@ -138,7 +138,7 @@ export default function Rewards() {
               <Text style={{ fontFamily: F.black, fontSize: 30, lineHeight: 36, letterSpacing: -0.5, color: '#fff', marginTop: 2, fontVariant: ['tabular-nums'] }}>{`${t('Teeno saath')}: ${rupee(total)}`}</Text>
               <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)', marginTop: 2 }}>{`${t('Abhi mumkin')}: ${rupee(o.possible)}${o.earnedSoFar ? ` · ${t('Pakka')}: ${rupee(o.earnedSoFar)}` : ''}`}</Text>
             </View>
-            <Ring size={84} stroke={9} fraction={m.total ? m.came / m.total : 0} value={m.came} label={`/${m.total} ${t('din')}`} color="#FFD166" track="rgba(255,255,255,0.22)" ink="#fff" labelColor="rgba(255,255,255,0.75)" />
+            <Ring size={84} stroke={9} fraction={m.total ? m.came / m.total : 0} value={m.came} label={`/${m.total} ${t('din')}`} color="#FFFFFF" track="rgba(255,255,255,0.22)" ink="#fff" labelColor="rgba(255,255,255,0.75)" />
           </FadeUp>
           <Text style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.9)', marginTop: 16 }}>{t('Bonus Manager mahine ke end mein deta hai. App mein paisa nahi chalta.')}</Text>
         </VHeader>
