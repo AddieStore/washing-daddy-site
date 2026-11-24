@@ -690,6 +690,32 @@ export const act = {
     void cancelWashAlerts(reg); void cancelLateAlert(reg);
     ui.haptic([20, 40, 20, 40, 60]); ui.confetti(1); Route.retime(); ledger.soon(); emit(); return true;
   },
+  // What the manager needs to know about this car (condition, issues, damage, delay, customer). Written any time before or at finish.
+  setReport(reg: string, v: { condition?: 'light' | 'normal' | 'heavy'; issues?: string[]; damage_note?: string | null; delay_reason?: string | null; customer_present?: boolean | null }) {
+    mutate(reg, d => {
+      if (v.condition) d.condition = v.condition;
+      if (v.issues) d.issues = Array.from(new Set(v.issues)).slice(0, 8);
+      if (v.damage_note !== undefined) d.damage_note = v.damage_note ? String(v.damage_note).slice(0, 300) : null;
+      if (v.delay_reason !== undefined) d.delay_reason = v.delay_reason ? String(v.delay_reason).slice(0, 120) : null;
+      if (v.customer_present !== undefined) d.customer_present = v.customer_present;
+    }); emit();
+  },
+  // The washer started a car and cannot finish it ("Wash nahi kiya" / left in the middle). A started car is never left open:
+  // it is closed as skipped with the reason, the minutes spent and the tasks already done, so the manager sees the real story.
+  abandon(reg: string, reason: string, note?: string) {
+    const wd = W(reg); if (!wd || wd.status === 'done' || wd.status === 'skipped') return false;
+    const why = String(reason || '').trim(); if (!why) return false;
+    const end = isoIST();
+    mutate(reg, d => {
+      const began = d.started_at && d.status === 'washing';
+      d.abandoned = began ? { at: end, reason: why.slice(0, 120), minutes: Math.max(0, Math.round((Date.parse(end) - Date.parse(d.started_at as string)) / 60000)),
+        tasks_done: d.tasks.filter(x => x.done).map(x => x.key), note: note ? String(note).slice(0, 300) : null } : null;
+      d.status = 'skipped'; d.skip_reason = why.slice(0, 120);
+    });
+    const sk = skipAsk(reg); if (sk) Sync.setRequest(sk.id, { status: 'done', done_at: end });
+    void cancelWashAlerts(reg); void cancelLateAlert(reg);
+    ui.haptic([14, 40, 14]); Route.retime(); ledger.soon(); ui.toast(t('Band kiya. Manager aur customer ko wajah dikh rahi hai')); emit(); return true;
+  },
   needPhoto(reg?: string) {
     const w = reg ? W(reg) : null; const pn = w ? photoNeeds(w) : null; const n = pn ? pn.missing.length : 0;
     ui.toast(t(pn && pn.before < MIN_BEFORE ? 'Pehle ki photo lo (wash se pehle), phir wash band hogi' : n ? `Gaadi ki ${MIN_PHOTOS} photo aur andar ki ${n} photo baaki hain` : `Kam se kam ${MIN_PHOTOS} baad ki photo lo, phir wash band hogi`)); ui.haptic(14);
@@ -702,7 +728,7 @@ export const act = {
   },
   // Back to where it was. The doc is marked as winning over the server's skipped copy (S.wins): Sync.adopt must not undo it.
   unskip(reg: string) {
-    mutate(reg, d => { d.status = d.arrived_at ? 'arrived' : d.on_the_way_at ? 'on_the_way' : 'scheduled'; d.skip_reason = null; d.overdue_at = null }, true);
+    mutate(reg, d => { d.status = d.arrived_at ? 'arrived' : d.on_the_way_at ? 'on_the_way' : 'scheduled'; d.skip_reason = null; d.overdue_at = null; d.abandoned = null }, true);
     lateAlerts(); emit();
   },
   // opening a car with an open request counts as "seen"
