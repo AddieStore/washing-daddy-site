@@ -1,18 +1,16 @@
-// Pieces of the car screen and the money screen: the top bar, tasks, photo tiles, request cards and the sheets.
+// Pieces of the car screen and the money screen: the top bar, plate, tasks, photo tiles, request notes and the sheets.
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Image, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { F, Icon, R as RAD, TaskIcon, brand, cardBox, cardShadow, sheet, ui, useTheme } from '../ui';
-import { Button, ChipPicker, Field, LinkButton, Pressy, SyncChip } from '../ui';
-import Svg, { Defs, LinearGradient as SvgGradient, Rect, Stop, Circle as SvgCircle } from 'react-native-svg';
-import { DashCard, IconBubble, Ring } from '../ui/dash';
-import { guideAt } from '../lib/washGuide';
+import { F, Icon, Chip, Group, Row, SheetHeader, TaskIcon, sheet, ui, useTheme } from '../ui';
+import { Button, Field, LinkButton, Pressy, SyncChip } from '../ui';
 import { act, photoSrc, syncState } from '../state/store';
 import { t } from '../lib/i18n';
 import { t12 } from '../lib/time';
 import { TASK, type TaskKey } from '../lib/schedule';
 import { NOTE_CHIPS, SKIPS, REQ_KIND, type Photo, type Req, type Wash } from '../lib/data';
+import { ChipPick } from './JobReport';
 
 /* ---------- top bar with a sync chip ---------- */
 export function LiveSyncChip() {
@@ -21,6 +19,7 @@ export function LiveSyncChip() {
   return <SyncChip state={state} text={t(label)} onPress={() => ui.toast(t(long))} />;
 }
 
+/** Plain page bar: round back button, 17/600 title, sync chip. */
 export function ScreenBar({ title, back, onBack }: { title: string; back?: boolean; onBack?: () => void }) {
   const { c } = useTheme();
   const router = useRouter();
@@ -29,92 +28,64 @@ export function ScreenBar({ title, back, onBack }: { title: string; back?: boole
   return (
     <View style={{ paddingTop: insets.top + 12, paddingBottom: 8, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.bg }}>
       {back ? (
-        <Pressy onPress={goBack} accessibilityLabel={t('Round par wapas')} hitSlop={6} style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card, borderWidth: 1, borderColor: c.line, ...cardShadow(c) }}>
-          <Icon name="back" size={18} color={c.fg} />
+        <Pressy onPress={goBack} accessibilityLabel={t('Round par wapas')} hitSlop={6} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card, borderWidth: StyleSheet.hairlineWidth, borderColor: c.line }}>
+          <Icon name="back" size={20} color={c.fg} />
         </Pressy>
       ) : null}
-      <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, fontFamily: back ? F.semi : F.bold, fontSize: back ? 17 : 20, lineHeight: back ? 24 : 28, color: c.fg }}>{title}</Text>
+      <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, fontFamily: F.semi, fontSize: back ? 17 : 20, lineHeight: 26, letterSpacing: -0.3, color: c.fg }}>{title}</Text>
       <LiveSyncChip />
     </View>
   );
 }
 
-/* ---------- violet hero block (customer service page look): gradient, faint circles, white text ---------- */
-export function VioletHero({ children, style }: { children?: React.ReactNode; style?: any }) {
-  const [box, setBox] = useState({ w: 390, h: 400 });
+/** Indian HSRP number plate: white body, dark border, blue "IND" strip on the left. */
+export function HsrpPlate({ reg }: { reg: string }) {
   return (
-    <View onLayout={e => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })} style={[{ overflow: 'hidden', backgroundColor: '#5409DA' }, style]}>
-      <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Defs>
-          <SvgGradient id="jobHero" x1="0" y1="0" x2="0.8" y2="1">
-            <Stop offset="0" stopColor="#6A1BF2" /><Stop offset="0.5" stopColor="#5409DA" /><Stop offset="1" stopColor="#36058F" />
-          </SvgGradient>
-        </Defs>
-        <Rect x={0} y={0} width={box.w} height={box.h} fill="url(#jobHero)" />
-        <SvgCircle cx={box.w + 10} cy={20} r={110} fill="#fff" fillOpacity={0.07} />
-        <SvgCircle cx={-10} cy={box.h - 70} r={80} fill="#fff" fillOpacity={0.05} />
-      </Svg>
-      {children}
+    <View accessibilityLabel={reg} style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'stretch', borderRadius: 6, borderWidth: 1.5, borderColor: '#141414', backgroundColor: '#fff', overflow: 'hidden' }}>
+      <View style={{ width: 16, backgroundColor: '#1F4DB8', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 2 }}>
+        <Text style={{ fontFamily: F.bold, fontSize: 6, color: '#fff' }}>IND</Text>
+      </View>
+      <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 14, lineHeight: 20, letterSpacing: 1.2, color: '#141414', paddingHorizontal: 8, paddingVertical: 2 }}>{reg}</Text>
     </View>
   );
 }
 
-/** Back circle + title + sync chip, on the violet hero. */
-export function HeroBar({ title, onBack }: { title: string; onBack?: () => void }) {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const goBack = onBack || (() => { if (router.canGoBack()) router.back(); else router.navigate('/') });
-  return (
-    <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <Pressy onPress={goBack} accessibilityLabel={t('Round par wapas')} hitSlop={6} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' }}>
-        <Icon name="back" size={18} color="#fff" />
-      </Pressy>
-      <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, fontFamily: F.semi, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.85)' }}>{title}</Text>
-      <LiveSyncChip />
-    </View>
-  );
-}
-
-/** The 52px violet primary button; when `off` it turns grey (still pressable, the caller explains what is missing). */
-export function PrimaryButton({ label, icon, onPress, off }: { label: string; icon?: React.ComponentProps<typeof Icon>['name']; onPress: () => void; off?: boolean }) {
+/** Round 40px icon button (call, route). */
+export function RoundIcon({ icon, label, onPress }: { icon: React.ComponentProps<typeof Icon>['name']; label: string; onPress: () => void }) {
   const { c } = useTheme();
-  const fg = off ? c.fg3 : '#fff';
   return (
-    <Pressy onPress={onPress} accessibilityLabel={label} style={{ height: 52, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16, backgroundColor: off ? '#E5E5E5' : c.primary }}>
-      {icon ? <Icon name={icon} size={18} color={fg} /> : null}
-      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 16, color: fg }}>{label}</Text>
+    <Pressy onPress={onPress} accessibilityLabel={label} scaleTo={0.92}
+      style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card, borderWidth: StyleSheet.hairlineWidth, borderColor: c.line }}>
+      <Icon name={icon} size={19} color={c.fg} />
     </Pressy>
   );
 }
 
-/* ---------- wash timer, ticks every second ---------- */
-export function WashTimer({ startedAt, extraMinutes = 0, interiorFrom }: { startedAt: string; extraMinutes?: number; interiorFrom?: number | null }) {
-  const { c } = useTheme();
+/* ---------- wash timer chip, ticks every second ---------- */
+export function WashTimer({ startedAt, extraMinutes = 0 }: { startedAt: string; extraMinutes?: number; interiorFrom?: number | null }) {
   const [, setN] = useState(0);
   useEffect(() => { const i = setInterval(() => setN(n => n + 1), 1000); return () => clearInterval(i) }, []);
   const s = Math.max(0, Math.floor((Date.now() - Date.parse(startedAt)) / 1000));
   const mm = String(Math.floor(s / 60)).padStart(2, '0'), ss = String(s % 60).padStart(2, '0');
-  const g = guideAt(startedAt, Date.now(), interiorFrom);
-  const total = g ? g.plan[g.plan.length - 1].from : 660;
-  return (
-    <View style={{ alignItems: 'center' }} accessibilityLabel={`${t('WASH TIME')} ${mm}:${ss}`}>
-      <Ring size={104} stroke={10} color="#FFD166" track="rgba(255,255,255,0.22)" ink="#fff" fraction={total ? s / total : 0}>
-        <Text style={{ fontFamily: F.bold, fontSize: 22, lineHeight: 28, color: '#fff', fontVariant: ['tabular-nums'] }}>{mm}:{ss}</Text>
-        <Text style={{ fontFamily: F.semi, fontSize: 10, letterSpacing: 0.4, color: 'rgba(255,255,255,0.75)' }}>{t('WASH TIME')}{extraMinutes > 0 ? ` +${extraMinutes}` : ''}</Text>
-      </Ring>
-    </View>
-  );
+  return <Chip tone="violet" icon="clock">{`${mm}:${ss}${extraMinutes > 0 ? ` +${extraMinutes}` : ''}`}</Chip>;
 }
 
-/* ---------- interior add-on: confirmation sheet, the button and the chip ---------- */
-function InteriorSheet({ reg, close }: { reg: string; close: () => void }) {
+/* ---------- interior add-on: confirmation sheet, the row and the chip ---------- */
+function SheetSub({ children }: { children?: string }) {
   const { c } = useTheme();
+  return children ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 19, color: c.grey, marginTop: -6, marginBottom: 16 }}>{children}</Text> : <View style={{ height: 4 }} />;
+}
+function SheetTitle({ title, sub }: { title: string; sub?: string }) {
+  return <View><SheetHeader title={title} /><SheetSub>{sub}</SheetSub></View>;
+}
+
+function InteriorSheet({ reg, close }: { reg: string; close: () => void }) {
   return (
     <View>
       <SheetTitle title={t('Is gaadi ka interior bhi karna hai?')} sub={t('10 minute extra milenge')} />
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1 }}><Button variant="ghost" label={t('Nahi')} onPress={close} /></View>
-        <View style={{ flex: 1 }}><Button variant="violet" label={t('Haan, karna hai')} onPress={() => { close(); act.addInterior(reg) }} /></View>
+        <View style={{ flex: 1 }}><Button variant="secondary" label={t('Nahi')} onPress={close} /></View>
+        <View style={{ flex: 1 }}><Button variant="primary" label={t('Haan, karna hai')} onPress={() => { close(); act.addInterior(reg) }} /></View>
       </View>
     </View>
   );
@@ -124,12 +95,10 @@ export function openInteriorSheet(reg: string) { sheet.open(close => <InteriorSh
 export function InteriorButton({ reg }: { reg: string }) {
   const { c } = useTheme();
   return (
-    <DashCard onPress={() => openInteriorSheet(reg)} accessibilityLabel={t('Interior kar raha hoon · +10 min')}
-      style={{ marginTop: 12, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 }}>
-      <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary }}><TaskIcon k="interior" size={20} color="#fff" /></View>
-      <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 16, color: c.fg }}>{t('Interior kar raha hoon · +10 min')}</Text>
-      <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: c.primary }}><Text style={{ fontFamily: F.bold, fontSize: 12, color: '#fff' }}>+10</Text></View>
-    </DashCard>
+    <Group>
+      <Row icon={<TaskIcon k="interior" size={22} color={c.fg} />} label={t('Interior kar raha hoon')} sub={t('Customer ne bola ho to tap karo')}
+        right={<Chip tone="violet">+10 min</Chip>} onPress={() => openInteriorSheet(reg)} />
+    </Group>
   );
 }
 
@@ -139,21 +108,18 @@ export function ExtrasRow({ addons, compact }: { addons: { key: string; at: stri
   if (!addons.length) return null;
   const name = (k: string) => (k === 'interior' ? t('Interior') : k);
   return (
-    <View style={{ marginTop: 12, gap: 8 }}>
-      {compact ? null : <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 18, lineHeight: 24, color: c.fg, marginTop: 12 }}>{t('Extras')}</Text>}
+    <View style={{ marginTop: compact ? 0 : 8 }}>
+      {compact ? null : <Text accessibilityRole="header" style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: c.grey, marginTop: 16, marginBottom: 8, marginLeft: 4 }}>{t('Extras')}</Text>}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {addons.map((a, i) => (
-          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: c.card, ...cardShadow(c) }}>
-            <Icon name="check" size={14} color={c.ok} />
-            <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg }}>{compact && a.key === 'interior' ? t('Interior jud gaya · +10 min') : `${name(a.key)} · +${a.minutes} min`}</Text>
-          </View>
+          <Chip key={i} tone="green" icon="check">{compact && a.key === 'interior' ? t('Interior jud gaya · +10 min') : `${name(a.key)} · +${a.minutes} min`}</Chip>
         ))}
       </View>
     </View>
   );
 }
 
-/* ---------- a task row ---------- */
+/* ---------- a task row: check circle, name, time ---------- */
 export function TaskRow({ k, done, doneAt, can, onPress }: { k: TaskKey; done: boolean; doneAt?: string | null; can: boolean; onPress: () => void }) {
   const { c } = useTheme();
   const sh = useRef(new Animated.Value(0)).current;
@@ -163,28 +129,21 @@ export function TaskRow({ k, done, doneAt, can, onPress }: { k: TaskKey; done: b
     onPress();
   };
   const extra = !['pressure', 'dry'].includes(k);
+  const circle = (
+    <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? c.primary : 'transparent', borderWidth: done ? 0 : 1.5, borderColor: can ? c.fg : c.dash }}>
+      {done ? <Icon name="check" size={14} color="#fff" /> : null}
+    </View>
+  );
   return (
-    <Pressy onPress={press} scaleTo={0.97} accessibilityLabel={m.hi} accessibilityState={{ checked: done, disabled: !can && !done }}
-      style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 12, paddingHorizontal: 12 }, cardBox(c), cardShadow(c), { transform: [{ translateX: sh }] } as any]}>
-      <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(84,9,218,0.08)' }}>
-        <TaskIcon k={k} size={20} color={c.primary} />
-      </View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: done ? c.fg3 : c.fg, textDecorationLine: done ? 'line-through' : 'none' }}>{t(m.hi)}</Text>
-          {extra ? <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(84,9,218,0.08)' }}><Text style={{ fontFamily: F.semi, fontSize: 11, color: c.primary }}>{t('AAJ')}</Text></View> : null}
-        </View>
-        <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 18, color: c.fg3 }}>{t(m.sub)}</Text>
-      </View>
-      {done && doneAt ? <Text style={{ fontFamily: F.semi, fontSize: 12, color: c.ok, fontVariant: ['tabular-nums'] }}>{t12(doneAt).replace(/ (AM|PM)/, '')}</Text> : null}
-      <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? c.primary : 'transparent', borderWidth: done ? 0 : 2, borderColor: c.dash }}>
-        {done ? <Icon name="check" size={16} color="#fff" /> : null}
-      </View>
-    </Pressy>
+    <Animated.View style={{ transform: [{ translateX: sh }] }}>
+      <Row icon={circle} label={t(m.hi)} sub={t(m.sub)} chevron={false} onPress={press}
+        right={done && doneAt ? <Text style={{ fontFamily: F.medium, fontSize: 13, color: c.grey, fontVariant: ['tabular-nums'] }}>{t12(doneAt).replace(/ (AM|PM)/, '')}</Text> : extra ? <Chip tone="violet">{t('AAJ')}</Chip> : undefined}
+        style={{ opacity: !can && !done ? 0.62 : 1 }} />
+    </Animated.View>
   );
 }
 
-/* ---------- photo tile ---------- */
+/* ---------- photo tile: square picture, caption underneath ---------- */
 export type ShotItem = Photo & { pending?: boolean; display?: string };
 export function Shot({ kind, list, enabled, onTake, onView }: { kind: 'before' | 'after' | 'issue'; list: ShotItem[]; enabled: boolean; onTake: () => void; onView: () => void }) {
   const { c } = useTheme();
@@ -192,126 +151,84 @@ export function Shot({ kind, list, enabled, onTake, onView }: { kind: 'before' |
   const last = list[list.length - 1];
   const fly = useRef(new Animated.Value(1)).current;
   const n = list.length;
-  useEffect(() => { if (n) { fly.setValue(0.85); Animated.spring(fly, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 10 }).start() } }, [n, fly]);
-  const R = RAD.card;
+  useEffect(() => { if (n) { fly.setValue(0.88); Animated.spring(fly, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 8 }).start() } }, [n, fly]);
+  const caption = (
+    <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: c.grey, textAlign: 'center', marginTop: 6 }}>{lab}{n ? ` · ${n}` : ''}</Text>
+  );
   // the wrapper owns the flex slot; the tile inside is a fixed-aspect square that can never exceed it
   if (!last) {
     return (
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Pressy onPress={onTake} disabled={!enabled} accessibilityLabel={lab} scaleTo={0.94}
-          style={{ width: '100%', aspectRatio: 1, borderRadius: R, backgroundColor: c.tile2, alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden', opacity: enabled ? 1 : 0.5 }}>
-          <View style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: kind === 'issue' ? 'rgba(232,56,79,0.12)' : 'rgba(84,9,218,0.08)' }}>
-            <Icon name={kind === 'issue' ? 'warn' : 'cam'} size={22} color={kind === 'issue' ? '#C41F37' : c.primary} />
-          </View>
-          <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 14, color: c.fg2 }}>{lab}</Text>
+        <Pressy onPress={onTake} disabled={!enabled} accessibilityLabel={lab} scaleTo={0.95}
+          style={{ width: '100%', aspectRatio: 1, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.dash, alignItems: 'center', justifyContent: 'center', opacity: enabled ? 1 : 0.5 }}>
+          <Icon name={kind === 'issue' ? 'warn' : 'cam'} size={22} color={c.grey} />
         </Pressy>
+        {caption}
       </View>
     );
   }
   const src = last.pending ? last.display : photoSrc(last);
-  const thumbs = list.slice(-3, -1).reverse(); // up to 2 earlier photos, newest first
   return (
     <View style={{ flex: 1, minWidth: 0 }}>
-      <Pressy onPress={last.pending ? undefined : onView} accessibilityLabel={`${lab} (${n})`} scaleTo={0.94} style={{ width: '100%', aspectRatio: 1 }}>
-        <Animated.View style={{ flex: 1, borderRadius: R, overflow: 'hidden', backgroundColor: c.tile2, transform: [{ scale: fly }] }}>
+      <Pressy onPress={last.pending ? undefined : onView} accessibilityLabel={`${lab} (${n})`} scaleTo={0.95} style={{ width: '100%', aspectRatio: 1 }}>
+        <Animated.View style={{ flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: c.tile2, transform: [{ scale: fly }] }}>
           {src ? <Image source={{ uri: src }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
           {last.pending ? (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(17,17,20,0.45)', alignItems: 'center', justifyContent: 'center' }]}>
               <ActivityIndicator color="#fff" size="large" />
             </View>
           ) : null}
-          {n > 1 ? (
-            <View style={{ position: 'absolute', right: 8, top: 8, minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: F.bold, fontSize: 12, color: '#111114' }}>{n}</Text>
-            </View>
-          ) : null}
-          {thumbs.length ? (
-            <View style={{ position: 'absolute', left: 8, top: 8, flexDirection: 'row', gap: 4 }}>
-              {thumbs.map((p, i) => {
-                const u = p.pending ? p.display : photoSrc(p);
-                return (
-                  <View key={i} style={{ width: 20, height: 20, borderRadius: 6, overflow: 'hidden', borderWidth: 1.5, borderColor: '#fff', backgroundColor: c.tile2 }}>
-                    {u ? <Image source={{ uri: u }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
-                  </View>
-                );
-              })}
-            </View>
-          ) : null}
-          <View style={{ position: 'absolute', left: 8, bottom: 8, right: 8, flexDirection: 'row' }}>
-            <View style={{ flexShrink: 1, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.6)' }}>
-              <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 11, color: '#fff' }}>{lab}</Text>
-            </View>
-          </View>
         </Animated.View>
       </Pressy>
+      {caption}
     </View>
   );
 }
 
-/* ---------- customer request card ---------- */
+/* ---------- customer request: a tinted note row ---------- */
 export function ReqCard({ q, customer }: { q: Req; customer: string }) {
-  const { c } = useTheme();
+  const { c, dark } = useTheme();
   const seen = q.status === 'seen';
   return (
-    <View style={{ gap: 12, padding: 16, ...cardBox(c), backgroundColor: seen ? c.card : 'rgba(84,9,218,0.08)', ...cardShadow(c) }}>
-      <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-        <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name={q.kind === 'rewash' ? 'redo' : 'note'} size={20} color="#fff" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 16, color: c.fg }}>{t(REQ_KIND[q.kind] || 'Customer ka note')}</Text>
-          <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{customer} · {q.created_at ? t12(q.created_at) : ''}{seen ? t(' · dekh liya') : ''}</Text>
+    <View style={{ gap: 10, padding: 14, borderRadius: 16, backgroundColor: seen ? c.card : dark ? 'rgba(139,92,246,0.16)' : 'rgba(84,9,218,0.06)', borderWidth: StyleSheet.hairlineWidth, borderColor: seen ? c.line : 'rgba(84,9,218,0.18)' }}>
+      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+        <Icon name={q.kind === 'rewash' ? 'redo' : 'note'} size={22} color={c.primary} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontFamily: F.semi, fontSize: 15, lineHeight: 21, color: c.fg }}>{t(REQ_KIND[q.kind] || 'Customer ka note')}</Text>
+          <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.grey }}>{customer} · {q.created_at ? t12(q.created_at) : ''}{seen ? t(' · dekh liya') : ''}</Text>
         </View>
       </View>
       {q.text ? <Text style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: c.fg }}>{'“'}{q.text}{'”'}</Text> : null}
       {q.spots && q.spots.length ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {q.spots.map((s, i) => (
-            <View key={i} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: c.card }}>
-              <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg }}>{s}</Text>
-            </View>
-          ))}
+          {q.spots.map((sp, i) => <Chip key={i} tone="grey">{sp}</Chip>)}
         </View>
       ) : null}
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <View style={{ flex: 1 }}><Pressy disabled={seen} onPress={() => act.reqSeen(q.id)} style={{ width: '100%', minHeight: 44, borderRadius: RAD.button, alignItems: 'center', justifyContent: 'center', backgroundColor: c.tile2, opacity: seen ? 0.5 : 1 }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg }}>{seen ? t('Dekh liya ✓') : t('Dekh liya')}</Text>
-        </Pressy></View>
-        <View style={{ flex: 1 }}><Pressy onPress={() => act.reqDone(q.id)} style={{ width: '100%', minHeight: 44, borderRadius: RAD.button, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 14, color: '#fff' }}>{t('Kar diya')}</Text>
-        </Pressy></View>
+        <View style={{ flex: 1 }}><Button variant="secondary" size="md" disabled={seen} label={seen ? t('Dekh liya ✓') : t('Dekh liya')} onPress={() => act.reqSeen(q.id)} /></View>
+        <View style={{ flex: 1 }}><Button variant="primary" size="md" label={t('Kar diya')} onPress={() => act.reqDone(q.id)} /></View>
       </View>
     </View>
   );
 }
 
 /* ---------- sheets ---------- */
-function SheetTitle({ title, sub }: { title: string; sub?: string }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ marginBottom: 16 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 18, lineHeight: 24, color: c.fg }}>{title}</Text>
-      {sub ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 20, color: c.fg3, marginTop: 4 }}>{sub}</Text> : null}
-    </View>
-  );
-}
-
 function NoteSheet({ reg, customer, current, close }: { reg: string; customer: string; current: string | null; close: () => void }) {
-  const { c } = useTheme();
   const [text, setText] = useState(current || '');
+  const { c } = useTheme();
   return (
     <View>
       <SheetTitle title={t('Customer ke liye note')} sub={t(`${customer} ke app mein turant dikhega.`)} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
         {NOTE_CHIPS.map(ch => (
-          <Pressy key={ch} onPress={() => setText(v => (v ? v.replace(/\s*$/, '. ') + ch : ch))} style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, backgroundColor: c.tile2 }}>
+          <Pressy key={ch} onPress={() => setText(v => (v ? v.replace(/\s*$/, '. ') + ch : ch))} style={{ minHeight: 38, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 999, backgroundColor: c.tile2 }}>
             <Text style={{ fontFamily: F.medium, fontSize: 14, color: c.fg }}>{t(ch)}</Text>
           </Pressy>
         ))}
       </View>
       <Field multiline maxLength={280} value={text} onChangeText={setText} placeholder={t('Apne shabdon mein likho')} />
       <View style={{ height: 12 }} />
-      <Button variant="violet" label={t('Note bhejo')} onPress={() => { act.setNote(reg, text.trim()); close() }} />
+      <Button variant="primary" label={t('Note bhejo')} onPress={() => { act.setNote(reg, text.trim()); close() }} />
       {current ? <LinkButton label={t('Note hatao')} onPress={() => { act.setNote(reg, ''); close() }} style={{ marginTop: 6 }} /> : null}
     </View>
   );
@@ -327,7 +244,8 @@ function SkipSheet({ reg, customer, close }: { reg: string; customer: string; cl
   return (
     <View>
       <SheetTitle title={t('Skip kyun?')} sub={t(`${customer} ko yahi wajah dikhegi.`)} />
-      <ChipPicker options={SKIPS.map(s => ({ value: s, label: t(s) }))} value={pick} onChange={setPick} />
+      <ChipPick options={SKIPS.map(s => ({ value: s, label: t(s) }))} value={pick} onChange={setPick} />
+      <View style={{ height: 12 }} />
       <Field multiline maxLength={160} value={text} onChangeText={setText} placeholder={t('Ya khud likho')} style={{ minHeight: 70 }} />
       <View style={{ height: 12 }} />
       <Button variant="ink" label={t('Skip karo')} disabled={!reason} onPress={() => { act.skip(reg, reason); close() }} />
@@ -349,19 +267,19 @@ function PhotoSheet({ title, reg, kind, list, can, retake, close }: { title: str
   return (
     <View>
       <SheetTitle title={title} sub={t(`${list.length} photo · customer ke app mein dikh rahi hai`)} />
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: 12 }}>
         {list.map((p, i) => (
           <View key={i}>
-            <Image source={{ uri: photoSrc(p) }} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: c.tile2 }} resizeMode="cover" />
-            <Text style={{ fontFamily: F.semi, fontSize: 13, color: c.fg3, marginTop: 4 }}>{t12(p.at)}</Text>
+            <Image source={{ uri: photoSrc(p) }} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 12, backgroundColor: c.tile2 }} resizeMode="cover" />
+            <Text style={{ fontFamily: F.medium, fontSize: 12, color: c.grey, marginTop: 4 }}>{t12(p.at)}</Text>
           </View>
         ))}
       </View>
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-        <View style={{ flex: 1 }}><Button variant="ghost" icon="cam" label={t('Aur lo')} disabled={!can} onPress={() => { close(); retake() }} /></View>
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+        <View style={{ flex: 1 }}><Button variant="secondary" icon="cam" label={t('Aur lo')} disabled={!can} onPress={() => { close(); retake() }} /></View>
         <View style={{ flex: 1 }}>
-          {can ? <Button variant="ghost" label={t('Aakhri hatao')} onPress={() => { act.delPhoto(reg, kind); close() }} />
-            : <Button variant="ghost" label={t('Band karo')} onPress={close} />}
+          {can ? <Button variant="secondary" label={t('Aakhri hatao')} onPress={() => { act.delPhoto(reg, kind); close() }} />
+            : <Button variant="secondary" label={t('Band karo')} onPress={close} />}
         </View>
       </View>
     </View>
@@ -374,22 +292,20 @@ export function openSuccessSheet(customer: string, next: { reg: string; model: s
 function SuccessSheet({ customer, next, goPaisa, close }: { customer: string; next: { reg: string; model: string } | null; goPaisa: () => void; close: () => void }) {
   const { c } = useTheme();
   const pop = useRef(new Animated.Value(0)).current;
-  useEffect(() => { Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 10, bounciness: 14 }).start() }, [pop]);
+  useEffect(() => { Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 10, bounciness: 12 }).start() }, [pop]);
   return (
     <View style={{ alignItems: 'center', paddingTop: 6 }}>
-      <Animated.View style={{ width: 104, height: 104, borderRadius: 52, marginTop: 6, marginBottom: 14, backgroundColor: c.ok, alignItems: 'center', justifyContent: 'center', borderWidth: 12, borderColor: 'rgba(22,163,74,0.16)', transform: [{ scale: pop }] }}>
-        <Icon name="check" size={48} color="#fff" />
+      <Animated.View style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 14, backgroundColor: c.ok, alignItems: 'center', justifyContent: 'center', transform: [{ scale: pop }] }}>
+        <Icon name="check" size={34} color="#fff" />
       </Animated.View>
-      <Text style={{ fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: c.fg }}>{t('Chamak gayi!')}</Text>
-      <Text style={{ fontFamily: F.body, fontSize: 15, color: c.fg2, marginTop: 4, textAlign: 'center' }}>{t(`${customer} ke phone pe pahunch gaya`)}</Text>
-      <Text style={{ fontSize: 24, marginTop: 10, letterSpacing: 2 }}>{'🧽 · · · · 📱'}</Text>
-      <View style={{ alignSelf: 'stretch', marginTop: 14 }}>
+      <Text style={{ fontFamily: F.bold, fontSize: 24, lineHeight: 30, letterSpacing: -0.5, color: c.fg }}>{t('Chamak gayi!')}</Text>
+      <Text style={{ fontFamily: F.body, fontSize: 14, color: c.grey, marginTop: 4, marginBottom: 18, textAlign: 'center' }}>{t(`${customer} ke phone pe pahunch gaya`)}</Text>
+      <View style={{ alignSelf: 'stretch' }}>
         {next
-          ? <Button variant="gold" iconRight="arrow" label={t(`Agli gaadi: ${next.model}`)} onPress={() => { act.setCurrent(next.reg); close() }} />
-          : <Button variant="gold" label={t('Round poora · hisaab dekho')} onPress={() => { close(); goPaisa() }} />}
+          ? <Button variant="primary" iconRight="arrow" label={t(`Agli gaadi: ${next.model}`)} onPress={() => { act.setCurrent(next.reg); close() }} />
+          : <Button variant="primary" label={t('Round poora · hisaab dekho')} onPress={() => { close(); goPaisa() }} />}
       </View>
       <LinkButton label={t('Yahin raho')} onPress={close} style={{ marginTop: 6 }} />
     </View>
   );
 }
-
