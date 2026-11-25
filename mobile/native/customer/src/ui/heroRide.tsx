@@ -42,11 +42,29 @@ function Street({ x0 }: { x0: number }) {
     <Rect x={x0 + x - 3} y={192} width={6} height={6} rx={1.5} fill="#3A3152" />
   </G>;
   const tree = (x: number, r: number) => <G key={'t' + x}>
-    <Rect x={x0 + x - 2} y={176} width={4} height={22} rx={2} fill="#3A3152" />
-    <Circle cx={x0 + x} cy={170 - r} r={r} fill="#D8C8FF" />
-    <Circle cx={x0 + x - r * 0.35} cy={170 - r * 1.2} r={r * 0.55} fill="#E4D8FF" />
+    <Rect x={x0 + x - 2} y={176} width={4} height={22} rx={2} fill="#7A5A48" />
+    <Circle cx={x0 + x} cy={170 - r} r={r} fill="#5FB36B" />
+    <Circle cx={x0 + x + r * 0.45} cy={170 - r * 0.7} r={r * 0.7} fill="#4FA35D" />
+    <Circle cx={x0 + x - r * 0.35} cy={170 - r * 1.2} r={r * 0.55} fill="#86CF92" />
   </G>;
   return <G>{lamp(60)}{tree(150, 18)}{tree(178, 12)}{lamp(260)}{tree(340, 16)}</G>;
+}
+// the far side of the road: a grass verge with tufts, small flowers and bushes (the trees and lamps stand on it, see Street)
+function Verge({ x0 }: { x0: number }) {
+  const tufts = [8, 31, 52, 77, 101, 124, 139, 163, 190, 214, 236, 259, 281, 303, 326, 349, 371, 392];
+  const flowers: [number, string][] = [[20, '#FF6FA3'], [64, '#FFBA08'], [112, '#FFFFFF'], [152, '#FF8A5B'], [205, '#FF6FA3'], [247, '#FFFFFF'], [290, '#FFBA08'], [334, '#FF8A5B'], [380, '#FF6FA3']];
+  const bushes = [44, 130, 226, 312, 396];
+  return <G>
+    <Rect x={x0} y={189} width={400} height={10} fill="#86CC8F" />
+    <Rect x={x0} y={189} width={400} height={2.2} fill="#A9DEB0" />
+    {bushes.map(x => <G key={'b' + x}><Ellipse cx={x0 + x} cy={190} rx={10} ry={6.5} fill="#5FB36B" /><Ellipse cx={x0 + x + 3} cy={188} rx={6} ry={4} fill="#86CF92" /></G>)}
+    {tufts.map(x => <Path key={'g' + x} d={`M${x0 + x} 190 q-1.6 -5.5 -4.4 -7 M${x0 + x} 190 q.2 -7 1 -8.6 M${x0 + x} 190 q2 -5.2 5 -6.4`} stroke="#4FA35D" strokeWidth={1.5} strokeLinecap="round" fill="none" />)}
+    {flowers.map(([x, c]) => <G key={'f' + x}>
+      <Path d={`M${x0 + x} 190 v-7`} stroke="#4FA35D" strokeWidth={1.2} strokeLinecap="round" />
+      {[[-1.9, 0], [1.9, 0], [0, -1.9], [0, 1.9]].map(([dx, dy], i) => <Circle key={i} cx={x0 + x + dx} cy={182.4 + dy} r={1.7} fill={c} />)}
+      <Circle cx={x0 + x} cy={182.4} r={1} fill="#FFD166" />
+    </G>)}
+  </G>;
 }
 function Road({ x0 }: { x0: number }) {
   return <G>{[0, 1, 2, 3, 4, 5].map(i => <Rect key={i} x={x0 + i * 70 + 12} y={213.5} width={34} height={4} rx={2} fill="#F4F1FA" />)}</G>;
@@ -199,6 +217,7 @@ export const HeroRide = React.memo(function HeroRide({ width }: { width: number 
         <Rect x={0} y={198} width={width / k} height={2.5} fill="#3B3450" />
         <Rect x={0} y={229.5} width={width / k} height={2.5} fill="#2A2339" />
       </Svg>
+      <Loop k={k} tile={400} ms={2100} top={0} h={200} rm={rm} span={width}>{x0 => <Verge key={x0} x0={x0} />}</Loop>
       <Loop k={k} tile={400} ms={2100} top={0} h={200} rm={rm} span={width}>{x0 => <Street key={x0} x0={x0} />}</Loop>
       <Loop k={k} tile={420} ms={2200} top={0} h={VB_H} rm={rm} span={width}>{x0 => <Road key={x0} x0={x0} />}</Loop>
       {/* rider group */}

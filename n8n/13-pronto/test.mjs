@@ -125,6 +125,9 @@ const rec = r => { all.push(r); return r; };
     const w2 = rec(await call(W, 'wd-waitlist', { lat: 28.4960, lng: 77.0900, area: 'Cyber City', phone: OTHER }));
     const doc2 = (W.docs.get('waitlist/' + ME) || {}).data;
     check('asking again moves the spot and counts it; a phone in the body is ignored; no second Telegram line', w2.status === 200 && doc2.asks === 2 && doc2.lat === 28.4960 && doc2.name === 'Asha' && !W.docs.get('waitlist/' + OTHER) && !w2.notify, doc2);
+    check('waitlist answers how many are waiting nearby, and a peek writes nothing', w1.body.near === 1 && w1.body.goal === 25, w1.body);
+    const pk = rec(await call(W, 'wd-waitlist', { lat: 28.4955, lng: 77.0898, peek: true }));
+    check('peek: counts neighbours within 1.5 km without saving', pk.status === 200 && pk.body.near === 1 && pk.body.goal === 25 && !pk.notify, pk.body);
     const w3 = rec(await call(W, 'wd-waitlist', { lat: 0, lng: 0 }));
     check('waitlist: a spot outside India is refused', w3.status === 400, w3);
   }

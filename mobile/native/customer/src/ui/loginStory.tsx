@@ -48,7 +48,7 @@ function Skyline({ W, h, color, seed, speed, windows }: { W: number; h: number; 
   const parts = useMemo(() => {
     const r = seeded(seed), out: { x: number; w: number; h: number; win: number[] }[] = []; let x = 0;
     while (x < W - 20) { const w = 22 + Math.round(r() * 26), hh = h * (0.4 + r() * 0.6); out.push({ x, w, h: hh, win: Array.from({ length: 8 }, () => r()) }); x += w + 2 }
-    const left = W - x; out[out.length - 1].w += left; return out;
+    const left = W - x; if (out.length) out[out.length - 1].w += left; return out;
   }, [W, h, seed]);
   const tile = (
     <Svg width={W} height={h}>
@@ -69,6 +69,43 @@ function Star({ x, y, d }: { x: number; y: number; d: number }) {
 /** the login page paints the story on a light lavender sky that melts into white; splash and primer keep the deep-violet one */
 export const LightCtx = createContext(false);
 /** tone 0 = night, 1 = dawn, 2 = morning, 3 = bright day: the sun climbs and the sky warms as the story goes */
+/** slow-moving landmarks of the city, drawn as soft silhouettes: India Gate, a mandir shikhara, a Mughal dome with minarets */
+function Landmarks({ W, h, color, speed }: { W: number; h: number; color: string; speed: number }) {
+  const p = useLoop(speed), st = useAnimatedStyle(() => ({ transform: [{ translateX: -p.value * W }] }));
+  const x0 = W * 0.08, x1 = W * 0.42, x2 = W * 0.74;
+  const tile = (
+    <Svg width={W} height={h}>
+      <G fill={color}>
+        {/* India Gate: a tall block with the arch cut out, a cap and two small domes */}
+        <Path d={`M${x0} ${h} V${h - 50} H${x0 + 6} V${h - 56} H${x0 + 46} V${h - 50} H${x0 + 52} V${h} H${x0 + 36} V${h - 22} a10 12 0 0 0 -20 0 V${h}Z`} />
+        <Rect x={x0 + 10} y={h - 62} width={32} height={6} rx={1.5} /><Circle cx={x0 + 8} cy={h - 60} r={3} /><Circle cx={x0 + 44} cy={h - 60} r={3} />
+        {/* mandir: stepped tower with a kalash on top */}
+        <Path d={`M${x1} ${h} V${h - 18} H${x1 + 6} V${h - 30} H${x1 + 12} V${h - 44} H${x1 + 18} V${h - 58} H${x1 + 24} V${h - 70} L${x1 + 28} ${h - 76} L${x1 + 32} ${h - 70} V${h - 58} H${x1 + 38} V${h - 44} H${x1 + 44} V${h - 30} H${x1 + 50} V${h - 18} H${x1 + 56} V${h}Z`} />
+        <Rect x={x1 + 27.4} y={h - 90} width={1.2} height={14} /><Circle cx={x1 + 28} cy={h - 90} r={2.2} />
+        {/* Mughal dome with two minarets and a flag */}
+        <Path d={`M${x2} ${h} V${h - 26} H${x2 + 64} V${h}Z`} /><Path d={`M${x2 + 12} ${h - 26} a20 24 0 0 1 40 0Z`} /><Rect x={x2 + 31.4} y={h - 58} width={1.2} height={10} /><Circle cx={x2 + 32} cy={h - 58} r={1.8} />
+        <Rect x={x2 - 8} y={h - 52} width={6} height={52} rx={2} /><Circle cx={x2 - 5} cy={h - 54} r={4} /><Rect x={x2 + 66} y={h - 52} width={6} height={52} rx={2} /><Circle cx={x2 + 69} cy={h - 54} r={4} />
+      </G>
+    </Svg>
+  );
+  return <Animated.View style={[{ position: 'absolute', left: 0, bottom: 0, width: W * 2, height: h, flexDirection: 'row' }, st]}>{tile}{tile}</Animated.View>;
+}
+/** a toran of marigold-coloured pennants strung across the top, swaying a little */
+function Toran({ W }: { W: number }) {
+  const sway = usePulse(1600), st = useAnimatedStyle(() => ({ transform: [{ rotate: interpolate(sway.value, [0, 1], [-0.6, 0.6]) + 'deg' }] }));
+  const n = Math.max(8, Math.round(W / 26)), cols = ['#FF9F1C', '#FFFFFF', '#2EC4B6', '#FF6FA3', '#FFBA08'];
+  return (
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: -6, top: 0, width: W + 12, height: 34, transformOrigin: '50% 0%' }, st]}>
+      <Svg width={W + 12} height={34}>
+        <Path d={`M0 4 Q${(W + 12) / 2} 20 ${W + 12} 4`} stroke="rgba(84,9,218,0.35)" strokeWidth={1.4} fill="none" />
+        {Array.from({ length: n }, (_, i) => {
+          const t = (i + 0.5) / n, x = t * (W + 12), y = 4 + 16 * (1 - Math.pow(2 * t - 1, 2)) * 0.5 * 2 / 2;
+          return <G key={i}><Path d={`M${x - 7} ${y} L${x + 7} ${y} L${x} ${y + 17}Z`} fill={cols[i % cols.length]} stroke="rgba(84,9,218,0.18)" strokeWidth={0.6} /><Circle cx={x} cy={y + 5} r={1.4} fill="rgba(84,9,218,0.35)" /></G>;
+        })}
+      </Svg>
+    </Animated.View>
+  );
+}
 export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: number; road?: boolean }) {
   const light = useContext(LightCtx);
   const sky = light ? ['#FFFFFF', '#FFFFFF', '#FAF7FF'] : [['rgba(58,5,153,0)', '#4B12C9', '#6A2BF0'], ['rgba(84,9,218,0)', '#7A3AF2', '#FF9E7A'], ['rgba(110,40,235,0)', '#8E55F5', '#FFC08A'], ['rgba(130,70,245,0)', '#A97BFF', '#FFE2A8']][tone];
@@ -84,7 +121,9 @@ export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: num
       <View style={abs(W * (0.62 + tone * 0.04) - 38, sunY - 38, { width: 76, height: 76, borderRadius: 38, backgroundColor: sunC, opacity: 0.95 })} />
       {[0, 1, 2].map(i => <Cloud key={i} x={(i * 140 + 20 + tone * 30) % (W - 60)} y={14 + i * 22} w={64 + i * 18} d={i * 700} />)}
       <Skyline W={W} h={96} color={light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.10)'} seed={3 + tone} speed={42000} />
+      {light ? <Landmarks W={W} h={100} color="rgba(84,9,218,0.09)" speed={60000} /> : null}
       <Skyline W={W} h={70} color={light ? 'rgba(84,9,218,0.14)' : 'rgba(46,10,120,0.55)'} seed={11 + tone} speed={26000} windows={!light && tone < 2} />
+      {light ? <Toran W={W} /> : null}
       <View style={abs(0, H - 36, { width: W, height: 36, backgroundColor: light ? 'transparent' : '#2A0F6B' })}>
         {light ? <LinearGradient colors={['#D9CBFA', '#F3ECFF']} style={StyleSheet.absoluteFill} /> : null}
         <View style={{ height: 3, backgroundColor: light ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.28)' }} />
@@ -148,16 +187,23 @@ export function Person({ look, pose, h = 160, delay = 0 }: { look: PersonLook; p
           <Ellipse cx={50} cy={156} rx={30} ry={4} fill="#000" opacity={0.2} />
           <Rect x={37} y={98} width={12} height={52} rx={6} fill={look.pants} /><Rect x={51} y={98} width={12} height={52} rx={6} fill={look.pants} />
           <Path d="M33 150 h17 a4 4 0 0 1 4 4 v1 h-21z" fill="#17112A" /><Path d="M50 150 h17 a4 4 0 0 1 4 4 v1 h-21z" fill="#17112A" />
+          <Rect x={32.5} y={154} width={21.5} height={2.4} rx={1.2} fill="#fff" /><Rect x={50} y={154} width={21.5} height={2.4} rx={1.2} fill="#fff" />
+          <Path d="M43 151.4 h5 M42.4 153 h5 M52 151.4 h5 M52.6 153 h5" stroke="#fff" strokeWidth={1} strokeLinecap="round" opacity={0.8} />
+          <Path d="M43 112 v34 M57 112 v34" stroke="#000" strokeOpacity={0.12} strokeWidth={1.2} />
           <Path d="M30 66 Q30 52 44 52 L56 52 Q70 52 70 66 L70 104 Q70 108 66 108 L34 108 Q30 108 30 104Z" fill={sleeve} />
-          <Path d="M22 60 Q16 62 17 76 L19 92" stroke={sleeve} strokeWidth={10} strokeLinecap="round" fill="none" /><Circle cx={19.5} cy={95} r={5} fill={skin} />
+          <Path d="M44 52 l6 8 l6 -8" fill="none" stroke="#000" strokeOpacity={0.2} strokeWidth={1.6} strokeLinejoin="round" />
+          <Rect x={30} y={99} width={40} height={6} rx={2.5} fill="#17112A" /><Rect x={46} y={98.4} width={8} height={7.2} rx={1.8} fill={SAFF} stroke="#E5A400" strokeWidth={0.8} /><Rect x={48.2} y={100.6} width={3.6} height={2.8} rx={0.8} fill="#17112A" />
+          <Path d="M33 60 Q18 62 19 77 L21 90" stroke={sleeve} strokeWidth={10} strokeLinecap="round" fill="none" /><Circle cx={33} cy={60} r={6.5} fill={sleeve} /><Circle cx={65} cy={60} r={6.5} fill={sleeve} />
+          <Rect x={16} y={87} width={11} height={5.5} rx={2.7} fill={sleeve} opacity={0.0} /><Circle cx={21.5} cy={95} r={5.2} fill={skin} /><Circle cx={25.4} cy={92.4} r={2} fill={skin} />
           {look.badge ? <><Circle cx={50} cy={72} r={9} fill="#fff" /><Rect x={44} y={70} width={12} height={4} rx={2} fill={SAFF} /></> : null}
           <Rect x={45} y={44} width={10} height={11} rx={4} fill={skin} />
           <Circle cx={50} cy={32} r={15} fill={skin} /><Circle cx={35.5} cy={34} r={3} fill={skin} />
-          <Circle cx={45} cy={34} r={1.7} fill="#1A1033" /><Circle cx={56} cy={34} r={1.7} fill="#1A1033" /><Path d="M45 40 Q50.5 44.5 56 40" stroke="#1A1033" strokeWidth={1.8} fill="none" strokeLinecap="round" />
+          <Path d="M41.8 29.6 q3.2 -2.2 6.2 0 M52.8 29.6 q3.2 -2.2 6.2 0" stroke="#1A1033" strokeWidth={1.3} fill="none" strokeLinecap="round" opacity={0.75} />
+          <Circle cx={45} cy={34} r={1.7} fill="#1A1033" /><Circle cx={56} cy={34} r={1.7} fill="#1A1033" /><Path d="M50.4 35.6 q1.8 2.4 0 3.4" stroke="#000" strokeOpacity={0.25} strokeWidth={1.2} fill="none" strokeLinecap="round" /><Path d="M45 40 Q50.5 44.5 56 40" stroke="#1A1033" strokeWidth={1.8} fill="none" strokeLinecap="round" />
           {look.cap ? <><Path d="M33 29 A17 15 0 0 1 67 29 Z" fill={SAFF} /><Rect x={47} y={26} width={26} height={6} rx={3} fill="#E5A400" /><Circle cx={50} cy={20} r={3} fill="#5409DA" /></>
             : <Path d="M34 30 Q33 14 50 14 Q68 14 66 30 Q60 22 50 22 Q40 22 34 30Z" fill={look.hair || '#1A1033'} />}
         </Svg>
-        <Animated.View style={[abs(60 - (a.pivot[0] - 8), 52 - (a.pivot[1] - 8), { width: a.box[0], height: a.box[1], transformOrigin: `${a.pivot[0]}px ${a.pivot[1]}px` }), armSt]}>
+        <Animated.View style={[abs(57 - (a.pivot[0] - 8), 52 - (a.pivot[1] - 8), { width: a.box[0], height: a.box[1], transformOrigin: `${a.pivot[0]}px ${a.pivot[1]}px` }), armSt]}>
           <Svg width={a.box[0]} height={a.box[1]} viewBox={`0 0 ${a.box[0]} ${a.box[1]}`}>
             {pose === 'gun' ? <><Path d="M8 8 L30 26" stroke={sleeve} strokeWidth={10} strokeLinecap="round" /><Path d="M30 26 L38 30" stroke={skin} strokeWidth={8} strokeLinecap="round" />
               <Rect x={34} y={20} width={24} height={13} rx={4} fill="#3B3560" /><Rect x={56} y={24} width={22} height={5} rx={2.5} fill={SAFF} /><Rect x={40} y={31} width={7} height={14} rx={3} fill="#2B2552" /></> : null}

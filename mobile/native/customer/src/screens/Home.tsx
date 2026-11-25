@@ -168,14 +168,15 @@ function Scallop({ W, color = '#fff' }: { W: number; color?: string }) {
   return <Svg width={W} height={20} style={{ position: 'absolute', left: 0, bottom: -1 }}><Path d={d} fill={color} /></Svg>;
 }
 function Live() {
-  const rm = !!useReducedMotion() || !useActive(), p = useSharedValue(0);
-  useEffect(() => { if (!rm) p.value = withRepeat(withTiming(1, { duration: 1400, easing: REasing.out(REasing.quad) }), -1, false); return () => cancelAnimation(p) }, [rm]);
+  const rm = !!useReducedMotion() || !useActive(), p = useSharedValue(0), bl = useSharedValue(1);
+  useEffect(() => { if (!rm) { p.value = withRepeat(withTiming(1, { duration: 1400, easing: REasing.out(REasing.quad) }), -1, false); bl.value = withRepeat(withSequence(withTiming(0.15, { duration: 520, easing: REasing.inOut(REasing.quad) }), withTiming(1, { duration: 520, easing: REasing.inOut(REasing.quad) })), -1, false) } return () => { cancelAnimation(p); cancelAnimation(bl) } }, [rm]);
+  const blink = useAnimatedStyle(() => ({ opacity: bl.value }));
   const ring = useAnimatedStyle(() => ({ opacity: 0.7 * (1 - p.value), transform: [{ scale: 1 + 1.6 * p.value }] }));
   return (
     <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, height: 30, paddingLeft: 10, paddingRight: 12, borderRadius: 15, backgroundColor: '#17112A', marginTop: 12 }}>
       <View style={{ width: 8, height: 8 }}>
         <Reanimated.View style={[{ position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' }, ring]} />
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' }} />
+        <Reanimated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' }, blink]} />
       </View>
       <Txt weight={600} size={12} color="#fff" style={{ lineHeight: 16 }}>Washers riding near you</Txt>
     </View>
@@ -195,9 +196,9 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
           <HeroHeadline first={cfg.heroTitle} sub={cfg.heroSub} ink={L.ink} accent={L.accent} subColor={L.mut} />
           <Live />
         </View>
-        <View style={{ marginTop: 4, marginBottom: 64 }}><HeroRide width={aw} /></View>
+        <View style={{ marginTop: 4, marginBottom: 36 }}><HeroRide width={aw} /></View>
         {/* the road and city melt into white, so there is no edge above "Book a wash" */}
-        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.92)', '#FFFFFF']} locations={[0, 0.4, 0.8, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 64 }} />
+        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.92)', '#FFFFFF']} locations={[0, 0.4, 0.8, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 36 }} />
       </> : <View style={{ height: 24 }} />}
     </View>
   );
@@ -268,7 +269,7 @@ function Entry({ onInstant }: { onInstant: () => void }) {
     </View>
   );
   return (
-    <View style={{ marginTop: -6 }}>
+    <View style={{ marginTop: -14 }}>
       <Title title="Book a wash" />
       <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: 12 }}>
         {showI || showS ? <FadeUp index={0} style={{ flex: 1 }}>

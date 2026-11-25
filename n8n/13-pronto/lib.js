@@ -957,16 +957,27 @@ async function bookingReschedule(ctx, req) {
 
 // "Notify me" from the Home banner of a customer outside every service circle: waitlist/{+91number} = the spot they asked
 // about. One doc per number (asking again moves the spot and counts it). Ravi gets a Telegram line.
+// How many neighbours are waiting near a spot (within WAIT_RADIUS m, not yet told): the app shows it as a progress bar toward WAIT_GOAL
+// cars, the number that makes a new area worth opening. `peek: true` only reads the count.
+const WAIT_GOAL = 25, WAIT_RADIUS = 1500;
+async function waitNear(ctx, lat, lng) {
+  try {
+    const all = await fsList(ctx, 'waitlist');
+    return all.filter(d => d && d.data && d.data.status !== 'told' && metres(num(d.data.lat, NaN), num(d.data.lng, NaN), lat, lng) <= WAIT_RADIUS).length;
+  } catch (e) { return 0 }
+}
 async function waitlist(ctx, req) {
   const g = await gate(ctx, req); if (!g.ok) return g.res;
   const b = isObj(req.body) ? req.body : {}, lat = num(b.lat, NaN), lng = num(b.lng, NaN);
   if (!(lat > 6 && lat < 37 && lng > 68 && lng < 98)) return fail(400, 'Add your address or turn on location first.');
+  if (b.peek === true) return reply(200, { ok: true, near: await waitNear(ctx, lat, lng), goal: WAIT_GOAL });
   if (!rateLimit(ctx, 'wl:' + g.phone, 5, 3600000)) return fail(429, 'You are already on the list. We will tell you.');
   const cur = await fsGet(ctx, 'waitlist', g.phone), now = nowIST(ctx.now), area = clean(b.area, 120), name = clean(b.name, 80) || clean(cur && cur.data.name, 80);
   const doc = { phone: g.phone, name, lat, lng, area, created_at: cur ? cur.data.created_at || now : now, updated_at: now, asks: num(cur && cur.data.asks, 0) + 1,
     inside: !!areaFor(g.areas, lat, lng), status: cur && cur.data.status === 'told' ? 'told' : 'waiting' };
   await fsCommit(ctx, [wSet(ctx, 'waitlist', g.phone, doc)]);
-  return reply(200, { ok: true }, cur ? {} : { notify: '📍 Notify me: ' + g.phone + (name ? ' (' + name + ')' : '') + ' wants us in ' + (area || 'a new area') + ' · ' + lat.toFixed(5) + ',' + lng.toFixed(5) });
+  const near = await waitNear(ctx, lat, lng);
+  return reply(200, { ok: true, near, goal: WAIT_GOAL }, cur ? {} : { notify: '📍 Notify me: ' + g.phone + (name ? ' (' + name + ')' : '') + ' wants us in ' + (area || 'a new area') + ' · ' + lat.toFixed(5) + ',' + lng.toFixed(5) });
 }
 
 const HANDLERS = { 'wd-booking-create': bookingCreate, 'wd-waitlist': waitlist, 'wd-booking-cancel': bookingCancel, 'wd-booking-reschedule': bookingReschedule,

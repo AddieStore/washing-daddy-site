@@ -908,7 +908,7 @@ function fromOndemand(id: string, d: any): Job {
   return { id, mode: d.mode || (d.slot ? 'scheduled' : 'instant'), status: jobStatus(d), date: d.date || '', slot: d.slot || '', lines, total: +(d.total ?? d.price) || 0, saved: +d.saved || 0,
     mins: lines.reduce((a, l) => a + l.mins * l.q, 0), addressId: d.address_id || undefined, pay: d.refunded ? 'refunded' : d.pass_id ? 'pass' : d.paid ? 'paid' : 'pay_on_arrival', payVia: d.pay_via || undefined,
     coupon: d.coupon || null, washer: d.washer_id ? { id: String(d.washer_id), name: d.washer_name || d.washer_id, rating: +d.washer_rating || 0, jobs: +d.washer_jobs || 0, photo: d.washer_photo || null, phone: d.washer_phone || null } : null,
-    stars: r ? r.stars : undefined, review: r ? r.review : undefined, createdAt: d.created_at || '',
+    stars: r ? r.stars : undefined, review: r ? r.review : undefined, createdAt: d.created_at || '', photo: typeof d.photo === 'string' && /^(https:|data:image\/(jpeg|webp|png);base64,)/.test(d.photo) ? d.photo : null,
     payRef: d.gateway_ref || d.pay_ref || undefined, orderId: d.pay_ref || undefined, eta: d.eta || etaFrom(d.mode, d.created_at),
     // order_paid: what the gateway took for the whole order (bookings since Nov 2026); older paid docs: price was that amount
     recur: d.recur || undefined, paidOnline: +d.order_paid > 0 ? +d.order_paid : d.paid === true && d.pay_ref && !d.series_id && +d.price > 0 ? +d.price : undefined,
@@ -1254,7 +1254,7 @@ function assertServed() {
 }
 /* "Notify me": one request per phone, saved by workflow 13 (wd-waitlist) in waitlist/{+91number} with the spot. Kept on the phone
    too, so the banner says "You're on the list", and re-sent at the next start if the server could not take it. */
-type NotifyRec = { lat: number; lng: number; label: string; at: string; sent: boolean };
+type NotifyRec = { lat: number; lng: number; label: string; at: string; sent: boolean; near?: number };
 const NOTIFY_KEY = 'wd-notify-v1';
 let NOTIFY: NotifyRec | null = null;
 export const notifyState = () => NOTIFY;
@@ -1262,8 +1262,33 @@ async function saveNotify() { try { NOTIFY ? await AsyncStorage.setItem(NOTIFY_K
 async function sendNotify(): Promise<boolean> {
   if (!NOTIFY || NOTIFY.sent) return true;
   if (!moneyLive() || !server) return false;
-  try { await server.call('wd-waitlist', { lat: NOTIFY.lat, lng: NOTIFY.lng, area: NOTIFY.label, name: S.acct ? A().name : '' }); NOTIFY.sent = true; await saveNotify(); return true }
+  try {
+    const r: any = await server.call('wd-waitlist', { lat: NOTIFY.lat, lng: NOTIFY.lng, area: NOTIFY.label, name: S.acct ? A().name : '' });
+    NOTIFY.sent = true; if (r && typeof r.near === 'number') { NOTIFY.near = r.near; INTEREST = { key: spotKey(NOTIFY.lat, NOTIFY.lng), near: r.near } }
+    await saveNotify(); return true;
+  }
   catch (e: any) { return false }
+}
+/* How many neighbours are waiting near this spot, toward the WAIT_GOAL cars that open a new area. Live: asked from the server
+   (peek). Demo: a steady made-up number for the spot, so the bar can be shown. */
+export const WAIT_GOAL = 25;
+const spotKey = (lat: number, lng: number) => lat.toFixed(2) + ',' + lng.toFixed(2);
+let INTEREST: { key: string; near: number } | null = null;
+export function interest(): { near: number; goal: number; joined: boolean } {
+  const c = coverage(), joined = !!NOTIFY && !!c.known && Math.abs(NOTIFY.lat - c.lat) < 0.01 && Math.abs(NOTIFY.lng - c.lng) < 0.01;
+  let near = 0;
+  if (c.known) {
+    const k = spotKey(c.lat, c.lng);
+    if (INTEREST && INTEREST.key === k) near = INTEREST.near;
+    else if (!REAL) { let h = 0; for (const ch of k) h = (h * 31 + ch.charCodeAt(0)) >>> 0; near = 9 + (h % 11) + (joined ? 1 : 0) }
+    else if (joined && NOTIFY && typeof NOTIFY.near === 'number') near = NOTIFY.near;
+  }
+  return { near: Math.min(near, WAIT_GOAL), goal: WAIT_GOAL, joined };
+}
+/** ask the server how many are waiting near the spot (live only); the banner re-reads interest() when it changes */
+export async function loadInterest(): Promise<void> {
+  const c = coverage(); if (!REAL || !c.known || !moneyLive() || !server) return;
+  try { const r: any = await server.call('wd-waitlist', { lat: c.lat, lng: c.lng, peek: true }); if (r && typeof r.near === 'number') { INTEREST = { key: spotKey(c.lat, c.lng), near: r.near }; emit() } } catch (e) {}
 }
 
 const failed = () => new Error(`That didn't go through. Call or WhatsApp us on ${showPhone(SUPPORT.phone)}.`);
@@ -1333,7 +1358,8 @@ export const act = {
   async notifyMe(): Promise<'saved' | 'queued'> {
     const c = coverage();
     if (!c.known) throw new Error('Add your address or turn on location first, so we know where to come.');
-    NOTIFY = { lat: c.lat, lng: c.lng, label: c.label, at: nowIST(), sent: !REAL }; await saveNotify(); emit();
+    const before = interest().near;
+    NOTIFY = { lat: c.lat, lng: c.lng, label: c.label, at: nowIST(), sent: !REAL, near: before + 1 }; if (!REAL) INTEREST = { key: spotKey(c.lat, c.lng), near: before + 1 }; await saveNotify(); emit();
     if (!REAL) { await wait(500); return 'saved' }
     return (await sendNotify()) ? 'saved' : 'queued';
   },

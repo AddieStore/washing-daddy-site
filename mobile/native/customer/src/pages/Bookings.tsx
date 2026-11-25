@@ -11,6 +11,8 @@ import { FadeUp, Shimmer } from '../ui/motion';
 import { JobRider, showsRider, showsCode, StartCode } from '../ui/JobRider';
 import { carryNote, washNotices, A, car, doc, history7, liveHead, activeStage, feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
 import { sheets } from '../sheets';
+import { dayPhotos } from '../sheets/DaySheet';
+import { src as imgSrc } from '../img';
 import { inr, fmt, iso, TODAY, ampm } from '../data/dates';
 import { slotLabel } from '../state';
 import { G, card, Tap, TNUM, PAGE_BG } from './parts';
@@ -73,6 +75,7 @@ export function JobCard({ j, onPress }: { j: Job; onPress: () => void }) {
         {j.saved > 0 && !gone ? <Txt size={13} color={G.pos} style={TNUM}>{`  •  ${inr(j.saved)} saved`}</Txt> : null}
         <Txt size={13} color={G.sub} style={TNUM}>{`  •  ${durText(j.mins)}`}</Txt>
       </View>
+      {done && j.photo && imgSrc(j.photo) ? <PhotoStrip items={[{ src: imgSrc(j.photo), label: 'After' }]} /> : null}
       {j.washer || !gone ? (
         <View style={{ marginTop: 12, backgroundColor: G.raised, borderRadius: 10, padding: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -158,11 +161,34 @@ function WashNotices() {
       <Tap label={n.btn} onPress={n.act} style={{ minHeight: 40, paddingHorizontal: 12, justifyContent: 'center' }}><Txt weight={600} size={14} color={C.violet}>{n.btn}</Txt></Tap>
     </View>))}</View>;
 }
+/** the photos of a wash, shown on the card itself so the customer knows they are there before opening it */
+function PhotoStrip({ items, total }: { items: { src: any; label: string }[]; total?: number }) {
+  if (!items.length) return null;
+  const show = items.slice(0, 4), more = (total ?? items.length) - show.length;
+  return (
+    <View style={{ marginTop: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <Txt size={13}>📷</Txt><Txt weight={600} size={13}>{`${total ?? items.length} photo${(total ?? items.length) > 1 ? 's' : ''}`}</Txt><Txt size={12} color={G.mute}>· tap to view</Txt>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {show.map((p, i) => (
+          <View key={i} style={{ flex: 1, aspectRatio: 1, maxHeight: 76, borderRadius: 12, overflow: 'hidden', backgroundColor: G.raised }}>
+            <Image source={p.src} resizeMode="cover" accessibilityLabel={p.label + ' photo'} style={{ width: '100%', height: '100%' }} />
+            <View style={{ position: 'absolute', left: 4, bottom: 4, borderRadius: 6, paddingHorizontal: 5, height: 16, backgroundColor: 'rgba(20,20,20,0.6)', justifyContent: 'center' }}><Txt weight={600} size={9} color="#fff" style={{ lineHeight: 12 }}>{p.label}</Txt></View>
+            {i === show.length - 1 && more > 0 ? <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(20,20,20,0.55)', alignItems: 'center', justifyContent: 'center' }}><Txt weight={700} size={16} color="#fff">{`+${more}`}</Txt></View> : null}
+          </View>
+        ))}
+        {Array.from({ length: Math.max(0, 4 - show.length) }, (_, i) => <View key={'e' + i} style={{ flex: 1 }} />)}
+      </View>
+    </View>
+  );
+}
 function DailyCard({ r }: { r: DailyRow }) {
   const live = r.status === 'live', done = r.status === 'done', skip = r.status === 'skipped';
   const tone = skip ? G.mute : done ? G.pos : C.violet, badge = live ? 'Live now' : done ? 'Done' : skip ? (r.note?.startsWith('Wash could not') ? 'Stopped' : 'Skipped') : 'Scheduled';
   const isToday = r.date === iso(TODAY);
-  const facts = [r.washer, r.time ? `Finished ${r.time}` : '', r.mins ? `${r.mins} min` : '', r.litres ? `${r.litres} L water` : '', r.photos ? `${r.photos} photo${r.photos > 1 ? 's' : ''}` : ''].filter(Boolean);
+  const thumbs = r.status === 'skipped' || r.status === 'scheduled' ? [] : dayPhotos(r.date);
+  const facts = [r.washer, r.time ? `Finished ${r.time}` : '', r.mins ? `${r.mins} min` : '', r.litres ? `${r.litres} L water` : ''].filter(Boolean);
   return (
     <Tap onPress={() => (isToday && r.photos ? sheets.proof() : sheets.day(r.date))} style={card({ padding: 16, ...(live ? { borderWidth: 1.5, borderColor: C.violet } : null) })}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -173,6 +199,7 @@ function DailyCard({ r }: { r: DailyRow }) {
       <Txt size={13} color={G.sub} style={{ marginTop: 4 }}>{r.note || r.label}</Txt>
       {facts.length ? <Txt size={12} color={G.mute} style={{ marginTop: 8, ...TNUM }}>{facts.join('  •  ')}</Txt> : null}
       {r.tasks ? <Txt size={12} color={G.mute} style={{ marginTop: 4 }} numberOfLines={2}>{r.tasks}</Txt> : null}
+      <PhotoStrip items={thumbs} />
     </Tap>
   );
 }
