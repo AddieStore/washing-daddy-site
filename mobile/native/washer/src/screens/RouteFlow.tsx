@@ -459,8 +459,8 @@ function RoundSheet({ close }: { close: () => void }) {
           );
         })}
       </View>
-      {all.length < 2 ? <Text style={{ fontFamily: F.body, fontSize: 12.5, lineHeight: 18, color: c.grey, marginTop: 14 }}>{t('Doosre rounds manager dashboard se milte hain.')}</Text> : null}
+      {all.length < 2 ? <Text style={{ fontFamily: F.body, fontSize: 12.5, lineHeight: 18, color: c.grey, marginTop: 14 }}>{t('Doosre rounds abhi load ho rahe hain ya manager ne banaye nahi.')}</Text> : null}
     </View>
   );
 }
-export const openRoundSheet = () => sheet.open(close => <RoundSheet close={close} />);
+export const openRoundSheet = () => { void Rounds.load(); sheet.open(close => <RoundSheet close={close} />) };

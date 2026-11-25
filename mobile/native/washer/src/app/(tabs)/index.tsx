@@ -168,6 +168,7 @@ function RewardsRow() {
 /* ---------- screen ---------- */
 export default function RoundScreen() {
   useStore();
+  useEffect(() => { void Rounds.load() }, []);
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const { width: ww } = useWindowDimensions();

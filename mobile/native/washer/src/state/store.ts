@@ -11,7 +11,7 @@ import { backend, type Data, type DbError, type Unsub } from '../backend';
 import { isoIST, dateIST, addDaysStr, daysInMonth } from '../lib/time';
 import { PLAN, TASK, tasksFor, normReg, isPlan, type TaskKey } from '../lib/schedule';
 import {
-  WASHERS, ensureRound, PHONE_TO_WASHER, DEMO_ROSTER, DEMO_ROUND_META, type RoundInfo, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
+  WASHERS, ensureRound, PHONE_TO_WASHER, DEMO_ROSTER, DEMO_ROUND_META, type RoundInfo, ROUNDS_URL, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
   type Car, type Wash, type Req, type Job, type WasherDoc, type KitItem, type KitKind, type WasherInfo, type Photo,
 } from '../lib/data';
 import { setLang, t } from '../lib/i18n';
@@ -179,9 +179,27 @@ export const route = (): Car[] => {
   return r.map((c, i) => ({ c, i })).sort((a, b) => at(a.c.reg) - at(b.c.reg) || a.i - b.i).map(x => x.c);
 };
 /** the round this washer is on, and the others he can take (demo list; the live list needs the rounds endpoint, see README) */
+let liveRounds: { list: RoundInfo[]; mine: string } | null = null;
 export const Rounds = {
-  mine(): RoundInfo { const id = rosterKey(), m = DEMO_ROUND_META.find(x => x.id === id); return { id, name: m ? m.name : 'Mera round', areas: m ? m.areas : me().areas, count: route().length } },
-  all(): RoundInfo[] { return REAL ? [Rounds.mine()] : DEMO_ROUND_META.map(m => ({ ...m, count: (ROSTER[m.id] || []).length })) },
+  mine(): RoundInfo {
+    if (REAL) { const m = liveRounds?.list.find(r => r.id === liveRounds!.mine); return m ? { ...m, count: route().length || m.count } : { id: '', name: 'Mera round', areas: me().areas, count: route().length } }
+    const id = rosterKey(), m = DEMO_ROUND_META.find(x => x.id === id); return { id, name: m ? m.name : 'Mera round', areas: m ? m.areas : me().areas, count: route().length };
+  },
+  all(): RoundInfo[] { return REAL ? (liveRounds?.list.length ? liveRounds.list : [Rounds.mine()]) : DEMO_ROUND_META.map(m => ({ ...m, count: (ROSTER[m.id] || []).length })) },
+  /** live: ask the rounds endpoint (n8n workflow 16) which rounds exist and which one is mine */
+  async call(body: Data): Promise<any | null> {
+    try {
+      const tok = await backend.auth.idToken(); if (!tok) return null;
+      const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 20000);
+      const r = await fetch(ROUNDS_URL + '?washer=' + encodeURIComponent(me().id), { method: 'POST', cache: 'no-store', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal });
+      clearTimeout(to); const j = await r.json(); return r.ok ? j : null;
+    } catch { return null }
+  },
+  async load() {
+    if (!REAL) return;
+    const j = await Rounds.call({ action: 'list' });
+    if (j && j.ok && Array.isArray(j.rounds)) { liveRounds = { list: j.rounds, mine: String(j.mine || '') }; emit() }
+  },
 };
 export const carBy = (reg: string | null | undefined) => route().find(c => c.reg === reg);
 export const W = (reg: string | null | undefined): Wash | null => (reg && S.day?.washes?.[reg]) || null;
@@ -197,13 +215,16 @@ export function ensureDay() {
 // spread evenly over the morning slots) and locked. A car that turns up later joins the last slot.
 function autoPlan() {
   const day = S.day; if (!day) return;
-  const regs = route().map(c => c.reg); if (!regs.length) return;
-  const slots = { ...(day.slots || {}) };
+  // before the round starts the plan follows the book exactly (ops may reorder cars any time); once it has started it only grows
+  const raw = (ROSTER[rosterKey()] || []).map(c => c.reg), regs = day.started ? route().map(c => c.reg) : raw;
+  if (!regs.length) return;
+  const slots = day.started ? { ...(day.slots || {}) } : {};
   const placed = regs.filter(r => typeof slots[r] === 'number');
   if (!placed.length) { regs.forEach((r, i) => { slots[r] = Math.min(SLOT_COUNT - 1, Math.floor(i * SLOT_COUNT / regs.length)) }) }
   else if (placed.length < regs.length) { const lastSlot = Math.max(...placed.map(r => slots[r])); regs.forEach(r => { if (typeof slots[r] !== 'number') slots[r] = lastSlot }) }
   else if (day.locked) return;
-  day.slots = slots; day.order = day.order && day.order.length ? day.order : regs; day.locked = true; if (!day.locked_at) day.locked_at = isoIST(); save();
+  if (!day.started && day.locked && JSON.stringify(day.slots) === JSON.stringify(slots) && JSON.stringify(day.order) === JSON.stringify(regs)) return;   // nothing changed: no write
+  day.slots = slots; if (!day.started || !(day.order && day.order.length)) day.order = regs; day.locked = true; if (!day.locked_at) day.locked_at = isoIST(); save();
 }
 export const myPhoto = () => (S.selfie && S.selfie.washer === me().id ? S.selfie : null);
 export const photoSrc = (p: { asset_id?: string; url?: string }) => p.url || '';
@@ -612,7 +633,7 @@ export const act = {
     try {
       const id = myDocId();
       if (id && id !== '+91') await db.doc('checkins/' + DAY + '_' + id).set({ phone: id, name: me().name, date: DAY, at: day.checkin_at, ...(photo ? { photo } : {}), ...(uniform ? { uniform } : {}) });
-      if (id && id !== '+91') await mirrorCheckIn(db, { date: DAY, phone: id, name: me().name, at: day.checkin_at });
+      if (id && id !== '+91') await mirrorCheckIn(db, { date: DAY, phone: id, name: me().name, at: day.checkin_at, photo, uniform: uniform ? { shirt_match: uniform.shirt_match, shirt_share: uniform.shirt_share, ...(uniform.shirt_color ? { shirt_color: uniform.shirt_color } : {}) } : null });
     } catch (e) { console.warn('checkin', e) }
     return true;
   },
@@ -781,7 +802,17 @@ export const act = {
   },
   // take another round: all its cars come to this washer (only while no car of today's round is running or done)
   pickRound(id: string) {
-    if (REAL) { ui.toast(t('Round badalna abhi manager ke through hota hai')); return false }
+    if (REAL) {
+      if (!id || id === Rounds.mine().id) return false;
+      const busy = Object.values(S.day?.washes || {}).some(w => w && w.status !== 'scheduled');
+      if (busy) { ui.toast(t('Pehle is round ki chal rahi aur ho chuki gaadi poori karo')); ui.haptic(14); return false }
+      void (async () => {
+        const j = await Rounds.call({ action: 'pick', round: id });
+        if (j && j.ok) { S.day = null; S.current = null; await Book.load(); await Rounds.load(); ui.haptic([20, 40, 20]); ui.toast(t(`${Rounds.mine().name}: ${route().length} gaadi ab aapki`)) }
+        else ui.toast(t('Round nahi mila. Internet check karo ya manager se poochho'));
+      })();
+      return true;
+    }
     if (!ROSTER[id] || id === rosterKey()) return false;
     const busy = Object.values(S.day?.washes || {}).some(w => w && w.status !== 'scheduled');
     if (busy) { ui.toast(t('Pehle is round ki chal rahi aur ho chuki gaadi poori karo')); ui.haptic(14); return false }

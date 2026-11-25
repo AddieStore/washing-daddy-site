@@ -4,7 +4,7 @@
 import type { Data, Db } from './types';
 
 export type AttendDoc = {
-  phone: string; name: string; date: string; check_in_at?: string | null; check_in_photo?: string | null; first_car_at?: string | null;
+  phone: string; name: string; date: string; check_in_at?: string | null; check_in_photo?: string | null; check_in_uniform?: { shirt_match: boolean; shirt_share: number; shirt_color?: string } | null; first_car_at?: string | null;
   check_out_at?: string | null; cars_done?: number; cars_skipped?: number; hours?: number; last_seen_at?: string;
 };
 export const attId = (date: string, phone: string) => `${date}_${phone}`;
@@ -19,8 +19,8 @@ export async function upsertAttendance(db: Db, date: string, phone: string, base
 }
 
 /** Check-in mirror. `photo` is the same selfie the checkins/ doc holds (kept off the attendance doc when large). */
-export const mirrorCheckIn = (db: Db, o: { date: string; phone: string; name: string; at: string; photo?: string | null }) =>
-  upsertAttendance(db, o.date, o.phone, { name: o.name }, { check_in_at: o.at, ...(o.photo ? { check_in_photo: o.photo } : {}) });
+export const mirrorCheckIn = (db: Db, o: { date: string; phone: string; name: string; at: string; photo?: string | null; uniform?: Data | null }) =>
+  upsertAttendance(db, o.date, o.phone, { name: o.name }, { check_in_at: o.at, ...(o.photo ? { check_in_photo: o.photo } : {}), ...(o.uniform ? { check_in_uniform: o.uniform } : {}) });
 
 /** First car photo of the day (early bird), the one thing the old checkins `first` field carried. */
 export const mirrorFirstCar = (db: Db, o: { date: string; phone: string; name: string; at: string }) =>

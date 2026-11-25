@@ -77,6 +77,7 @@ export const OWNER_PHONE = '+917701808924';
 export const OWNER_WA = '917701808924';
 const N8N_HOOKS = 'https://n8n.washingdaddy.com/webhook/';
 export const BOOK_URL = N8N_HOOKS + 'wd-washer-cars';
+export const ROUNDS_URL = N8N_HOOKS + 'wd-washer-rounds';   // list rounds / take a round (n8n workflow 16)
 export const PIN_URL = N8N_HOOKS + 'wd-washer-pin';   // phone + PIN login (n8n workflow 12)
 export const SHARE = 0.5;   // half of what a car pays is the washer's
 

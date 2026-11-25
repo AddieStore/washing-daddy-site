@@ -151,10 +151,35 @@ service cloud.firestore {
     match /checkins/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.phone == me());
       allow create: if isAdmin() || (isWasher()
-        && d().keys().hasOnly(['phone', 'name', 'date', 'at'])
+        && d().keys().hasOnly(['phone', 'name', 'date', 'at', 'photo', 'uniform'])
         && d().phone == me() && str(d().date, 10) && id == d().date + '_' + me()
-        && str(d().name, 80) && str(d().at, 40));
+        && str(d().name, 80) && str(d().at, 40)
+        && optStr(d(), 'photo', 60000) && (!('uniform' in d()) || d().uniform is map));
       allow update, delete: if isAdmin();
+    }
+
+    // Server attendance (contract 2026-11-23): attendance/{DATE}_{+91phone}, one doc per washer per day. The washer app writes the
+    // check-in time, the selfie and the T-shirt verdict (white / blue), the first car time, and the check-out totals.
+    match /attendance/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.phone == me());
+      allow create: if isAdmin() || (isWasher()
+        && d().keys().hasOnly(['phone', 'name', 'date', 'check_in_at', 'check_in_photo', 'check_in_uniform', 'first_car_at', 'check_out_at', 'cars_done', 'cars_skipped', 'hours', 'last_seen_at'])
+        && d().phone == me() && str(d().date, 10) && id == d().date + '_' + me()
+        && optStr(d(), 'name', 80) && optStr(d(), 'check_in_at', 40) && optStr(d(), 'check_in_photo', 60000) && optStr(d(), 'first_car_at', 40) && optStr(d(), 'check_out_at', 40));
+      allow update: if isAdmin() || (isWasher() && resource.data.phone == me()
+        && d().diff(resource.data).affectedKeys().hasOnly(['name', 'check_in_at', 'check_in_photo', 'check_in_uniform', 'first_car_at', 'check_out_at', 'cars_done', 'cars_skipped', 'hours', 'last_seen_at']));
+      allow delete: if isAdmin();
+    }
+
+    // Daily earnings ledger written by the washer app; payouts are admin-written (ops marks a month paid).
+    match /earnings/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.phone == me());
+      allow create, update: if isAdmin() || (isWasher() && d().phone == me() && id == d().date + '_' + me() && str(d().date, 10));
+      allow delete: if isAdmin();
+    }
+    match /earnings_payouts/{id} {
+      allow read: if isAdmin() || (signedIn() && id.split('_')[1] == me());
+      allow write: if isAdmin();
     }
 
     match /requests/{id} {
