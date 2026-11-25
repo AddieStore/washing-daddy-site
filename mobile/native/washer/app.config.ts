@@ -58,6 +58,7 @@ const config: ExpoConfig = {
     buildNumber: '20',
     supportsTablet: false,
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,   // only standard HTTPS: no export-compliance question on every upload
       NSCameraUsageDescription:
         'WD Partner uses the camera so you can take before and after photos of each car you wash.',
       NSLocationWhenInUseUsageDescription:
