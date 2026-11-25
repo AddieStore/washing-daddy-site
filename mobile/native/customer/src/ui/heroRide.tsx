@@ -47,7 +47,8 @@ function Skyline({ x0 }: { x0: number }) {
 }
 // street furniture passing by: dark lamp posts and soft round trees
 function Street({ x0 }: { x0: number }) {
-  const lamp = (x: number) => <G key={'l' + x}>
+  // far side of the road: lamps and trees are drawn small, as seen from the rider's lane, standing back on the verge
+  const lamp = (x: number, f = 0.52) => <G key={'l' + x} transform={`translate(${x0 + x} 198) scale(${f}) translate(${-(x0 + x)} -198)`}>
     <Path d={`M${x0 + x} 198 L${x0 + x} 42 C${x0 + x} 29 ${x0 + x + 9} 24 ${x0 + x + 20} 24 L${x0 + x + 29} 24`} stroke="#3A3152" strokeWidth={4.2} fill="none" strokeLinecap="round" />
     <Rect x={x0 + x + 24} y={20} width={20} height={9} rx={4.5} fill="#3A3152" />
     <Ellipse cx={x0 + x + 34} cy={31.5} rx={8.5} ry={4} fill={SAF} opacity={0.95} />
@@ -68,7 +69,7 @@ function Street({ x0 }: { x0: number }) {
       {[[-16, -18], [4, -28], [-28, -6], [12, -12]].map(([dx, dy], i) => <Path key={'v' + i} d={`M${X + dx * s} ${cy + dy * s + 3 * s} q${3 * s} ${-5 * s} ${7 * s} ${-1 * s}`} stroke="#5FB36B" strokeWidth={1.2 * s} fill="none" strokeLinecap="round" opacity={0.7} />)}
     </G>;
   };
-  return <G>{lamp(30)}{tree(105, 1.3)}{lamp(205)}{tree(290, 1.12)}{tree(375, 0.8)}</G>;
+  return <G>{tree(48, 0.5)}{lamp(88)}{tree(142, 0.4)}{tree(176, 0.58)}{lamp(236)}{tree(292, 0.46)}{tree(334, 0.62)}{lamp(386, 0.46)}</G>;
 }
 // the far side of the road: a grass verge with tufts, small flowers and bushes (the trees and lamps stand on it, see Street)
 function Verge({ x0 }: { x0: number }) {
