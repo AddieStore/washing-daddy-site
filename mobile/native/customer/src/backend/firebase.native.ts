@@ -5,7 +5,7 @@
 // A build without those files (app.config.ts leaves the Firebase plugins out), or with EXPO_PUBLIC_DEMO=1,
 // runs on test data instead, like the preview.
 import Constants from 'expo-constants';
-import { getAuth, onAuthStateChanged, signInWithPhoneNumber, signOut } from '@react-native-firebase/auth';
+import { getAuth, onAuthStateChanged, signInWithCustomToken, signInWithPhoneNumber, signOut } from '@react-native-firebase/auth';
 import {
   getFirestore, doc, collection, query, where, onSnapshot, getDoc, setDoc, updateDoc, addDoc, deleteDoc,
 } from '@react-native-firebase/firestore';
@@ -32,6 +32,35 @@ const authErr = (e: any): AuthError => {
 };
 const e164 = (p: string) => { const d = String(p || '').replace(/\D/g, '').slice(-10); return d.length === 10 ? '+91' + d : null };
 
+/* ---------- WhatsApp code (n8n workflow 15: wd-wa-otp-send / wd-wa-otp-verify) ---------- */
+const N8N = 'https://n8n.washingdaddy.com/webhook/';
+const WA_ERR: Record<string, string> = {
+  bad_number: "That number doesn't look right.",
+  use_sms: 'This number signs in by SMS.',
+  too_many: 'Too many codes for this number. Wait a while and try again.',
+  not_on_whatsapp: "This number isn't on WhatsApp. We'll send an SMS instead.",
+  bad_code: 'Enter the 6-digit code.',
+  wrong_code: 'That code is wrong. Check WhatsApp and try again.',
+  expired: 'That code has expired. Tap resend for a new one.',
+  server: "We couldn't send the code right now. Try again in a minute.",
+};
+const waErr = (code: string, extra = ''): AuthError => { const m = (WA_ERR[code] || "Couldn't sign in. Try again.") + extra; return Object.assign(new Error(m), { code, en: m }) };
+async function waPost(path: string, body: object): Promise<any> {
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), 20000);
+  let r: Response;
+  try { r = await fetch(N8N + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ac.signal }) }
+  catch (e) { throw Object.assign(new Error('No internet. Check your signal and try again.'), { code: 'offline', en: 'No internet. Check your signal and try again.' }) }
+  finally { clearTimeout(t) }
+  // n8n answers 404 only when the webhook is not registered: workflow 15 is not imported/published yet
+  if (r.status === 404) throw Object.assign(new Error('WhatsApp codes are not live yet.'), { code: 'not_ready', en: 'WhatsApp codes are not live yet.' });
+  const j: any = await r.json().catch(() => null);
+  if (!j || j.ok !== true) {
+    const c = (j && typeof j.code === 'string' && j.code) || 'server';
+    throw waErr(c);
+  }
+  return j;
+}
+
 function makeAuth(): Auth {
   const auth = getAuth();
   let confirmer: any = null, user: any = auth.currentUser;
@@ -52,6 +81,20 @@ function makeAuth(): Auth {
       if (!confirmer) throw authErr({ code: 'auth/code-expired' });
       try { const r = await confirmer.confirm(String(code).replace(/\D/g, '')); user = r.user; confirmer = null; return { uid: r.user.uid } }
       catch (e) { if (auth.currentUser && auth.currentUser.phoneNumber) { user = auth.currentUser; return { uid: user.uid } } throw authErr(e) }
+    },
+    async sendWhatsApp(phone10) {
+      if (!e164(phone10)) throw authErr({ code: 'auth/invalid-phone-number' });
+      try { await waPost('wd-wa-otp-send', { phone: phone10 }); confirmer = null; return { ok: true } }
+      catch (e: any) { if (e && e.code === 'wait') throw Object.assign(new Error('A code was just sent. Wait a few seconds and try again.'), { code: 'wait', en: 'A code was just sent. Wait a few seconds and try again.' }); throw e }
+    },
+    async confirmWhatsApp(phone10, code) {
+      const j = await waPost('wd-wa-otp-verify', { phone: phone10, code: String(code).replace(/\D/g, '') });
+      let cred: any;
+      try { cred = await signInWithCustomToken(auth, j.token) } catch (e) { throw authErr(e) }
+      user = cred?.user ?? auth.currentUser;
+      // the rules know a customer only by the phone number on the Firebase user
+      if (!user?.phoneNumber) { try { await signOut(auth) } catch (e) {} throw authErr({ code: 'auth/invalid-custom-token' }) }
+      return { uid: user.uid };
     },
     async idToken() { try { return user ? await user.getIdToken() : null } catch (e) { return null } },
     async signOut() { confirmer = null; try { await signOut(auth) } catch (e) {} user = null },

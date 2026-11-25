@@ -32,6 +32,7 @@ import { openAddressPicker } from '../sheets/address';
 import { openPassPromo } from '../sheets/money';
 import { MiniMap, EtaChip, OfferCarousel, Offer } from '../ui/home';
 import { HeroRide } from '../ui/heroRide';
+import { HeroHeadline } from '../ui/heroHeadline';
 import { VettedSection } from '../ui/trust';
 import { useActive, TabActive } from '../ui/active';
 
@@ -146,38 +147,14 @@ function Header({ y }: { y: Animated.Value }) {
   const light = y.interpolate({ inputRange: [30, 90], outputRange: [1, 0], extrapolate: 'clamp' });
   return (
     <View style={{ position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30, paddingTop: top }}>
-      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#F6F2FF', opacity: bg, borderBottomWidth: 1, borderBottomColor: L.line }} />
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#FFFFFF', opacity: bg, borderBottomWidth: 1, borderBottomColor: L.line }} />
       <Animated.View pointerEvents={scrolled ? 'none' : 'auto'} style={{ opacity: light }}><HeaderContent dark /></Animated.View>
       <Animated.View pointerEvents={scrolled ? 'auto' : 'none'} style={{ position: 'absolute', left: 0, right: 0, top: top, opacity: bg }}><HeaderContent dark /></Animated.View>
     </View>
   );
 }
 
-/* ---------- hero: seasonal banner, word-by-word spring reveal (loops every ~6s), floating art, scalloped bottom edge ---------- */
-function Word({ w, i, on, color }: { w: string; i: number; on: boolean; color: string }) {
-  const rm = useReducedMotion(), v = useSharedValue(rm ? 1 : 0);
-  useEffect(() => { v.value = rm ? 1 : on ? withDelay(i * 90, withSpring(1, { damping: 14, stiffness: 140 })) : withDelay(i * 40, withTiming(0, { duration: 260 })) }, [on, rm]);
-  const st = useAnimatedStyle(() => ({ opacity: Math.min(1, v.value * 1.4), transform: [{ translateY: (1 - v.value) * 22 }, { rotate: `${(1 - v.value) * 4}deg` }] }));
-  return <Reanimated.Text style={[{ fontFamily: 'Poppins_700Bold', fontSize: 28, lineHeight: 34, letterSpacing: -0.9, marginRight: 7, color }, st]}>{w}</Reanimated.Text>;
-}
-function HeroText({ title, sub, accent }: { title: string; sub: string; accent: string }) {
-  const rm = useReducedMotion(), words = title.split(' ').filter(Boolean), [on, setOn] = useState(true);
-  useEffect(() => {
-    if (rm) return;
-    let t: any; const cycle = (show: boolean) => { t = setTimeout(() => { setOn(show); cycle(!show) }, show ? 500 : 6200) };
-    cycle(false); return () => clearTimeout(t);
-  }, [rm, title]);
-  const sv = useSharedValue(rm ? 1 : 0);
-  useEffect(() => { sv.value = rm ? 1 : on ? withDelay(words.length * 90 + 120, withTiming(1, { duration: 420, easing: REasing.bezier(0.22, 1, 0.36, 1) })) : withTiming(0, { duration: 220 }) }, [on, rm]);
-  const subSt = useAnimatedStyle(() => ({ opacity: sv.value, transform: [{ translateY: (1 - sv.value) * 8 }] }));
-  const last = words.length - 1;
-  return (
-    <View accessible accessibilityRole="header" accessibilityLabel={title + '. ' + sub}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{words.map((w, i) => <Word key={i + w} w={w} i={i} on={on} color={i === last ? accent : L.ink} />)}</View>
-      {sub ? <Reanimated.Text style={[{ fontFamily: 'Poppins_500Medium', fontSize: 14, lineHeight: 20, color: L.mut, marginTop: 4 }, subSt]}>{sub}</Reanimated.Text> : null}
-    </View>
-  );
-}
+/* ---------- hero: rotating two-line headline (ui/heroHeadline.tsx), floating art, the rider ---------- */
 function Float({ children, style }: { children: ReactNode; style?: any }) {
   const rm = !!useReducedMotion() || !useActive(), v = useSharedValue(0), e = useSharedValue(rm ? 1 : 0);
   useEffect(() => { if (rm) return; if (e.value < 1) e.value = withDelay(250, withSpring(1, { damping: 12, stiffness: 90 })); v.value = withRepeat(withTiming(1, { duration: 2600, easing: REasing.inOut(REasing.sin) }), -1, true); return () => cancelAnimation(v) }, [rm]);
@@ -206,14 +183,14 @@ function Live() {
 function Hero({ W, y }: { W: number; y: Animated.Value }) {
   const ins = useInsets(), cfg = homeConfig(), on = section('hero'), st = Math.max(ins.top, 24), aw = Math.min(W, 520);
   return (
-    <View style={{ backgroundColor: '#F3EDFF', overflow: 'hidden', paddingTop: st + 56 }}>
+    <View style={{ backgroundColor: L.bg, overflow: 'hidden', paddingTop: st + 74 }}>
       {/* light lavender field; pulling down stretches it so no gap shows */}
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
-        <LinearGradient colors={['#EDE4FF', '#F4EEFF', L.bg]} locations={[0, 0.6, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <LinearGradient colors={[L.bg, L.bg]} locations={[0, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
       {on ? <>
         <View style={{ paddingHorizontal: SIDE, paddingTop: 4 }}>
-          <HeroText title={cfg.heroTitle} sub={cfg.heroSub} accent={L.accent} />
+          <HeroHeadline first={cfg.heroTitle} sub={cfg.heroSub} ink={L.ink} accent={L.accent} subColor={L.mut} />
           <Live />
         </View>
         <View style={{ marginTop: 4, marginBottom: 34 }}><HeroRide width={aw} /></View>

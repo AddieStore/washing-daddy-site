@@ -71,7 +71,7 @@ export const LightCtx = createContext(false);
 /** tone 0 = night, 1 = dawn, 2 = morning, 3 = bright day: the sun climbs and the sky warms as the story goes */
 export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: number; road?: boolean }) {
   const light = useContext(LightCtx);
-  const sky = light ? ['#E2D3FF', '#ECE2FF', '#F3ECFF'] : [['rgba(58,5,153,0)', '#4B12C9', '#6A2BF0'], ['rgba(84,9,218,0)', '#7A3AF2', '#FF9E7A'], ['rgba(110,40,235,0)', '#8E55F5', '#FFC08A'], ['rgba(130,70,245,0)', '#A97BFF', '#FFE2A8']][tone];
+  const sky = light ? ['#FFFFFF', '#FFFFFF', '#FAF7FF'] : [['rgba(58,5,153,0)', '#4B12C9', '#6A2BF0'], ['rgba(84,9,218,0)', '#7A3AF2', '#FF9E7A'], ['rgba(110,40,235,0)', '#8E55F5', '#FFC08A'], ['rgba(130,70,245,0)', '#A97BFF', '#FFE2A8']][tone];
   const sunY = [H - 40, H - 70, H - 105, H - 140][tone], sunC = (light ? ['#FFE9A6', '#FFDF8A', '#FFD470', '#FFCB4A'] : ['#CDB8FF', '#FFC58A', '#FFD470', '#FFE49A'])[tone];
   const glow = usePulse(2400);
   const sunSt = useAnimatedStyle(() => ({ transform: [{ scale: 1 + glow.value * 0.06 }], opacity: 0.55 + glow.value * 0.2 }));
@@ -98,7 +98,7 @@ export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: num
 function Cloud({ x, y, w, d }: { x: number; y: number; w: number; d: number }) {
   const light = useContext(LightCtx);
   const p = usePulse(3600, d), st = useAnimatedStyle(() => ({ transform: [{ translateX: p.value * 16 }] }));
-  return <Animated.View style={[abs(x, y, { width: w, height: w * 0.3, borderRadius: w, backgroundColor: light ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.16)' }), st]} />;
+  return <Animated.View style={[abs(x, y, { width: w, height: w * 0.3, borderRadius: w, backgroundColor: light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.16)' }), st]} />;
 }
 
 /* ------------------------------------------------------------------ the car */
@@ -344,9 +344,9 @@ export function LoginStory({ W, H = 220, ms = 4600 }: { W: number; H?: number; m
       <View style={{ width: W }}>
         <View style={{ width: W, height: H, overflow: 'hidden' }}>
           <Animated.View key={i} entering={FadeIn.duration(420)} exiting={FadeOut.duration(280)} style={abs(0, 0)}><Scene W={W} H={H} /></Animated.View>
-          <LinearGradient pointerEvents="none" colors={['#E2D3FF', 'rgba(226,211,255,0)']} style={abs(0, 0, { width: W, height: 26 })} />
+          
         </View>
-        <LinearGradient colors={['#F3ECFF', '#FFFFFF']} style={{ paddingHorizontal: SP.l + 4, paddingTop: SP.m, minHeight: 104 }}>
+        <LinearGradient colors={['#FFFFFF', '#FFFFFF']} style={{ paddingHorizontal: SP.l + 4, paddingTop: SP.m, minHeight: 104 }}>
           <Animated.View key={'t' + i} entering={FadeIn.duration(420).delay(140)} exiting={FadeOut.duration(200)}>
             <Txt weight={700} size={26} color="#1A1033" style={{ lineHeight: 33 }}>{SLIDES[i].t}</Txt>
             <Txt size={14} color="#5B5275" style={{ lineHeight: 20, marginTop: 4 }}>{SLIDES[i].s}</Txt>

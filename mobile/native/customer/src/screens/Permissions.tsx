@@ -51,7 +51,7 @@ export default function Permissions({ onDone }: { onDone: () => void }) {
   const allowNotif = async () => { setBusy(true); await askNotifications(); setBusy(false); toLoc() };
   const wrap = (k: string, el: React.ReactNode) => (
     <InkContext.Provider value={creamInk}>
-      <Animated.View key={k} entering={FadeIn.duration(320)} style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: C.canvas }]}>{el}</Animated.View>
+      <Animated.View key={k} entering={FadeIn.duration(320)} style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: C.page }]}>{el}</Animated.View>
     </InkContext.Provider>
   );
   if (stage === 'setup') return wrap('setup', <SetupScreen />);
@@ -66,21 +66,20 @@ function LocationPrimer({ onDone: done }: { onDone: () => void }) {
   };
   return (
     <InkContext.Provider value={creamInk}>
-      <Animated.View entering={FadeIn.duration(320)} style={[StyleSheet.absoluteFill, { backgroundColor: C.brandDeep, zIndex: 100, alignItems: 'center' }]}>
-        <BrandBg />
+      <Animated.View entering={FadeIn.duration(320)} style={[StyleSheet.absoluteFill, { backgroundColor: C.page, zIndex: 100, alignItems: 'center' }]}>
         <View style={{ flex: 1, width: '100%', maxWidth: 440 }}>
           <View style={{ flex: 1, paddingHorizontal: PAD + 4, paddingTop: ins.top + SP.xl, justifyContent: 'center' }}>
             <FadeUp style={{ alignItems: 'center' }}>
-              <View style={{ width: 176, height: 176, borderRadius: 88, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' }}>
-                <View style={{ width: 140, height: 140, borderRadius: 70, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><GenericArt size={120} icon="car" accent={C.violet} /></View>
+              <View style={{ width: 176, height: 176, borderRadius: 88, backgroundColor: 'rgba(84,9,218,0.06)', alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{ width: 140, height: 140, borderRadius: 70, backgroundColor: C.canvas, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><GenericArt size={120} icon="car" accent={C.violet} /></View>
               </View>
             </FadeUp>
             <FadeUp delay={80}>
-              <Txt weight={700} size={30} color="#fff" style={{ lineHeight: 38, textAlign: 'center', marginTop: SP.xl }}>Find you <Txt weight={700} size={30} color={C.saffron}>faster</Txt></Txt>
-              <Txt size={15} color="rgba(255,255,255,0.86)" style={{ lineHeight: 22, textAlign: 'center', marginTop: SP.s }}>Allow location so our washer can reach your parking spot without a phone call.</Txt>
+              <Txt weight={700} size={30} color={INK} style={{ lineHeight: 38, textAlign: 'center', marginTop: SP.xl }}>Find you <Txt weight={700} size={30} color={C.violet}>faster</Txt></Txt>
+              <Txt size={15} color={SEC} style={{ lineHeight: 22, textAlign: 'center', marginTop: SP.s }}>Allow location so our washer can reach your parking spot without a phone call.</Txt>
             </FadeUp>
           </View>
-          <Sheet>
+          <Sheet style={{ shadowOpacity: 0.08 }}>
             <View style={{ paddingHorizontal: PAD + 4, paddingTop: SP.xl, paddingBottom: Math.max(ins.bottom, SP.l) + SP.l }}>
               {WHY.map((w, i) => (
                 <View key={w[0]} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: SP.m }}>

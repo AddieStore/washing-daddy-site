@@ -15,7 +15,7 @@ export function FloatField({ label, value, onChange, readOnly, keyboardType, pre
   const [f, setF] = useState(false), up = f || !!value || !!prefix;
   const t = useRef(new Animated.Value(up ? 1 : 0)).current;
   useEffect(() => { Animated.timing(t, { toValue: up ? 1 : 0, duration: 140, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: false }).start() }, [up]);
-  const txt = { fontFamily: 'Poppins_400Regular', fontSize: FF_FONT, lineHeight: FF_LINE, paddingTop: 26, paddingBottom: 8, paddingHorizontal: 0, margin: 0, includeFontPadding: false } as const;
+  const txt = { fontFamily: 'PlusJakartaSans_400Regular', fontSize: FF_FONT, lineHeight: FF_LINE, paddingTop: 26, paddingBottom: 8, paddingHorizontal: 0, margin: 0, includeFontPadding: false } as const;
   return (
     <View style={{ minHeight: 64, borderRadius: 10, borderWidth: f ? 1.5 : 1, borderColor: f ? C.violet : 'rgba(23,23,23,0.16)', backgroundColor: readOnly ? G.raised : '#fff', paddingHorizontal: f ? FF_PAD - 0.5 : FF_PAD - 0, marginBottom: 16, flexDirection: 'row', alignItems: 'stretch' }}>
       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
@@ -23,7 +23,7 @@ export function FloatField({ label, value, onChange, readOnly, keyboardType, pre
         <TextInput value={value} editable={!readOnly} onChangeText={onChange} onFocus={() => setF(true)} onBlur={() => setF(false)} keyboardType={keyboardType} maxLength={maxLength} multiline={multiline} autoCapitalize={autoCapitalize}
           accessibilityLabel={label} style={[txt, { flex: 1, minWidth: 0, color: readOnly ? G.mute : G.ink, textAlignVertical: 'top' }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]} />
       </View>
-      <Animated.Text pointerEvents="none" numberOfLines={1} style={{ position: 'absolute', left: FF_PAD - (f ? 0.5 : 0), right: FF_PAD, includeFontPadding: false, fontFamily: 'Poppins_400Regular', color: f ? C.violet : G.mute,
+      <Animated.Text pointerEvents="none" numberOfLines={1} style={{ position: 'absolute', left: FF_PAD - (f ? 0.5 : 0), right: FF_PAD, includeFontPadding: false, fontFamily: 'PlusJakartaSans_400Regular', color: f ? C.violet : G.mute,
         fontSize: t.interpolate({ inputRange: [0, 1], outputRange: [FF_FONT, 12] }), lineHeight: t.interpolate({ inputRange: [0, 1], outputRange: [24, 16] }), top: t.interpolate({ inputRange: [0, 1], outputRange: [19, 10] }) } as any}>{label}</Animated.Text>
       {right ? <View style={{ justifyContent: 'center', paddingLeft: 8 }}>{right}</View> : null}
     </View>
@@ -39,7 +39,7 @@ export default function ProfileEdit() {
     try { await act.saveProfile({ first, last, email }); toast('Profile updated'); closePage() } catch (e: any) { toast(e.message) } finally { setBusy(false) }
   };
   return (
-    <View style={{ flex: 1, backgroundColor: G.raised }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <PageBar title="Profile details" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16 }}>

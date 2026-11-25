@@ -30,7 +30,7 @@ export default function AddressForm({ id, lat, lng, area }: { id?: string; lat?:
   };
   const seg = (on: boolean, text: string, f: () => void) => <Pressable onPress={f} style={{ flex: 1, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.violet : 'transparent' }}><Txt weight={500} size={14} color={on ? '#fff' : G.sub}>{text}</Txt></Pressable>;
   return (
-    <View style={{ flex: 1, backgroundColor: G.raised }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <PageBar title={ex ? 'Edit address' : 'Add address details'} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>

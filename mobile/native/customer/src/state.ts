@@ -48,6 +48,9 @@ const N8N = 'https://n8n.washingdaddy.com/webhook';
 const PAY_LIVE = true;
 export const REAL = !!backend;                 // phone app on Firebase; false in the preview (test data, OTP 1234)
 export const OTP_N = REAL ? 6 : 4;
+/** where the sign-in code goes: WhatsApp (n8n workflow 15) or SMS (Firebase phone auth). Remembered so verify uses the same channel. */
+export type OtpVia = 'whatsapp' | 'sms';
+let otpVia: OtpVia = 'whatsapp';
 const DB: Db | null = backend ? backend.db : null;
 const AUTH = backend ? backend.auth : null;
 
@@ -1184,15 +1187,26 @@ const failed = () => new Error(`That didn't go through. Call or WhatsApp us on $
 export const act = {
   ...PX_ACTS,
   /* --- sign-in --- */
-  async sendOtp(phone10: string) {
+  /** Sends the sign-in code. WhatsApp first (n8n workflow 15); SMS when asked, or by itself when WhatsApp is not live yet, the
+   *  number is not on WhatsApp, or it is an admin number. Resolves to the channel the code actually went out on. */
+  async sendOtp(phone10: string, via: OtpVia = 'whatsapp'): Promise<OtpVia> {
     if (!/^[6-9]\d{9}$/.test(phone10)) throw new Error('Enter a 10-digit mobile number.');
-    if (AUTH) { await AUTH.send(phone10); return } await wait(700);
+    if (!AUTH) { await wait(700); otpVia = via; return via }
+    if (via === 'whatsapp' && AUTH.sendWhatsApp) {
+      try { await AUTH.sendWhatsApp(phone10); otpVia = 'whatsapp'; return 'whatsapp' }
+      catch (e: any) {
+        const code = e && e.code;
+        if (code !== 'not_ready' && code !== 'use_sms' && code !== 'not_on_whatsapp') throw e;
+        if (code === 'not_on_whatsapp') toast("This number isn't on WhatsApp. Sending an SMS instead.");
+      }
+    }
+    await AUTH.send(phone10); otpVia = 'sms'; return 'sms';
   },
   // -> 'in' (account found, signed in) or 'new' (go through sign-up)
   async verifyOtp(phone10: string, code: string): Promise<'in' | 'new'> {
     let customer: Account | null = null, token = 'test-' + phone10;
     if (AUTH && DB) {
-      const u = await AUTH.confirm(code); token = u.uid;
+      const u = otpVia === 'whatsapp' && AUTH.confirmWhatsApp ? await AUTH.confirmWhatsApp(phone10, code) : await AUTH.confirm(code); token = u.uid;
       try { const g = await DB.doc('customers/' + AUTH.phone()).get(); if (g.exists) customer = fromCustomerDoc(g.data(), S.acct) } catch (e) { console.warn(e) }
     } else { await wait(700); if (code !== '1234') throw new Error('That code is wrong. Try 1234 in this test version.'); if (phone10 === DEMO_PHONE) customer = sampleAccount() }
     if (!customer) { pendingSignup = { token, phone: phone10 }; return 'new' }
@@ -1232,7 +1246,7 @@ export const act = {
     enter(true);
     if (!monthly) { try { act.setCartMode('instant') } catch (e) {} }
   },
-  async resendOtp(phone10: string) { await act.sendOtp(phone10); toast('New code sent') },
+  async resendOtp(phone10: string, via: OtpVia = otpVia): Promise<OtpVia> { const v = await act.sendOtp(phone10, via); toast(v === 'whatsapp' ? 'New code sent on WhatsApp' : 'New code sent by SMS'); return v },
   /** "Skip" on sign-in: straight into the app as a guest. Anything that needs an account sends them back to log in (see GUEST_BLOCKED). */
   continueAsGuest() {
     S.session = { token: 'guest', phone: '', real: REAL, guest: true };

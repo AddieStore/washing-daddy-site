@@ -10,8 +10,8 @@ import { Pressable3, FadeUp, Splash } from '../ui/motion';
 import { BrandBg, BrandLogo, Sheet } from '../ui/Brand';
 import { LoginStory } from '../ui/loginStory';
 import { Cta, PhoneField, OtpBox } from '../ui/welcome';
-import { Back, Check, Zap, Calendar } from '../ui/icons';
-import { OTP_N, REAL, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp, legalPages, onAutoSignIn } from '../state';
+import { Back, Check, Zap, Calendar, WhatsApp } from '../ui/icons';
+import { OTP_N, REAL, type OtpVia, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp, legalPages, onAutoSignIn } from '../state';
 import { openLegalSheet } from '../pages/LegalDoc';
 import { Plate } from '../ui/Plate';
 import { sellablePlans, DEFAULT_PLAN, PlanId, fromPrice } from '../data/reference';
@@ -36,9 +36,9 @@ function Link({ label, onPress, disabled, style, color }: { label: string; onPre
 // "Step 2 of 4" with a segmented bar, on the violet top
 const StepBar = ({ n, total }: { n: number; total: number }) => (
   <View style={{ marginBottom: SP.m }}>
-    <Txt weight={600} size={12} color={C.saffron} style={{ letterSpacing: 0.8, marginBottom: SP.s }}>{`STEP ${n} OF ${total}`}</Txt>
+    <Txt weight={600} size={12} color={C.violet} style={{ letterSpacing: 0.8, marginBottom: SP.s }}>{`STEP ${n} OF ${total}`}</Txt>
     <View style={{ flexDirection: 'row', gap: 6 }}>
-      {Array.from({ length: total }, (_, k) => k + 1).map(i => <View key={i} style={{ height: 4, flex: 1, borderRadius: 2, backgroundColor: i <= n ? C.saffron : 'rgba(255,255,255,0.28)' }} />)}
+      {Array.from({ length: total }, (_, k) => k + 1).map(i => <View key={i} style={{ height: 4, flex: 1, borderRadius: 2, backgroundColor: i <= n ? C.violet : 'rgba(84,9,218,0.14)' }} />)}
     </View>
   </View>
 );
@@ -77,6 +77,7 @@ export default function Auth() {
   const [code, setCode] = useState<string[]>(Array(OTP_N).fill(''));
   const [foc, setFoc] = useState(-1);
   const [left, setLeft] = useState(30);
+  const [via, setVia] = useState<OtpVia>('whatsapp');   // where the code actually went
   const [wa, setWa] = useState(true);          // "get updates on WhatsApp" (display only)
   const [su, setSu] = useState({ name: '', model: '', plate: '', plan: DEFAULT_PLAN as PlanId });
   const [mode, setMode] = useState<Mode | null>(null);
@@ -148,12 +149,12 @@ export default function Auth() {
     if (/^[6-9]\d{9}$/.test(d) && d !== autoSent.current && !busy) { autoSent.current = d; Keyboard.dismiss(); sendCode(d) }
   };
   const autoSent = useRef('');
-  const sendCode = async (num?: string) => {
+  const sendCode = async (num?: string, ch: OtpVia = 'whatsapp') => {
     const ph = typeof num === 'string' ? num : phone;
     if (!/^[6-9]\d{9}$/.test(ph)) { setErr('Enter a 10-digit mobile number.'); return }
     if (inv && inv === ('WD' + ph.slice(-6))) { setErr(OWN); return }
     setBusy(true);
-    try { await act.sendOtp(ph); setCode(Array(OTP_N).fill('')); setLeft(30); setStep('otp') } catch (e) { autoSent.current = ''; setErr(msg(e)) }
+    try { const used = await act.sendOtp(ph, ch); setVia(used); setCode(Array(OTP_N).fill('')); setLeft(30); setStep('otp') } catch (e) { autoSent.current = ''; setErr(msg(e)) }
     setBusy(false);
   };
   useEffect(() => { if (step === 'phone') autoSent.current = '' }, [step]);
@@ -189,8 +190,8 @@ export default function Auth() {
     if (d && i < OTP_N - 1) boxes.current[i + 1]?.focus();
     if (c.join('').length === OTP_N) verify(c);
   };
-  const resend = async () => {
-    try { await act.resendOtp(phone); setLeft(30); setCode(Array(OTP_N).fill('')); setErr(''); boxes.current[0]?.focus() } catch (e) { setErr(msg(e)) }
+  const resend = async (ch: OtpVia = via) => {
+    try { const used = await act.resendOtp(phone, ch); setVia(used); setLeft(30); setCode(Array(OTP_N).fill('')); setErr(''); boxes.current[0]?.focus() } catch (e) { setErr(msg(e)) }
   };
 
   const toChoose = () => {
@@ -225,7 +226,7 @@ export default function Auth() {
   if (step === 'phone') card = (
     <>
       <Txt weight={700} size={22} color={L.ink} style={{ lineHeight: 30 }}>Log in or sign up</Txt>
-      <Txt size={14} color={L.grey} style={{ lineHeight: 20, marginTop: 2, marginBottom: SP.l }}>Enter your mobile number. We'll text you a code.</Txt>
+      <Txt size={14} color={L.grey} style={{ lineHeight: 20, marginTop: 2, marginBottom: SP.l }}>Enter your mobile number. We'll send a code on WhatsApp.</Txt>
       {phoneField}
       <Pressable onPress={() => setWa(!wa)} accessibilityRole="checkbox" accessibilityState={{ checked: wa }} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: SP.s, minHeight: 44 }}>
         <View style={{ width: 22, height: 22, borderRadius: 7, backgroundColor: wa ? L.violet : '#fff', borderWidth: wa ? 0 : 1.5, borderColor: L.line, alignItems: 'center', justifyContent: 'center' }}>{wa ? <Check size={15} color="#fff" strokeWidth={2.2} /> : null}</View>
@@ -235,7 +236,8 @@ export default function Auth() {
         ? <View style={{ marginTop: SP.s }}>{inviteBox}</View>
         : <Link label="I have an invite code" onPress={() => { setShowInv(true); setTapped(true) }} style={{ alignSelf: 'flex-start', marginTop: SP.hair, minHeight: 28 }} />}
       {err ? <View style={{ marginTop: SP.m }}><Err text={err} /></View> : null}
-      <Cta label="Continue" busy={busy ? 'Sending…' : false} disabled={!phoneOk} onPress={() => sendCode()} style={{ marginTop: SP.l }} />
+      <Cta label="Get code on WhatsApp" busy={busy ? 'Sending…' : false} disabled={!phoneOk} onPress={() => sendCode()} style={{ marginTop: SP.l }} />
+      <Link label="Get the code by SMS instead" disabled={!phoneOk || busy} onPress={() => { autoSent.current = phone; sendCode(undefined, 'sms') }} style={{ alignSelf: 'center', marginTop: SP.m, minHeight: 32, justifyContent: 'center' }} />
       {legalPages('signup').length ? (
         <Txt size={12} color={L.muted} style={{ textAlign: 'center', marginTop: SP.m, lineHeight: 17 }}>By continuing, you agree to our {legalPages('signup').map((d, i, l) => (
           <Txt key={d.id} size={12} color={L.muted}>{i ? (i === l.length - 1 ? ' and ' : ', ') : ''}<Txt size={12} color={L.violet} style={{ textDecorationLine: 'underline' }} onPress={() => openLegalSheet(d.id)}>{d.title}</Txt></Txt>
@@ -258,9 +260,10 @@ export default function Auth() {
       <Err text={err} />
       {busy ? <Txt weight={600} size={13} color={L.violet} style={{ textAlign: 'center' }}>Checking…</Txt> : null}
       <View style={{ alignItems: 'center', marginTop: SP.s, minHeight: 28 }}>
-        {left > 0 ? <Txt size={14} color={L.muted} style={NUM}>{`Resend SMS in ${left}s`}</Txt> : <Link label="Resend SMS" onPress={resend} />}
+        {left > 0 ? <Txt size={14} color={L.muted} style={NUM}>{`Resend code in ${left}s`}</Txt> : <Link label={via === 'whatsapp' ? 'Resend on WhatsApp' : 'Resend SMS'} onPress={() => resend()} />}
+        <Link label={via === 'whatsapp' ? "Didn't get it? Send by SMS" : 'Get it on WhatsApp instead'} disabled={busy} onPress={() => resend(via === 'whatsapp' ? 'sms' : 'whatsapp')} style={{ marginTop: SP.m, minHeight: 28 }} />
       </View>
-      {REAL ? null : <Hint><B>Test code: 1234</B></Hint>}
+      {REAL ? null : <Hint><B>Test version: no code is sent.</B> Enter <B>1234</B> to continue.</Hint>}
       <Cta label="Verify" busy={busy ? 'Checking…' : false} disabled={code.join('').length < OTP_N} onPress={() => verify(code)} style={{ marginTop: SP.l }} />
     </>
   );
@@ -334,7 +337,7 @@ export default function Auth() {
   const goBack = () => { setErr(''); if (step === 'plan') setStep('car'); else if (step === 'car') setStep('choose'); else if (step === 'choose') setStep('about'); else setStep('phone') };
   const storyH = Math.max(140, Math.min(200, Math.round(win.height * 0.24)));
   const total = mode === 'instant' ? 3 : 4, nOf = (step === 'about' ? 1 : step === 'choose' ? 2 : step === 'car' ? 3 : 4);
-  const light = step === 'phone' || step === 'otp';
+  const light = true;   // every step sits on the white page (dark text, violet accents)
   const T1 = ({ children }: { children: React.ReactNode }) => <Txt weight={700} size={30} color={light ? '#1A1033' : '#fff'} style={{ lineHeight: 38 }}>{children}</Txt>;
   const T2 = ({ children }: { children: React.ReactNode }) => <Txt size={15} color={light ? '#5B5275' : 'rgba(255,255,255,0.86)'} style={{ lineHeight: 22, marginTop: SP.s }}>{children}</Txt>;
   let top;
@@ -360,7 +363,11 @@ export default function Auth() {
       </View>
       <FadeUp key={step}>
         {step === 'about' || step === 'choose' || step === 'car' || step === 'plan' ? <StepBar n={nOf} total={total} /> : null}
-        {step === 'otp' ? <><T1>Enter the code</T1><T2>{`We sent a ${OTP_N}-digit code to`}</T2>
+        {step === 'otp' ? <><T1>Enter the code</T1>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: SP.s }}>
+            {via === 'whatsapp' ? <WhatsApp size={18} color="#16a34a" strokeWidth={2} /> : null}
+            <Txt size={15} color="#5B5275" style={{ lineHeight: 22 }}>{via === 'whatsapp' ? `We sent a ${OTP_N}-digit code on WhatsApp to` : `We sent a ${OTP_N}-digit code by SMS to`}</Txt>
+          </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 2 }}>
             <Txt weight={600} size={17} color={light ? '#1A1033' : '#fff'} style={NUM}>+91 {fmtPhone(phone)}</Txt>
             <Link label="Change" color={light ? C.brandTop : C.saffron} onPress={() => { setStep('phone'); setErr('') }} />
@@ -377,7 +384,7 @@ export default function Auth() {
     <InkContext.Provider value={creamInk}>
       <View style={{ flex: 1, backgroundColor: light ? '#fff' : C.brandDeep }}>
         <StatusBar style={light ? 'dark' : 'light'} />
-        {light ? <LinearGradient pointerEvents="none" colors={['#E2D3FF', '#E2D3FF', '#FFFFFF']} locations={[0, 0.5, 0.56]} style={StyleSheet.absoluteFill} /> : <BrandBg />}
+        {light ? <LinearGradient pointerEvents="none" colors={['#FFFFFF', '#FFFFFF']} locations={[0, 1]} style={StyleSheet.absoluteFill} /> : <BrandBg />}
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: kb }}>
             <View style={{ width: W, flexGrow: 1 }}>
