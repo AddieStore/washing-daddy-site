@@ -1,7 +1,7 @@
 // Small, cheap motion pieces (plain Animated, native driver on phones): an entrance, a float, a pulse,
 // rising soap bubbles and a success tick. Every one of them stands still when the phone asks for reduced motion.
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleProp, View, ViewStyle } from 'react-native';
+import { Animated, Easing, Platform, Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useReducedMotion } from './Hosts';
 import { Icon } from './Icons';
 import { brand } from './theme';
@@ -153,26 +153,43 @@ export function SuccessTick({ size = 84 }: { size?: number }) {
 
 /* ---------- Pronto press + entrance (same feel as the customer app, on RN Animated) ---------- */
 
-/** Spring scale for a press: down to `scaleTo` (default 0.96) fast, back to 1 with a small overshoot. Reduced motion: no scale. */
-export function usePressSpring(scaleTo = 0.96) {
+/** Combine the press opacity with an opacity already present in `style` (disabled buttons etc.). */
+export function withBase(o: Animated.Value, style: StyleProp<ViewStyle>) {
+  const base = (StyleSheet.flatten(style) as ViewStyle | undefined)?.opacity;
+  return typeof base === 'number' && base !== 1 ? Animated.multiply(o, base) : o;
+}
+
+/** Press feedback: scale to `scaleTo` (default 0.97) with a soft opacity dip in 90 ms, then a short spring back (about 160 ms, no visible overshoot). Reduced motion: opacity dip only. */
+export function usePressSpring(scaleTo = 0.97) {
   const rm = useReducedMotion();
   const v = useRef(new Animated.Value(1)).current;
-  const down = () => { if (!rm) Animated.spring(v, { toValue: scaleTo, speed: 50, bounciness: 0, useNativeDriver: ND }).start() };
-  const up = () => { if (rm) { v.setValue(1); return } Animated.spring(v, { toValue: 1, speed: 24, bounciness: 14, useNativeDriver: ND }).start() };
-  return { scale: v, down, up };
+  const o = useRef(new Animated.Value(1)).current;
+  const down = () => {
+    Animated.parallel([
+      Animated.timing(v, { toValue: rm ? 1 : scaleTo, duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: ND }),
+      Animated.timing(o, { toValue: 0.88, duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: ND }),
+    ]).start();
+  };
+  const up = () => {
+    Animated.parallel([
+      Animated.spring(v, { toValue: 1, speed: 40, bounciness: 3, useNativeDriver: ND }),
+      Animated.timing(o, { toValue: 1, duration: 160, easing: Easing.out(Easing.quad), useNativeDriver: ND }),
+    ]).start();
+  };
+  return { scale: v, opacity: o, down, up };
 }
 
 /** A pressable that springs to 0.96 and back with a little overshoot. Use it for any tappable card, tile or row. */
-export function PressScale({ children, style, onPress, onLongPress, disabled, scaleTo = 0.96, accessibilityLabel, accessibilityRole = 'button', accessibilityState, hitSlop }: {
+export function PressScale({ children, style, onPress, onLongPress, disabled, scaleTo = 0.97, accessibilityLabel, accessibilityRole = 'button', accessibilityState, hitSlop }: {
   children?: React.ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void; onLongPress?: () => void; disabled?: boolean; scaleTo?: number;
   accessibilityLabel?: string; accessibilityRole?: 'button' | 'switch' | 'radio' | 'link' | 'tab';
   accessibilityState?: { selected?: boolean; checked?: boolean; disabled?: boolean }; hitSlop?: number;
 }) {
-  const { scale, down, up } = usePressSpring(scaleTo);
+  const { scale, opacity, down, up } = usePressSpring(scaleTo);
   return (
     <Pressable onPress={onPress} onLongPress={onLongPress} disabled={disabled} onPressIn={down} onPressOut={up} hitSlop={hitSlop}
       accessibilityRole={accessibilityRole} accessibilityLabel={accessibilityLabel} accessibilityState={{ disabled: !!disabled, ...accessibilityState }}>
-      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
+      <Animated.View style={[style, { opacity: withBase(opacity, style), transform: [{ scale }] }]}>{children}</Animated.View>
     </Pressable>
   );
 }

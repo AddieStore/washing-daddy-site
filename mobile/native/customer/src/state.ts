@@ -144,7 +144,7 @@ export const fmtPhone = (p: string) => p.replace(/(\d{5})(\d+)/, '$1 $2');
 export { maskPlate, planOf, regOf, chipText, activeStage, startTxt, startOf, canPause, isPaused, extras, weekPlan, LABEL, TASK_LABEL, TASK_SUB, STAGES };
 
 /* ---------- wash data ---------- */
-let REMOTE: Record<string, WashDoc[]> = {}, REQS: Record<string, any[]> = {}, DOCS: Record<string, WashDoc> = {};
+let REMOTE: Record<string, WashDoc[]> = {}, REQS: Record<string, any[]> = {}, DOCS: Record<string, WashDoc> = {}, RATED: Record<string, { stars: number; tag?: string }> = {}, DISMISSED: Record<string, boolean> = {};
 let SIM: { carId: string; doc: WashDoc; t?: any } | null = null;
 export const syncLive = () => !!DB && realAcct();
 export function doc(c: Car = car()): WashDoc {
@@ -155,22 +155,56 @@ export function doc(c: Car = car()): WashDoc {
   if (realAcct() && c.status !== 'new') return { date: iso(TODAY), reg: regOf(c), car_label: c.name, washer: { name: c.washer }, photos: [], status: 'scheduled', eta: null, first: true, notStarted: true, tasks: [], washer_note: null, water_litres: null, customer_note_seen: false, remote: false };
   return DOCS[c.id] || (DOCS[c.id] = makeDoc(c));
 }
-export const requestsFor = (c: Car) => REQS[c.id] || [];
+/** demo only: what the washer's acknowledgement of a "skip tomorrow" request looks like (real accounts read requests/{id}) */
+const demoReqs = (c: Car) => (REAL || c.img !== 'scorpio' ? [] : [{ id: 'demo-skip', reg: regOf(c), kind: 'skip_tomorrow', from: iso(addDays(TODAY, 1)), to: iso(addDays(TODAY, 1)), status: 'seen', seen_at: '2026-01-01T07:05:00+05:30', washer_reply: 'Ok sir, no wash tomorrow', created_at: iso(TODAY) }]);
+export const requestsFor = (c: Car) => REQS[c.id] || demoReqs(c);
+const byNewest = (a: any, b: any) => String(b.created_at).localeCompare(String(a.created_at));
+const reqTime = (v: any) => { const t = ampm(hm(v)); return t ? ' ' + t : '' };
+/** real wash photos of a doc (before / after / issue / inside + spot); empty for a demo doc, which keeps its static images */
+export const photosOf = (d: WashDoc) => (d.remote ? d.photos : []);
+/** Sunday interior carry-over line for the selected car: "Sunday interior done Monday" (carried_from / interior_carried_to) */
+export function carryNote(c: Car = car(), d: WashDoc = doc(c)): string | null {
+  const day = (iso_: string) => fmt(parse(iso_), { weekday: 'long' });
+  if (d.carried_from) { const it = d.tasks.find(t => t.key === 'interior'); return it && it.done ? `Sunday interior done ${day(d.date)}` : `Sunday interior is being done today`; }
+  const src = d.interior_carried_to ? d : (REMOTE[c.id] || []).find(x => x.interior_carried_to && x.date >= iso(addDays(TODAY, -7)));
+  if (src && src.interior_carried_to) {
+    const nx = (REMOTE[c.id] || []).find(x => x.date === src.interior_carried_to), done = !!nx && nx.tasks.some(t => t.key === 'interior' && t.done);
+    return done ? `Sunday interior done ${day(src.interior_carried_to)}` : `Sunday interior will be done ${day(src.interior_carried_to)}`;
+  }
+  return null;
+}
+/** the daily rating already given for today's wash (ratings/{DATE}_{REG}) */
+export const ratedToday = (c: Car = car()) => RATED[c.id] || null;
+export const canRateToday = (c: Car = car()) => { const d = doc(c); return (realAcct() || !REAL) && !!d.remote && d.status === 'done' && !RATED[c.id] };
 
 /* ---------- view helpers (what each screen draws) ---------- */
-export type Banner = { icon: string; tint: string; title: string; sub: string; btn: string; act: () => void };
+export type Banner = { kind?: 'wash'; icon: string; tint: string; title: string; sub: string; btn: string; act: () => void };
 export function banners(): Banner[] {
   const c = car(), b: Banner[] = [], a = A();
   if (c.status === 'new' && !c.till) b.push({ icon: '🧾', tint: 'rgba(255,186,8,.2)', title: 'Pay after your first wash', sub: `${planOf(c).name}, ${inr(planOf(c).price)} a month`, btn: 'Pay now', act: () => sheetHooks.payPlan() });
   if (c.paused && c.paused.to >= iso(TODAY)) b.push({ icon: '⏸', tint: 'rgba(46,139,255,.18)', title: `Washes paused ${fmt(c.paused.from)} – ${fmt(c.paused.to)}`, sub: 'The days are added to your plan', btn: 'Resume', act: () => act.resume().catch(e => toast(e.message)) });
   const d = doc(c); if (activeStage(d)) b.unshift({ icon: '●', tint: 'rgba(255,186,8,.25)', title: 'Live now', sub: chipText(c, d), btn: 'Watch', act: () => go('live') });
-  const seen = requestsFor(c).filter(r => r.kind === 'note').sort((x, y) => String(y.created_at).localeCompare(String(x.created_at)))[0];
-  if (c.note) b.push({ icon: '✎', tint: 'rgba(255,106,26,.18)', title: `Note for ${c.washer}${seen && seen.status === 'done' ? ' · handled ✓' + (seen.done_at ? ' ' + ampm(hm(seen.done_at)) : '') : seen && seen.status === 'seen' ? ' · seen ✓' + (seen.seen_at ? ' ' + ampm(hm(seen.seen_at)) : '') : ''}`, sub: c.note, btn: 'Edit', act: () => sheetHooks.note() });
+  const seen = requestsFor(c).filter(r => r.kind === 'note').sort(byNewest)[0];
+  if (c.note) b.push({ kind: 'wash', icon: '✎', tint: 'rgba(255,106,26,.18)', title: `Note for ${c.washer}${seen && seen.status === 'done' ? ' · handled ✓' + reqTime(seen.done_at) : seen && seen.status === 'seen' ? ' · seen ✓' + reqTime(seen.seen_at) : ''}`, sub: seen && seen.washer_reply ? `${c.note}\n${c.washer}: ${seen.washer_reply}` : c.note, btn: 'Edit', act: () => sheetHooks.note() });
+  // pause / skip-tomorrow acknowledgement from the washer
+  const pz = requestsFor(c).filter(r => (r.kind === 'skip_tomorrow' || r.kind === 'pause') && r.from).sort(byNewest)[0];
+  if (pz && (pz.status === 'seen' || pz.status === 'done') && pz.to >= iso(TODAY) && !DISMISSED[pz.id]) b.push({ kind: 'wash', icon: '⏸', tint: 'rgba(46,139,255,.18)', title: `${c.washer} ${pz.status === 'done' ? 'has marked it' : 'has seen it'} ✓${reqTime(pz.status === 'done' ? pz.done_at : pz.seen_at)}`, sub: pz.washer_reply || (pz.kind === 'skip_tomorrow' ? 'No wash tomorrow' : `No wash ${fmt(pz.from)} – ${fmt(pz.to)}`), btn: 'OK', act: () => { DISMISSED[pz.id] = true; emitSoon() } });
+  // today's wash is done: ask for the daily rating
+  if (canRateToday(c)) b.push({ kind: 'wash', icon: '★', tint: 'rgba(255,186,8,.22)', title: 'How was today\'s wash?', sub: `Rate ${c.washer}'s wash in one tap`, btn: 'Rate', act: () => sheetHooks.rateDay() });
   a.bookings.filter(x => x.carId === c.id && x.date >= iso(TODAY)).forEach(x => b.push({ icon: '✦', tint: 'rgba(84,9,218,.15)', title: `One-time ${x.type} wash`, sub: `${fmt(x.date, { weekday: 'short', day: 'numeric', month: 'short' })}, ${x.slot}`, btn: 'Details', act: () => sheetHooks.bookings() }));
   a.orders.filter(o => o.status !== 'Delivered').forEach(o => b.push({ icon: '📦', tint: 'rgba(20,192,138,.16)', title: `Order ${o.id} arrives tomorrow`, sub: `${o.items.length} item${o.items.length > 1 ? 's' : ''}, with ${car().washer}'s wash`, btn: 'View', act: () => sheetHooks.orders() }));
-  a.requests.filter(r => r.carId === c.id && r.open).forEach(r => b.push({ icon: '↺', tint: 'rgba(232,56,79,.14)', title: `${c.washer} is coming back`, sub: `Re-wash of ${r.spots.join(', ').toLowerCase()} by 11 AM`, btn: 'OK', act: () => act.closeReq(r.id) }));
+  if (realAcct()) {
+    // re-wash status comes from requests/{id} (status, seen_at, done_at, washer_reply), not from the phone
+    requestsFor(c).filter(r => r.kind === 'rewash' && !DISMISSED[r.id] && (r.status !== 'done' || String(r.done_at || '').slice(0, 10) === iso(TODAY))).sort(byNewest).slice(0, 2).forEach(r => {
+      const spots = Array.isArray(r.spots) ? r.spots.join(', ').toLowerCase() : String(r.text || '').replace(/^Re-wash: /, '').toLowerCase();
+      const st = r.status === 'done' ? `Fixed ✓${reqTime(r.done_at)}` : r.status === 'seen' ? `${c.washer} saw it ✓${reqTime(r.seen_at)}` : 'Sent, waiting for ' + c.washer;
+      b.push({ kind: 'wash', icon: r.status === 'done' ? '✓' : '↺', tint: r.status === 'done' ? 'rgba(20,192,138,.16)' : 'rgba(232,56,79,.14)', title: r.status === 'done' ? 'Re-wash done' : `${c.washer} is coming back`, sub: `${st}. Re-wash of ${spots}${r.washer_reply ? '. ' + c.washer + ': ' + r.washer_reply : r.status === 'done' ? '' : ' by 11 AM'}`, btn: 'OK', act: () => { DISMISSED[r.id] = true; emitSoon() } });
+    });
+  } else a.requests.filter(r => r.carId === c.id && r.open).forEach(r => b.push({ kind: 'wash', icon: '↺', tint: 'rgba(232,56,79,.14)', title: `${c.washer} is coming back`, sub: `Re-wash of ${r.spots.join(', ').toLowerCase()} by 11 AM`, btn: 'OK', act: () => act.closeReq(r.id) }));
   return b;
 }
+/** the washer's replies and the rating prompt for the Daily tab (acknowledged notes, skip/pause, re-wash status, rate today's wash) */
+export const washNotices = () => banners().filter(b => b.kind === 'wash');
 // The steps under "Today's wash": [label, sub, 'done'|'later', done_at]
 export function todaySteps(c: Car = car()): [string, string, 'done' | 'later', string | null | undefined][] {
   const k = extras(c, TODAY), steps: [string, string, 'done' | 'later', string | null | undefined][] = doc(c).tasks.map(t => [t.label, TASK_SUB[t.key] || '', t.done ? 'done' : 'later', t.done_at]);
@@ -183,7 +217,7 @@ export function liveHead(c: Car = car()) {
   const big = d.notStarted ? startTxt(c) : ({ scheduled: d.first ? 'First wash tomorrow' : `${w} comes at ${ampm(d.eta) || '6:30 AM'}`, on_the_way: `${w} is on the way`, arrived: `${w} is at your car`, washing: `Washing · ${done} of ${d.tasks.length}`, done: `Done in ${d.minutes} min`, skipped: 'No wash today' } as Record<string, string>)[d.status];
   const s0 = startOf(c);
   const sub = d.notStarted ? (s0 && TODAY < s0 ? 'Your washer comes between 6 and 7:30 AM. Live updates start the moment they leave.' : 'Live updates start the moment your washer leaves for your car.')
-    : ({ scheduled: 'Each step shows up here the moment it happens.', on_the_way: `Arriving around ${ampm(d.eta)}.`, arrived: `Reached at ${ampm(d.arrived_at)}. Wash starts in a minute.`, washing: `Started at ${ampm(d.started_at)}. Now: ${nowTask ? nowTask.label.toLowerCase() : 'finishing up'}.`, done: `Finished at ${ampm(d.finished_at)}${d.water_litres ? ` · ${d.water_litres} L of water, no pocha` : ''}.`, skipped: d.skip_reason || 'Your washer marked today as skipped.' } as Record<string, string>)[d.status];
+    : ({ scheduled: 'Each step shows up here the moment it happens.', on_the_way: `Arriving around ${ampm(d.eta)}.`, arrived: `Reached at ${ampm(d.arrived_at)}. Wash starts in a minute.`, washing: `Started at ${ampm(d.started_at)}. Now: ${nowTask ? nowTask.label.toLowerCase() : 'finishing up'}.`, done: `Finished at ${ampm(d.finished_at)}${d.water_litres ? ` · ${d.water_litres} L of water, no pocha` : ''}.`, skipped: [d.skip_reason || 'Your washer marked today as skipped.', carryNote(c, d)].filter(Boolean).join('. ') } as Record<string, string>)[d.status];
   const si = d.status === 'skipped' ? -1 : STAGES.indexOf(d.status);
   return { big, sub, stage: si, washer: w, doc: d };
 }
@@ -193,12 +227,13 @@ export function timeline(c: Car = car()): TLRow[] {
   const d = doc(c), w = d.washer?.name || c.washer, nowTask = d.tasks.find(t => !t.done), rows: TLRow[] = [];
   const st = (cond: any, isNow: boolean): TLRow['st'] => cond ? 'done' : isNow ? 'now' : 'todo';
   if (d.notStarted) return [{ st: 'todo', icon: '🗓', title: startTxt(c), sub: 'Your washer will show each step here', at: null }];
-  if (d.status === 'skipped') return [{ st: 'done', icon: '⏸', title: 'No wash today', sub: d.skip_reason || '', at: null }];
+  if (d.status === 'skipped') return [{ st: 'done', icon: '⏸', title: 'No wash today', sub: [d.skip_reason, carryNote(c, d)].filter(Boolean).join('. '), at: null }];
   rows.push({ st: st(d.on_the_way_at, d.status === 'scheduled' && !d.first), icon: '🛵', title: `${w} set off`, sub: 'Riding over with the pressure washer', at: d.on_the_way_at });
   rows.push({ st: st(d.arrived_at, d.status === 'on_the_way'), icon: '📍', title: 'Reached your car', sub: c.parking, at: d.arrived_at });
-  if (c.note) rows.push({ st: st(d.customer_note_seen || d.status === 'done', false), icon: '✎', title: 'Read your note', sub: `"${c.note}"`, at: d.customer_note_seen ? d.arrived_at : null });
+  if (c.note) rows.push({ st: st(d.customer_note_seen || d.status === 'done', false), icon: '✎', title: 'Read your note', sub: `"${c.note}"`, at: d.customer_note_seen ? (d.remote ? hm((requestsFor(c).filter(r => r.kind === 'note').sort(byNewest)[0] || {}).seen_at) || d.arrived_at : d.arrived_at) : null });
   d.tasks.forEach(t => rows.push({ st: t.done ? 'done' : d.status === 'washing' && t === nowTask ? 'now' : 'todo', icon: t.done ? '✓' : '', title: t.label, sub: TASK_SUB[t.key] || '', at: t.done_at }));
-  rows.push({ st: st(d.status === 'done', false), icon: '✦', title: d.status === 'done' ? `Finished in ${d.minutes} min` : 'Finished', sub: 'Photo sent here and on WhatsApp', at: d.finished_at });
+  const cn = carryNote(c, d); if (cn) rows.push({ st: 'todo', icon: '🧽', title: cn, sub: 'Interior is never lost on a Sunday', at: null });
+  rows.push({ st: st(d.status === 'done', false), icon: '✦', title: d.status === 'done' ? `Finished${d.minutes ? ` in ${d.minutes} min` : ''}` : 'Finished', sub: 'Photo sent here and on WhatsApp', at: d.finished_at });
   return rows;
 }
 // Last 7 mornings: [date, title, sub]
@@ -208,8 +243,10 @@ export function history7(c: Car = car()): [Date, string, string][] {
     const dt = addDays(TODAY, -i), r = remote.find(x => x.date === iso(dt));
     if (c.status === 'new') break;
     if (realAcct() && !r) continue;
-    if (r) { h.push([dt, r.status === 'skipped' ? (r.skip_reason || 'Skipped') : `${r.washer?.name || c.washer} · ${ampm(r.finished_at)} · ${r.minutes} min`, r.tasks.filter(t => !['pressure', 'dry'].includes(t.key)).map(t => t.label).join(', ')]); continue }
+    if (r) { h.push([dt, r.abandoned ? `Wash could not be completed${r.abandoned.reason ? ': ' + r.abandoned.reason : ''}` : r.status === 'skipped' ? (r.skip_reason || 'Skipped') : `${r.washer?.name || c.washer} · ${ampm(r.finished_at) || 'washed'} · ${r.minutes || 0} min`, r.tasks.filter(t => !['pressure', 'dry'].includes(t.key)).map(t => t.label).join(', ')]); continue }
     if (isPaused(c, dt)) { h.push([dt, 'Paused by you', '']); continue }
+    if (!REAL && c.img === 'scorpio' && i === 2) { h.push([dt, 'Wash could not be completed: Rain', '']); continue }   // demo only: a wash stopped halfway (matches the day sheet)
+    if (!REAL && c.img === 'scorpio' && i === 3) { h.push([dt, 'Gate was locked and no key was left', '']); continue }   // demo only: a skipped morning with the washer's reason
     const ex = planTasks(c, dt).filter(k => !['pressure', 'dry'].includes(k)).map(k => TASK_LABEL[k]), f = t2m('06:36') + ((hash(c.plate + i) % 9) - 4);
     h.push([dt, `${c.washer} · ${ampm(m2t(f))} · ${9 + (hash(c.plate + i) % 4)} min`, ex.join(', ')]);
   }
@@ -267,7 +304,14 @@ export function switchQuote(id: PlanId, c: Car = car()) {
 }
 export function dayDetail(date: string, c: Car = car()) {
   const dt = parse(date), w = extras(c, dt), paused = isPaused(c, dt);
-  return { title: fmt(dt, { weekday: 'long', day: 'numeric', month: 'long' }), paused, washer: c.washer, steps: ['Pressure wash', ...w.map(k => LABEL[k]), 'Dried by hand'], time: ['6:38', '6:41', '6:44', '6:36', '6:42'][+date.slice(-2) % 5] + ' AM' };
+  if (realAcct()) {
+    // real account: only what the washer wrote for that morning, no invented times
+    const r = (REMOTE[c.id] || []).find(x => x.date === date);
+    return { title: fmt(dt, { weekday: 'long', day: 'numeric', month: 'long' }), paused, washer: r?.washer?.name || c.washer, real: true as const, doc: r || null,
+      steps: r ? r.tasks.map(t => ({ label: t.label, done: t.done, at: t.done_at ? ampm(t.done_at) : '' })) : [] as { label: string; done: boolean; at: string }[],
+      time: r ? [r.started_at && 'Started ' + ampm(r.started_at), r.finished_at && 'finished ' + ampm(r.finished_at)].filter(Boolean).join(', ') : '', skip: r && r.status === 'skipped' ? r.skip_reason || 'Skipped' : null, carry: r ? carryNote(c, r) : null };
+  }
+  return { real: false as const, doc: null as WashDoc | null, skip: null as string | null, carry: null as string | null, title: fmt(dt, { weekday: 'long', day: 'numeric', month: 'long' }), paused, washer: c.washer, steps: ['Pressure wash', ...w.map(k => LABEL[k]), 'Dried by hand'].map((l, i) => ({ label: l, done: true, at: i === 0 ? ['6:38', '6:41', '6:44', '6:36', '6:42'][+date.slice(-2) % 5] + ' AM' : '' })), time: ['6:38', '6:41', '6:44', '6:36', '6:42'][+date.slice(-2) % 5] + ' AM' };
 }
 export const homeRail = () => PRODUCTS.filter(p => ['cover', 'ceramic', 'perfume', 'mats', 'micro'].includes(p.id));
 export const totals = () => { const a = A(), w = a.cars.reduce((s, x) => s + x.washes, 0); return { washes: w, litres: w * 7, streak: Math.max(0, ...a.cars.map(x => x.streak)) } };
@@ -309,7 +353,7 @@ export function svcLines() {
 export const svcPayOnline = () => { const { lines } = svcLines(); return lines.length === 1 && lines[0].pack && lines[0].q === 1 };
 export type When = { date: string; slot: string } | null;   // null = instant (next free washer, 15 min)
 
-export const sheetHooks = { payPlan: () => {}, note: () => {}, bookings: () => {}, orders: () => {} };
+export const sheetHooks = { rateDay: () => {}, payPlan: () => {}, note: () => {}, bookings: () => {}, orders: () => {} };
 
 /* ---------- requests to the washer: requests/{id}, read live by the washer app ---------- */
 async function sendRequest(body: object) {
@@ -382,6 +426,7 @@ function subscribeCar() {
     REMOTE[id] = next;
     if (car().id === id && !SIM) { emitSoon(); toastStatus(id) }
   }, e => console.warn('washes', e)));
+  unsubs.push(DB.doc(`ratings/${iso(TODAY)}_${reg}`).onSnapshot((g: any) => { const was = !!RATED[id]; if (g.exists) RATED[id] = { stars: +g.data().stars || 0, tag: g.data().tag }; else delete RATED[id]; if (was !== !!RATED[id] && car().id === id) emitSoon() }, () => {}));
   unsubs.push(DB.collection('requests').where('reg', '==', reg).onSnapshot(docs => { const next = docs.map(d => ({ id: d.id, ...d.data() })); if (snapSame('reqs:' + id, next)) return; REQS[id] = next; if (car().id === id) emitSoon() }, () => {}));
 }
 function toastStatus(id: string) {
@@ -408,7 +453,7 @@ function watchCarPhotos() {
     if (t && v) t.photoCut = v.startsWith('data:image/webp');   // only cut-outs are saved as WebP (firestore.rules allows no extra field)
     if (t && v && t.photo !== v) { t.photo = v; commit() } }, () => {})) });
 }
-function stopSync() { stop(unsubs); stop(photoUnsubs); stop(moneyUnsubs); subscribeCoupons(null); subFor = null; if (acctUnsub) { try { acctUnsub() } catch (e) {} acctUnsub = null } REMOTE = {}; REQS = {}; DOCS = {}; lastStatus = {}; for (const k in snapSeen) delete snapSeen[k]; AUTOPAY_PAYS = [] }
+function stopSync() { stop(unsubs); stop(photoUnsubs); stop(moneyUnsubs); subscribeCoupons(null); subFor = null; if (acctUnsub) { try { acctUnsub() } catch (e) {} acctUnsub = null } REMOTE = {}; REQS = {}; DOCS = {}; RATED = {}; DISMISSED = {}; lastStatus = {}; for (const k in snapSeen) delete snapSeen[k]; AUTOPAY_PAYS = [] }
 function renderAll() { if (!SIM) DOCS = {}; subscribeCar(); emit() }
 
 /* ---------- boot ---------- */
@@ -1382,9 +1427,9 @@ export const act = {
   },
   closeReq(id: string) { const r = A().requests.find(x => x.id === id); if (r) r.open = false; commit(); toast('Marked as fixed') },
   // ratings/{date_REG}
-  rate(n: number) {
-    const c = car(); c.rating = n; commit(); haptic();
-    if (DB && realAcct()) DB.doc(`ratings/${iso(TODAY)}_${regOf(c)}`).set({ reg: regOf(c), date: iso(TODAY), stars: n, at: nowIST() }).catch(() => {});
+  rate(n: number, tag?: string) {
+    const c = car(); c.rating = n; if (!(DB && realAcct())) RATED[c.id] = { stars: n, tag }; commit(); haptic();
+    if (DB && realAcct()) { RATED[c.id] = { stars: n, tag }; DB.doc(`ratings/${iso(TODAY)}_${regOf(c)}`).set({ reg: regOf(c), date: iso(TODAY), stars: n, ...(tag ? { tag } : {}), at: nowIST() }).catch(() => { delete RATED[c.id]; emitSoon(); toast("Couldn't save your rating. Try again.") }); }
     toast(n >= 4 ? `${c.washer} will see your ${n} stars` : 'Sorry. Tell us what was missed.');
   },
 

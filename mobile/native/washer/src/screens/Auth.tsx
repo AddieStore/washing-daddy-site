@@ -15,6 +15,7 @@ import { backend } from '../backend';
 import { t } from '../lib/i18n';
 import { JOIN_AREAS, OWNER_WA, WASHERS, fmtPhone } from '../lib/data';
 import { referralKey } from './Onboarding';
+import { RoundHeroArt } from '../ui/art';
 
 const PADX = 24;
 const VIOLET = '#5409DA';   // brand violet
@@ -42,18 +43,17 @@ const LOGO_W = 104, LOGO_H = Math.round(LOGO_W * 157 / 260);
 
 /* ---------------- brand top: gradient + glows, logo, pill, back ---------------- */
 function BrandBg() {
+  const { dark } = useTheme();
   const [box, setBox] = useState({ w: 390, h: 844 });
   return (
     <View pointerEvents="none" onLayout={e => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })} style={StyleSheet.absoluteFill}>
-      <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill}>
+      <Svg width={box.w} height={Math.min(box.h, 460)} style={StyleSheet.absoluteFill}>
         <Defs>
-          <SvgGradient id="wab" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor="#6A1BF2" /><Stop offset="0.5" stopColor="#5409DA" /><Stop offset="1" stopColor="#36058F" />
+          <SvgGradient id="wab" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={dark ? '#241A40' : '#E3D8FF'} /><Stop offset="1" stopColor={dark ? '#1A1330' : '#F7F3FF'} />
           </SvgGradient>
         </Defs>
-        <Rect x={0} y={0} width={box.w} height={box.h} fill="url(#wab)" />
-        <Circle cx={box.w + 10} cy={50} r={130} fill="#fff" fillOpacity={0.07} />
-        <Circle cx={-10} cy={230} r={85} fill={SAFFRON} fillOpacity={0.1} />
+        <Rect x={0} y={0} width={box.w} height={460} fill="url(#wab)" />
       </Svg>
     </View>
   );
@@ -64,16 +64,16 @@ function Logo() {
 }
 function PartnerPill() {
   return (
-    <View style={{ paddingVertical: 6, paddingHorizontal: 14, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.32)' }}>
-      <Text style={{ fontFamily: F.semi, fontSize: 11, lineHeight: 16, letterSpacing: 0.8, color: '#fff', textTransform: 'uppercase' }}>{t('Partner app')}</Text>
+    <View style={{ paddingVertical: 6, paddingHorizontal: 14, borderRadius: 999, backgroundColor: 'rgba(84,9,218,0.10)' }}>
+      <Text style={{ fontFamily: F.semi, fontSize: 11, lineHeight: 16, letterSpacing: 0.8, color: VIOLET, textTransform: 'uppercase' }}>{t('Partner app')}</Text>
     </View>
   );
 }
 function BackBtn({ onPress }: { onPress: () => void }) {
   return (
     <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={onPress} hitSlop={8}
-      style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
-      <Icon name="back" size={22} color="#fff" />
+      style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(84,9,218,0.10)', alignItems: 'center', justifyContent: 'center' }}>
+      <Icon name="back" size={22} color={VIOLET} />
     </Pressable>
   );
 }
@@ -571,6 +571,7 @@ export default function Auth() {
   const { c } = useTheme();
   const { width: ww } = useWindowDimensions();
   const width = Math.min(440, ww);
+  const rmAuth = useReducedMotion();
   const step = view.authStep;
   const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const content = useRef<React.ComponentRef<typeof View>>(null);
@@ -610,7 +611,7 @@ export default function Auth() {
   return (
     <View style={{ flex: 1, backgroundColor: c.stage, alignItems: 'center' }}>
       {/* edge-to-edge Android does not shrink the window for the keyboard any more, so pad on both platforms */}
-      <KeyboardAvoidingView behavior={native ? 'padding' : undefined} style={{ flex: 1, width: '100%', maxWidth: 440, backgroundColor: '#36058F' }}>
+      <KeyboardAvoidingView behavior={native ? 'padding' : undefined} style={{ flex: 1, width: '100%', maxWidth: 440, backgroundColor: c.card }}>
         <BrandBg />
         <ScrollView
           ref={scroll}
@@ -634,25 +635,25 @@ export default function Auth() {
                 <Rise delay={60} style={{ marginTop: 20 }}>
                   <View accessibilityRole="header" style={{ paddingHorizontal: 4 }}>
                     <View style={{ alignSelf: 'flex-start' }}>
-                      <Text style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, color: 'rgba(255,255,255,0.62)' }}>Pocha?</Text>
+                      <Text style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, color: c.fg3 }}>Pocha?</Text>
                       <View pointerEvents="none" style={{ position: 'absolute', left: '-2%', right: '-2%', top: '54%', height: 3, borderRadius: 2, backgroundColor: SAFFRON, transform: [{ rotate: '-3deg' }] }} />
                     </View>
-                    <Text style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, color: '#fff' }}>Pressure wash <Text style={{ color: SAFFRON }}>everyday!</Text></Text>
-                    <Text style={{ fontFamily: F.body, fontSize: 15, lineHeight: 22, color: 'rgba(255,255,255,0.86)', marginTop: 6, maxWidth: 340 }}>{t('Washer app. Round, photo, customer, sab ek jagah.')}</Text>
+                    <Text style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, color: c.fg }}>Pressure wash <Text style={{ color: c.primary }}>everyday!</Text></Text>
+                    <Text style={{ fontFamily: F.body, fontSize: 15, lineHeight: 22, color: c.fg3, marginTop: 6, maxWidth: 340 }}>{t('Washer app. Round, photo, customer, sab ek jagah.')}</Text>
                   </View>
                 </Rise>
               ) : (
                 <Rise delay={60} style={{ marginTop: 20, paddingHorizontal: 4 }}>
-                  <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, color: '#fff' }}>{top.title}</Text>
-                  <Text style={[{ fontFamily: F.body, fontSize: 15, lineHeight: 22, color: 'rgba(255,255,255,0.86)', marginTop: 6 }, step === 'otp' ? NUM : null]}>{top.sub}</Text>
-                  {step === 'otp' ? <View style={{ alignSelf: 'flex-start', marginTop: 4, marginLeft: -8 }}><TextLink label={t('Number badlo')} color={SAFFRON} onPress={() => act.backToPhone()} /></View> : null}
+                  <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, color: c.fg }}>{top.title}</Text>
+                  <Text style={[{ fontFamily: F.body, fontSize: 15, lineHeight: 22, color: c.fg3, marginTop: 6 }, step === 'otp' ? NUM : null]}>{top.sub}</Text>
+                  {step === 'otp' ? <View style={{ alignSelf: 'flex-start', marginTop: 4, marginLeft: -8 }}><TextLink label={t('Number badlo')} color={VIOLET} onPress={() => act.backToPhone()} /></View> : null}
                 </Rise>
               )}
-              {step === 'phone' ? <View style={{ marginTop: 20, marginBottom: 8, marginHorizontal: -(PADX - 4) }}><PhotoStrip width={width} /></View> : <View style={{ height: 24 }} />}
+              <View style={{ marginTop: step === 'phone' ? 8 : 0, marginHorizontal: -(PADX - 4) }}><RoundHeroArt width={width} height={step === 'phone' ? 170 : 120} progress={0.35} still={rmAuth} /></View>
             </View>
             {/* white sheet */}
-            <Rise delay={140} distance={48} duration={380} style={{ flexGrow: 1 }}>
-              <View style={{ flexGrow: 1, backgroundColor: c.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: PADX, paddingTop: 28, paddingBottom: 24 + insets.bottom, ...(Platform.OS === 'web' ? ({ boxShadow: '0px -8px 24px rgba(26,6,80,0.28)' } as any) : { shadowColor: '#1A0650', shadowOpacity: 0.28, shadowRadius: 24, shadowOffset: { width: 0, height: -8 }, elevation: 12 }) }}>
+            <Rise delay={140} distance={48} duration={380} style={{ flexGrow: 1, marginTop: -24 }}>
+              <View style={{ flexGrow: 1, backgroundColor: c.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: PADX, paddingTop: 28, paddingBottom: 24 + insets.bottom, ...(Platform.OS === 'web' ? ({ boxShadow: '0px -6px 20px rgba(84,9,218,0.10)' } as any) : { shadowColor: '#1A0650', shadowOpacity: 0.28, shadowRadius: 24, shadowOffset: { width: 0, height: -8 }, elevation: 12 }) }}>
                 {form}
               </View>
             </Rise>

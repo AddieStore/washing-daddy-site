@@ -55,8 +55,15 @@ export type Tokens = {
   heroTrack: string;   // ring track on the hero card
   heroInk: string;     // text on the hero card
   shadowColor: string; // soft card shadow colour
+  /** Reference-look tokens (v22 kit). */
+  canvas: string;      // page canvas (same as bg)
+  grey: string;        // the one grey: section labels, values, captions
+  navOn: string;       // selected pill in the floating tab bar
+  navOnInk: string;    // icon + label on navOn
+  navShadow: string;   // floating bar shadow colour
   violet: string;
   violet2: string;
+  /** Primary text colour (#141414 light, near-white dark). */
   ink: string;
   gold: string;
   cream: string;
@@ -69,7 +76,7 @@ export type Tokens = {
 const base = {
   violet: brand.violet,
   violet2: brand.violet2,
-  ink: brand.ink,
+  ink: '#141414',
   gold: brand.gold,
   cream: brand.cream,
   orange: brand.orange,
@@ -82,55 +89,67 @@ export const lightTokens: Tokens = {
   ...base,
   // Pronto look shared with the customer app (customer src/theme.ts + pages/parts.tsx): grey page, white floating cards, neutral ink ramp.
   // 2026-11-21: brand canvas from the customer app (customer src/theme.ts C.canvas / C.tabBar), white cards float on it.
-  bg: '#F6F2FF',
-  stage: '#EDE5FF',
-  fg: '#171717',
-  fg2: '#525252',
-  fg3: '#737373',
-  line: 'rgba(23,23,23,0.08)',
+  // 2026-11-24 feel pass (DESIGN-REFERENCE): neutral canvas, two text colours only (#141414 / #7A7A80), hairline #EDEDF0.
+  bg: '#F6F6F7',
+  stage: '#EFEFF2',
+  fg: '#141414',
+  fg2: '#7A7A80',
+  fg3: '#7A7A80',
+  line: '#EDEDF0',
   tile: '#FFFFFF',
   tile2: '#F4F4F5',
   accent: '#5409DA',
   accentInk: '#FFFFFF',
   em: '#171717',
-  barBg: 'rgba(246,242,255,0.94)',
-  tabBg: '#FBF9FF',
+  barBg: 'rgba(247,247,248,0.94)',
+  tabBg: '#FFFFFF',
   sheetBg: '#FFFFFF',
-  inputBg: '#F6F2FF',   // customer Field: canvas fill, white + violet border on focus
+  inputBg: '#F4F4F6',
   ok: '#16a34a',
   dash: 'rgba(17,17,20,0.28)',
   shadow: true,
   card: '#FFFFFF',
-  soft: '#F4F4F5',
-  softInk: '#525252',
+  soft: '#F4F4F6',
+  softInk: '#141414',
   primary: '#5409DA',
   hero: '#5409DA',
   heroTrack: 'rgba(255,255,255,0.22)',
   heroInk: '#FFFFFF',
   shadowColor: '#1A1033',
+  canvas: '#F6F6F7',
+  grey: '#7A7A80',
+  navOn: '#1A1A1F',
+  navOnInk: '#FFFFFF',
+  navShadow: '#000000',
 };
 
 export const darkTokens: Tokens = {
   ...lightTokens,
-  bg: '#141415',
+  bg: '#101012',
+  canvas: '#101012',
+  ink: '#F4F4F5',
+  grey: '#9A9AA2',
+  navOn: '#F4F4F5',
+  navOnInk: '#141414',
+  navShadow: '#000000',
   stage: '#08080A',
   fg: '#F4F4F5',
-  fg2: '#C4C4CC',
+  fg2: '#A1A1AA',
   fg3: '#A1A1AA',
-  line: 'rgba(255,255,255,0.10)',
-  tile: '#161618',
+  line: 'rgba(255,255,255,0.09)',
+  tile: '#1A1A1D',
   tile2: 'rgba(255,255,255,0.08)',
   accent: '#7A42F0',
   accentInk: '#FFFFFF',
   em: '#F4F4F5',
   barBg: 'rgba(14,14,16,0.88)',
-  tabBg: '#161618',
-  sheetBg: '#161618',
+  tabBg: '#1C1C1F',
+  sheetBg: '#1A1A1D',
   inputBg: 'rgba(255,255,255,0.06)',
   ok: '#5CE6B5',
   dash: 'rgba(244,244,245,0.32)',
   shadow: false,
-  card: '#161618',
+  card: '#1A1A1D',
   soft: '#232326',
   softInk: '#D4D4D8',
   primary: '#7A42F0',
@@ -177,23 +196,35 @@ export function useTheme(): { c: Tokens; dark: boolean; onViolet: boolean } {
   return useContext(ThemeCtx);
 }
 
-/** Astryx "low" elevation: a very light 0 2 6 shadow, light mode only. */
+/** Very soft elevation (0 1 3 @ 5%), light mode only. Cards also carry a hairline (cardBox), so this is barely there. */
 export function cardShadow(c: Tokens) {
   return c.shadow
     ? ({
-        shadowColor: '#1A1033',
-        shadowOpacity: 0.07,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 3,
+        shadowColor: '#000000',
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        shadowOffset: { width: 0, height: 1 },
+        elevation: 0,
       } as const)
     : ({} as const);
 }
 
-/** Astryx shape tokens: cards 16, buttons 12, small chips/badges are pills. */
-export const R = { card: 16, button: 12, pill: 9999, input: 12 } as const;
-/** Card surface: radius 16, white; light mode floats on cardShadow (spread into a style). */
+/** Shape tokens: cards 16, buttons 12, small chips/badges are pills. */
+export const R = { card: 16, button: 12, pill: 9999, input: 12, sheet: 24 } as const;
+/** Layout rhythm: 16 side margin, 28 between sections, 12 between cards, 56 tap rows, 52 primary button. */
+export const SP = { side: 16, section: 28, gap: 12, row: 56, btn: 52 } as const;
+/** Card surface: radius 16, white, 1px hairline (both modes). */
 export function cardBox(c: Tokens) {
-  // Pronto r5: no hairline on light cards (the spread shadow carries them); dark mode keeps a faint edge.
-  return { borderRadius: R.card, backgroundColor: c.card, borderWidth: c.shadow ? 0 : 1, borderColor: c.line } as const;
+  return { borderRadius: R.card, backgroundColor: c.card, borderWidth: 1, borderColor: c.line } as const;
 }
+
+/** Type scale (DESIGN-REFERENCE): size / line / weight / tracking. Colour is c.fg for titles, c.fg3 for body and captions. */
+export const TYPE = {
+  hero: { fontSize: 26, lineHeight: 32, fontFamily: F.bold, letterSpacing: -0.8 },
+  section: { fontSize: 20, lineHeight: 26, fontFamily: F.bold, letterSpacing: -0.5 },
+  card: { fontSize: 17, lineHeight: 22, fontFamily: F.semi, letterSpacing: -0.3 },
+  body: { fontSize: 13, lineHeight: 18, fontFamily: F.body, letterSpacing: 0 },
+  caption: { fontSize: 12, lineHeight: 16, fontFamily: F.medium, letterSpacing: 0 },
+  price: { fontSize: 16, lineHeight: 22, fontFamily: F.bold, letterSpacing: -0.2 },
+  button: { fontSize: 15, lineHeight: 20, fontFamily: F.semi, letterSpacing: -0.1 },
+} as const;

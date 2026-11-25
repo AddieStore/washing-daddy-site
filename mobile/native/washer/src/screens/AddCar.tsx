@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 import { Linking, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Button, ChipPicker, Field, F, Icon, LinkButton, Pressy, brand, sheet, ui, useTheme } from '../ui';
+import { Button, ChipPicker, Field, F, Group, Icon, LinkButton, Pressy, ReceiptRow, SheetHeader, brand, sheet, ui, useTheme } from '../ui';
 import { TNUM } from './ProntoBits';
 
 /** Form block on the sheet: no inner card, fields sit straight on the white sheet (customer form look). */
 function WCard({ children, style }: { children?: React.ReactNode; style?: any }) {
-  return <View style={{ marginTop: style?.marginTop ?? 0 }}>{children}</View>;
+  return <Group style={{ marginTop: style?.marginTop ?? 0 }}><View style={{ padding: 16 }}>{children}</View></Group>;
 }
 import { act, DAY, route } from '../state/store';
 import { PLAN, PLAN_PRICE, normReg, type PlanId } from '../lib/schedule';
@@ -130,18 +130,18 @@ function AddCarForm({ close }: { close: () => void }) {
   const last = step === STEPS.length - 1;
   return (
     <View style={{ paddingBottom: 8 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 20, lineHeight: 28, color: c.fg }}>{t('Naya customer jodo')}</Text>
+      <SheetHeader title={t('Naya customer jodo')} action={t('Band karo')} onAction={close} style={{ paddingBottom: 0 }} />
       <View style={{ flexDirection: 'row', gap: 4, marginTop: 12 }} accessibilityLabel={`${t('Step')} ${step + 1}/${STEPS.length}`}>
         {STEPS.map((_, i) => (
-          <View key={i} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: i <= step ? c.primary : c.soft }} />
+          <View key={i} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: i <= step ? c.primary : c.line }} />
         ))}
       </View>
-      <Text style={{ fontFamily: F.medium, fontSize: 14, color: c.fg3, marginTop: 8, marginBottom: 16 }}>
+      <Text style={{ fontFamily: F.medium, fontSize: 14, color: c.grey, marginTop: 8, marginBottom: 16 }}>
         {`${t('Step')} ${step + 1}/${STEPS.length} · ${t(STEPS[step])}`}
       </Text>
 
       {step === 0 ? (
-        <WCard style={{ padding: 16 }}>
+        <WCard>
           <Eyebrow style={lbl(0)}>{t('Gaadi ka number')}</Eyebrow>
           <Field value={plate} onChangeText={(v) => setPlate(v.toUpperCase())} maxLength={20} autoCapitalize="characters" autoCorrect={false} placeholder="DL 8C AB 1234" />
           <Eyebrow style={lbl()}>{t('Gaadi ka naam / model (optional)')}</Eyebrow>
@@ -150,7 +150,7 @@ function AddCarForm({ close }: { close: () => void }) {
       ) : null}
 
       {step === 1 ? (
-        <WCard style={{ padding: 16 }}>
+        <WCard>
           <Eyebrow style={lbl(0)}>{t('Customer ka naam')}</Eyebrow>
           <Field value={name} onChangeText={setName} maxLength={80} placeholder={t('Naam')} />
           <Eyebrow style={lbl()}>{t('Phone (10 number)')}</Eyebrow>
@@ -159,7 +159,7 @@ function AddCarForm({ close }: { close: () => void }) {
       ) : null}
 
       {step === 2 ? (
-        <WCard style={{ padding: 16 }}>
+        <WCard>
           <Button variant={geo ? 'ghost' : 'violet'} icon="pin" label={locBusy ? t('Location dhoondh raha hoon…') : geo ? t('Location dobara lo') : t('Meri location lo')} disabled={locBusy} onPress={useLocation} />
           {locMsg ? <Text accessibilityLiveRegion="polite" style={{ fontFamily: F.semi, fontSize: 13.5, color: c.fg2, marginTop: 10 }}>{locMsg}</Text> : null}
           {geo ? (
@@ -168,14 +168,14 @@ function AddCarForm({ close }: { close: () => void }) {
               <Pressy
                 onPress={() => { void Linking.openURL(mapUrl(geo)).catch(() => {}); }}
                 accessibilityLabel={t('Map pe dekho')}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, marginTop: 8, paddingHorizontal: 16, borderRadius: 12, backgroundColor: c.soft }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, marginTop: 8, paddingHorizontal: 16, borderRadius: 12, backgroundColor: c.canvas }}
               >
-                <Icon name="pin" size={22} color={c.softInk} />
+                <Icon name="pin" size={22} color={c.fg} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.softInk }}>{t('Location mil gayi')} · {t('Map pe dekho')}</Text>
+                  <Text style={{ fontFamily: F.semi, fontSize: 14, color: c.fg }}>{t('Location mil gayi')} · {t('Map pe dekho')}</Text>
                   <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg2 }}>{geo.lat.toFixed(5)}, {geo.lng.toFixed(5)}</Text>
                 </View>
-                <Icon name="arrow" size={20} color={c.softInk} />
+                <Icon name="arrow" size={20} color={c.fg} />
               </Pressy>
             </View>
           ) : null}
@@ -186,7 +186,7 @@ function AddCarForm({ close }: { close: () => void }) {
 
       {step === 3 ? (
         <>
-          <WCard style={{ padding: 16 }}>
+          <WCard>
             <Eyebrow style={lbl(0)}>{t('Plan')}</Eyebrow>
             <ChipPicker
               options={PLANS.map((k) => ({ value: k, label: PLAN[k].name }))}
@@ -194,7 +194,7 @@ function AddCarForm({ close }: { close: () => void }) {
               onChange={(k) => { setPlan(k); ui.haptic(4); }}
             />
           </WCard>
-          <WCard style={{ padding: 16, marginTop: 12 }}>
+          <WCard style={{ marginTop: 12 }}>
             <Text style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: c.fg }}>
               {t(`Aapko milega: ${rupee(share)} / mahina (${rupee(share / daysInMonth(DAY))} roz)`)}
             </Text>
@@ -204,14 +204,14 @@ function AddCarForm({ close }: { close: () => void }) {
       ) : null}
 
       {step === 4 ? (
-        <WCard style={{ padding: 16 }}>
+        <WCard>
           <Text style={{ fontFamily: F.body, fontSize: 14, color: c.fg2 }}>{t('Same customer, same plan. Bas gaadi ka number chahiye.')}</Text>
           {extras.map((x, i) => (
             <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
               <View style={{ flex: 1 }}>
                 <Field value={x} onChangeText={(v) => setExtras(extras.map((y, j) => (j === i ? v.toUpperCase() : y)))} maxLength={20} autoCapitalize="characters" autoCorrect={false} placeholder="DL 8C AB 1234" accessibilityLabel={t('Aur gaadi')} />
               </View>
-              <Pressy onPress={() => { setExtras(extras.filter((_, j) => j !== i)); ui.haptic(4); }} accessibilityLabel={t('Hata do')} scaleTo={0.9} style={{ minHeight: 52, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.soft }}>
+              <Pressy onPress={() => { setExtras(extras.filter((_, j) => j !== i)); ui.haptic(4); }} accessibilityLabel={t('Hata do')} scaleTo={0.9} style={{ minHeight: 52, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.canvas }}>
                 <Text style={{ fontFamily: F.semi, fontSize: 14, color: brand.red }}>{t('Hata do')}</Text>
               </Pressy>
             </View>
@@ -222,14 +222,13 @@ function AddCarForm({ close }: { close: () => void }) {
 
       {step === 5 ? (
         <>
-          <WCard style={{ padding: 16 }}>
-            <Row k={t('Customer')} v={`${name.trim() ? name.trim() + ' · ' : ''}+91 ${ph}`} />
-            <Row k={t('Pata')} v={address.trim()} />
-            <Row k={t('gaadi')} v={regs.map((r, i) => (i === 0 ? plate.trim().toUpperCase() || r : ex[i - 1].trim().toUpperCase())).join(', ')} />
-            <Row k={t('Plan')} v={PLAN[plan].name} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.line }}>
-              <Text style={{ fontFamily: F.medium, fontSize: 15, color: c.fg2 }}>{t('Aapko milega')}</Text>
-              <Text style={[TNUM, { fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: c.fg }]}>{rupee(share)}<Text style={{ fontFamily: F.body, fontSize: 13, letterSpacing: 0, color: c.fg3 }}> {t('mahina')}</Text></Text>
+          <WCard>
+            <View style={{ gap: 10 }}>
+              <ReceiptRow label={t('Customer')} value={`${name.trim() ? name.trim() + ' · ' : ''}+91 ${ph}`} />
+              <ReceiptRow label={t('Pata')} value={address.trim()} />
+              <ReceiptRow label={t('gaadi')} value={regs.map((r, i) => (i === 0 ? plate.trim().toUpperCase() || r : ex[i - 1].trim().toUpperCase())).join(', ')} />
+              <ReceiptRow label={t('Plan')} value={PLAN[plan].name} />
+              <ReceiptRow label={t('Aapko milega')} value={`${rupee(share)} ${t('mahina')}`} total />
             </View>
           </WCard>
           <Eyebrow style={lbl(16)}>{t('Customer se paisa liya?')}</Eyebrow>
@@ -239,7 +238,7 @@ function AddCarForm({ close }: { close: () => void }) {
               const label = k === 'cash' ? t('Cash mila') : k === 'upi' ? t('UPI mila') : t('Baad mein');
               return (
                 <Pressy key={k} onPress={() => { setPay(k); ui.haptic(4); }} accessibilityLabel={label} accessibilityState={{ selected: on }}
-                  style={{ minHeight: 52, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 12, borderWidth: on ? 2 : 1, borderColor: on ? brand.violet : c.line, backgroundColor: on ? brand.violet : c.card }}>
+                  style={{ minHeight: 52, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: on ? c.primary : c.line, backgroundColor: on ? c.primary : c.card }}>
                   <Text style={{ fontFamily: F.semi, fontSize: 15, color: on ? '#fff' : c.fg }}>{label}</Text>
                 </Pressy>
               );
@@ -258,9 +257,6 @@ function AddCarForm({ close }: { close: () => void }) {
             : <Button variant="violet" iconRight="arrow" label={t('Aage badho')} onPress={next} />}
         </View>
       </View>
-      <View style={{ alignItems: 'center', marginTop: 4 }}>
-        <LinkButton label={t('Rehne do')} onPress={close} />
-      </View>
     </View>
   );
 }
@@ -270,24 +266,14 @@ const lbl = (mt = 16) => ({ marginTop: mt, marginBottom: 6 });
 /** Field label: sentence case, 13 / 600 (the old small-caps eyebrow is gone). */
 function Eyebrow({ children, style }: { children?: React.ReactNode; style?: any }) {
   const { c } = useTheme();
-  return <Text style={[{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: c.fg3 }, style]}>{children}</Text>;
-}
-
-function Row({ k, v }: { k: string; v: string }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', gap: 12, paddingVertical: 5 }}>
-      <Text style={{ width: 76, fontFamily: F.medium, fontSize: 13, color: c.fg3 }}>{k}</Text>
-      <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 14.5, color: c.fg }}>{v}</Text>
-    </View>
-  );
+  return <Text style={[{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: c.grey }, style]}>{children}</Text>;
 }
 
 // A small drawn "map": soft blocks, two roads and a pin. No map SDK.
 function PinMap() {
   const { c } = useTheme();
   return (
-    <View accessible={false} style={{ height: 84, borderRadius: 12, overflow: 'hidden', backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center' }}>
+    <View accessible={false} style={{ height: 84, borderRadius: 12, overflow: 'hidden', backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center' }}>
       <View style={{ position: 'absolute', left: 0, right: 0, top: 30, height: 10, backgroundColor: c.card, opacity: 0.8 }} />
       <View style={{ position: 'absolute', top: 0, bottom: 0, left: '62%', width: 10, backgroundColor: c.card, opacity: 0.8 }} />
       <View style={{ position: 'absolute', left: 14, top: 10, width: 54, height: 14, borderRadius: 4, backgroundColor: c.line, opacity: 0.6 }} />

@@ -1,12 +1,9 @@
-// Bottom tabs: Round, Extra, [raised add-car button], Paisa, Profile, on a white rounded bar.
-import React, { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+// Bottom tabs: Round, Extra, Paisa, Profile in a floating pill bar (selected = dark pill). "Add car" lives in screen headers (HeaderIconButton + openAddCar).
+import React from 'react';
 import { Tabs } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { F, Icon, brand, ui, useReducedMotion, useTheme, type IconName } from '../../ui';
+import { FloatingTabBar, type IconName } from '../../ui';
 import { Extra, openReqs, route, useStore } from '../../state/store';
 import { t } from '../../lib/i18n';
-import { openAddCar } from '../../screens/AddCar';
 
 const TABS: { name: string; label: string; icon: IconName }[] = [
   { name: 'index', label: 'Round', icon: 'tabRound' },
@@ -14,89 +11,20 @@ const TABS: { name: string; label: string; icon: IconName }[] = [
   { name: 'paisa', label: 'Paisa', icon: 'tabPaisa' },
   { name: 'profile', label: 'Profile', icon: 'tabMe' },
 ];
-const LEFT = TABS.slice(0, 2);
-const RIGHT = TABS.slice(2);
-const MID = 76; // gap in the bar under the raised centre button
 type BottomTabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>['tabBar']>>[0];
 
-// One tab (customer TabBar): every cell has the same width and the same icon-over-label layout, selected or not, so nothing shifts.
-// Selection = a violet-tint pill behind the icon only (fades/scales in) plus the violet label. Tapping gives a press-down spring.
-function TabCell({ tb, on, n, onPress }: { tb: (typeof TABS)[number]; on: boolean; n: number; onPress: () => void }) {
-  const { c, dark } = useTheme();
-  const rm = useReducedMotion();
-  const sel = useRef(new Animated.Value(on ? 1 : 0)).current;
-  const press = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (rm) { sel.setValue(on ? 1 : 0); return }
-    Animated.spring(sel, { toValue: on ? 1 : 0, speed: 16, bounciness: 4, useNativeDriver: false }).start();
-  }, [on, rm, sel]);
-  const down = (v: number) => { if (rm) return; Animated.spring(press, { toValue: v, speed: 40, bounciness: 0, useNativeDriver: false }).start() };
-  const scale = press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.92] });
-  const pillScale = sel.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
-  const col = on ? (dark ? '#CDB6FF' : c.primary) : c.fg3;
-  return (
-    <View style={{ flex: 1, minHeight: 54 }}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => down(1)}
-        onPressOut={() => down(0)}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: on }}
-        accessibilityLabel={t(tb.label)}
-        hitSlop={{ top: 8, bottom: 8 }}
-        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-      >
-        <Animated.View style={[s.cellIn, { transform: [{ scale }] }]}>
-          <View style={s.icWrap}>
-            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: 16, backgroundColor: dark ? 'rgba(139,92,246,0.26)' : 'rgba(84,9,218,0.11)', opacity: sel, transform: [{ scaleX: pillScale }] }]} />
-            <Icon name={tb.icon} size={24} color={col} active={on} />
-            {n > 0 ? <View style={s.badge}><Text style={s.badgeTxt}>{n}</Text></View> : null}
-          </View>
-          <Text numberOfLines={1} style={[s.lbl, { color: col, fontFamily: on ? F.semi : F.medium }]}>{t(tb.label)}</Text>
-        </Animated.View>
-      </Pressable>
-    </View>
-  );
-}
-
-// White bar: two tabs, a raised round violet "add car" button in the middle, two tabs.
 function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   useStore();
-  const { c, dark } = useTheme();
-  const insets = useSafeAreaInsets();
   const active = state.routes[state.index]?.name;
   const reqs = route().reduce((a, car) => a + openReqs(car.reg).filter((q) => q.status === 'open').length, 0);
   const badge: Record<string, number> = { index: reqs, extra: Extra.shown().length };
-
-  const cell = (tb: (typeof TABS)[number]) => {
-    const on = tb.name === active;
-    const press = () => {
-      ui.haptic(6);
-      const rt = state.routes.find((r) => r.name === tb.name);
-      if (!rt) return;
-      const ev = emitter.emit({ type: 'tabPress', target: rt.key, canPreventDefault: true });
-      if (!on && !ev.defaultPrevented) navigateToTab(rt.key);
-    };
-    return <TabCell key={tb.name} tb={tb} on={on} n={badge[tb.name] || 0} onPress={press} />;
+  const select = (name: string) => {
+    const rt = state.routes.find((r) => r.name === name);
+    if (!rt) return;
+    const ev = emitter.emit({ type: 'tabPress', target: rt.key, canPreventDefault: true });
+    if (name !== active && !ev.defaultPrevented) navigateToTab(rt.key);
   };
-
-  return (
-    <View pointerEvents="box-none" style={s.outer}>
-      <View style={[s.bar, { backgroundColor: c.tabBg, borderTopColor: dark ? c.line : 'rgba(84,9,218,0.10)', paddingBottom: 4 + insets.bottom, shadowColor: '#1A1033', shadowOpacity: dark ? 0 : 0.07 }]}>
-        {LEFT.map(cell)}
-        <View style={{ width: MID }} />
-        {RIGHT.map(cell)}
-      </View>
-      <Pressable
-        onPress={() => { ui.haptic(10); openAddCar(); }}
-        accessibilityRole="button"
-        accessibilityLabel={t('Nayi gaadi add karo')}
-        style={({ pressed }) => [s.fab, { bottom: 20 + insets.bottom, backgroundColor: c.primary, borderColor: c.tabBg, transform: [{ scale: pressed ? 0.94 : 1 }] }]}
-      >
-        <Icon name="plus" size={28} color="#FFFFFF" />
-      </Pressable>
-    </View>
-  );
+  return <FloatingTabBar active={active} onSelect={select} tabs={TABS.map((tb) => ({ key: tb.name, label: t(tb.label), icon: tb.icon, badge: badge[tb.name] || 0 }))} />;
 }
 
 export default function TabsLayout() {
@@ -106,21 +34,3 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
-
-const s = StyleSheet.create({
-  outer: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center' },
-  bar: {
-    width: '100%', maxWidth: 480, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 4, paddingHorizontal: 6,
-    borderTopWidth: 1,
-    shadowRadius: 12, shadowOffset: { width: 0, height: -3 }, elevation: 10,
-  },
-  cellIn: { alignItems: 'center', gap: 3 },
-  icWrap: { width: 56, height: 30, alignItems: 'center', justifyContent: 'center' },
-  lbl: { fontSize: 11, lineHeight: 14 },
-  fab: {
-    position: 'absolute', alignSelf: 'center', width: 62, height: 62, borderRadius: 31, borderWidth: 4, alignItems: 'center', justifyContent: 'center',
-    shadowColor: brand.violet, shadowOpacity: 0.42, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 12,
-  },
-  badge: { position: 'absolute', top: -4, right: 6, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: brand.violet, alignItems: 'center', justifyContent: 'center' },
-  badgeTxt: { fontFamily: F.bold, fontSize: 10, color: '#fff' },
-});

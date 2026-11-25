@@ -1,6 +1,6 @@
 // In-memory stand-in for Firestore and phone sign-in. The preview runs on this, so every tap behaves like
 // the real app (writes show up in listeners) without touching anyone's data. Test login: OTP 1234, or PIN 1234.
-import type { Auth, Backend, Data, Db, DocRef, DocSnap, Op, Query, QuerySnap } from './types';
+import type { Auth, Backend, Store, Data, Db, DocRef, DocSnap, Op, Query, QuerySnap } from './types';
 
 const test = (a: unknown, op: Op, b: unknown) =>
   op === '==' ? a === b : op === '!=' ? a !== b : op === '<' ? (a as any) < (b as any) : op === '<=' ? (a as any) <= (b as any)
@@ -70,4 +70,6 @@ export function demoAuth(): Auth {
   };
 }
 
-export const demoBackend = (): Backend => ({ mode: 'demo', db: demoDb(), auth: demoAuth() });
+// the demo has no file storage: the picture stays inline, as before
+export const demoStore = (): Store => ({ put: async (_p, src) => src });
+export const demoBackend = (): Backend => ({ mode: 'demo', db: demoDb(), auth: demoAuth(), storage: demoStore() });

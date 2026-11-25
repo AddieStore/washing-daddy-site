@@ -22,19 +22,24 @@ import { lateClips } from '../lib/hindiNumber';
 import { setupWashAlerts, alertsReady, scheduleWashAlerts, cancelWashAlerts, cancelAllWashAlerts, scheduleLateAlert, cancelLateAlert, scheduleMorningAlarm } from '../lib/washAlerts';
 import { ui } from '../ui/bus';
 import { registerPushToken, clearPushToken } from '../lib/pushToken';
+import { mirrorCheckIn, mirrorFirstCar, writeCheckOut, startHeartbeat, loadAttendance } from '../backend/attendance';
+import { buildLedger, ledgerWriter } from '../backend/earnings';
+import { demoSample } from '../lib/demoSample';
 import { requestPinToken, PIN_MSG, isPin } from '../lib/pinLogin';
 
 const { db, auth } = backend;
-// a wash can only be closed once this many photos of the car are taken
+// a wash can only be closed once these photos are taken: 1 before, 2 after of the car (Sunday and a carried interior: also the 5 inside spots)
+export const MIN_BEFORE = 1
 export const MIN_PHOTOS = 2
-/** What the photo gate needs. Mon-Sat: MIN_PHOTOS of the car. Sunday (interior day): MIN_PHOTOS of the car plus one photo of each inside spot. */
-export function photoNeeds(w: { started_at?: string | null; photos: { kind: string; spot?: string }[] }) {
-  const sunday = isSundayIST(w.started_at);
+/** What the photo gate needs. `sunday` means the inside spots are needed too: a Sunday wash, or a Sunday interior carried to today. */
+export function photoNeeds(w: { started_at?: string | null; sunday?: boolean; carried_task?: string; photos: { kind: string; spot?: string }[] }) {
+  const sunday = !!w.sunday || !!w.carried_task || isSundayIST(w.started_at);
+  const before = w.photos.filter(p => p.kind === 'before' && !p.spot).length;
   const car = w.photos.filter(p => p.kind === 'after' && !p.spot).length;
   const have = new Set(w.photos.filter(p => p.spot).map(p => p.spot));
   const missing = sunday ? SPOTS.filter(s => !have.has(s.key)) : [];
   // the voice asks for the inside photos once the car photos are done
-  return { sunday, car, missing, nextSpot: car >= MIN_PHOTOS ? missing[0] || null : null, ok: car >= MIN_PHOTOS && missing.length === 0 };
+  return { sunday, before, car, missing, nextSpot: car >= MIN_PHOTOS && before >= MIN_BEFORE ? missing[0] || null : null, ok: before >= MIN_BEFORE && car >= MIN_PHOTOS && missing.length === 0 };
 };
 import type { Attend } from '../lib/rewards';
 import type { CleanInput } from '../lib/rewards';
@@ -45,7 +50,7 @@ export const MODE = backend.mode;
 /* ---------------- persisted state ---------------- */
 type Session = { washerId: string | null; real?: boolean; name?: string; phone?: string; since?: string; at?: string };
 // slots/order/locked: the round as a timeline (lib/slots.ts): which slot each car sits in, the order, and whether the washer locked it
-type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash>; slots?: Record<string, number>; order?: string[]; locked?: boolean; locked_at?: string | null; checkin_at?: string | null; checkin_photo?: string | null; checkin_uniform?: Uniform | null };
+type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash>; slots?: Record<string, number>; order?: string[]; locked?: boolean; locked_at?: string | null; checkin_at?: string | null; checkin_photo?: string | null; checkin_uniform?: Uniform | null; checkout_at?: string | null };
 // the check-in selfie: shirt_match/shirt_share come from lib/shirt.ts; the cap is ticked by the washer and reviewed by the manager
 export type Uniform = { shirt_match: boolean; shirt_share: number; self_confirmed: true };
 type Selfie = { date: string; washer: string; url?: string; asset_id?: string };
@@ -55,6 +60,7 @@ type State = {
   session: Session | null; online: boolean; theme: 'light' | 'dark' | 'auto'; lang: Lang;
   lang_pref?: LangPref; onboarded?: Record<string, string>;   // onboarded: 10-digit phone -> when the first-run onboarding was finished
   day: Day | null; outbox: Record<string, Wash>; rejected?: Record<string, Wash>; current: string | null;
+  wins?: Record<string, string>;   // outbox key -> updated_at of a doc that must beat the server's copy (unskip, carry-over)
   selfie: Selfie | null; hist: Record<string, number>; attend?: Attend; carPhotos?: Record<string, { url: string; at: string; cut?: boolean }>; rounds: Record<string, { at: string; cars: Data[] }>;
 };
 export let S: State = { session: null, online: true, theme: 'light', lang: 'hinglish', day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
@@ -68,10 +74,29 @@ function noteAttend(v: { in?: string; first?: string }, onlyIfNew = false) {
   save();
   const id = myDocId();
   if (id && id !== '+91') db.doc('checkins/' + DAY + '_' + id).update(v).catch(() => {});
+  if (id && id !== '+91' && v.first) mirrorFirstCar(db, { date: DAY, phone: id, name: me().name, at: v.first }).catch(() => {});
 }
+// A photo still waiting for its upload keeps its inline picture in its own AsyncStorage key (wd-ph:DATE_REG/n), not in S:
+// one 25-car round of photos in the single `wd-washer-v1` key could pass Android's AsyncStorage size limit and silently stop saving.
+const blobKey = (date: string, reg: string, n: number) => `wd-ph:${date}_${reg}/${n}`;
+function slim(this: any, k: string, v: any) { return k === 'url' && typeof v === 'string' && v.startsWith('data:') && this && this.pending_upload && this.n != null ? undefined : v }
+async function rehydratePhotos() {
+  const docs: Wash[] = [...Object.values(S.day?.washes || {}), ...Object.values(S.outbox || {})];
+  for (const d of docs) for (const p of d.photos || []) {
+    if (p.pending_upload && p.n != null && !p.url) { try { const u = await AsyncStorage.getItem(blobKey(d.date, d.reg, p.n)); if (u) p.url = u } catch (e) { } }
+  }
+}
+// the day's earnings ledger (earnings/{DATE}_{phone}), from the same Money logic the Paisa tab shows
+const ledger = ledgerWriter(db, () => {
+  const id = myDocId(); if (!id || id === '+91' || !S.day) return null;
+  return buildLedger({ phone: id, date: DAY,
+    washes: route().filter(c => W(c.reg)?.status === 'done').map(c => ({ reg: c.reg, amount: Money.perDay(c) })),
+    extras: Extra.doneOn(DAY).map(j => ({ id: j.id, amount: Money.share(j.price) })) });
+}, () => isoIST());
+let stopBeat: (() => void) | null = null;
 function save() {
   if (saveT) clearTimeout(saveT);
-  saveT = setTimeout(() => { AsyncStorage.setItem(KEY, JSON.stringify(S)).catch(() => {}) }, 150);
+  saveT = setTimeout(() => { AsyncStorage.setItem(KEY, JSON.stringify(S, slim)).catch(() => {}) }, 150);
 }
 
 /* ---------------- live state (not persisted) ---------------- */
@@ -92,6 +117,34 @@ export const view = {
   onboarding: false,   // the one-time onboarding (screens/Onboarding.tsx) is showing; the sign-in waits for it
 };
 let booted = false;
+
+/* ---------------- wash photos: Firebase Storage, with the inline copy as the offline fallback ---------------- */
+let lastFix: { lat: number; lng: number; at: number } | null = null;   // last GPS fix, for the optional stamp on a photo
+const upBusy = new Set<string>(), upFile: Record<string, string> = {};
+const timeout = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+export const Photos = {
+  keep(date: string, reg: string, n: number, url: string, file?: string) {
+    AsyncStorage.setItem(blobKey(date, reg, n), url).catch(() => {});
+    if (file) upFile[date + '_' + reg + '/' + n] = file;
+  },
+  // upload photos/{DATE}_{REG}/{n}.jpg and swap the Storage URL into the doc; on any failure the photo stays pending_upload and is retried
+  async upload(reg: string, n: number) {
+    const id = DAY + '_' + reg + '/' + n; if (upBusy.has(id)) return;
+    const p = W(reg)?.photos.find(x => x.n === n && x.pending_upload); if (!p || !p.url) return;
+    upBusy.add(id);
+    try {
+      const path = `washphotos/${DAY}_${reg}/${n}.jpg`, file = upFile[id];
+      let url: string;
+      try { url = await timeout(backend.storage.put(path, file || p.url), 45000) }
+      catch (e) { if (!file) throw e; url = await timeout(backend.storage.put(path, p.url), 45000) }
+      mutate(reg, d => { const q = d.photos.find(x => x.n === n); if (q) { q.url = url; delete q.pending_upload } });
+      delete upFile[id]; AsyncStorage.removeItem(blobKey(DAY, reg, n)).catch(() => {});
+    } catch (e) { /* offline or refused: stays pending, retried by retry() */ }
+    finally { upBusy.delete(id); emit() }
+  },
+  retry() { Object.values(S.day?.washes || {}).forEach(w => w.photos.forEach(p => { if (p.pending_upload && p.n != null) void Photos.upload(w.reg, p.n) })) },
+  pending() { return Object.values(S.day?.washes || {}).reduce((a, w) => a + w.photos.filter(p => p.pending_upload).length, 0) },
+};
 
 /* ---------------- subscription ---------------- */
 let version = 0;
@@ -170,6 +223,7 @@ export const Book = {
       if (!cached) { this.setRound(id, []); view.bookState = 'empty' }
     }
     ensureDay(); Sync.listen(); emit();
+    void Sync.carryOver();
   },
 };
 
@@ -280,7 +334,7 @@ export const skipAsk = (reg: string) => openReqs(reg).find(q => q.kind === 'skip
 
 /* ---------------- data layer: the only place that talks to the db ---------------- */
 let unsubs: Unsub[] = [];
-let flushing = false, refused = 0;
+let flushing = false, refused = 0, carrying = false;
 export const Sync = {
   stop() { unsubs.forEach(u => { try { u() } catch (e) { } }); unsubs = [] },
   listen() {
@@ -366,6 +420,7 @@ export const Sync = {
           view.netOk = false; break;
         }
         refused = 0;
+        if (S.wins && S.wins[key] === doc.updated_at) delete S.wins[key];
         if (S.outbox[key] && S.outbox[key].updated_at === doc.updated_at) delete S.outbox[key];
         save(); emit();
       }
@@ -376,7 +431,9 @@ export const Sync = {
     try {
       const g = await db.doc('washes/' + key).get(); if (!g.exists) return false; const r = g.data();
       if (!r || (!always && (r.status || 'scheduled') === 'scheduled')) return false;
-      delete S.outbox[key];
+      // a deliberate change made here (unskip, carry-over) beats the server's copy unless the server's is newer
+      if (!always && S.wins && S.wins[key] && (r.updated_at || '') <= S.wins[key]) return false;
+      delete S.outbox[key]; if (S.wins) delete S.wins[key];
       if (key.startsWith(DAY + '_') && r.reg && S.day?.washes) S.day.washes[r.reg] = cleanWash(r);
       save(); emit(); return true;
     } catch (e) { return false }
@@ -397,6 +454,34 @@ export const Sync = {
     rows.forEach(v => { if (v.status === 'done') out[v.date] = (out[v.date] || 0) + 1 });
     return out;
   },
+  // Sunday interior not done at day end (skipped, or the interior task not ticked): carry it to today (the day after that Sunday).
+  // Today's doc gets carried_from + carried_task and the interior task; the Sunday doc gets interior_carried_to. Safe to run again.
+  async carryOver() {
+    const prev = addDaysStr(DAY, -1);
+    if (!isSundayDate(prev) || !S.session?.washerId || carrying) return;
+    carrying = true;
+    try {
+      const sn = await db.collection('washes').where('washer_id', '==', me().id).where('date', '==', prev).get();
+      for (const g of sn.docs) {
+        const sd = g.data() as Wash | undefined; if (!sd || !sd.reg || sd.sunday !== true || sd.interior_carried_to) continue;
+        const i = sd.tasks?.find(x => x.key === 'interior');
+        if (sd.status === 'done' && i && i.done) continue;
+        const skey = prev + '_' + sd.reg; if (S.outbox[skey]?.interior_carried_to) continue;
+        const car = carBy(sd.reg); if (!car) continue;
+        let t0 = W(sd.reg);
+        if (!t0) { try { const x = await db.doc('washes/' + DAY + '_' + sd.reg).get(); if (x.exists) t0 = cleanWash(x.data()) } catch (e) { /* made fresh below */ } }
+        if (t0 && ['done', 'skipped'].includes(t0.status)) continue;
+        const idx = route().findIndex(c => c.reg === sd.reg);
+        const base = t0 || newWash(car, idx + 1, Route.slotEta(sd.reg) || '06:00');
+        S.day!.washes[sd.reg] = base;
+        mutate(sd.reg, d => { d.carried_from = prev; d.carried_task = 'interior'; d.tasks = withInterior(d.tasks) }, true);
+        const sday: Wash = { ...cleanWash(sd), interior_carried_to: DAY, updated_at: isoIST() };
+        S.outbox[skey] = sday; S.wins = S.wins || {}; S.wins[skey] = sday.updated_at;
+      }
+      save(); emit(); this.flush();
+    } catch (e) { console.warn('carry over', e) }
+    finally { carrying = false }
+  },
   async extraSet(id: string, patch: Partial<Job> & Data) {
     const j = Extra.byId(id); if (!j) return;
     Object.assign(j, patch); emit();
@@ -406,12 +491,22 @@ export const Sync = {
 };
 
 /* ---------------- writes to a wash doc: always the whole doc, one at a time ---------------- */
+const isSundayDate = (date: string) => new Date(date + 'T00:00:00Z').getUTCDay() === 0;
+const TASK_ORDER = Object.keys(TASK);
+// Sunday is interior day for every plan: the interior task is always in the list (contract 2026-11-23)
+function withInterior(tasks: Wash['tasks']): Wash['tasks'] {
+  if (tasks.some(x => x.key === 'interior')) return tasks;
+  return [...tasks, { key: 'interior' as TaskKey, label: TASK.interior.en, done: false, done_at: null }].sort((a, b) => TASK_ORDER.indexOf(a.key) - TASK_ORDER.indexOf(b.key));
+}
 function newWash(c: Car, seq: number, eta: string): Wash {
+  const sun = isSundayDate(DAY);
+  const tasks = tasksFor(c.reg, c.plan, DAY).map(k => ({ key: k, label: TASK[k].en, done: false, done_at: null as string | null }));
   return {
     date: DAY, reg: c.reg, car_label: c.label, washer: washerObj(), washer_id: me().id, status: 'scheduled', eta,
     on_the_way_at: null, arrived_at: null, started_at: null, finished_at: null, minutes: null,
-    tasks: tasksFor(c.reg, c.plan, DAY).map(k => ({ key: k, label: TASK[k].en, done: false, done_at: null })),
+    tasks: sun ? withInterior(tasks) : tasks,
     photos: [], water_litres: null, washer_note: null, skip_reason: null, customer_note_seen: false, seq, updated_at: isoIST(),
+    ...(sun ? { sunday: true } : {}),
   };
 }
 // write the slot, ETA and position of every car that has not started (called when the round is locked)
@@ -434,9 +529,10 @@ function lateAlerts() {
     void scheduleLateAlert(c.reg, c.reg, new Date(Date.parse(DAY + 'T00:00:00+05:30') + slotRange(s).toMin * 60e3));
   });
 }
-function mutate(reg: string, fn: (d: Wash) => void) {
+function mutate(reg: string, fn: (d: Wash) => void, win = false) {
   const cur = W(reg); if (!cur) return null;
   const d: Wash = JSON.parse(JSON.stringify(cur)); fn(d); d.washer = { ...washerObj() }; d.updated_at = isoIST();
+  if (win) { S.wins = S.wins || {}; S.wins[d.date + '_' + d.reg] = d.updated_at }
   S.day!.washes[reg] = d; save(); Sync.queue(d); return d;
 }
 
@@ -495,19 +591,49 @@ export const act = {
     try {
       const id = myDocId();
       if (id && id !== '+91') await db.doc('checkins/' + DAY + '_' + id).set({ phone: id, name: me().name, date: DAY, at: day.checkin_at, ...(photo ? { photo } : {}), ...(uniform ? { uniform } : {}) });
+      if (id && id !== '+91') await mirrorCheckIn(db, { date: DAY, phone: id, name: me().name, at: day.checkin_at });
     } catch (e) { console.warn('checkin', e) }
     return true;
   },
+  // "Aaj ka kaam khatam": check-out with cars done / skipped / hours, and the day's earnings ledger
+  async checkOut() {
+    ensureDay(); const day = S.day!; if (day.checkout_at) return true;
+    const at = isoIST(), ws = Object.values(day.washes || {}).filter(Boolean) as Wash[];
+    day.checkout_at = at; save(); emit(); ui.haptic([20, 40, 20]); ui.toast(t('Aaj ka kaam khatam. Shukriya!'));
+    ledger.now();
+    try {
+      const id = myDocId();
+      if (id && id !== '+91') await writeCheckOut(db, { date: DAY, phone: id, name: me().name, at, from: day.checkin_at || day.startedAt,
+        done: ws.filter(w => w.status === 'done').length, skipped: ws.filter(w => w.status === 'skipped').length });
+    } catch (e) { console.warn('checkout', e) }
+    return true;
+  },
+  // optional note back to the customer on a request (requests/{id}.washer_reply)
+  reqReply(id: string, text: string) { const r = text.trim().slice(0, 300); if (r) Sync.setRequest(id, { washer_reply: r } as Partial<Req>) },
   startRound() {
     if (REAL && view.bookState === 'loading') { ui.toast(t('Gaadiyon ki list aa rahi hai, ek minute ruko')); return false }
     ensureDay(); const etas = Route.etaList();
-    route().forEach((c, i) => { if (!W(c.reg)) { const d = newWash(c, i + 1, etas[i]); S.day!.washes[c.reg] = d; S.outbox[DAY + '_' + c.reg] = d } });
+    route().forEach((c, i) => { if (!W(c.reg)) { const d = newWash(c, i + 1, etas[i]); if (MODE === 'demo') demoSample(d, i); S.day!.washes[c.reg] = d; S.outbox[DAY + '_' + c.reg] = d } });
     S.day!.started = true; S.day!.startedAt = isoIST(); S.current = S.current || Route.nextReg(); save(); emit(); Sync.flush();
     ui.haptic([20, 50, 20]); ui.confetti(.6); ui.toast(t(`Round shuru! ${route().length} customers ko time chala gaya`));
     Sync.listen(); return true;
   },
+  // "Nikla": on the way to this car; the customer sees it. "Pahuncha": at the car. Both write their own time.
+  onTheWay(reg: string) {
+    const w = W(reg); if (!w || w.status !== 'scheduled') return false;
+    mutate(reg, d => { d.status = 'on_the_way'; d.on_the_way_at = isoIST() });
+    ui.haptic([20, 40, 20]); ui.toast(t(`${carBy(reg)?.customer || 'Customer'} ko dikh raha hai: aap raaste mein ho`)); emit(); return true;
+  },
+  arrived(reg: string) {
+    const w = W(reg); if (!w || !['scheduled', 'on_the_way'].includes(w.status)) return false;
+    mutate(reg, d => { d.status = 'arrived'; d.arrived_at = isoIST() });
+    ui.haptic([20, 40, 20]); ui.toast(t(`${carBy(reg)?.customer || 'Customer'} ko dikh raha hai: aap pahunch gaye`)); emit(); return true;
+  },
   startWash(reg: string) {
-    mutate(reg, d => { d.status = 'washing'; d.started_at = isoIST(); if (!d.arrived_at) d.arrived_at = d.started_at });
+    mutate(reg, d => {
+      d.status = 'washing'; d.started_at = isoIST(); if (!d.arrived_at) d.arrived_at = d.started_at;
+      if (isSundayDate(d.date)) { d.sunday = true; d.tasks = withInterior(d.tasks) }   // a doc made before Sunday was known
+    });
     ui.haptic([20, 40, 20]); ui.toast(t(`Timer chalu · ${carBy(reg)?.customer} ko "Wash chal raha" dikh raha hai`)); emit();
     guideTick();
     const w0 = W(reg); if (w0?.started_at) void scheduleWashAlerts(reg, w0.started_at, me().name.split(' ')[0], w0.interior_from);
@@ -521,19 +647,25 @@ export const act = {
     if (W(reg)!.tasks.every(x => x.done)) { ui.toast(t('Saare kaam ho gaye! Ab gaadi ki photo lo')); ui.confetti(.35) }
     emit();
   },
-  // the photo arrives as a small data: URL (contract: url, ≤ ~30 KB), see lib/photo.ts
-  addPhoto(reg: string, kind: Photo['kind'], url: string, spot?: string) {
+  // The photo arrives as a small inline data: URL (offline fallback + preview) and, when the camera made one, a bigger file for
+  // Firebase Storage. It is saved in the doc at once with pending_upload: true; Photos.upload swaps in the Storage URL.
+  addPhoto(reg: string, kind: Photo['kind'], url: string, spot?: string, file?: string) {
+    const cur = W(reg); if (!cur) return;
+    const n = cur.photos.reduce((m, p) => Math.max(m, (p.n ?? -1) + 1), cur.photos.length);
+    const fix = lastFix && Date.now() - lastFix.at < 10 * 60e3 ? { lat: lastFix.lat, lng: lastFix.lng } : null;   // optional GPS stamp
+    Photos.keep(DAY, reg, n, url, file);
     // a retake of an inside spot replaces that spot's earlier photo
     mutate(reg, d => {
       if (spot) d.photos = d.photos.filter(p => p.spot !== spot);
-      if (d.photos.length >= 12) d.photos.shift();
-      d.photos.push({ kind, at: isoIST(), url, ...(spot ? { spot } : {}) });
+      if (d.photos.length >= 20) d.photos.shift();
+      d.photos.push({ kind: spot ? 'inside' : kind, at: isoIST(), url, n, pending_upload: true, ...(spot ? { spot } : {}), ...(fix || {}) });
     });
+    void Photos.upload(reg, n);
     // the first car photo of the day, with its time, counts for the early-bird reward
     if (kind === 'after' && !spot) noteAttend({ first: isoIST() }, true);
-    ui.toast(t(kind === 'issue' ? 'Problem ki photo customer ko gayi' : 'Photo customer ko gayi'));
+    ui.toast(t(kind === 'issue' ? 'Problem ki photo customer ko gayi' : kind === 'before' ? 'Pehle ki photo save ho gayi' : 'Photo customer ko gayi'));
     // Sunday: once the car photos are done, the voice asks for the next inside photo
-    const w = W(reg); const nx = w && isSundayIST(w.started_at) && kind === 'after' ? photoNeeds(w).nextSpot : null;
+    const w = W(reg); const nx = w && kind === 'after' && !spot ? (photoNeeds(w).sunday ? photoNeeds(w).nextSpot : null) : null;
     if (nx) ui.speak(nx.clip);
   },
   photoPending(reg: string, kind: Photo['kind'], display: string | null) {
@@ -556,11 +688,37 @@ export const act = {
     const end = isoIST();
     mutate(reg, d => { d.status = 'done'; d.finished_at = end; d.minutes = Math.max(1, Math.round((Date.parse(end) - Date.parse(d.started_at || end)) / 60000)); d.water_litres = litres });
     void cancelWashAlerts(reg); void cancelLateAlert(reg);
-    ui.haptic([20, 40, 20, 40, 60]); ui.confetti(1); Route.retime(); emit(); return true;
+    ui.haptic([20, 40, 20, 40, 60]); ui.confetti(1); Route.retime(); ledger.soon(); emit(); return true;
+  },
+  // What the manager needs to know about this car (condition, issues, damage, delay, customer). Written any time before or at finish.
+  setReport(reg: string, v: { condition?: 'light' | 'normal' | 'heavy'; issues?: string[]; damage_note?: string | null; delay_reason?: string | null; customer_present?: boolean | null }) {
+    mutate(reg, d => {
+      if (v.condition) d.condition = v.condition;
+      if (v.issues) d.issues = Array.from(new Set(v.issues)).slice(0, 8);
+      if (v.damage_note !== undefined) d.damage_note = v.damage_note ? String(v.damage_note).slice(0, 300) : null;
+      if (v.delay_reason !== undefined) d.delay_reason = v.delay_reason ? String(v.delay_reason).slice(0, 120) : null;
+      if (v.customer_present !== undefined) d.customer_present = v.customer_present;
+    }); emit();
+  },
+  // The washer started a car and cannot finish it ("Wash nahi kiya" / left in the middle). A started car is never left open:
+  // it is closed as skipped with the reason, the minutes spent and the tasks already done, so the manager sees the real story.
+  abandon(reg: string, reason: string, note?: string) {
+    const wd = W(reg); if (!wd || wd.status === 'done' || wd.status === 'skipped') return false;
+    const why = String(reason || '').trim(); if (!why) return false;
+    const end = isoIST();
+    mutate(reg, d => {
+      const began = d.started_at && d.status === 'washing';
+      d.abandoned = began ? { at: end, reason: why.slice(0, 120), minutes: Math.max(0, Math.round((Date.parse(end) - Date.parse(d.started_at as string)) / 60000)),
+        tasks_done: d.tasks.filter(x => x.done).map(x => x.key), note: note ? String(note).slice(0, 300) : null } : null;
+      d.status = 'skipped'; d.skip_reason = why.slice(0, 120);
+    });
+    const sk = skipAsk(reg); if (sk) Sync.setRequest(sk.id, { status: 'done', done_at: end });
+    void cancelWashAlerts(reg); void cancelLateAlert(reg);
+    ui.haptic([14, 40, 14]); Route.retime(); ledger.soon(); ui.toast(t('Band kiya. Manager aur customer ko wajah dikh rahi hai')); emit(); return true;
   },
   needPhoto(reg?: string) {
-    const w = reg ? W(reg) : null; const n = w && isSundayIST(w.started_at) ? photoNeeds(w).missing.length : 0;
-    ui.toast(t(n ? `Gaadi ki ${MIN_PHOTOS} photo aur andar ki ${n} photo baaki hain` : `Kam se kam ${MIN_PHOTOS} gaadi ki photo lo, phir wash band hogi`)); ui.haptic(14);
+    const w = reg ? W(reg) : null; const pn = w ? photoNeeds(w) : null; const n = pn ? pn.missing.length : 0;
+    ui.toast(t(pn && pn.before < MIN_BEFORE ? 'Pehle ki photo lo (wash se pehle), phir wash band hogi' : n ? `Gaadi ki ${MIN_PHOTOS} photo aur andar ki ${n} photo baaki hain` : `Kam se kam ${MIN_PHOTOS} baad ki photo lo, phir wash band hogi`)); ui.haptic(14);
   },
   skip(reg: string, reason: string) {
     mutate(reg, d => { d.status = 'skipped'; d.skip_reason = reason });
@@ -568,7 +726,11 @@ export const act = {
     void cancelWashAlerts(reg); void cancelLateAlert(reg);
     ui.haptic(14); Route.retime(); ui.toast(t('Skip kiya. Customer ko wajah dikh rahi hai')); emit();
   },
-  unskip(reg: string) { mutate(reg, d => { d.status = d.arrived_at ? 'arrived' : 'scheduled'; d.skip_reason = null }); emit() },
+  // Back to where it was. The doc is marked as winning over the server's skipped copy (S.wins): Sync.adopt must not undo it.
+  unskip(reg: string) {
+    mutate(reg, d => { d.status = d.arrived_at ? 'arrived' : d.on_the_way_at ? 'on_the_way' : 'scheduled'; d.skip_reason = null; d.overdue_at = null; d.abandoned = null }, true);
+    lateAlerts(); emit();
+  },
   // opening a car with an open request counts as "seen"
   markSeen(reg: string) {
     const wd = W(reg); if (!wd || ['done', 'skipped'].includes(wd.status)) return;
@@ -672,6 +834,7 @@ export const act = {
       await Promise.race([Sync.flush(), new Promise(r => setTimeout(r, 8000))]);
       if (outboxSize() && !discard) { ui.toast(t('Kuch update abhi bheje nahi gaye. Net aane pe phir try karo.')); return false }
     }
+    ledger.now(); if (stopBeat) { stopBeat(); stopBeat = null }
     Sync.stop(); stopWatch(); stopKit(); stopGps(); void cancelAllWashAlerts();
     const { theme, lang, lang_pref, onboarded } = S;
     S = { session: null, online: true, theme, lang, lang_pref, onboarded, day: null, outbox: {}, current: null, selfie: null, hist: {}, rounds: {} };
@@ -871,7 +1034,18 @@ function enterApp() {
   if (MODE === 'demo') demoExtras();   // seeded before listening, so the sample jobs do not pop up as new
   Book.load();
   Sync.listen();
-  if (REAL) { startGps(); void registerPushToken() }
+  if (REAL) { startGps(); void registerPushToken(); startAttendanceSync() }
+}
+// heartbeat every 60 s, and the server attendance log comes back into S.attend (it is wiped on logout / lost on reinstall)
+function startAttendanceSync() {
+  if (!stopBeat) stopBeat = startHeartbeat(db, () => myDocId(), () => isoIST());
+  const id = myDocId(); if (!id || id === '+91') return;
+  void loadAttendance(db, id, addDaysStr(DAY, -62)).then(rows => {
+    if (!rows) return; S.attend = S.attend || {};
+    Object.entries(rows).forEach(([d, v]) => { const e = S.attend![d] = S.attend![d] || {}; if (v.in && !e.in) e.in = v.in; if (v.first && !e.first) e.first = v.first });
+    const t0 = rows[DAY]; if (t0?.in && S.day && !S.day.checkin_at) S.day.checkin_at = t0.in;
+    save(); emit();
+  });
 }
 
 /* ---------- live location for the customer's map (installed app only) ---------- */
@@ -883,6 +1057,7 @@ async function startGps() {
     const p = await Location.requestForegroundPermissionsAsync(); if (p.status !== 'granted') return;
     gpsSub = await Location.watchPositionAsync({ accuracy: Location.Accuracy.High, timeInterval: 30000, distanceInterval: 25 }, pos => {
       const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+      lastFix = { lat: +lat.toFixed(5), lng: +lng.toFixed(5), at: Date.now() };
       db.doc('locations/' + me().id).set({ lat, lng, accuracy, washer_id: me().id, updated_at: isoIST() }).catch(e => console.warn('gps write', e));
       // jobs on the way: the customer's map reads the position straight off the booking, at most every 30 s per job
       const now = Date.now();
@@ -934,6 +1109,7 @@ export async function boot() {
   if (started) return; started = true;
   try { const x = JSON.parse((await AsyncStorage.getItem(KEY)) || 'null'); if (x && typeof x === 'object') S = Object.assign(S, x) } catch (e) { }
   S.rounds = S.rounds || {}; S.outbox = S.outbox || {};
+  await rehydratePhotos();
   setLang(S.lang || 'hinglish');
   view.syncMode = MODE;
   booted = true;
@@ -950,14 +1126,14 @@ export async function boot() {
   else view.authStep = 'phone';
   emit();
   // keep sending what is waiting; a new day starts a new round
-  setInterval(() => { if (Object.keys(S.outbox).length) Sync.flush() }, 20000);
+  setInterval(() => { if (Object.keys(S.outbox).length) Sync.flush(); Photos.retry() }, 20000);
   setInterval(guideTick, 3000);
   setInterval(() => {
     const d = dateIST();
     if (d !== DAY && view.authStep === 'in') { DAY = d; RT = {}; ensureDay(); Book.load(); Sync.listen(); emit() }
   }, 60000);
 }
-export const onForeground = () => { Sync.flush() };
+export const onForeground = () => { Sync.flush(); Photos.retry() };
 
 /* ---------------- sync status, as the chip shows it ---------------- */
 export function syncState(): ['connecting' | 'demo' | 'wait' | 'offline' | 'live', string, string] {

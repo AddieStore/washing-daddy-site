@@ -2,11 +2,10 @@
 // remember which one to wash; the small photo then replaces the drawn car. Tap again opens the big photo.
 import React from 'react';
 import { Image, View } from 'react-native';
-import { Button, F, Icon, LinkButton, Pressy, brand, sheet, ui, useTheme } from '../ui';
+import { Button, Icon, LinkButton, Pressy, SheetHeader, sheet, ui, useTheme } from '../ui';
 import { act, carPhoto, useStore } from '../state/store';
 import { takeCarPhoto } from '../lib/photo';
 import { t } from '../lib/i18n';
-import { SheetTitle } from './sheets';
 
 async function snap(reg: string) {
   try {
@@ -21,11 +20,11 @@ function PhotoBody({ reg, url, cut, close }: { reg: string; url: string; cut?: b
   const { c } = useTheme();
   return (
     <View>
-      <SheetTitle title={t('Gaadi ki photo')} />
-      <Image source={{ uri: url }} accessibilityLabel={t('Gaadi ki photo')} resizeMode={cut ? 'contain' : 'cover'} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: cut ? 'transparent' : c.tile2 }} />
+      <SheetHeader title={t('Gaadi ki photo')} />
+      <Image source={{ uri: url }} accessibilityLabel={t('Gaadi ki photo')} resizeMode={cut ? 'contain' : 'cover'} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 12, backgroundColor: cut ? 'transparent' : c.tile2 }} />
       <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-        <Button variant="violet" label={t('Dobara lo')} style={{ flex: 1 }} onPress={() => { close(); setTimeout(() => { void snap(reg) }, 250); }} />
-        <Button variant="ghost" label={t('Hata do')} style={{ flex: 1 }} onPress={() => { act.setCarPhoto(reg, null); close(); }} />
+        <Button variant="primary" label={t('Dobara lo')} style={{ flex: 1 }} onPress={() => { close(); setTimeout(() => { void snap(reg) }, 250); }} />
+        <Button variant="secondary" label={t('Hata do')} style={{ flex: 1 }} onPress={() => { act.setCarPhoto(reg, null); close(); }} />
       </View>
       <View style={{ alignItems: 'center', marginTop: 8 }}><LinkButton label={t('Band karo')} onPress={close} /></View>
     </View>
@@ -35,7 +34,7 @@ function PhotoBody({ reg, url, cut, close }: { reg: string; url: string; cut?: b
 /** `size` is the diameter of the camera button; the box is w x h (w omitted = full width). */
 export function CarPic({ reg, w, h, size = 30, radius = 14, children }: { reg: string; w?: number; h: number; size?: number; radius?: number; children: React.ReactNode }) {
   useStore();
-  const { c, dark } = useTheme();
+  const { c } = useTheme();
   const ph = carPhoto(reg);
   const onPress = () => {
     if (ph) sheet.open(close => <PhotoBody reg={reg} url={ph.url} cut={ph.cut} close={close} />);
@@ -47,7 +46,7 @@ export function CarPic({ reg, w, h, size = 30, radius = 14, children }: { reg: s
       <View style={{ position: 'absolute', top: 0, right: 0, width: size, height: size }}>
         <Pressy onPress={onPress} accessibilityLabel={t(ph ? 'Gaadi ki photo' : 'Gaadi ki photo lo')} hitSlop={6}
           style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center',
-            backgroundColor: ph ? (dark ? brand.ink : '#fff') : '#fff' }}>
+            backgroundColor: c.card, borderWidth: 1, borderColor: c.line }}>
           <Icon name="cam" size={Math.round(size * 0.55)} color={c.primary} />
         </Pressy>
       </View>

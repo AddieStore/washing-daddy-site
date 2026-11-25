@@ -6,7 +6,8 @@ import { getAuth, onAuthStateChanged, signInWithCustomToken, signInWithPhoneNumb
 import {
   getFirestore, doc, collection, query, where, onSnapshot, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
 } from '@react-native-firebase/firestore';
-import type { Auth, AuthError, Backend, Data, Db, DbError, DocRef, DocSnap, Op, Query, QuerySnap } from './types';
+import { getStorage, ref as sref, putFile, uploadString, getDownloadURL } from '@react-native-firebase/storage';
+import type { Auth, AuthError, Backend, Store, Data, Db, DbError, DocRef, DocSnap, Op, Query, QuerySnap } from './types';
 
 const RANGE = new Set<Op>(['<', '<=', '>', '>=', '!=']);
 const test = (a: any, op: Op, b: any) => op === '==' ? a === b : op === '!=' ? a !== b : op === '<' ? a < b : op === '<=' ? a <= b
@@ -63,6 +64,18 @@ function makeDb(): Db {
     };
   };
   return { collection: c => q(c, []), doc: docRef };
+}
+
+function makeStore(): Store {
+  const st = getStorage();
+  return {
+    async put(path, src) {
+      const r = sref(st, path);
+      if (src.startsWith('data:')) await uploadString(r, src, 'data_url');
+      else await putFile(r, src, { contentType: 'image/jpeg' });
+      return getDownloadURL(r);
+    },
+  };
 }
 
 // Each error carries a short reason plus Hinglish wording (same table as wd-sync.js)
@@ -138,7 +151,7 @@ function makeAuth(): Auth {
 export function firebaseBackend(): Backend | null {
   try {
     if (!getApps().length) return null;
-    return { mode: 'live', db: makeDb(), auth: makeAuth() };
+    return { mode: 'live', db: makeDb(), auth: makeAuth(), storage: makeStore() };
   } catch (e) {
     console.warn('firebase', e);
     return null;

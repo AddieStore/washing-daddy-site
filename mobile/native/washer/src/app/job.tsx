@@ -1,175 +1,114 @@
-// The car screen: pushed from the round. Stage, stepper, requests, the one main action, tasks, photos, note, skip.
+// The car screen: pushed from the round. Plain light page: car header, step tracker, requests, tasks, photos, report,
+// and ONE main action in the sticky bar at the bottom.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Image, Linking, StyleSheet, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { DotBg, F, Footer, Icon, PullToRefresh, R, brand, cardBox, cardShadow, ui, useTheme } from '../ui';
-import { DashCard, IconBubble } from '../ui/dash';
+import { ActivityIndicator, BackHandler, Image, Linking, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { Button, CarArt, Chip, Empty, F, Group, Icon, PullToRefresh, Row, SectionLabel, StickyBar, Pressy, ui, useTheme } from '../ui';
+import { WorkingArt } from '../ui/art';
 import { CarPic } from '../screens/CarPhoto';
-import { Pressy, Button, CallButton, CarArt, DemoNote, Empty, Eyebrow, LinkButton, Plate, ProgressBar, SlideToConfirm, Stepper, Tier } from '../ui';
-import type { StepItem } from '../ui';
-import { Route, RT, W, act, photoSrc, carBy, ensureDay, openReqs, planName, route, skipAsk, S, useStore, DAY, view, MIN_PHOTOS, photoNeeds } from '../state/store';
+import { Route, RT, W, act, route, photoSrc, carBy, ensureDay, openReqs, planName, skipAsk, S, useStore, DAY, view, MIN_PHOTOS, MIN_BEFORE, photoNeeds } from '../state/store';
 import { STATUS, navOf, telOf } from '../lib/data';
 import type { Photo } from '../lib/data';
 import { SPOTS, isSundayIST } from '../lib/washGuide';
-import { tasksFor, TASK } from '../lib/schedule';
+import { tasksFor } from '../lib/schedule';
 import { t } from '../lib/i18n';
 import { hm12, t12 } from '../lib/time';
 import { takePhoto } from '../lib/photo';
 import { WashGuide } from '../screens/WashGuide';
-import { myPhotoSource, myTrust } from '../screens/TrustData';
-import { VerifiedStrip } from '../ui/trust';
-import { me } from '../state/store';
-import { ScreenBar, HeroBar, VioletHero, PrimaryButton, ReqCard, Shot, TaskRow, WashTimer, InteriorButton, ExtrasRow, openNoteSheet, openPhotoSheet, openSkipSheet, openSuccessSheet, type ShotItem } from '../screens/JobParts';
+import { HsrpPlate, InteriorButton, ExtrasRow, ReqCard, RoundIcon, ScreenBar, Shot, TaskRow, WashTimer, openNoteSheet, openPhotoSheet, openSkipSheet, openSuccessSheet, type ShotItem } from '../screens/JobParts';
+import { ReportSection, ReportSummary, StartCapture, newStartInfo, openLeaveSheet, saveStartInfo } from '../screens/JobReport';
 
 const ORDER = ['scheduled', 'on_the_way', 'arrived', 'washing', 'done'];
-const STEPS: [string, string, StepItem['icon'], string][] = [
-  ['on_the_way', 'Nikla', 'walk', 'on_the_way_at'],
-  ['arrived', 'Pahuncha', 'flag', 'arrived_at'],
-  ['washing', 'Wash', 'drop', 'started_at'],
-  ['done', 'Ho gaya', 'check', 'finished_at'],
+const STEPS: [string, string, string][] = [
+  ['on_the_way', 'Nikla', 'on_the_way_at'],
+  ['arrived', 'Pahuncha', 'arrived_at'],
+  ['washing', 'Wash', 'started_at'],
+  ['done', 'Ho gaya', 'finished_at'],
 ];
+type Step = { label: string; time?: string; state: 'ok' | 'now' | 'none' };
 
-/* ---------- the hero card ---------- */
-function HChip({ icon, children }: { icon?: React.ComponentProps<typeof Icon>['name']; children: React.ReactNode }) {
+/* ---------- car header: one compact white card ---------- */
+function CarHeader({ reg, st }: { reg: string; st: string }) {
   const { c } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.16)' }}>
-      {icon ? <Icon name={icon} size={14} color="#fff" /> : null}
-      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12, color: '#fff' }}>{children}</Text>
-    </View>
-  );
-}
-
-function SecHead({ title, meta }: { title: string; meta?: string }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ marginTop: 28, marginBottom: 12, alignItems: 'center' }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 18, lineHeight: 24, color: c.fg }}>{title}</Text>
-      {meta ? <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 20, color: c.fg3, textAlign: 'center' }}>{meta}</Text> : null}
-    </View>
-  );
-}
-
-function Stage({ reg, st }: { reg: string; st: string }) {
-  const { width } = useWindowDimensions();
   const c0 = carBy(reg)!, wd = W(reg);
-  const enter = useRef(new Animated.Value(0)).current;
-  const bob = useRef(new Animated.Value(0)).current;
-  const shake = useRef(new Animated.Value(0)).current;
-  const washing = st === 'washing';
-  useEffect(() => {
-    enter.setValue(1);
-    Animated.spring(enter, { toValue: 0, useNativeDriver: true, speed: 9, bounciness: 7 }).start();
-  }, [reg, enter]);
-  useEffect(() => {
-    const a = Animated.loop(Animated.sequence([
-      Animated.timing(bob, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(bob, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ]));
-    a.start();
-    return () => a.stop();
-  }, [bob]);
-  useEffect(() => {
-    if (!washing) { shake.setValue(0); return }
-    const a = Animated.loop(Animated.sequence([
-      Animated.timing(shake, { toValue: 1, duration: 90, useNativeDriver: true }),
-      Animated.timing(shake, { toValue: -1, duration: 90, useNativeDriver: true }),
-    ]));
-    a.start();
-    return () => a.stop();
-  }, [washing, shake]);
-  const carW = Math.min(width - 80, 360);
   const tel = telOf(c0.phone);
-  const chipA = `${t(STATUS[st as keyof typeof STATUS])}${wd && st === 'scheduled' ? ' · ' + hm12(wd.eta) : ''}`;
+  const nav = navOf(c0);
   const idx = route().findIndex(x => x.reg === reg) + 1;
   const fmt = (h: string) => h.replace(/^0/, '');
-  const slotTxt = wd && wd.slot_from && wd.slot_to ? `${t('Slot')} ${fmt(wd.slot_from)} – ${fmt(wd.slot_to)}` : null;
+  const slot = wd && wd.slot_from && wd.slot_to ? `${fmt(wd.slot_from)} – ${fmt(wd.slot_to)}` : null;
+  const stTone = st === 'done' ? 'green' : st === 'skipped' ? 'red' : st === 'scheduled' ? 'grey' : 'violet';
   return (
-    <VioletHero style={{ paddingBottom: 56 }}>
-      <HeroBar title={c0.house} />
-      <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-          <HChip>{chipA}</HChip>
-          <HChip>{`${idx} / ${route().length}`}</HChip>
-        </View>
-        <View style={{ marginTop: 12, marginBottom: 8, alignItems: 'center' }}>
-          <CarPic reg={reg} h={Math.round(carW * 0.42)} size={36} radius={16}>
-            <View pointerEvents="none" style={{ alignItems: 'center', justifyContent: 'flex-end' }}>
-              <View style={{ position: 'absolute', bottom: -8, width: carW * 0.78, height: carW * 0.78, borderRadius: carW, backgroundColor: 'rgba(255,255,255,0.10)' }} />
-              <Animated.View style={{ transform: [
-                { translateX: enter.interpolate({ inputRange: [0, 1], outputRange: [0, 360] }) },
-                { translateY: bob.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) },
-                { translateX: shake.interpolate({ inputRange: [-1, 1], outputRange: [-1.5, 1.5] }) },
-              ] }}>
-                <CarArt car={c0} width={carW} />
-              </Animated.View>
-            </View>
-          </CarPic>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={2} style={{ fontFamily: F.bold, fontSize: 28, lineHeight: 34, letterSpacing: -0.4, color: '#fff' }}>{c0.model}</Text>
-            <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.8)' }}>{c0.customer}</Text>
+    <Group>
+      <View style={{ padding: 14, gap: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View style={{ width: 92, height: 62, borderRadius: 12, backgroundColor: c.canvas, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+            <CarPic reg={reg} w={92} h={62} size={26} radius={12}>
+              <View style={{ marginBottom: 4 }}><CarArt car={c0} width={80} /></View>
+            </CarPic>
           </View>
-          {washing && wd?.started_at ? <WashTimer startedAt={wd.started_at} interiorFrom={wd.interior_from} extraMinutes={wd.extra_minutes || 0} /> : null}
+          <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+            <HsrpPlate reg={c0.plate} />
+            <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 17, lineHeight: 22, letterSpacing: -0.3, color: c.fg }}>{c0.model}</Text>
+            <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.grey }}>{c0.customer}{idx ? ` · ${idx}/${route().length}` : ''}</Text>
+          </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-          <Plate reg={c0.plate} />
-          {slotTxt ? <HChip icon="flag">{slotTxt}</HChip> : null}
-          <Tier label={planName(c0)} />
-          {tel && c0.phone ? (
-            <Pressy onPress={() => { void Linking.openURL('tel:' + String(c0.phone).replace(/[^\d+]/g, '')).catch(() => {}) }} scaleTo={0.92} accessibilityLabel={t('Call')} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
-              <Icon name="phone" size={17} color={brand.violet} />
-            </Pressy>
-          ) : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {slot ? <Chip tone="violet" icon="clock">{`${t('Slot')} ${slot}`}</Chip> : null}
+            <Chip tone={stTone}>{t(STATUS[st as keyof typeof STATUS])}{wd && st === 'scheduled' ? ` · ${hm12(wd.eta)}` : ''}</Chip>
+            <Chip tone="grey">{planName(c0)}</Chip>
+            {st === 'washing' && wd?.started_at ? <WashTimer startedAt={wd.started_at} interiorFrom={wd.interior_from} extraMinutes={wd.extra_minutes || 0} /> : null}
+          </View>
+          {tel && c0.phone ? <RoundIcon icon="phone" label={t('Call')} onPress={() => { void Linking.openURL('tel:' + String(c0.phone).replace(/[^\d+]/g, '')).catch(() => {}) }} /> : null}
+          {nav ? <RoundIcon icon="pin" label={t('Raasta')} onPress={() => { void Linking.openURL(nav).catch(() => {}) }} /> : null}
         </View>
       </View>
-    </VioletHero>
+    </Group>
   );
 }
 
-/* ---------- who the customer sees ---------- */
-function PartnerStrip() {
-  const w = me(), tr = myTrust();
-  return (
-    <VerifiedStrip
-      style={{ marginHorizontal: 16, marginTop: -28 }}
-      title={t(tr.verified ? 'Verified WD partner' : 'WD partner')}
-      name={w.name}
-      source={myPhotoSource()}
-      verified={tr.verified}
-      badge={t(tr.verified ? 'WD Verified' : 'Verification baaki')}
-      rating={w.rating}
-      ratingLabel={t('Rating')}
-      cars={(w.lifetime + Route.counts().done).toLocaleString('en-IN')}
-      carsLabel={t('gaadi dhoyi')}
-    />
-  );
-}
-
-/* ---------- step tracker (customer JobRider look): icons in tinted circles joined by a line, the active step violet ---------- */
-function StepTrack({ steps }: { steps: StepItem[] }) {
-  const { c, dark } = useTheme();
-  const n = steps.length || 1;
+/* ---------- horizontal stepper ---------- */
+function Stepper({ steps }: { steps: Step[] }) {
+  const { c } = useTheme();
+  const n = steps.length;
   const reached = steps.reduce((m, s, i) => (s.state !== 'none' ? i : m), -1);
+  const done = steps.reduce((m, s, i) => (s.state === 'ok' ? i : m), -1);
+  const frac = n > 1 ? Math.max(0, Math.min(reached, done + 1)) / (n - 1) : 0;
   return (
-    <View style={{ flexDirection: 'row', paddingVertical: 8 }}>
-      <View pointerEvents="none" style={{ position: 'absolute', left: `${50 / n}%`, right: `${50 / n}%`, top: 31, height: 3, borderRadius: 2, backgroundColor: 'rgba(84,9,218,0.12)' }}>
-        <View style={{ height: 3, borderRadius: 2, backgroundColor: c.primary, width: `${n > 1 ? Math.max(0, reached) / (n - 1) * 100 : 0}%` }} />
-      </View>
-      {steps.map((s, i) => {
-        const ok = s.state === 'ok', now = s.state === 'now';
-        return (
-          <View key={i} style={{ flex: 1, alignItems: 'center', gap: 6 }} accessible accessibilityLabel={`${s.label}${s.time ? ' ' + s.time : ''}`}>
-            <View style={{ width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: now ? c.primary : ok ? 'rgba(84,9,218,0.16)' : dark ? 'rgba(139,92,246,0.2)' : '#EFEAFB',
-              ...(now ? { shadowColor: c.primary, shadowOpacity: 0.32, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 } : null) }}>
-              <Icon name={ok ? 'check' : s.icon} size={20} color={now ? '#fff' : ok || now ? c.primary : c.fg3} />
+    <Group>
+      <View style={{ flexDirection: 'row', paddingVertical: 14, paddingHorizontal: 4 }}>
+        <View pointerEvents="none" style={{ position: 'absolute', left: `${50 / n}%`, right: `${50 / n}%`, top: 26, height: 2, borderRadius: 1, backgroundColor: c.line }}>
+          <View style={{ height: 2, borderRadius: 1, backgroundColor: c.primary, width: `${frac * 100}%` }} />
+        </View>
+        {steps.map((s, i) => {
+          const ok = s.state === 'ok', now = s.state === 'now';
+          return (
+            <View key={i} style={{ flex: 1, alignItems: 'center', gap: 6 }} accessible accessibilityLabel={`${s.label}${s.time ? ' ' + s.time : ''}`}>
+              <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: ok ? c.primary : c.card, borderWidth: ok ? 0 : 2, borderColor: now ? c.primary : c.dash }}>
+                {ok ? <Icon name="check" size={14} color="#fff" /> : now ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary }} /> : null}
+              </View>
+              <Text numberOfLines={1} style={{ fontFamily: now ? F.semi : F.medium, fontSize: 12, lineHeight: 16, color: now ? c.primary : ok ? c.fg : c.grey }}>{s.label}</Text>
+              <Text style={{ fontFamily: F.body, fontSize: 11, lineHeight: 14, color: c.grey, marginTop: -4, minHeight: 14 }}>{s.time || ' '}</Text>
             </View>
-            <Text numberOfLines={1} style={{ fontFamily: now ? F.semi : F.medium, fontSize: 12, lineHeight: 16, color: now ? c.primary : ok ? c.fg : c.fg3 }}>{s.label}</Text>
-            {s.time ? <Text style={{ fontFamily: F.body, fontSize: 10, lineHeight: 12, color: c.fg3, marginTop: -4 }}>{s.time}</Text> : null}
-          </View>
-        );
-      })}
+          );
+        })}
+      </View>
+    </Group>
+  );
+}
+
+/** Tinted note row (amber, red or violet) for late / skip-asked / photo gate. */
+function NoteRow({ icon, tone, children }: { icon: React.ComponentProps<typeof Icon>['name']; tone: 'red' | 'amber' | 'violet'; children: React.ReactNode }) {
+  const { c, dark } = useTheme();
+  const T = {
+    red: [dark ? 'rgba(248,113,113,0.14)' : '#FEF2F2', dark ? '#FCA5A5' : '#dc2626'],
+    amber: [dark ? 'rgba(255,186,8,0.14)' : '#FFF6DB', dark ? '#FFD66B' : '#9A6A00'],
+    violet: [dark ? 'rgba(139,92,246,0.18)' : 'rgba(84,9,218,0.06)', c.primary],
+  }[tone];
+  return (
+    <View accessibilityRole="alert" style={{ flexDirection: 'row', gap: 12, alignItems: 'center', padding: 14, borderRadius: 16, backgroundColor: T[0] }}>
+      <Icon name={icon} size={20} color={T[1]} />
+      <Text style={{ flex: 1, fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: c.fg }}>{children}</Text>
     </View>
   );
 }
@@ -186,7 +125,6 @@ export default function JobScreen() {
   const st = wd ? wd.status : 'scheduled';
   const unseen = reg ? openReqs(reg).filter(q => q.status === 'open').length : 0;
   const lastReg = useRef<string | null>(null);
-  const [rearm, setRearm] = useState(0);
   const [spotPend, setSpotPend] = useState<Record<string, string>>({});
 
   // keep S.current in step with what is shown
@@ -196,23 +134,45 @@ export default function JobScreen() {
   useEffect(() => { lastReg.current = reg || null }, [reg]);
 
   const goPaisa = () => router.navigate('/paisa' as any);
-  const goRound = () => { if (router.canGoBack()) router.back(); else router.navigate('/') };
+  const leave = () => { if (router.canGoBack()) router.back(); else router.navigate('/') };
+  // A started wash (status washing) cannot be left silently: every way out opens the finish / abandon sheet.
+  const guarded = st === 'washing';
+  const guardRef = useRef(false);
+  guardRef.current = guarded;
+  const allowRef = useRef(false);
+  const ask = () => { if (reg) openLeaveSheet(reg, () => { allowRef.current = true; leave() }) };
+  const askRef = useRef(ask);
+  askRef.current = ask;
+  const goRound = () => { if (guarded) ask(); else leave() };
+  const navigation = useNavigation() as any;
+  useEffect(() => navigation.addListener('beforeRemove', (e: any) => {
+    if (!guardRef.current || allowRef.current) return;
+    e.preventDefault();
+    askRef.current();
+  }), [navigation]);
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!guardRef.current) return false;
+      askRef.current(); return true;
+    });
+    return () => sub.remove();
+  }, []));
+  const startInfo = useRef(newStartInfo());
+  useEffect(() => { startInfo.current = newStartInfo() }, [reg]);
 
   if (!reg || !car) {
     return (
       <View style={{ flex: 1, backgroundColor: th.bg }}>
-        <ScreenBar title={t('Abhi')} back />
+        <ScreenBar title={t('Abhi')} back onBack={leave} />
         <View style={{ padding: 16 }}>
           {S.day?.started
             ? <Empty title={t('Koi gaadi baaki nahi')} text={t('Aaj ka round poora. Shabash!')} />
             : <>
-                <Empty title={t('Pehle round shuru karo')} text={t('Round tab pe slide karo, phir pehli gaadi yahan khulegi.')} />
+                <Empty title={t('Pehle round shuru karo')} text={t('Round tab pe jao, phir pehli gaadi yahan khulegi.')} />
                 <View style={{ height: 14 }} />
-                <Button variant="gold" label={t('Round pe chalo')} onPress={goRound} />
+                <Button variant="primary" label={t('Round pe chalo')} onPress={goRound} />
               </>}
         </View>
-        <View style={{ flex: 1 }} />
-        <Footer />
       </View>
     );
   }
@@ -221,22 +181,23 @@ export default function JobScreen() {
   const can = !!wd && wd.status === 'washing';
   const tdone = tasks.filter(x => x.done).length;
   const idx = ORDER.indexOf(st);
-  const steps: StepItem[] = STEPS.map(([k, l, ic, field], i) => {
+  const steps: Step[] = STEPS.map(([k, l, field], i) => {
     const si = i + 1;
     const state = st === 'skipped' ? 'none' : (idx > si || st === 'done') ? 'ok' : idx === si ? 'now' : 'none';
     const at = wd ? (wd as any)[field] as string | null : null;
-    return { icon: ic, label: t(l), time: at ? t12(at).replace(/ (AM|PM)/, '') : undefined, state } as StepItem;
+    return { label: t(l), time: at ? t12(at).replace(/ (AM|PM)/, '') : undefined, state } as Step;
   });
   const reqs = openReqs(reg).filter(q => q.kind !== 'skip_tomorrow');
   const sk = skipAsk(reg);
   const pend = view.pendingPhotos[reg] || [];
-  const photosOf = (kind: 'after' | 'issue'): ShotItem[] =>
+  const photosOf = (kind: 'before' | 'after' | 'issue'): ShotItem[] =>
     ((wd ? wd.photos : []) as ShotItem[]).filter(p => p.kind === kind && !p.spot).concat(pend.filter(p => p.kind === kind).map(p => ({ kind: p.kind, at: '', display: p.display, pending: true } as ShotItem)));
   const need = wd ? photoNeeds(wd) : null;
   const afterN = need ? need.car : 0;
   const photosOk = !!need && need.ok;
   const late = !!wd && Route.isLate(reg);
-  const sunday = !!wd && isSundayIST(wd.started_at) && (st === 'washing' || st === 'done');
+  const sunday = !!wd && !!need && need.sunday && (st === 'washing' || st === 'done');
+  const pre = !!wd && ['scheduled', 'on_the_way', 'arrived'].includes(st);
 
   const shoot = async (kind: Photo['kind'], spot?: string) => {
     if (!W(reg)) { ui.toast(t('Pehle round shuru karo')); return }
@@ -246,13 +207,13 @@ export default function JobScreen() {
       if (!r) return;
       if (spot) setSpotPend(m => ({ ...m, [spot]: r.preview }));
       else act.photoPending(reg, kind, r.preview);
-      try { act.addPhoto(reg, kind, r.url, spot) } finally {
+      try { act.addPhoto(reg, kind, r.url, spot, r.file) } finally {
         if (spot) setSpotPend(m => { const n = { ...m }; delete n[spot]; return n });
         else act.photoPending(reg, kind, null);
       }
     } catch (e: any) { ui.toast(t(e?.hi || 'Photo nahi gayi. Dobara try karo')) }
   };
-  const viewShot = (kind: 'after' | 'issue') => {
+  const viewShot = (kind: 'before' | 'after' | 'issue') => {
     const w = W(reg); if (!w) return;
     openPhotoSheet(reg, kind, w.photos.filter(p => p.kind === kind), !['done', 'skipped'].includes(w.status), () => { void shoot(kind) });
   };
@@ -263,198 +224,170 @@ export default function JobScreen() {
       openSuccessSheet(car.customer, nx && n ? { reg: nx, model: n.model } : null, goPaisa);
     }
   };
-  const nav = navOf(car);
+  const startWash = () => { if (!wd) return; act.startWash(reg); saveStartInfo(reg, startInfo.current, wd.issues) };
   const nxReg = Route.nextReg();
   const nxCar = nxReg ? carBy(nxReg) : null;
 
-  const main = () => {
-    if (!wd) {
-      return (
-        <View>
-          <Empty title={t('Round abhi shuru nahi hua')} text={t('Slide karte hi saare customers ko time chala jayega.')} />
-          <View style={{ marginTop: 12 }}>
-            <SlideToConfirm gold label={t('Round shuru karo')} resetKey={'sr' + rearm} onDone={() => { if (!act.startRound()) setRearm(n => n + 1) }} />
-          </View>
-        </View>
-      );
-    }
-    if (['scheduled', 'on_the_way', 'arrived'].includes(st)) {
-      return (
-        <View>
-          {sk ? (
-            <View>
-              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 14, borderRadius: R.card, backgroundColor: 'rgba(232,56,79,0.1)', marginBottom: 12 }}>
-                <Icon name="pause" size={22} color={brand.red} />
-                <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 14, color: th.fg }}>
-                  <Text style={{ fontFamily: F.semi, color: brand.red }}>{t('Customer ne aaj mana kiya hai.')}</Text> {sk.text || t('Kal wash mat karna.')}
-                </Text>
-              </View>
-              <Button variant="ink" label={t('Skip karo · customer ne mana kiya')} onPress={() => act.skip(reg, 'Customer ne mana kiya')} style={{ marginBottom: 10 }} />
-            </View>
-          ) : null}
-          <SlideToConfirm label={t('Wash shuru karo')} resetKey={reg + st} onDone={() => act.startWash(reg)} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 }}>
-            <Icon name="pin" size={18} color={th.fg2} />
-            <Text style={{ flexShrink: 1, fontFamily: F.semi, fontSize: 14, color: th.fg2 }}>{car.house}{car.spot ? ' · ' + car.spot : ''}{car.keys ? ' · ' + car.keys : ''}</Text>
-          </View>
-          {nav ? <View style={{ marginTop: 10 }}><Button variant="ghost" icon="pin" label={t('Raasta')} onPress={() => { void Linking.openURL(nav).catch(() => {}) }} /></View> : null}
-          <DemoNote>{t(`Pehla kadam. Slide karte hi timer chalega aur ${car.customer} ko "Wash chal raha" dikhega`)}</DemoNote>
-        </View>
-      );
-    }
-    // washing: the finish button sits below the tasks and photos (see finishBlock)
-    if (st === 'washing') return null;
-    if (st === 'done') {
-      const stars = RT[reg] || 0;
-      const stat = (v: string, l: string) => (
-        <View key={l}><Text style={{ fontFamily: F.bold, fontSize: 18, color: '#fff', fontVariant: ['tabular-nums'] }}>{v}</Text><Text style={{ fontFamily: F.semi, fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>{l}</Text></View>
-      );
-      return (
-        <View>
-          <View style={{ borderRadius: R.card, padding: 20, backgroundColor: th.hero, overflow: 'hidden' }}>
-            <Text style={{ fontFamily: F.semi, fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>{t('Customer ko bhej diya')}</Text>
-            <Text style={{ fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: '#fff', marginTop: 4 }}>{t('Chamak gayi!')}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 22, marginTop: 14 }}>
-              {stat(t12(wd.finished_at), t('Khatam'))}
-              {stat(`${wd.minutes ?? '–'} min`, t('Time'))}
-              {stat(`${wd.water_litres ?? '–'} L`, t('Paani'))}
-              {stars ? stat('★'.repeat(stars), t('Rating')) : null}
-            </View>
-          </View>
-          <View style={{ marginTop: 14 }}>
-            {nxReg && nxCar
-              ? <Button variant="gold" iconRight="arrow" label={t(`Agli gaadi: ${nxCar.model}`)} onPress={() => act.setCurrent(nxReg)} />
-              : <Button variant="gold" iconRight="arrow" label={t('Aaj ka hisaab dekho')} onPress={goPaisa} />}
-          </View>
-        </View>
-      );
-    }
-    // skipped
-    return (
-      <View>
-        <View style={{ ...cardBox(th), padding: 16, ...cardShadow(th) }}>
-          <Text style={{ fontFamily: F.medium, fontSize: 12, color: th.fg3 }}>{t('Skip kiya')}</Text>
-          <Text style={{ fontFamily: F.semi, fontSize: 18, lineHeight: 24, color: th.fg }}>{wd.skip_reason || t('Skip')}</Text>
-          <Text style={{ fontFamily: F.body, fontSize: 14, color: th.fg3, marginTop: 4 }}>{t('Customer ko wajah dikh rahi hai.')}</Text>
-          <View style={{ marginTop: 12 }}><Button variant="ghost" icon="redo" label={t('Galti se hua? Wapas kholo')} onPress={() => act.unskip(reg)} /></View>
-        </View>
-        {nxReg && nxCar ? <View style={{ marginTop: 14 }}><Button variant="gold" iconRight="arrow" label={t(`Agli gaadi: ${nxCar.model}`)} onPress={() => act.setCurrent(nxReg)} /></View> : null}
-      </View>
-    );
-  };
+  /* the one main action, in the sticky bar */
+  const mins = wd?.started_at ? Math.max(0, Math.round((Date.now() - Date.parse(wd.started_at)) / 60000)) : 0;
+  const nextBar = nxReg && nxCar
+    ? { label: t(`Agli gaadi: ${nxCar.model}`), onPress: () => act.setCurrent(nxReg) }
+    : { label: t('Aaj ka hisaab dekho'), onPress: goPaisa };
+  let bar: { label: string; onPress: () => void; summary?: string; summaryLabel?: string; variant?: 'primary' | 'secondary' };
+  if (!wd) bar = { label: t('Round shuru karo'), onPress: () => { act.startRound() }, summary: t(`${route().length} gaadi`), summaryLabel: t('Aaj ka round') };
+  else if (st === 'scheduled') bar = { label: t('Nikla · gaadi ki taraf'), onPress: () => act.onTheWay(reg), summary: `ETA ${hm12(wd.eta)}`, summaryLabel: t('Abhi tak nikle nahi') };
+  else if (st === 'on_the_way') bar = { label: t('Pahuncha · gaadi ke paas'), onPress: () => act.arrived(reg), summary: `ETA ${hm12(wd.eta)}`, summaryLabel: t('Raste mein') };
+  else if (st === 'arrived') bar = { label: t('Wash shuru karo'), onPress: startWash, summary: t(`${tasks.length} kaam`), summaryLabel: t('Pahunch gaye') };
+  else if (st === 'washing') bar = { label: t('Wash khatam karo'), onPress: photosOk ? finish : () => act.needPhoto(reg), variant: photosOk ? 'primary' : 'secondary', summary: `${tdone} of ${tasks.length} tasks`, summaryLabel: `${mins} min` };
+  else if (st === 'done') bar = { ...nextBar, summary: `${wd.minutes ?? '–'} min`, summaryLabel: t('Ho gaya') };
+  else bar = nxReg && nxCar ? { ...nextBar, summary: t('Skip kiya'), summaryLabel: t('Aaj ke liye') } : { label: t('Round par wapas'), onPress: leave, summary: t('Skip kiya'), summaryLabel: t('Aaj ke liye') };
+
+  const photoHint = need && need.sunday
+    ? t(`Pehle ki ${Math.max(0, MIN_BEFORE - need.before)}, baad ki ${Math.max(0, MIN_PHOTOS - afterN)} aur andar ki ${need.missing.length} photo baaki hain, phir wash band hogi`)
+    : t(`Pehle ki ${Math.min(need ? need.before : 0, MIN_BEFORE)}/${MIN_BEFORE} aur baad ki ${Math.min(afterN, MIN_PHOTOS)}/${MIN_PHOTOS} photo lo, phir wash band hogi`);
 
   return (
     <View style={{ flex: 1, backgroundColor: th.bg }}>
-      <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
-        <Stage reg={reg} st={st} />
-        <PartnerStrip />
-        <View style={{ paddingHorizontal: 16 }}>
-          <DashCard style={{ marginTop: 12, paddingVertical: 8, paddingHorizontal: 8 }}><StepTrack steps={steps} /></DashCard>
+      <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+        <ScreenBar title={car.house} back onBack={goRound} />
+        <View style={{ paddingHorizontal: 16, gap: 12 }}>
+          <CarHeader reg={reg} st={st} />
+          <Stepper steps={steps} />
 
-          {reqs.length ? (
-            <View style={{ marginTop: 18, gap: 10 }}>
-              {reqs.map(q => <ReqCard key={q.id} q={q} customer={car.customer} />)}
-            </View>
-          ) : null}
+          {st === 'washing' ? <View style={{ alignItems: 'center' }}><WorkingArt width={220} /></View> : null}
 
-          {late ? (
-            <View accessibilityRole="alert" style={{ marginTop: 18, flexDirection: 'row', gap: 10, alignItems: 'center', padding: 14, borderRadius: R.card, backgroundColor: 'rgba(232,56,79,0.12)' }}>
-              <IconBubble icon="warn" size={40} tint={brand.red} bg="rgba(232,56,79,0.16)" />
-              <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 15, color: brand.red }}>{t('Late · slot khatam ho gaya')}</Text>
-            </View>
-          ) : null}
-
-          <View style={{ marginTop: 18 }}>{main()}</View>
-
-          {wd && st === 'done' && wd.addons && wd.addons.length ? <ExtrasRow addons={wd.addons} /> : null}
-
-          <SecHead title={t('Aaj ke kaam')} meta={`${tdone}/${tasks.length}${can ? '' : t(' · wash shuru hone pe tick karo')}`} />
-          <ProgressBar fraction={tasks.length ? tdone / tasks.length : 0} height={6} style={{ marginBottom: 12 }} />
-          <View style={{ gap: 12 }}>
-            {tasks.map(tk => (
-              <TaskRow key={tk.key} k={tk.key} done={tk.done} doneAt={tk.done_at} can={can} onPress={() => act.task(reg, tk.key)} />
-            ))}
-          </View>
-
-          {st === 'washing' && wd?.started_at ? <WashGuide startedAt={wd.started_at} interiorFrom={wd.interior_from} onTakePhoto={() => { void shoot('after') }} /> : null}
-
-          {st === 'washing' && wd?.started_at && !isSundayIST(wd.started_at)
-            ? (wd.interior ? <ExtrasRow addons={wd.addons || []} compact /> : <InteriorButton reg={reg} />)
-            : null}
-
-          <SecHead title={t('Photo')} meta={t(`Gaadi ki kam se kam ${MIN_PHOTOS} photo zaroori`)} />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            {(['after', 'issue'] as const).map(k => (
-              <Shot key={k} kind={k} list={photosOf(k)} enabled={!!wd} onTake={() => { void shoot(k) }} onView={() => viewShot(k)} />
-            ))}
-          </View>
-
-          {sunday && wd ? (
+          {reqs.map(q => <ReqCard key={q.id} q={q} customer={car.customer} />)}
+          {late ? <NoteRow icon="warn" tone="red">{t('Late · slot khatam ho gaya')}</NoteRow> : null}
+          {pre && sk ? (
             <>
-              <SecHead title={t('Andar ki photo')} meta={`${SPOTS.filter(sp => wd.photos.some(p => p.spot === sp.key)).length}/${SPOTS.length}`} />
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }}>
-                {SPOTS.map(sp => {
-                  const got = wd.photos.filter(p => p.spot === sp.key).slice(-1)[0];
-                  const pendSrc = spotPend[sp.key];
-                  const src = pendSrc || (got ? photoSrc(got) : undefined);
-                  return (
-                    <View key={sp.key} style={{ width: '48.5%' }}>
-                      <Pressy onPress={pendSrc || st !== 'washing' ? undefined : () => { void shoot('after', sp.key) }} accessibilityLabel={t(sp.label)} scaleTo={0.94}
-                        style={{ width: '100%', aspectRatio: 1, borderRadius: R.card, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', gap: 8,
-                          backgroundColor: th.tile2 }}>
-                        {src ? <Image source={{ uri: src }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : <View style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(84,9,218,0.08)' }}><Icon name="cam" size={22} color={th.primary} /></View>}
-                        {pendSrc ? (
-                          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(17,17,20,0.45)', alignItems: 'center', justifyContent: 'center' }]}>
-                            <ActivityIndicator color="#fff" size="large" />
-                          </View>
-                        ) : null}
-                        {got && !pendSrc ? (
-                          <View style={{ position: 'absolute', right: 8, top: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: th.primary, alignItems: 'center', justifyContent: 'center' }}>
-                            <Icon name="check" size={16} color="#fff" />
-                          </View>
-                        ) : null}
-                        {src ? (
-                          <View style={{ position: 'absolute', left: 8, bottom: 8, right: 8, flexDirection: 'row' }}>
-                            <View style={{ flexShrink: 1, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.6)' }}>
-                              <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 11, color: '#fff' }}>{t(sp.label)}</Text>
-                            </View>
-                          </View>
-                        ) : <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 13, color: th.fg2, textAlign: 'center', paddingHorizontal: 6 }}>{t(sp.label)}</Text>}
-                      </Pressy>
-                    </View>
-                  );
-                })}
-              </View>
+              <NoteRow icon="pause" tone="red"><Text style={{ fontFamily: F.semi }}>{t('Customer ne aaj mana kiya hai.')}</Text> {sk.text || t('Kal wash mat karna.')}</NoteRow>
+              <Group><Row icon="pause" label={t('Skip karo · customer ne mana kiya')} destructive onPress={() => act.skip(reg, 'Customer ne mana kiya')} /></Group>
+            </>
+          ) : null}
+        </View>
+
+        <View style={{ paddingHorizontal: 16 }}>
+          {!wd ? <View style={{ marginTop: 12 }}><NoteRow icon="clock" tone="violet">{t('Round abhi shuru nahi hua. Shuru karte hi saare customers ko time chala jayega.')}</NoteRow></View> : null}
+
+          {pre ? (
+            <>
+              <StartCapture key={reg} info={startInfo} />
+              <SectionLabel>{t('Jagah')}</SectionLabel>
+              <Group>
+                <Row icon="pin" label={car.house} sub={[car.spot, car.keys].filter(Boolean).join(' · ') || undefined} />
+                {st !== 'arrived' ? <Row icon="drop" label={t('Seedha wash shuru karo')} sub={t('Nikla / Pahuncha ke bina')} onPress={startWash} /> : null}
+              </Group>
+            </>
+          ) : null}
+
+          {wd && st === 'done' ? (
+            <>
+              <SectionLabel>{t('Customer ko bhej diya')}</SectionLabel>
+              <Group>
+                <Row icon="clock" label={t('Khatam')} value={t12(wd.finished_at)} />
+                <Row icon="drop" label={t('Time')} value={`${wd.minutes ?? '–'} min`} />
+                <Row icon="drop" label={t('Paani')} value={`${wd.water_litres ?? '–'} L`} />
+                {RT[reg] ? <Row icon="star" label={t('Rating')} value={'★'.repeat(RT[reg])} /> : null}
+              </Group>
+              <ReportSummary wd={wd} />
+              {wd.addons && wd.addons.length ? <ExtrasRow addons={wd.addons} /> : null}
+            </>
+          ) : null}
+
+          {wd && st === 'skipped' ? (
+            <>
+              <SectionLabel>{t('Skip kiya')}</SectionLabel>
+              <Group>
+                <Row icon="pause" label={wd.skip_reason || t('Skip')} sub={t('Customer ko wajah dikh rahi hai.')} />
+                <Row icon="redo" label={t('Galti se hua? Wapas kholo')} onPress={() => act.unskip(reg)} />
+              </Group>
+            </>
+          ) : null}
+
+          {st !== 'skipped' ? (
+            <>
+              <SectionLabel>{`${t('Aaj ke kaam')} · ${tdone}/${tasks.length}${can || st === 'done' ? '' : t(' · wash shuru hone pe tick karo')}`}</SectionLabel>
+              <Group>
+                {tasks.map(tk => <TaskRow key={tk.key} k={tk.key} done={tk.done} doneAt={tk.done_at} can={can} onPress={() => act.task(reg, tk.key)} />)}
+              </Group>
+            </>
+          ) : null}
+
+          {st === 'washing' && wd?.started_at ? (
+            <>
+              <SectionLabel>{t('Abhi ka kadam')}</SectionLabel>
+              <WashGuide startedAt={wd.started_at} interiorFrom={wd.interior_from} onTakePhoto={() => { void shoot('after') }} />
+              {!isSundayIST(wd.started_at) ? (
+                <View style={{ marginTop: 12 }}>
+                  {wd.interior ? <ExtrasRow addons={wd.addons || []} compact /> : <InteriorButton reg={reg} />}
+                </View>
+              ) : null}
             </>
           ) : null}
 
           {wd && st === 'washing' ? (
-            <View style={{ marginTop: 18 }}>
-              <PrimaryButton off={!photosOk} icon="check" label={t('Wash khatam karo')} onPress={photosOk ? finish : () => act.needPhoto(reg)} />
-              <DemoNote>{photosOk ? t('Aakhri kadam. Customer ko photo ke saath chala jayega') : need && need.sunday
-                ? t(`Gaadi ki ${Math.max(0, MIN_PHOTOS - afterN)} photo aur andar ki ${need.missing.length} photo baaki hain, phir wash band hogi`)
-                : t(`Gaadi ki ${MIN_PHOTOS} photo lo (${Math.min(afterN, MIN_PHOTOS)}/${MIN_PHOTOS}), phir wash band hogi`)}</DemoNote>
-            </View>
+            <>
+              <SectionLabel>{`${t('Report')} · ${t('Kuch hua to yahan tap karo')}`}</SectionLabel>
+              <ReportSection reg={reg} wd={wd} />
+            </>
           ) : null}
+
+          {st !== 'skipped' ? (
+            <>
+              <SectionLabel>{t('Photo')}</SectionLabel>
+              <Group>
+                <View style={{ padding: 14, gap: 12 }}>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    {(['before', 'after', 'issue'] as const).map(k => (
+                      <Shot key={k} kind={k} list={photosOf(k)} enabled={!!wd} onTake={() => { void shoot(k) }} onView={() => viewShot(k)} />
+                    ))}
+                  </View>
+                  <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 17, color: th.grey }}>{t(`Pehle ki 1 aur baad ki kam se kam ${MIN_PHOTOS} photo zaroori`)}</Text>
+                </View>
+              </Group>
+            </>
+          ) : null}
+
+          {sunday && wd ? (
+            <>
+              <SectionLabel>{`${t('Andar ki photo')} · ${SPOTS.filter(sp => wd.photos.some(p => p.spot === sp.key)).length}/${SPOTS.length}`}</SectionLabel>
+              <Group>
+                <View style={{ padding: 14, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 14 }}>
+                  {SPOTS.map(sp => {
+                    const got = wd.photos.filter(p => p.spot === sp.key).slice(-1)[0];
+                    const pendSrc = spotPend[sp.key];
+                    const src = pendSrc || (got ? photoSrc(got) : undefined);
+                    return (
+                      <View key={sp.key} style={{ width: '48%' }}>
+                        <Pressy onPress={pendSrc || st !== 'washing' ? undefined : () => { void shoot('inside', sp.key) }} accessibilityLabel={t(sp.label)} scaleTo={0.95}
+                          style={{ width: '100%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: src ? th.tile2 : 'transparent', borderWidth: src ? 0 : 1.5, borderStyle: 'dashed', borderColor: th.dash }}>
+                          {src ? <Image source={{ uri: src }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : <Icon name="cam" size={22} color={th.grey} />}
+                          {pendSrc ? <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(17,17,20,0.45)', alignItems: 'center', justifyContent: 'center' }]}><ActivityIndicator color="#fff" size="large" /></View> : null}
+                          {got && !pendSrc ? <View style={{ position: 'absolute', right: 6, top: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: th.primary, alignItems: 'center', justifyContent: 'center' }}><Icon name="check" size={14} color="#fff" /></View> : null}
+                        </Pressy>
+                        <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: th.grey, textAlign: 'center', marginTop: 6 }}>{t(sp.label)}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </Group>
+            </>
+          ) : null}
+
+          {wd && st === 'washing' && !photosOk ? <View style={{ marginTop: 12 }}><NoteRow icon="cam" tone="amber">{photoHint}</NoteRow></View> : null}
 
           {wd ? (
-            <View style={{ marginTop: 22 }}>
-              <DashCard onPress={() => openNoteSheet(reg, car.customer, wd.washer_note)} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', padding: 12, minHeight: 64 }}>
-                <IconBubble icon="note" size={36} tint={th.primary} bg="rgba(84,9,218,0.08)" />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: F.semi, fontSize: 15, color: th.fg }}>{wd.washer_note ? t('Customer ke liye note') : t('Customer ko kuch batana hai?')}</Text>
-                  <Text style={{ fontFamily: F.body, fontSize: 12.5, color: th.fg3 }}>{wd.washer_note ? wd.washer_note : t('Scratch, tyre, kuch bhi. Unke app mein dikhega.')}</Text>
-                </View>
-              </DashCard>
-            </View>
+            <>
+              <SectionLabel>{t('Customer')}</SectionLabel>
+              <Group>
+                <Row icon="note" label={wd.washer_note ? t('Customer ke liye note') : t('Customer ko kuch batana hai?')} sub={wd.washer_note || t('Scratch, tyre, kuch bhi. Unke app mein dikhega.')} onPress={() => openNoteSheet(reg, car.customer, wd.washer_note)} />
+                {!['done', 'skipped'].includes(st) ? <Row icon="pause" label={t('Gaadi nahi dho paye? Skip karo')} onPress={() => openSkipSheet(reg, car.customer)} /> : null}
+              </Group>
+            </>
           ) : null}
-
-          {wd && !['done', 'skipped'].includes(st)
-            ? <View style={{ alignItems: 'center', marginTop: 14 }}><LinkButton label={t('Gaadi nahi dho paye? Skip karo')} onPress={() => openSkipSheet(reg, car.customer)} /></View>
-            : null}
         </View>
-        <Footer />
       </PullToRefresh>
+      <StickyBar label={bar.label} onPress={bar.onPress} summary={bar.summary} summaryLabel={bar.summaryLabel} variant={bar.variant || 'primary'} />
     </View>
   );
 }

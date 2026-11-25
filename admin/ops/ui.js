@@ -38,7 +38,7 @@ const IC = {
 const ic = (n, s = 20, w = 2) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ''}</svg>`;
 
 /* ---------------- state + prefs ---------------- */
-const UI = { sec: 'live', sheet: null, bk: { tab: 'instant', chip: 'open', q: '' }, mo: { chip: 'active' }, pay: { chip: 'paid' }, map: null, sheetMap: null, etaEdited: false, seeded: false, seen: new Set() };
+const UI = { sec: 'live', sheet: null, bk: { tab: 'instant', chip: 'open', q: '' }, mo: { chip: 'active' }, pay: { chip: 'paid' }, rd: { tab: 'board' }, map: null, sheetMap: null, etaEdited: false, seeded: false, seen: new Set() };
 const pref = (k, d) => tryLS(() => { const v = localStorage.getItem('wdops_' + k); return v === null ? d : v === '1' }, d);
 const setPref = (k, v) => tryLS(() => localStorage.setItem('wdops_' + k, v ? '1' : '0'));
 UI.sound = pref('sound', true);
@@ -256,6 +256,7 @@ function closeSheet(quiet) {
 const gone = () => empty('This booking is gone.');
 
 const SH = {
+  wash: { update: washSheet },
   assign: {
     update(el) {
       const j = OPS.job(UI.sheet.id); if (!j) return setHTML(R('sum', el), gone());
@@ -435,6 +436,11 @@ document.addEventListener('click', async e => {
     case 'reassign': return openAssign(id);
     case 'washer': return openWasher(ph);
     case 'monthly': return openMonthly(ph);
+    case 'rday': return OPSB.setDay(OPSB.add(OPSB.day, num(t.dataset.d)));
+    case 'rtab': UI.rd.tab = t.dataset.v; return SECS.rounds.update();
+    case 'wash': return openSheet('wash', id, `${shHead('Wash')}<div data-r="sum"></div>`);
+    case 'zoom': { const d = $('#dlg'), prev = document.activeElement; d.innerHTML = `<div class="dlg-box" style="max-width:640px;padding:8px"><img src="${esc(t.dataset.src)}" alt="Photo" style="width:100%;border-radius:12px"><div class="dlg-a"><button type="button" class="btn ghost" id="dNo">Close</button></div></div>`; d.hidden = false; dlgCancel = () => { d.hidden = true; d.innerHTML = ''; dlgCancel = null; try { prev && prev.focus() } catch (x) {} }; $('#dNo').onclick = dlgCancel; return }
+    case 'markpaid': { const w = OPS.S.washers[ph]; const v = await ask({ title: 'Mark ' + (w ? w.name : ph) + ' paid', body: `${esc(OPSB.month)} earnings: ${OPS.rs(num(t.dataset.total))}`, fields: [{ id: 'ref', label: 'Payment reference (UPI id or note)', ph: 'optional' }], ok: 'Mark paid' }); return v && run(OPSB.markPaid(ph, num(t.dataset.total), v.ref), 'Marked paid.') }
     case 'close': return closeSheet();
     case 'toastx': return t.parentElement.remove();
     case 'stage': return doStage(id, t.dataset.st);
@@ -460,6 +466,7 @@ document.addEventListener('keydown', e => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role="button"][data-act]')) { e.preventDefault(); e.target.click() }
 });
 $('#scrim').addEventListener('click', () => { if ($('#dlg').hidden) closeSheet() });
+document.addEventListener('change', e => { if (e.target.id === 'rMonth' && e.target.value) OPSB.setMonth(e.target.value) });
 document.addEventListener('input', e => {
   if (e.target.id === 'bkQ') { UI.bk.q = e.target.value; SECS.bookings.update() }
 });
@@ -484,6 +491,63 @@ function watchNew() {
     if (UI.sound) chime();
     try { if (window.Notification && Notification.permission === 'granted') new Notification('New booking', { body: `${j.service}, ${area}`, tag: 'wd-' + j.id }) } catch (e) {}
   });
+}
+
+/* ---------------- rounds (washer-produced data: washes, attendance, earnings, ratings) ---------------- */
+const WSTATUS = { scheduled: 'Waiting', on_the_way: 'On the way', arrived: 'Arrived', washing: 'Washing', done: 'Done', skipped: 'Skipped' };
+const WCLS = { scheduled: '', on_the_way: 'blue', arrived: 'blue', washing: 'violet', done: 'green', skipped: 'amber' };
+const SPOTS = { driver_mat: 'Driver mat', passenger_mat: 'Passenger mat', back_seat: 'Back seat', boot: 'Boot', dashboard: 'Dashboard' };
+const safeSrc = u => /^(https:\/\/|\/_blob\/|data:image\/(jpeg|webp|png);base64,)/.test(String(u || '')) ? u : '';
+const lbl = s => (s || '').replace(/_/g, ' ');
+const rsl = loaded => loaded === 'err' ? empty('Could not load. The rules for this collection may not be published yet.') : loaded ? '' : empty('Loading…');
+function boardView() {
+  const g = OPSB.board(), st = OPSB.S.loaded.washes; if (!g.length) return rsl(st) || empty('No washes on ' + dShort(OPSB.day) + '. The washer app makes them when the round starts.');
+  return `<div class="grid2 g3">${g.map(x => `<div class="wc"><div class="wc-h"><div class="gr"><b>${esc(x.name)}</b><small>Round ${esc(x.round)} · ${x.total} cars</small></div>${x.late ? `<span class="pill red">${x.late} late</span>` : ''}</div>
+    <div class="mini" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">${OPSB.ORDER.filter(k => x.counts[k]).map(k => `<span class="pill ${WCLS[k]}">${WSTATUS[k]} ${x.counts[k]}</span>`).join('')}</div>
+    ${x.cars.map(w => `<button type="button" class="rowc" data-act="wash" data-id="${esc(w.id)}" style="margin-top:6px;${OPSB.isLate(w) ? 'box-shadow:inset 4px 0 0 var(--red),var(--sh-card)' : ''}"><div class="gr"><b>${esc(w.car_label || w.reg)}</b><span class="s">${esc(w.reg || '')}${w.sunday ? ' · Sunday' : ''}${w.carried_task ? ' · carried interior' : ''}${w.skip_reason ? ' · ' + esc(w.skip_reason) : ''}</span></div>${OPSB.isLate(w) ? '<span class="pill red">Late</span>' : ''}<span class="pill ${WCLS[w.status] || ''}">${WSTATUS[w.status] || esc(w.status || 'Waiting')}</span></button>`).join('')}</div>`).join('')}</div>`;
+}
+function attView() {
+  const a = OPSB.attendance(), L = OPSB.S.loaded.att; if (!a.rows.length && !a.absent.length) return rsl(L) || empty('No check-ins on ' + dShort(OPSB.day) + '.');
+  return `<div class="cardlist">${a.rows.map(r => `<div class="rowc plain"><div class="gr"><b>${esc(r.name)}</b><span class="s">In ${esc(OPS.fmtTime(r.check_in_at) || '-')} · out ${esc(OPS.fmtTime(r.check_out_at) || 'still working')} · ${num(r.hours).toFixed(1)} h</span><span class="s">${num(r.cars_done)} done · ${num(r.cars_skipped)} skipped${r.last_seen_at ? ' · seen ' + esc(OPS.ago(r.last_seen_at)) : ''}</span></div>${safeSrc(r.check_in_photo) ? `<img class="avatar" src="${esc(r.check_in_photo)}" alt="Check-in selfie" data-act="zoom" data-src="${esc(r.check_in_photo)}">` : ''}</div>`).join('')}
+    ${a.absent.map(r => `<div class="rowc plain"><div class="gr"><b>${esc(r.name)}</b><span class="s">Has a round but no check-in</span></div><span class="pill red">Absent</span></div>`).join('')}</div>`;
+}
+function skipView() {
+  const k = OPSB.skips(); if (!k.length) return rsl(OPSB.S.loaded.washes) || empty('No skipped cars on ' + dShort(OPSB.day) + '.');
+  return `<div class="cardlist">${k.map(w => `<button type="button" class="rowc" data-act="wash" data-id="${esc(w.id)}"><div class="gr"><b>${esc(w.car_label || w.reg)} <small>${esc(w.reg || '')}</small></b><span class="s">${esc(w.washer)}</span><span class="s">${w.skip_reason ? esc(w.skip_reason) : '<b style="color:var(--red)">No reason given</b>'}</span></div><span class="pill amber">Skipped</span></button>`).join('')}</div>`;
+}
+function intView() {
+  const l = OPSB.interiors(); if (!l.length) return rsl(OPSB.S.loaded.washes) || empty('No Sunday interiors carried over in the last 14 days.');
+  return `<div class="cardlist">${l.map(x => `<div class="rowc plain"><div class="gr"><b>${esc(x.car || x.reg)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)} · Sunday ${esc(dShort(x.from || ''))} to ${esc(dShort(x.to))}</span></div><span class="pill ${x.done ? 'green' : 'amber'}">${x.done ? 'Done' : 'Pending'}</span></div>`).join('')}</div>`;
+}
+function earnView() {
+  const l = OPSB.ledger(), tot = l.reduce((s, r) => s + r.total, 0), due = l.filter(r => !r.payout).reduce((s, r) => s + r.total, 0);
+  const mo = `<div class="page-h" style="margin-top:0"><h3 style="margin:0">Month</h3><input class="field" type="month" id="rMonth" value="${esc(OPSB.month)}" style="width:auto;min-height:40px"></div>`;
+  if (!l.length) return mo + (rsl(OPSB.S.loaded.earn) || empty('No earnings for ' + OPSB.month + ' yet.'));
+  return `${mo}<div class="kpis"><div class="kpi"><b>${OPS.rs(tot)}</b><span>Earned</span></div><div class="kpi ${due ? 'red' : ''}"><b>${OPS.rs(due)}</b><span>Still to pay</span></div></div>
+   <div class="cardlist">${l.map(r => `<div class="rowc plain"><div class="gr"><b>${esc(r.name)}</b><span class="s">${r.days} days · washes ${OPS.rs(r.washes)} · extras ${OPS.rs(r.extras)} · bonus ${OPS.rs(r.bonus)}</span><span class="s"><b>${OPS.rs(r.total)}</b>${r.payout ? ` · paid ${esc(dShort(String(r.payout.paid_at || '').slice(0, 10)))}${r.payout.ref ? ' · ' + esc(r.payout.ref) : ''}${num(r.payout.total) !== Math.round(r.total) ? ' (paid ' + OPS.rs(r.payout.total) + ')' : ''}` : ''}</span></div>${r.payout ? '<span class="pill green">Paid</span>' : `<button type="button" class="btn sm go" data-act="markpaid" data-phone="${esc(r.phone)}" data-total="${Math.round(r.total)}">Mark paid</button>`}</div>`).join('')}</div>`;
+}
+function fbView() {
+  const l = OPSB.feedback(); if (!l.length) return rsl(OPSB.S.loaded.rat) || empty('No low ratings or open complaints.');
+  return `<div class="cardlist">${l.map(x => `<div class="rowc plain"><div class="gr"><b>${x.kind === 'rating' ? '&#9733;'.repeat(num(x.stars)) + ' rating' : 'Complaint' + (x.type ? ': ' + esc(x.type) : '')}</b><span class="s">${esc(x.reg || '')}${x.date ? ' · ' + esc(dShort(x.date)) : ''}${x.washer ? ' · ' + esc(x.washer) : ''}${x.tag ? ' · ' + esc(x.tag) : ''}</span>${x.text ? `<span class="s">${esc(x.text)}</span>` : ''}</div><span class="pill ${x.kind === 'rating' ? 'amber' : 'red'}">${x.kind === 'rating' ? 'Low' : esc(x.status)}</span></div>`).join('')}</div>`;
+}
+function mgrView() {
+  const L = OPSB.S.loaded.washes; if (!L) return rsl(L);
+  const ab = OPSB.abandoned(), cm = OPSB.conditionMix(), ic = OPSB.issueCounts(), dl = OPSB.delays(), dm = OPSB.damage(), none = t => `<div class="mini" style="color:var(--grey)">${t}</div>`;
+  const carBtn = x => `<button type="button" class="rowc" data-act="wash" data-id="${esc(x.id)}"><div class="gr"><b>${esc(x.car)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)}</span>`;
+  return `<div class="sec"><h3>Abandoned jobs</h3></div>` + (ab.length ? `<div class="cardlist">${ab.map(x => carBtn(x) + `<span class="s">${esc(x.reason || 'No reason')} · ${x.minutes} min spent</span><span class="s">Done: ${x.tasks.length ? esc(x.tasks.map(lbl).join(', ')) : 'nothing'}${x.note ? ' · ' + esc(x.note) : ''}</span></div><span class="pill red">Stopped</span></button>`).join('')}</div>` : none('No abandoned jobs on ' + dShort(OPSB.day) + '.'))
+  + `<div class="sec"><h3>Car condition per washer</h3></div>` + (cm.length ? `<div class="cardlist">${cm.map(x => `<div class="rowc plain"><div class="gr"><b>${esc(x.washer)}</b><span class="s">${x.total} cars</span></div><span class="pill">Light ${x.light}</span><span class="pill blue">Normal ${x.normal}</span><span class="pill ${x.heavy ? 'amber' : ''}">Heavy ${x.heavy}</span></div>`).join('')}</div>` : none('No condition recorded yet.'))
+  + `<div class="sec"><h3>Issues by type</h3></div>` + (ic.length ? `<div class="cardlist">${ic.map(x => `<div class="rowc plain"><div class="gr"><b>${esc(x.label)}</b><span class="s">${x.cars.map(c => esc(c.car + ' (' + c.reg + ')')).join(', ')}</span></div><span class="pill amber">${x.cars.length}</span></div>`).join('')}</div>` : none('No issues reported.'))
+  + `<div class="sec"><h3>Delay reasons</h3></div>` + (dl.length ? `<div class="cardlist">${dl.map(x => `<div class="rowc plain"><div class="gr"><b>${esc(x.car)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)}</span><span class="s">${esc(x.reason)}</span></div></div>`).join('')}</div>` : none('No delay reasons.'))
+  + `<div class="sec"><h3>Damage notes</h3></div>` + (dm.length ? `<div class="cardlist">${dm.map(x => `<div class="rowc plain" style="align-items:flex-start"><div class="gr"><b>${esc(x.car)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)}</span><span class="s">${esc(x.note)}</span><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${x.photos.filter(p => safeSrc(p.src)).map(p => `<img src="${esc(p.src)}" alt="Issue photo" data-act="zoom" data-src="${esc(p.src)}" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:10px;cursor:pointer">`).join('')}</div></div></div>`).join('')}</div>` : none('No damage notes.'));
+}
+const ROUNDS = { mgr: mgrView, board: boardView, att: attView, skips: skipView, int: intView, earn: earnView, fb: fbView };
+function washSheet(el) {
+  const w = OPSB.S.washes[UI.sheet.id]; if (!w) return setHTML(R('sum', el), empty('This wash is gone.'));
+  const ph = OPSB.photos(w).filter(p => safeSrc(p.src)), grp = (title, list) => list.length ? `<div class="sh-sec">${title}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${list.map(p => `<figure style="margin:0;width:104px"><img src="${esc(p.src)}" alt="${esc(title)}" data-act="zoom" data-src="${esc(p.src)}" loading="lazy" style="width:104px;height:104px;object-fit:cover;border-radius:12px;cursor:pointer"><figcaption style="font-size:11px;color:var(--grey)">${p.spot ? esc(SPOTS[p.spot] || lbl(p.spot)) + ' · ' : ''}${esc(OPS.fmtTime(p.at))}${p.pending_upload ? ' · uploading' : ''}</figcaption></figure>`).join('')}</div>` : '';
+  const t = (k, l) => w[k] ? `<dt>${l}</dt><dd>${esc(OPS.fmtTime(w[k]))}</dd>` : '';
+  setHTML(R('sum', el), `<div class="card"><b>${esc(w.car_label || w.reg)}</b> <small>${esc(w.reg || '')}</small> <span class="pill ${WCLS[w.status] || ''}">${WSTATUS[w.status] || esc(w.status || '')}</span>${OPSB.isLate(w) ? ' <span class="pill red">Late</span>' : ''}
+    <dl class="kv">${t('on_the_way_at', 'On the way')}${t('arrived_at', 'Arrived')}${t('started_at', 'Started')}${t('finished_at', 'Finished')}${w.skip_reason ? `<dt>Skipped because</dt><dd>${esc(w.skip_reason)}</dd>` : ''}${w.washer_note ? `<dt>Washer note</dt><dd>${esc(w.washer_note)}</dd>` : ''}${w.interior_carried_to ? `<dt>Interior</dt><dd>Carried to ${esc(dShort(w.interior_carried_to))}</dd>` : ''}${w.carried_from ? `<dt>Carried from</dt><dd>Sunday ${esc(dShort(w.carried_from))}</dd>` : ''}</dl></div>`
+    + (ph.length ? grp('Before', ph.filter(p => p.kind === 'before')) + grp('After', ph.filter(p => p.kind === 'after')) + grp('Inside (Sunday spots)', ph.filter(p => p.kind === 'inside')) + grp('Issue', ph.filter(p => p.kind === 'issue')) : empty('No photos on this wash.')));
 }
 
 /* ---------------- sections ---------------- */
@@ -585,6 +649,18 @@ const SECS = {
       }).join('') : empty(OPS.S.loaded.washers ? 'No washers yet. Add the first one.' : 'Loading…'));
     },
   },
+  rounds: {
+    title: 'Rounds',
+    build: () => `<div class="page-h"><h2>Rounds</h2><div class="btns" style="margin:0"><button class="btn sm ghost" type="button" data-act="rday" data-d="-1" aria-label="Previous day">&lsaquo;</button><input class="field" type="date" id="rDay" style="width:auto;min-height:40px" aria-label="Day"><button class="btn sm ghost" type="button" data-act="rday" data-d="1" aria-label="Next day">&rsaquo;</button></div></div>
+      <div class="seg" role="tablist" data-r="rtabs"></div><div data-r="rbody"></div>`,
+    init() { const d = $('#rDay'); d.value = OPSB.day; d.onchange = () => d.value && OPSB.setDay(d.value) },
+    update(m = $('#main')) {
+      const T = [['board', 'Board'], ['mgr', 'Issues'], ['att', 'Attendance'], ['skips', 'Skips'], ['int', 'Interiors'], ['earn', 'Earnings'], ['fb', 'Low ratings']];
+      setHTML(R('rtabs', m), T.map(([v, l]) => `<button type="button" role="tab" aria-selected="${UI.rd.tab === v}" class="${UI.rd.tab === v ? 'on' : ''}" data-act="rtab" data-v="${v}">${l}</button>`).join(''));
+      const d = $('#rDay', m); if (d && document.activeElement !== d && d.value !== OPSB.day) d.value = OPSB.day;
+      setHTML(R('rbody', m), ROUNDS[UI.rd.tab]());
+    },
+  },
   map: {
     title: 'Map',
     build: () => `<div class="page-h"><h2>Map</h2><button class="btn sm ghost" type="button" data-act="fit">Fit all</button></div><div class="map-wrap"><div><div class="mapbox tall" data-r="map"></div>${legend}</div><div class="map-side"><div class="sec"><h3>Washers</h3></div><div class="cardlist" data-r="ws"></div><div class="sec"><h3>Open jobs</h3></div><div class="cardlist" data-r="js"></div></div></div>`,
@@ -597,7 +673,7 @@ const SECS = {
     },
   },
 };
-const NAV = [['live', 'Live', 'live'], ['bookings', 'Bookings', 'list'], ['monthly', 'Monthly', 'users'], ['payments', 'Payments', 'card'], ['washers', 'Washers', 'wash'], ['map', 'Map', 'map']];
+const NAV = [['live', 'Live', 'live'], ['bookings', 'Bookings', 'list'], ['monthly', 'Monthly', 'users'], ['payments', 'Payments', 'card'], ['washers', 'Washers', 'wash'], ['rounds', 'Rounds', 'list'], ['map', 'Map', 'map']];
 
 function goto(sec, noHash) {
   if (!SECS[sec]) sec = 'live';
@@ -657,6 +733,7 @@ async function signedIn(u) {
     console.warn(e); try { OPS.stop && OPS.stop() } catch (x) {} try { WDAuth.signOut() } catch (x) {}
     return showGate(e && e.owner === false ? `${nice(u.phoneNumber || (WDAuth.phone && WDAuth.phone()))} is not an owner number.` : e && e.nodb ? "Couldn't connect. Check the internet." : "Couldn't load. Check the internet and sign in again.");
   }
+  try { OPSB.start(); OPSB.on(() => { if (UI.sec === 'rounds') SECS.rounds.update(); if (UI.sheet && UI.sheet.kind === 'wash') SH.wash.update($('#sheet')) }) } catch (e) { console.warn(e) }
   $('#who').textContent = nice(u.phoneNumber); $('#gate').hidden = true; show();
 }
 function show() {

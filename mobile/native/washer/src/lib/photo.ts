@@ -1,5 +1,5 @@
-// Wash proof photos and the washer's own photo. There is no file storage in the Firebase project, so a photo
-// travels inside the doc as a small inline image (contract: photos[].url, a data: thumbnail of ~30 KB).
+// Wash proof photos and the washer's own photo. A wash photo is uploaded to Firebase Storage (store.ts, Photos); the small
+// inline image made here (~30 KB) is the offline fallback and the on-screen preview until the upload is done.
 import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -29,7 +29,8 @@ export async function takeCarPhoto(): Promise<{ url: string; cut: boolean } | nu
 }
 
 // null when the washer backs out of the camera
-export async function takePhoto(opts: { selfie?: boolean; fromLibrary?: boolean; quality?: number } = {}): Promise<{ preview: string; url: string } | null> {
+// file: a 1280 px jpeg on disk for the Storage upload (the inline `url` is only the small offline fallback)
+export async function takePhoto(opts: { selfie?: boolean; fromLibrary?: boolean; quality?: number } = {}): Promise<{ preview: string; url: string; file?: string } | null> {
   if (!opts.fromLibrary && Platform.OS !== 'web') {
     const p = await ImagePicker.requestCameraPermissionsAsync();
     if (!p.granted) throw fail('Camera ki permission chahiye. Settings mein on karo.');
@@ -40,7 +41,12 @@ export async function takePhoto(opts: { selfie?: boolean; fromLibrary?: boolean;
   if (res.canceled || !res.assets?.[0]) return null;
   const uri = res.assets[0].uri;
   try {
-    return { preview: uri, url: await shrink(uri, opts.selfie ? 240 : 420, 0.62) };
+    const url = await shrink(uri, opts.selfie ? 240 : 420, 0.62);
+    let file: string | undefined;
+    if (!opts.selfie && Platform.OS !== 'web') {
+      try { file = (await manipulateAsync(uri, [{ resize: { width: 1280 } }], { compress: 0.7, format: SaveFormat.JPEG })).uri } catch { /* the inline copy still goes */ }
+    }
+    return { preview: uri, url, file };
   } catch (e) {
     throw fail('Photo nahi gayi. Dobara try karo');
   }
