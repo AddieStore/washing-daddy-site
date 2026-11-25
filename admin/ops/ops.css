@@ -270,3 +270,9 @@ main{padding:14px 16px calc(84px + env(safe-area-inset-bottom,0px));max-width:15
 .pchks{display:grid;grid-template-columns:1fr 1fr;gap:8px}@media (max-width:420px){.pchks{grid-template-columns:1fr}}
 .pchk{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r-ctl);background:var(--tint);font-size:13px;font-weight:500;cursor:pointer}
 .pchk input{width:18px;height:18px;accent-color:var(--violet);margin:0}
+
+/* embedded in WD HQ (?embed=1): HQ draws the header and the navigation, this page only shows its work area */
+html.embed .hdr,html.embed .bar,html.embed .demo-bar{display:none!important}
+html.embed .app{padding-left:0!important;padding-top:0!important}
+html.embed body{background:transparent}
+html.embed main{padding-bottom:32px!important}

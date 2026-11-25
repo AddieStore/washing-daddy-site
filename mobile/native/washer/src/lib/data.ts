@@ -79,7 +79,8 @@ const N8N_HOOKS = 'https://n8n.washingdaddy.com/webhook/';
 export const BOOK_URL = N8N_HOOKS + 'wd-washer-cars';
 export const ROUNDS_URL = N8N_HOOKS + 'wd-washer-rounds';   // list rounds / take a round (n8n workflow 16)
 export const PIN_URL = N8N_HOOKS + 'wd-washer-pin';   // phone + PIN login (n8n workflow 12)
-export const SHARE = 0.5;   // half of what a car pays is the washer's
+export let SHARE = 0.5;   // half of what a car pays is the washer's; HQ can change it (appcfg/customer.washerSharePct)
+export const setShare = (v: number) => { if (isFinite(v) && v >= 0.1 && v <= 0.9) SHARE = v };
 
 export const STATUS: Record<WashStatus, string> = { scheduled: 'Baaki', on_the_way: 'Raaste mein', arrived: 'Pahunch gaye', washing: 'Wash chal raha', done: 'Ho gaya', skipped: 'Skip' };
 export const SKIPS = ['Gaadi nahi mili', 'Baarish', 'Gate band tha', 'Customer ne mana kiya', 'Gaadi nikal chuki thi'];

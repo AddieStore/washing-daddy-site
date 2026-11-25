@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#5409DA">
+<title>WD HQ</title>
+<link rel="icon" type="image/png" href="/washer/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="hq.css">
+</head>
+<body>
+<header class="top">
+  <button class="brand" id="home" type="button" aria-label="Back to the depot"><span class="logo"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.2 6 10.4A6 6 0 0 1 6 13.4C6 9.2 12 3 12 3z"/></svg></span><span><b>WD HQ</b><small>Washing Daddy command centre</small></span></button>
+  <nav class="crumbs" id="crumbs" aria-label="Where you are"></nav>
+  <div class="grow"></div>
+  <select id="jump" aria-label="Go to a section"></select>
+  <a class="chip-link" id="stand" href="#" target="_blank" rel="noopener" hidden>Open full page</a>
+  <span class="demo" id="demoTag" hidden>Demo data</span>
+</header>
+<div class="shell" id="shell">
+  <aside class="rail" id="rail" aria-label="Sections"></aside>
+  <main class="stage" id="stage">
+    <section class="depot" id="depot" aria-label="The depot">
+      <div class="hello">
+        <h1>Everything in one yard</h1>
+        <p>Tap a building to change prices, services and content for the customer app, the website and the WD Partner app, to see your washers on the map, or to run today's bookings.</p>
+        <div class="apps" id="apps"></div>
+      </div>
+      <div class="scene" id="scene"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+    <section class="panel" id="panel" hidden>
+      <div class="phead"><div><h2 id="pt"></h2><p id="ps"></p></div><div class="tags" id="ptags"></div></div>
+      <div class="frame"><iframe id="frame" title="Section" loading="eager"></iframe><div class="skel" id="skel"><i></i><i></i><i></i></div></div>
+    </section>
+  </main>
+</div>
+<script src="hq.js"></script>
+</body>
+</html>

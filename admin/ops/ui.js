@@ -107,13 +107,8 @@ function mkMap(el, onPick) {
   if (window.L && L.map) {
     try {
       lm = L.map(el, { zoomControl: true, scrollWheelZoom: false }).setView([28.669, 77.096], 14);
-      const dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
-      // CARTO tiles first; if they fail to load (blocked or down), switch once to the OpenStreetMap tile server
-      const carto = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`, { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }).addTo(lm);
-      let fails = 0, loaded = 0, swapped = false;
-      carto.on('tileload', () => { loaded++ });
-      carto.on('tileerror', () => { if (swapped || loaded > 0 || ++fails < 3) return; swapped = true; lm.removeLayer(carto);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(lm) });
+      // OpenStreetMap tiles: CARTO's free tiles now answer with an "API key required" picture instead of failing, so they cannot be used
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(lm);
     } catch (e) { console.warn('leaflet', e); lm = null; el.innerHTML = ''; el.className = el.className.replace(/leaflet\S*/g, '') }
   }
   if (lm) {

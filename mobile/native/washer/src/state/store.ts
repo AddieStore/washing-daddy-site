@@ -11,7 +11,7 @@ import { backend, type Data, type DbError, type Unsub } from '../backend';
 import { isoIST, dateIST, addDaysStr, daysInMonth } from '../lib/time';
 import { PLAN, TASK, tasksFor, normReg, isPlan, type TaskKey } from '../lib/schedule';
 import {
-  WASHERS, ensureRound, PHONE_TO_WASHER, DEMO_ROSTER, DEMO_ROUND_META, type RoundInfo, ROUNDS_URL, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
+  WASHERS, ensureRound, PHONE_TO_WASHER, setShare, DEMO_ROSTER, DEMO_ROUND_META, type RoundInfo, ROUNDS_URL, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
   type Car, type Wash, type Req, type Job, type WasherDoc, type KitItem, type KitKind, type WasherInfo, type Photo,
 } from '../lib/data';
 import { setLang, t } from '../lib/i18n';
@@ -1168,6 +1168,10 @@ function demoExtras() {
 
 /* ---------------- boot ---------------- */
 let started = false;
+/** the washer's share of a wash is set in WD HQ (appcfg/customer.washerSharePct); read at start and whenever the app comes back */
+async function loadShare() {
+  try { const g: any = await (db as any).doc('appcfg/customer').get(); const v = Number(g && g.data && (typeof g.data === 'function' ? g.data() : g.data)?.washerSharePct); if (v >= 10 && v <= 90) { setShare(v / 100); emit() } } catch (e) { /* offline or demo: keep what we have */ }
+}
 export async function boot() {
   if (started) return; started = true;
   try { const x = JSON.parse((await AsyncStorage.getItem(KEY)) || 'null'); if (x && typeof x === 'object') S = Object.assign(S, x) } catch (e) { }
@@ -1177,6 +1181,7 @@ export async function boot() {
   view.syncMode = MODE;
   booted = true;
   if (REAL) {
+    void loadShare();
     // a saved test login (OTP 1234) is not a real sign-in
     if (S.session && !S.session.real) { S.session = null; save() }
     const phone = await auth.ready();
@@ -1196,7 +1201,7 @@ export async function boot() {
     if (d !== DAY && view.authStep === 'in') { DAY = d; RT = {}; ensureDay(); Book.load(); Sync.listen(); emit() }
   }, 60000);
 }
-export const onForeground = () => { Sync.flush(); Photos.retry() };
+export const onForeground = () => { Sync.flush(); Photos.retry(); if (REAL) void loadShare() };
 
 /* ---------------- sync status, as the chip shows it ---------------- */
 export function syncState(): ['connecting' | 'demo' | 'wait' | 'offline' | 'live', string, string] {

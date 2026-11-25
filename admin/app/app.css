@@ -348,3 +348,9 @@ main{max-width:1180px;margin:0 auto;padding:16px 16px 0}
 /* link to WD Operations */
 .hdr-link{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border-radius:999px;background:#fff;color:var(--violet);font-weight:600;font-size:12px;text-decoration:none;white-space:nowrap}
 .hdr-link:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* embedded in WD HQ (?embed=1): HQ draws the header and the navigation, this page only shows its work area */
+html.embed .hdr,html.embed .bar,html.embed .demo-bar{display:none!important}
+html.embed .app{padding-left:0!important;padding-top:0!important}
+html.embed body{background:transparent}
+html.embed main{padding-bottom:32px!important}

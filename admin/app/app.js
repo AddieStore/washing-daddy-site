@@ -252,6 +252,12 @@ function buildBar() {
   $('#bar').innerHTML = `<div class="bar-brand"><div class="logo">${ic('droplet' in P ? 'drop' : 'sparkle', 20, 2)}</div>Washing Daddy</div>` + TABS.map(t => `<button class="press ${t.id === tab ? 'on' : ''}" data-a="tab" data-id="${t.id}" aria-label="${t.name}">${ic(t.icon, 24)}<span class="bl">${t.name}</span></button>`).join('');
   $('#hLogo').innerHTML = ic('drop', 22, 2);
 }
+window.addEventListener('hashchange', () => {
+  const p = (location.hash || '').slice(1).split('/'); if (!TABS.find(t => t.id === p[0])) return;
+  tab = p[0]; if (p[1]) { if (tab === 'catalog') UI.kind = p[1]; if (tab === 'content') UI.ctab = p[1]; if (tab === 'offers') UI.offer = p[1] }
+  if (tab === 'catalog' && p[2]) UI.view = p[2];
+  try { buildBar(); rerender(true); window.scrollTo({ top: 0 }) } catch (e) { console.error(e) }
+});
 function setTab(id) { tab = id; history.replaceState(null, '', '#' + id); buildBar(); rerender(true); window.scrollTo({ top: 0 }) }
 
 let dirty = false;
@@ -397,6 +403,7 @@ function screenSettings() {
   <div class="card rise"><div class="ch-title" style="padding:0"><b>Fees</b><small>Shown in the app, n8n re-prices on the server</small></div>
     <div class="row2">${fld('Convenience fee', 'fees.convenience', { t: 'num', money: 1, first: 1 })}${fld('Free above', 'fees.convenienceBelow', { t: 'num', money: 1, first: 1, small: 'order total' })}</div>
     <div class="row2">${fld('GST', 'fees.gstPct', { t: 'num', unit: '%' })}${fld('Visit fee', 'fees.visit', { t: 'num', money: 1 })}</div>
+    <div class="row2">${fld('Washer gets', 'washerSharePct', { t: 'num', unit: '%', first: 1, small: 'of each wash, shown in the WD Partner app' })}</div>
     <label class="lbl">Extra on every slot of the day <small>flat ₹ added to all slots in that part</small></label>
     <div class="row3"><div class="money"><span>₹</span><input class="field" inputmode="numeric" data-cfg="fees.surcharge.morning" data-t="num" value="${esc(G('fees.surcharge.morning'))}" aria-label="Morning"></div><div class="money"><span>₹</span><input class="field" inputmode="numeric" data-cfg="fees.surcharge.afternoon" data-t="num" value="${esc(G('fees.surcharge.afternoon'))}" aria-label="Afternoon"></div><div class="money"><span>₹</span><input class="field" inputmode="numeric" data-cfg="fees.surcharge.evening" data-t="num" value="${esc(G('fees.surcharge.evening'))}" aria-label="Evening"></div></div>
     <div class="row3" style="margin-top:4px"><span class="mini">Morning</span><span class="mini">Afternoon</span><span class="mini">Evening</span></div></div>
