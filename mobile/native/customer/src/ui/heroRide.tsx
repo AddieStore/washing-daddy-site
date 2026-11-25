@@ -41,13 +41,21 @@ function Street({ x0 }: { x0: number }) {
     <Ellipse cx={x0 + x + 22} cy={97} rx={5} ry={2.5} fill={SAF} opacity={0.9} />
     <Rect x={x0 + x - 3} y={192} width={6} height={6} rx={1.5} fill="#3A3152" />
   </G>;
-  const tree = (x: number, r: number) => <G key={'t' + x}>
-    <Rect x={x0 + x - 2} y={176} width={4} height={22} rx={2} fill="#7A5A48" />
-    <Circle cx={x0 + x} cy={170 - r} r={r} fill="#5FB36B" />
-    <Circle cx={x0 + x + r * 0.45} cy={170 - r * 0.7} r={r * 0.7} fill="#4FA35D" />
-    <Circle cx={x0 + x - r * 0.35} cy={170 - r * 1.2} r={r * 0.55} fill="#86CF92" />
-  </G>;
-  return <G>{lamp(60)}{tree(150, 18)}{tree(178, 12)}{lamp(260)}{tree(340, 16)}</G>;
+  // a leafy tree like the reference art: forked brown trunk, a canopy of overlapping leaf clusters in three greens
+  // (dark underside, mid body, light sunlit top-left), scalloped edge
+  const tree = (x: number, s: number) => {
+    const X = x0 + x, cy = 196 - 62 * s, c = (dx: number, dy: number, r: number, f: string, k: string) => <Circle key={k} cx={X + dx * s} cy={cy + dy * s} r={r * s} fill={f} />;
+    return <G key={'t' + x}>
+      <Path d={`M${X - 4.5 * s} 198 L${X - 2.6 * s} 168 L${X + 2.6 * s} 168 L${X + 4.5 * s} 198Z`} fill="#8A5A3C" />
+      <Path d={`M${X} 178 L${X - 14 * s} 158 M${X} 176 L${X + 15 * s} 154 M${X - 1} 186 L${X - 7 * s} 172`} stroke="#8A5A3C" strokeWidth={3.2 * s} strokeLinecap="round" fill="none" />
+      <Path d={`M${X + 2.6 * s} 170 L${X + 4.4 * s} 198`} stroke="#6B4129" strokeWidth={1.6 * s} />
+      {[c(-24, 12, 15, '#3F8F4C', 'a'), c(24, 14, 14, '#3F8F4C', 'b'), c(0, 20, 17, '#3A8546', 'c'), c(-34, 2, 10, '#3F8F4C', 'd'), c(34, 4, 10, '#3A8546', 'e')]}
+      {[c(-18, 0, 20, '#5FB36B', 'f'), c(19, -2, 19, '#58AC64', 'g'), c(0, -12, 23, '#62B86D', 'h'), c(-30, -8, 11, '#5FB36B', 'i'), c(31, -9, 11, '#58AC64', 'j')]}
+      {[c(-12, -16, 13, '#8BD36F', 'k'), c(7, -24, 11, '#96DA77', 'l'), c(-25, -4, 9, '#8BD36F', 'm'), c(14, -10, 8, '#7CC866', 'n'), c(-2, -30, 8, '#A3E083', 'o')]}
+      {[[-16, -18], [4, -28], [-28, -6], [12, -12]].map(([dx, dy], i) => <Path key={'v' + i} d={`M${X + dx * s} ${cy + dy * s + 3 * s} q${3 * s} ${-5 * s} ${7 * s} ${-1 * s}`} stroke="#5FB36B" strokeWidth={1.2 * s} fill="none" strokeLinecap="round" opacity={0.7} />)}
+    </G>;
+  };
+  return <G>{lamp(30)}{tree(105, 1.3)}{lamp(205)}{tree(290, 1.12)}{tree(375, 0.8)}</G>;
 }
 // the far side of the road: a grass verge with tufts, small flowers and bushes (the trees and lamps stand on it, see Street)
 function Verge({ x0 }: { x0: number }) {
@@ -55,6 +63,9 @@ function Verge({ x0 }: { x0: number }) {
   const flowers: [number, string][] = [[20, '#FF6FA3'], [64, '#FFBA08'], [112, '#FFFFFF'], [152, '#FF8A5B'], [205, '#FF6FA3'], [247, '#FFFFFF'], [290, '#FFBA08'], [334, '#FF8A5B'], [380, '#FF6FA3']];
   const bushes = [44, 130, 226, 312, 396];
   return <G>
+    {/* a dark green hedge line behind everything, like the reference: rounded bumps of two greens */}
+    {[[10, 17, 12], [40, 22, 15], [78, 18, 11], [116, 24, 14], [160, 16, 10], [196, 23, 14], [238, 18, 12], [276, 25, 15], [318, 17, 11], [352, 22, 13], [392, 16, 10]].map(([x, rx, ry]) => <Ellipse key={'h' + x} cx={x0 + x} cy={190} rx={rx} ry={ry} fill="#3F8147" />)}
+    {[[26, 14, 8], [96, 15, 9], [178, 14, 8], [258, 16, 9], [336, 14, 8]].map(([x, rx, ry]) => <Ellipse key={'H' + x} cx={x0 + x} cy={190} rx={rx} ry={ry} fill="#4F9A58" />)}
     <Rect x={x0} y={189} width={400} height={10} fill="#86CC8F" />
     <Rect x={x0} y={189} width={400} height={2.2} fill="#A9DEB0" />
     {bushes.map(x => <G key={'b' + x}><Ellipse cx={x0 + x} cy={190} rx={10} ry={6.5} fill="#5FB36B" /><Ellipse cx={x0 + x + 3} cy={188} rx={6} ry={4} fill="#86CF92" /></G>)}
