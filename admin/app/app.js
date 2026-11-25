@@ -414,6 +414,7 @@ function screenSettings() {
     <div class="row2" style="margin-top:4px">${slF('Washers per slot', 'capacityPerSlot', 3)}</div>
     <label class="lbl">Closed dates <small>no bookings that day</small></label><div class="chips wrap">${(sc.closedDates || []).map(d => `<span class="chip">${esc(d)} <button data-a="cdel" data-d="${esc(d)}" aria-label="Remove" style="margin-left:2px;display:grid">${ic('x', 14)}</button></span>`).join('')}</div>
     <div style="display:flex;gap:8px;margin-top:8px"><input type="date" class="field" id="newClosed"><button class="btn soft press" data-a="cadd">Add</button></div></div>
+  ${window.WDAreas ? window.WDAreas.card() : ''}
   <div class="card rise"><div class="ch-title" style="padding:0"><b>Support contacts</b></div>${fld('WhatsApp number', 'support.whatsapp', { first: 1, ph: '10 digits' })}${fld('Phone number', 'support.phone', { ph: '10 digits' })}${fld('Email', 'support.email')}</div>
   <div class="card flush rise"><div class="ch-title"><b>Tools</b></div>
     <button class="trow tap press hov" data-a="import"><div class="ico">${ic('download', 18)}</div><div class="t"><b>Import app defaults</b><small>Adds the app's built-in services, coupons, pages and settings that are missing. Never overwrites.</small></div></button>
@@ -649,6 +650,7 @@ document.addEventListener('click', async e => {
   if (A === 'ledit') return openLegal(ds.id); if (A === 'lnew') return openLegal();
   if (A === 'hedit') return openHelp(ds.id); if (A === 'hnew') return openHelp();
   if (A === 'mv') return move(ds.id, +ds.d);
+  if (A === 'areas') return window.WDAreas && window.WDAreas.open();
   if (A === 'import') return importDefaults();
   if (A === 'export') return exportJSON();
   if (A === 'signout') { stopLive(); await window.WDAuth.signOut(); return showGate() }
@@ -766,6 +768,6 @@ async function boot() {
   $('#app').hidden = true; $('#main').innerHTML = skeleton();
   WDAuth.ready().then(signedIn);
 }
-window.WDCTL = { S, G, tileHTML, openCatalog, openCoupon, openPass, openButton, openLegal, openHelp, setTab, UI, rerender };
+window.WDCTL = { S, G, D, openSheet, closeSheet, snack, esc, ic, DEMO, tileHTML, openCatalog, openCoupon, openPass, openButton, openLegal, openHelp, setTab, UI, rerender };
 boot();
 })();

@@ -13,6 +13,7 @@ import { useSyncExternalStore } from 'react';
 import { AppState, Linking, Platform, Share } from 'react-native';
 import * as ExpoLinking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { areaAt, type ServiceArea } from './data/areas';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
@@ -363,6 +364,7 @@ async function pollPaidTo(c: Car, was: string) {
 }
 // -> {pending}: pending means the money is with Cashfree and the plan updates by itself once it clears
 async function checkout(kind: string, amt: number, what: string, via: string, extra: object = {}) {
+  if (kind !== 'tip') assertServed();   // plans, upgrades, one-time washes, store orders: only inside a service area
   const r = await pay(kind, { amt, what, ...extra });
   A().payments.push({ d: iso(TODAY), what, amt, via: payReal() ? 'Cashfree' : via, ref: r.ref, pending: !!r.pending && kind === 'plan' });
   return r;
@@ -423,6 +425,7 @@ export async function boot() {
   // a saved test login has no place in the real app, and the other way round
   if (S.session && S.session.real !== REAL) { S.session = null; S.acct = null; S.carIdx = 0 }
   if (S.session && S.acct && !S.px) S.px = S.session.real ? emptyPX() : demoPX();
+  try { const v = await AsyncStorage.getItem(NOTIFY_KEY); if (v) NOTIFY = JSON.parse(v) } catch (e) {}
   ui = { ...ui, ready: true }; renderAll();
   AppState.addEventListener('change', st => { if (st === 'active' && refreshToday() && !sheetOpen()) renderAll() });
   if (REAL && S.session && !S.session.guest && AUTH) {
@@ -430,6 +433,7 @@ export async function boot() {
     await AUTH.ready();
     if (!AUTH.phone() || AUTH.phone10() !== S.session.phone) { S.session = null; S.acct = null; S.carIdx = 0; stopSync(); commit(); return }
     watchAccount(); subscribeCar();
+    if (NOTIFY && !NOTIFY.sent) setTimeout(() => { sendNotify().then(ok => { if (ok) emit() }) }, 4000);
   }
 }
 
@@ -1183,6 +1187,40 @@ const jobTitlePlain = (lines: { name: string }[]) => (lines[0] ? lines[0].name :
 /** Android can read the sign-in SMS itself (Firebase uses the SMS Retriever API: no SMS permission needed) and sign in before
  *  the code is typed. The OTP screen listens for that and carries on by itself. */
 export const onAutoSignIn = (f: () => void): (() => void) => (AUTH ? AUTH.onChange(b => { if (b && AUTH.phone()) f() }) : () => {});
+/* ---------- where we wash (data/areas.ts, circles drawn in the admin dashboard) ----------
+   coverage(): is the customer's spot inside a service circle? The spot is the selected address (it has map coordinates), or
+   the phone's GPS fix when no address is picked yet. Outside -> Home shows the "not in your area yet" banner with Notify me,
+   and every action that books or takes money for a service refuses (SERVED_ONLY below; workflow 13 checks bookings again). */
+export const NOT_SERVED_TITLE = 'We are currently not available in this area';
+export const NOT_SERVED_SUB = "We're adding new locations every month. Tap Notify me and we'll tell you the day we start here.";
+export type Coverage = { known: boolean; ok: boolean; area: ServiceArea | null; lat: number; lng: number; label: string; src: 'address' | 'gps' | 'none' };
+export function coverage(): Coverage {
+  const a = selectedAddress();
+  if (a && Number.isFinite(a.lat) && Number.isFinite(a.lng)) { const z = areaAt(a.lat, a.lng); return { known: true, ok: !!z, area: z, lat: a.lat, lng: a.lng, label: (a.area || a.street || '').split(',')[0].trim(), src: 'address' } }
+  const h = here();
+  if (h && Number.isFinite(h.lat) && Number.isFinite(h.lng)) { const z = areaAt(h.lat, h.lng); return { known: true, ok: !!z, area: z, lat: h.lat, lng: h.lng, label: '', src: 'gps' } }
+  return { known: false, ok: true, area: null, lat: NaN, lng: NaN, label: '', src: 'none' };
+}
+/** throws before anything is booked or charged when the spot is outside every service circle (or not known at all) */
+function assertServed() {
+  const c = coverage();
+  if (!c.known) throw new Error('Add the address where your car is parked first, so we can check that we wash there.');
+  if (!c.ok) throw Object.assign(new Error(`${NOT_SERVED_TITLE}${c.label ? ' (' + c.label + ')' : ''}. We're adding new locations every month. Tap Notify me on Home and we'll tell you first.`), { notServed: true });
+}
+/* "Notify me": one request per phone, saved by workflow 13 (wd-waitlist) in waitlist/{+91number} with the spot. Kept on the phone
+   too, so the banner says "You're on the list", and re-sent at the next start if the server could not take it. */
+type NotifyRec = { lat: number; lng: number; label: string; at: string; sent: boolean };
+const NOTIFY_KEY = 'wd-notify-v1';
+let NOTIFY: NotifyRec | null = null;
+export const notifyState = () => NOTIFY;
+async function saveNotify() { try { NOTIFY ? await AsyncStorage.setItem(NOTIFY_KEY, JSON.stringify(NOTIFY)) : await AsyncStorage.removeItem(NOTIFY_KEY) } catch (e) {} }
+async function sendNotify(): Promise<boolean> {
+  if (!NOTIFY || NOTIFY.sent) return true;
+  if (!moneyLive() || !server) return false;
+  try { await server.call('wd-waitlist', { lat: NOTIFY.lat, lng: NOTIFY.lng, area: NOTIFY.label, name: S.acct ? A().name : '' }); NOTIFY.sent = true; await saveNotify(); return true }
+  catch (e: any) { return false }
+}
+
 const failed = () => new Error(`That didn't go through. Call or WhatsApp us on ${showPhone(SUPPORT.phone)}.`);
 export const act = {
   ...PX_ACTS,
@@ -1245,6 +1283,14 @@ export const act = {
     S.px.addresses.push({ id: newId('a'), label: 'Home' as AddressLabel, ...addr, receiver: { self: true } }); S.px.addrId = S.px.addresses[0].id;
     enter(true);
     if (!monthly) { try { act.setCartMode('instant') } catch (e) {} }
+  },
+  /** "Notify me" on the Home banner: remember the spot and tell the server (or keep it and retry at the next start) */
+  async notifyMe(): Promise<'saved' | 'queued'> {
+    const c = coverage();
+    if (!c.known) throw new Error('Add your address or turn on location first, so we know where to come.');
+    NOTIFY = { lat: c.lat, lng: c.lng, label: c.label, at: nowIST(), sent: !REAL }; await saveNotify(); emit();
+    if (!REAL) { await wait(500); return 'saved' }
+    return (await sendNotify()) ? 'saved' : 'queued';
   },
   async resendOtp(phone10: string, via: OtpVia = otpVia): Promise<OtpVia> { const v = await act.sendOtp(phone10, via); toast(v === 'whatsapp' ? 'New code sent on WhatsApp' : 'New code sent by SMS'); return v },
   /** "Skip" on sign-in: straight into the app as a guest. Anything that needs an account sends them back to log in (see GUEST_BLOCKED). */
@@ -1507,6 +1553,13 @@ export const act = {
 const GUEST_BLOCKED = ['addCar', 'carPhoto', 'pause', 'resume', 'note', 'removeNote', 'issue', 'closeReq', 'rate', 'payPlan', 'cancelAutopay', 'switchPlan', 'tip', 'checkoutCart', 'book',
   'cancelBooking', 'bookServices', 'togglePref', 'setName', 'deleteAccount', 'placeOrder', 'cancelJob', 'rescheduleJob', 'rateJob', 'saveAddress', 'deleteAddress',
   'saveProfile', 'topUp', 'claimGift', 'buyPass', 'shareReferral', 'findFriends', 'requestDeletion'] as const;
+// booking or paying for a service needs a spot inside a service circle (assertServed). Wrapped before the guest check below,
+// so a guest is sent to log in first and the area is checked after.
+const SERVED_ONLY = ['placeOrder', 'book', 'bookServices', 'buyPass', 'payPlan', 'checkoutCart', 'switchPlan'] as const;
+for (const k of SERVED_ONLY) {
+  const f = (act as any)[k]; if (typeof f !== 'function') continue;
+  (act as any)[k] = async function (this: any, ...args: any[]) { if (!isGuest()) assertServed(); return f.apply(this, args) };
+}
 for (const k of GUEST_BLOCKED) {
   const f = (act as any)[k]; if (typeof f !== 'function') continue;
   (act as any)[k] = function (this: any, ...args: any[]) {

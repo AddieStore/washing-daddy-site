@@ -18,7 +18,7 @@ import { ampm } from '../data/dates';
 import {
   useApp, A, car, doc, act, go, openPage, openSheet, toast, svcQty, svcLines, liveHead, activeStage, chipText,
   homeConfig, instantStatus, selectedAddress, addrName, wallet, activePass, REAL,
-  appCfg, feature, section, uiButtons, serviceCats, unavailable, configLoading, UiButton, isGuest } from '../state';
+  appCfg, feature, section, uiButtons, serviceCats, unavailable, configLoading, UiButton, isGuest, coverage } from '../state';
 import { Pressable3 as P3, FadeUp, AddButton, CartBar, Shimmer, useSkeleton, loaderPending, primerGate, setOrigin, SPRING, TAB_BAR_H } from '../ui/motion';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, withRepeat, withSequence, cancelAnimation, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,6 +33,8 @@ import { openPassPromo } from '../sheets/money';
 import { MiniMap, EtaChip, OfferCarousel, Offer } from '../ui/home';
 import { HeroRide } from '../ui/heroRide';
 import { HeroHeadline } from '../ui/heroHeadline';
+import { CoverageBanner } from '../ui/coverageBanner';
+import { ServiceIcon, hasServiceIcon } from '../ui/serviceIcons';
 import { VettedSection } from '../ui/trust';
 import { useActive, TabActive } from '../ui/active';
 
@@ -186,16 +188,17 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
     <View style={{ backgroundColor: L.bg, overflow: 'hidden', paddingTop: st + 74 }}>
       {/* light lavender field; pulling down stretches it so no gap shows */}
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
-        <LinearGradient colors={[L.bg, L.bg]} locations={[0, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <LinearGradient colors={['#E2D4FF', '#E2D4FF', '#EDE4FF', '#F7F3FF', '#FFFFFF']} locations={[0, 0.42, 0.62, 0.84, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
       {on ? <>
         <View style={{ paddingHorizontal: SIDE, paddingTop: 4 }}>
+          <CoverageBanner />
           <HeroHeadline first={cfg.heroTitle} sub={cfg.heroSub} ink={L.ink} accent={L.accent} subColor={L.mut} />
           <Live />
         </View>
         <View style={{ marginTop: 4, marginBottom: 34 }}><HeroRide width={aw} /></View>
         {/* the road and city melt into white, so there is no edge above "Book a wash" */}
-        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.9)', '#FFFFFF', '#FFFFFF']} locations={[0, 0.5, 0.75, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 60 }} />
+        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.65)', 'rgba(255,255,255,0.95)', '#FFFFFF']} locations={[0, 0.35, 0.7, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 110 }} />
       </> : <View style={{ height: 24 }} />}
     </View>
   );
@@ -335,7 +338,7 @@ function Offers() {
   const offers: Offer[] = [];
   const first = PACKS[0];
   if (section('packs') && first) offers.push({ key: 'packs', tag: 'WASH PACKS', countdown: false, title: 'Wash packs at your parking spot', sub: `${first.name} from ${inr(first.price || 0)}`, cta: 'See packs', colors: ['#6A1BF2', '#3A06A0'], art: <SvcArt id={first.id} size={96} />, onPress: () => openPage({ k: 'svc', id: first.id }) });
-  try { if (homeConfig().passPromo && !activePass()) offers.push({ key: 'pass', tag: 'WD PASS', title: 'Get more washes for less', sub: 'A pass of visits, valid for days, saves on every wash', cta: 'View pass', colors: ['#2A0577', '#5409DA'], onPress: () => openPassPromo() }) } catch (e) {}
+  try { if (homeConfig().passPromo && !activePass() && coverage().ok) offers.push({ key: 'pass', tag: 'WD PASS', title: 'Get more washes for less', sub: 'A pass of visits, valid for days, saves on every wash', cta: 'View pass', colors: ['#2A0577', '#5409DA'], onPress: () => openPassPromo() }) } catch (e) {}
   if (feature('plans')) offers.push({ key: 'plan', tag: 'MONTHLY', title: 'A clean car every morning', sub: `Daily wash from ${inr(fromPrice())}/month`, cta: 'See plans', colors: ['#4B2BC4', '#24106E'], art: <View style={{ transform: [{ scale: 1.4 }], marginRight: 14 }}><Glyph kind="plan" /></View>, onPress: () => go('plan') });
   return <OfferCarousel offers={offers} />;
 }
@@ -381,12 +384,12 @@ function More() {
 const NAME_H = 36, PRICE_H = 18;
 export const tileH = (w: number) => w + 8 + NAME_H + 2 + PRICE_H;
 function SvcTile({ s: sv, w }: { s: (typeof CAR_SERVICES)[number]; w: number }) {
-  const q = svcQty(sv.id), ref = useRef<any>(null), paused = unavailable(sv.id);
+  const q = svcQty(sv.id), ref = useRef<any>(null), paused = unavailable(sv.id), icon = hasServiceIcon(sv.id);
   return (
     <View style={{ width: w, height: tileH(w) }}>
       <Pressable3 label={`${sv.name}, ${inr(sv.price)}`} onPress={() => setOrigin(sv.id, ref, () => openPage({ k: 'svc', id: sv.id }))}>
-        <View ref={ref} style={{ width: w, height: w, borderRadius: 16, overflow: 'hidden', backgroundColor: sv.tint || L.raised, alignItems: 'center', justifyContent: 'center' }}>
-          <SvcArt id={sv.id} size={Math.round(w * 0.9)} />
+        <View ref={ref} style={{ width: w, height: w, borderRadius: 18, overflow: 'hidden', backgroundColor: icon ? '#F7F4FF' : sv.tint || L.raised, borderWidth: icon ? 1 : 0, borderColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+          {icon ? <ServiceIcon id={sv.id} size={Math.round(w * 0.54)} /> : <SvcArt id={sv.id} size={Math.round(w * 0.9)} />}
           {sv.badge && !paused ? <View style={{ position: 'absolute', top: 6, left: 6, backgroundColor: String(sv.badge).toUpperCase() === 'NEW' ? '#E5484D' : L.accent, borderRadius: 6, paddingHorizontal: 5, height: 16, justifyContent: 'center' }}><Txt weight={600} size={9} color="#fff" style={{ lineHeight: 12, letterSpacing: 0.5 }}>{String(sv.badge).toUpperCase()}</Txt></View> : null}
           {paused ? <PausedVeil note={paused} compact /> : null}
           {SHOW_RATINGS && !sv.badge ? (
@@ -534,7 +537,7 @@ export default function Home() {
   // WD Pass launch popup, once per app start, after the location loader has gone
   useEffect(() => {
     if (promoShown) return; promoShown = true;
-    let on = true, t: any; const fire = () => { if (!on) return; if (primerGate.on) { t = setTimeout(fire, 1000); return } try { if (homeConfig().passPromo && !activePass()) openPassPromo() } catch (e) {} };
+    let on = true, t: any; const fire = () => { if (!on) return; if (primerGate.on) { t = setTimeout(fire, 1000); return } try { if (homeConfig().passPromo && !activePass() && coverage().ok) openPassPromo() } catch (e) {} };   // no pass offer where we do not wash yet
     t = setTimeout(fire, loaderPending() ? 3400 : 1200);   // held while the welcome primer is open, then 1s after it closes
     return () => { on = false; clearTimeout(t) };
   }, []);

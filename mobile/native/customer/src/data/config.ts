@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Db, Unsub } from '../backend/types';
 import * as R from './reference';
 import { builtinDocs, BuiltinDocs } from './builtin';
+import { setAreas } from './areas';
 
 type Doc = Record<string, any>;
 type Docs = Record<string, Doc>;
@@ -127,6 +128,7 @@ const list = (s: Slice) => Object.entries(slice(s)).map(([id, d]) => ({ id, ...(
 
 function apply() {
   APP = normAppcfg(docOf('appcfg'));
+  setAreas(docOf('appcfg').areas);   // service circles drawn in the dashboard (data/areas.ts)
   const raw = docOf('appcfg'), fees = raw.fees || {}, B = BUILTIN.appcfg.customer.fees;
   fillObj(R.FEES, { gstPct: num(fees.gstPct, B.gstPct), visitFee: num(fees.visit, B.visit), convenienceFee: num(fees.convenience, B.convenience), convenienceFreeAbove: num(fees.convenienceBelow, B.convenienceBelow), instantFee: 0 });
   const sur = fees.surcharge || {}, slotSur = fees.slotSurcharge && typeof fees.slotSurcharge === 'object' ? fees.slotSurcharge : B.slotSurcharge;
