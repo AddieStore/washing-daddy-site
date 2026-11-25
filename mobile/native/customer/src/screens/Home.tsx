@@ -34,7 +34,6 @@ import { MiniMap, EtaChip, OfferCarousel, Offer } from '../ui/home';
 import { HeroRide } from '../ui/heroRide';
 import { HeroHeadline } from '../ui/heroHeadline';
 import { CoverageBanner } from '../ui/coverageBanner';
-import { ServiceIcon, hasServiceIcon } from '../ui/serviceIcons';
 import { VettedSection } from '../ui/trust';
 import { useActive, TabActive } from '../ui/active';
 
@@ -188,7 +187,7 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
     <View style={{ backgroundColor: L.bg, overflow: 'hidden', paddingTop: st + 74 }}>
       {/* light lavender field; pulling down stretches it so no gap shows */}
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
-        <LinearGradient colors={['#E2D4FF', '#E2D4FF', '#EDE4FF', '#F7F3FF', '#FFFFFF']} locations={[0, 0.42, 0.62, 0.84, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <LinearGradient colors={['#DCCBFF', '#E6DAFF', '#EDE4FF']} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
       {on ? <>
         <View style={{ paddingHorizontal: SIDE, paddingTop: 4 }}>
@@ -196,9 +195,9 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
           <HeroHeadline first={cfg.heroTitle} sub={cfg.heroSub} ink={L.ink} accent={L.accent} subColor={L.mut} />
           <Live />
         </View>
-        <View style={{ marginTop: 4, marginBottom: 34 }}><HeroRide width={aw} /></View>
+        <View style={{ marginTop: 4, marginBottom: 64 }}><HeroRide width={aw} /></View>
         {/* the road and city melt into white, so there is no edge above "Book a wash" */}
-        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.65)', 'rgba(255,255,255,0.95)', '#FFFFFF']} locations={[0, 0.35, 0.7, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 110 }} />
+        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.92)', '#FFFFFF']} locations={[0, 0.4, 0.8, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 64 }} />
       </> : <View style={{ height: 24 }} />}
     </View>
   );
@@ -384,12 +383,12 @@ function More() {
 const NAME_H = 36, PRICE_H = 18;
 export const tileH = (w: number) => w + 8 + NAME_H + 2 + PRICE_H;
 function SvcTile({ s: sv, w }: { s: (typeof CAR_SERVICES)[number]; w: number }) {
-  const q = svcQty(sv.id), ref = useRef<any>(null), paused = unavailable(sv.id), icon = hasServiceIcon(sv.id);
+  const q = svcQty(sv.id), ref = useRef<any>(null), paused = unavailable(sv.id);
   return (
     <View style={{ width: w, height: tileH(w) }}>
       <Pressable3 label={`${sv.name}, ${inr(sv.price)}`} onPress={() => setOrigin(sv.id, ref, () => openPage({ k: 'svc', id: sv.id }))}>
-        <View ref={ref} style={{ width: w, height: w, borderRadius: 18, overflow: 'hidden', backgroundColor: icon ? '#F7F4FF' : sv.tint || L.raised, borderWidth: icon ? 1 : 0, borderColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}>
-          {icon ? <ServiceIcon id={sv.id} size={Math.round(w * 0.54)} /> : <SvcArt id={sv.id} size={Math.round(w * 0.9)} />}
+        <View ref={ref} style={{ width: w, height: w, borderRadius: 18, overflow: 'hidden', backgroundColor: '#F8F6FD', borderWidth: 1, borderColor: 'rgba(84,9,218,0.07)', alignItems: 'center', justifyContent: 'center' }}>
+          <SvcArt id={sv.id} size={Math.round(w * 0.8)} />
           {sv.badge && !paused ? <View style={{ position: 'absolute', top: 6, left: 6, backgroundColor: String(sv.badge).toUpperCase() === 'NEW' ? '#E5484D' : L.accent, borderRadius: 6, paddingHorizontal: 5, height: 16, justifyContent: 'center' }}><Txt weight={600} size={9} color="#fff" style={{ lineHeight: 12, letterSpacing: 0.5 }}>{String(sv.badge).toUpperCase()}</Txt></View> : null}
           {paused ? <PausedVeil note={paused} compact /> : null}
           {SHOW_RATINGS && !sv.badge ? (

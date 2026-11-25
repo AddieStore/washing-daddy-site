@@ -49,7 +49,7 @@ function Street({ x0 }: { x0: number }) {
   return <G>{lamp(60)}{tree(150, 18)}{tree(178, 12)}{lamp(260)}{tree(340, 16)}</G>;
 }
 function Road({ x0 }: { x0: number }) {
-  return <G>{[0, 1, 2, 3, 4, 5].map(i => <Rect key={i} x={x0 + i * 70 + 12} y={214} width={34} height={3.5} rx={1.75} fill="#fff" />)}</G>;
+  return <G>{[0, 1, 2, 3, 4, 5].map(i => <Rect key={i} x={x0 + i * 70 + 12} y={213.5} width={34} height={4} rx={2} fill="#F4F1FA" />)}</G>;
 }
 
 function Wheel({ cx, cy, k, spin }: { cx: number; cy: number; k: number; spin: SharedValue<number> }) {
@@ -195,15 +195,16 @@ export const HeroRide = React.memo(function HeroRide({ width }: { width: number 
       <Loop k={k} tile={360} ms={22000} top={0} h={200} rm={rm} span={width}>{x0 => <Skyline key={x0} x0={x0} />}</Loop>
       {/* road */}
       <Svg width={width} height={H} viewBox={`0 0 ${width / k} ${VB_H}`} style={{ position: 'absolute', left: 0, top: 0 }}>
-        <Rect x={0} y={198} width={width / k} height={34} fill="#ECE7F5" />
-        <Rect x={0} y={198} width={width / k} height={2} fill="#DCD3EC" />
+        <Rect x={0} y={198} width={width / k} height={34} fill="#1B1626" />
+        <Rect x={0} y={198} width={width / k} height={2.5} fill="#3B3450" />
+        <Rect x={0} y={229.5} width={width / k} height={2.5} fill="#2A2339" />
       </Svg>
       <Loop k={k} tile={400} ms={2100} top={0} h={200} rm={rm} span={width}>{x0 => <Street key={x0} x0={x0} />}</Loop>
       <Loop k={k} tile={420} ms={2200} top={0} h={VB_H} rm={rm} span={width}>{x0 => <Road key={x0} x0={x0} />}</Loop>
       {/* rider group */}
       <Reanimated.View style={[{ position: 'absolute', left: ox, top: 0, width: RW, height: H }, ride]}>
         <Svg width={RW} height={H} viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ position: 'absolute' }}>
-          <Ellipse cx={190} cy={202} rx={100} ry={5} fill="rgba(30,15,70,0.10)" />
+          <Ellipse cx={190} cy={203} rx={100} ry={5} fill="rgba(0,0,0,0.38)" />
         </Svg>
         <Streak k={k} y={70} w={28} d={0} rm={rm} />
         <Streak k={k} y={88} w={18} d={300} rm={rm} />
