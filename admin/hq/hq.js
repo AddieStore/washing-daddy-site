@@ -108,22 +108,25 @@
 
   /* ---------- shell ---------- */
   function buildRail() {
-    let h = `<button class="ri home" data-go="" type="button"><span class="ico">${ico('home')}</span><span><b>The depot</b><small>Overview of everything</small></span></button>`, g = '';
+    let h = `<button class="ri home" data-go="" type="button"><span class="ico">${ico('home')}</span><span><b>Dashboard</b><small>Today's numbers and switches</small></span></button>`, g = '';
     SECS.forEach(s => { if (s.g !== g) { g = s.g; h += `<h4>${g}</h4>` } h += `<button class="ri" data-go="${s.id}" type="button"><span class="ico">${ico(s.i)}</span><span><b>${s.t}</b><small>${s.s}</small></span></button>` });
     $('#rail').innerHTML = h;
-    $('#jump').innerHTML = `<option value="">The depot</option>` + SECS.map(s => `<option value="${s.id}">${s.t}</option>`).join('');
+    $('#jump').innerHTML = `<option value="">Dashboard</option>` + SECS.map(s => `<option value="${s.id}">${s.t}</option>`).join('');
     $('#apps').innerHTML = [['Customer app', 'catalog', '#5409DA', 'C', 'Prices, services, offers, content'], ['Website', 'catalog', '#E8873A', 'W', 'Monthly plan prices and availability'], ['WD Partner app', 'settings', '#3A8F8A', 'P', 'Washer pay share, map, rounds']]
       .map(([n, go, c, l, d]) => `<button class="app" data-go="${go}" type="button"><span class="dot" style="background:${c}">${l}</span><span><b>${n}</b><small>${d}</small></span></button>`).join('');
     $('#legend').innerHTML = `<span><i style="background:#5409DA"></i>Prices, content, switches</span><span><i style="background:#3E6FA8"></i>Offers and passes</span><span><i style="background:#3A8F8A"></i>Bookings and payments</span><span><i style="background:#E8873A"></i>Content and rounds</span>`;
     $('#scene').innerHTML = depot();
+    $('#dDate').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     if (DEMO) $('#demoTag').hidden = false;
   }
-  let cur = null, loadedApp = '';
+  let cur = null, loadedApp = '', view = 'dash';
+  try { view = localStorage.getItem('hq-view') === 'depot' ? 'depot' : 'dash' } catch (e) {}
   function show(id) {
     const sec = BY[id] || null; cur = sec ? sec.id : null;
     document.querySelectorAll('.ri').forEach(b => b.classList.toggle('on', b.dataset.go === (cur || '')));
     $('#jump').value = cur || '';
-    $('#depot').hidden = !!sec; $('#panel').hidden = !sec;
+    $('#depot').hidden = !!sec || view !== 'depot'; $('#dash').hidden = !!sec || view !== 'dash'; $('#panel').hidden = !sec;
+    document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === view));
     $('#crumbs').innerHTML = sec ? `<span>HQ</span><span>/</span><b>${sec.t}</b>` : '';
     $('#stand').hidden = !sec; if (sec) $('#stand').href = sec.src.replace('embed=1&', '').replace('?embed=1', '');
     if (!sec) { document.title = 'WD HQ'; return }
@@ -136,10 +139,12 @@
   }
   $('#frame').addEventListener('load', () => { const s = $('#skel'); s.style.opacity = 0; setTimeout(() => { s.hidden = true }, 260) });
   const go = id => { history.replaceState(null, '', location.pathname + location.search + (id ? '#' + id : '')); show(id) };
-  document.addEventListener('click', e => { const t = e.target.closest('[data-go]'); if (t) go(t.dataset.go) });
+  document.addEventListener('click', e => { const v = e.target.closest('[data-view]'); if (v) { view = v.dataset.view; try { localStorage.setItem('hq-view', view) } catch (x) {} return show(cur || '') } const t = e.target.closest('[data-go]'); if (t) go(t.dataset.go) });
+  window.HQ = { go };
   document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.bld')) { e.preventDefault(); go(e.target.dataset.go) } });
   $('#home').addEventListener('click', () => go(''));
   $('#jump').addEventListener('change', e => go(e.target.value));
   window.addEventListener('hashchange', () => show(location.hash.slice(1)));
   buildRail(); show(location.hash.slice(1));
+  if (window.HQDash) window.HQDash.boot();
 })();

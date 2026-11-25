@@ -24,7 +24,13 @@
 <div class="shell" id="shell">
   <aside class="rail" id="rail" aria-label="Sections"></aside>
   <main class="stage" id="stage">
-    <section class="depot" id="depot" aria-label="The depot">
+    <section class="dash" id="dash" aria-label="Dashboard">
+      <header class="dh"><div><h1 id="dTitle">Today at Washing Daddy</h1><p id="dDate"></p></div><div class="seg" role="tablist" aria-label="View"><button class="on" data-view="dash" type="button">Dashboard</button><button data-view="depot" type="button">Depot view</button></div></header>
+      <div class="gate" id="gateD" hidden></div>
+      <div id="dashBody"></div>
+    </section>
+    <section class="depot" id="depot" aria-label="The depot" hidden>
+      <div class="seg dseg" role="tablist" aria-label="View"><button data-view="dash" type="button">Dashboard</button><button class="on" data-view="depot" type="button">Depot view</button></div>
       <div class="hello">
         <h1>Everything in one yard</h1>
         <p>Tap a building to change prices, services and content for the customer app, the website and the WD Partner app, to see your washers on the map, or to run today's bookings.</p>
@@ -39,6 +45,9 @@
     </section>
   </main>
 </div>
+<script src="../ops/core.js"></script>
+<script src="../ops/board.js"></script>
+<script src="dash.js"></script>
 <script src="hq.js"></script>
 </body>
 </html>
