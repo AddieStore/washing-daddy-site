@@ -36,9 +36,10 @@ function Skyline({ x0 }: { x0: number }) {
 // street furniture passing by: dark lamp posts and soft round trees
 function Street({ x0 }: { x0: number }) {
   const lamp = (x: number) => <G key={'l' + x}>
-    <Path d={`M${x0 + x} 198 L${x0 + x} 104 C${x0 + x} 96 ${x0 + x + 6} 92 ${x0 + x + 14} 92 L${x0 + x + 20} 92`} stroke="#3A3152" strokeWidth={2.6} fill="none" strokeLinecap="round" />
-    <Rect x={x0 + x + 16} y={89} width={12} height={6} rx={3} fill="#3A3152" />
-    <Ellipse cx={x0 + x + 22} cy={97} rx={5} ry={2.5} fill={SAF} opacity={0.9} />
+    <Path d={`M${x0 + x} 198 L${x0 + x} 48 C${x0 + x} 38 ${x0 + x + 7} 34 ${x0 + x + 16} 34 L${x0 + x + 23} 34`} stroke="#3A3152" strokeWidth={3} fill="none" strokeLinecap="round" />
+    <Rect x={x0 + x + 19} y={31} width={14} height={6.5} rx={3.2} fill="#3A3152" />
+    <Ellipse cx={x0 + x + 26} cy={40} rx={6} ry={3} fill={SAF} opacity={0.9} />
+    <Path d={`M${x0 + x + 20} 41 L${x0 + x + 12} 66 L${x0 + x + 40} 66 L${x0 + x + 32} 41Z`} fill={SAF} opacity={0.08} />
     <Rect x={x0 + x - 3} y={192} width={6} height={6} rx={1.5} fill="#3A3152" />
   </G>;
   // a leafy tree like the reference art: forked brown trunk, a canopy of overlapping leaf clusters in three greens
@@ -157,32 +158,37 @@ function Body() {
       <Path d="M252 76 L272 72" stroke={DARK} strokeWidth={5} strokeLinecap="round" />
       <Path d="M266 74 L272 58" stroke={DARK} strokeWidth={2} strokeLinecap="round" />
       <Ellipse cx={274} cy={54} rx={4} ry={5} fill={DARK} />
-      {/* legs + shoe */}
-      <Path d="M150 98 C172 94 214 98 230 106 C238 111 238 122 231 126 L234 156 L218 156 L214 130 C196 128 168 126 150 120 Z" fill="#2E2645" />
-      <Path d="M170 112 C190 112 210 114 224 118" stroke="#40375C" strokeWidth={4} fill="none" strokeLinecap="round" />
-      <Path d="M214 153 L238 153 C244 153 248 157 248 162 L214 162 Z" fill="#fff" />
-      <Rect x={214} y={160} width={34} height={3} fill="#C9C3D6" />
-      {/* torso: jacket with reflective stripes */}
-      <Path d="M146 106 C142 84 150 60 168 50 C182 42 198 44 206 54 L216 70 C208 78 198 84 190 90 L192 106 Z" fill={V2} />
-      <Path d="M168 50 C182 42 198 44 206 54 L216 70 C210 76 204 80 198 84 C196 70 188 56 168 50Z" fill="#8048F3" />
-      <Path d="M148 96 C146 84 148 72 154 62 L160 100 Z" fill={V} opacity={0.6} />
-      <Path d="M150 80 L190 74" stroke="#fff" strokeWidth={3.5} strokeLinecap="round" />
-      <Path d="M156 66 L170 58 M159 71 L173 63" stroke="#fff" strokeWidth={2} strokeLinecap="round" opacity={0.85} />
-      {/* arm to the handlebar */}
-      <Path d="M196 58 L224 82 L250 76" stroke={V} strokeWidth={12} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M240 78 L246 77" stroke="#fff" strokeWidth={12} />
-      <Circle cx={254} cy={75} r={5.5} fill={SKIN} />
-      {/* collar, helmet, face, visor */}
-      <Path d="M196 46 C200 40 210 38 214 44 L208 52 Z" fill="#fff" />
-      <Circle cx={212} cy={26} r={20} fill={V} />
-      <Path d="M196 20 C200 8 214 4 226 10" stroke={V3} strokeWidth={3.5} fill="none" strokeLinecap="round" />
-      <Path d="M194 30 L208 30" stroke={SAF} strokeWidth={3} strokeLinecap="round" />
-      <Path d="M220 20 C230 20 236 26 236 34 C236 42 230 46 222 45 Z" fill={SKIN} />
-      <Path d="M228 28 L231 28" stroke={DARK} strokeWidth={2} strokeLinecap="round" />
-      <Path d="M226 38 C228 40 231 40 233 38" stroke="#9A4F2E" strokeWidth={1.5} fill="none" strokeLinecap="round" />
-      <Path d="M214 16 C226 14 238 20 240 30 L240 34" stroke="#fff" strokeWidth={2.5} fill="none" strokeLinecap="round" />
-      <Path d="M216 18 C226 17 236 22 238 30 L226 30 C224 24 220 20 216 18Z" fill="rgba(255,255,255,0.35)" />
-      <Path d="M214 44 C218 46 224 46 230 44" stroke={VD} strokeWidth={2.5} fill="none" strokeLinecap="round" />
+      {/* legs: trousers with a fold, white sneaker with a violet sole */}
+      <Path d="M150 98 C172 94 214 98 230 106 C238 111 238 122 231 126 L234 156 L216 156 L213 130 C196 128 168 126 150 120 Z" fill="#2B1B66" />
+      <Path d="M170 112 C190 112 210 114 224 118" stroke="#3E2D85" strokeWidth={4} fill="none" strokeLinecap="round" />
+      <Path d="M222 130 L224 150" stroke="#000" strokeOpacity={0.16} strokeWidth={2} strokeLinecap="round" />
+      <Path d="M212 152 L238 152 C245 152 249 157 249 162 L212 162 Z" fill="#fff" />
+      <Path d="M212 158.4 L249 158.4 L249 163 L212 163Z" fill={V} /><Path d="M228 154 L236 154 M227 157 L235 157" stroke="#C9C3D6" strokeWidth={1.2} strokeLinecap="round" />
+      {/* torso: violet polo, soft shoulders, darker back, collar */}
+      <Path d="M146 106 C141 84 149 60 168 50 C183 42 200 45 207 56 L216 72 C208 80 198 85 190 91 L192 106 Z" fill={V2} />
+      <Path d="M146 106 C142 86 148 68 156 58 L168 98 L160 106Z" fill={V} opacity={0.75} />
+      <Path d="M170 50 C184 43 200 46 207 56 L214 69 C209 74 204 78 199 82 C197 69 188 56 170 50Z" fill="#8048F3" />
+      <Path d="M176 82 L192 80" stroke="#fff" strokeOpacity={0.35} strokeWidth={2} strokeLinecap="round" />
+      <Path d="M190 52 L200 66" stroke="#000" strokeOpacity={0.16} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M187 46 L200 52 L194 60 Z" fill="#fff" /><Path d="M203 52 L214 56 L206 62Z" fill="#fff" opacity={0.92} />
+      {/* arm: sleeve to the elbow, skin forearm, hand on the grip */}
+      <Path d="M198 60 L225 84" stroke={V2} strokeWidth={13} fill="none" strokeLinecap="round" />
+      <Path d="M225 84 L250 77" stroke={SKIN} strokeWidth={8.6} fill="none" strokeLinecap="round" />
+      <Circle cx={198} cy={60} r={7.6} fill={V2} /><Circle cx={254} cy={75.4} r={6} fill={SKIN} /><Rect x={252} y={68.6} width={5.6} height={8} rx={2.8} fill={SKIN} />
+      {/* head: neck, ear, face with cheeks, brow, eye, nose and an open smile; helmet over the top with a strap and visor */}
+      <Path d="M213 46 L216 58 L228 58 L227 46Z" fill="#D88F63" />
+      <Ellipse cx={223} cy={32} rx={17.4} ry={19} fill={SKIN} />
+      <Circle cx={211} cy={36} r={4.2} fill={SKIN} /><Circle cx={211.4} cy={36.2} r={2} fill="#D88F63" />
+      <Circle cx={231.6} cy={41} r={3.4} fill="#FF7B7B" opacity={0.32} />
+      <Path d="M226 26 Q231 23.4 236 25.6" stroke="#2A1B22" strokeWidth={1.9} fill="none" strokeLinecap="round" />
+      <Ellipse cx={232} cy={31} rx={2} ry={2.6} fill="#1A1033" /><Circle cx={232.7} cy={30.1} r={0.7} fill="#fff" />
+      <Path d="M239.6 33 Q242.6 37 239.4 38.4" stroke="#D88F63" strokeWidth={1.6} fill="none" strokeLinecap="round" />
+      <Path d="M227 42.4 Q233 50 240 42 Q233.4 44 227 42.4Z" fill="#8A2F3A" /><Path d="M228.6 43 Q233.4 45 238.6 42.8 L237.6 44.6 Q233.4 46.4 229.8 44.8Z" fill="#fff" />
+      <Path d="M204 36 C202 12 218 7 231 13 C240 17 242 26 240 31 L237 24 C230 19 218 19 210 25 L208 40Z" fill={V} />
+      <Path d="M206 24 C209 13 220 9 230 13" stroke={V3} strokeWidth={3.4} fill="none" strokeLinecap="round" />
+      <Path d="M205 31 L210 31" stroke={SAF} strokeWidth={3} strokeLinecap="round" />
+      <Path d="M210 26 C218 20 230 21 238 26 L238 30 C230 25 218 25 210 30Z" fill="rgba(255,255,255,0.4)" />
+      <Path d="M212 38 L214 47 L222 49" stroke={VD} strokeWidth={2.2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </G>
   );
 }
@@ -263,6 +269,26 @@ export function RiderArt({ w, spin }: { w: number; spin?: SharedValue<number> })
         <Svg width={VB_W * k} height={VB_H * k} viewBox={`0 0 ${VB_W} ${VB_H}`}><Body /></Svg>
         <Flag k={k} rm={rm || w < 120} />
       </View>
+    </View>
+  );
+}
+
+/** soft clouds drifting across the whole upper hero (behind the headline), in rows at different speeds */
+export function SkyClouds({ width, height }: { width: number; height: number }) {
+  const rm = !!useReducedMotion() || !useActive(), k = Math.min(1.45, width / 360);
+  const rows: { top: number; ms: number; op: number; items: [number, number][] }[] = [
+    { top: 4, ms: 95000, op: 0.9, items: [[20, 1.5], [200, 1.9]] },
+    { top: 72, ms: 70000, op: 0.7, items: [[120, 1.7], [300, 1.3]] },
+    { top: 142, ms: 120000, op: 0.8, items: [[0, 1.3], [210, 2.0]] },
+    { top: 214, ms: 84000, op: 0.65, items: [[90, 1.6], [270, 1.4]] },
+  ];
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width, height, overflow: 'hidden' }}>
+      {rows.map((r, i) => (
+        <View key={i} style={{ opacity: r.op }}>
+          <Loop k={k} tile={360} ms={r.ms} top={r.top} h={70} rm={rm} span={width}>{x0 => <G key={x0}>{r.items.map(([x, sc], j) => <Cloud key={j} x={x0 + x} y={52} s={sc} />)}</G>}</Loop>
+        </View>
+      ))}
     </View>
   );
 }
