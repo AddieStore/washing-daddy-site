@@ -27,6 +27,7 @@ app (Round tab → the place chip under his name); every car of that round then 
 ## Notes
 
 - Only washers listed in `ROUND_WASHERS` (lib.js, same two as workflow 9) can take a round. Add new washers in both places.
-- Taking a round while the old washer is mid-round moves his remaining cars too. The app only lets a washer switch
-  before any car of his own round has started, but the server does not know that: tell washers not to swap mid-day.
+- A round that another washer already has cannot be taken (`error: taken`): ops changes **Washer** in Notion to hand it
+  over. Only a round nobody has, or one the caller already has, can be picked. The app also only lets a washer switch
+  before any car of his own round has started.
 - `node test.mjs` runs the logic tests; `node build.mjs` regenerates the JSON from `lib.js` and `token.js`.

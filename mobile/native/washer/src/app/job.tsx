@@ -249,7 +249,7 @@ export default function JobScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: th.bg }}>
       <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-        <ScreenBar title={car.house} back onBack={goRound} />
+        <ScreenBar title={car.society ? `${car.society} · ${car.house}` : car.house} back onBack={goRound} />
         <View style={{ paddingHorizontal: 16, gap: 12 }}>
           <CarHeader reg={reg} st={st} />
           <Stepper steps={steps} />

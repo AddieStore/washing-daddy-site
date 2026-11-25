@@ -185,10 +185,11 @@ service cloud.firestore {
     function checkinExtrasOk(m) {
       return optStr(m, 'photo', 60000) && optStr(m, 'first', 40) && optStr(m, 'in', 40)
         && (!('uniform' in m) || m.uniform == null
-            || (m.uniform is map && m.uniform.keys().hasOnly(['shirt_match', 'shirt_share', 'self_confirmed'])
+            || (m.uniform is map && m.uniform.keys().hasOnly(['shirt_match', 'shirt_share', 'self_confirmed', 'shirt_color'])
                 && (!('shirt_match' in m.uniform) || m.uniform.shirt_match is bool)
                 && (!('shirt_share' in m.uniform) || m.uniform.shirt_share is number)
-                && (!('self_confirmed' in m.uniform) || m.uniform.self_confirmed is bool)));
+                && (!('self_confirmed' in m.uniform) || m.uniform.self_confirmed is bool)
+                && (!('shirt_color' in m.uniform) || (m.uniform.shirt_color is string && m.uniform.shirt_color.size() <= 12))));
     }
     match /checkins/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.phone == me());

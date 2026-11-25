@@ -19,9 +19,14 @@ assert.deepEqual(pagesToMove(pages, 'paschim-vihar-a', 'nobody'), []);
 const calls = [];
 const http = async o => { calls.push(o.method + ' ' + o.url.split('/').slice(-2).join('/')); return o.method === 'POST' ? { status: 200, body: { results: pages, has_more: false } } : { status: 200, body: {} } };
 const l = await handleRounds({ washer: 'chotte', body: { action: 'list' }, http, token: 't', dbId: 'db' }); assert.equal(l.ok, true); assert.equal(l.mine, 'paschim-vihar-a');
-const p = await handleRounds({ washer: 'shahrukh', body: { action: 'pick', round: 'Paschim Vihar A' }, http, token: 't', dbId: 'db' });
-assert.deepEqual([p.ok, p.moved, p.total], [true, 3, 3]);
-assert.equal(calls.filter(c => c.startsWith('PATCH')).length, 3);
+const stolen = await handleRounds({ washer: 'shahrukh', body: { action: 'pick', round: 'Paschim Vihar A' }, http, token: 't', dbId: 'db' });
+assert.deepEqual([stolen.ok, stolen.error, stolen.washer], [false, 'taken', 'chotte']);
+assert.equal(calls.filter(c => c.startsWith('PATCH')).length, 0);
+// a round nobody has is takeable
+const free = pages.map(pg => pg.id === 'd' ? page('d', 'Paschim Vihar B', 'Unassigned', 'Meera Bagh') : pg);
+const http2 = async o => (o.method === 'POST' ? { status: 200, body: { results: free, has_more: false } } : { status: 200, body: {} });
+const p = await handleRounds({ washer: 'chotte', body: { action: 'pick', round: 'Paschim Vihar B' }, http: http2, token: 't', dbId: 'db' });
+assert.deepEqual([p.ok, p.moved, p.total], [true, 1, 1]);
 assert.equal((await handleRounds({ washer: 'chotte', body: { action: 'pick', round: 'zzz' }, http, token: 't', dbId: 'db' })).ok, false);
 assert.equal((await handleRounds({ washer: 'x', http, token: 't', dbId: 'db' })).ok, false);
 console.log('rounds: all passed');

@@ -8,7 +8,7 @@ import { F, Icon, Pressy as BasePressy, sheet, ui, useTheme } from '../ui';
 import { CarArt } from '../ui';
 import { CarPic } from './CarPhoto';
 import { HsrpPlate, WashTimer, openSkipSheet } from './JobParts';
-import { DAY, MIN_PHOTOS, Rounds, Route, W, act, carBy, openReqs, photoNeeds, planName, route, useStore, view } from '../state/store';
+import { DAY, MIN_PHOTOS, Rounds, me, Route, W, act, carBy, openReqs, photoNeeds, planName, route, useStore, view } from '../state/store';
 import { STATUS, navOf, telOf } from '../lib/data';
 import type { Car } from '../lib/data';
 import { PLAN, TASK, tasksFor, type PlanId } from '../lib/schedule';
@@ -39,15 +39,18 @@ export function slotText(reg: string): string {
   const r = slotRange(s); return `${tm(r.from)} – ${tm(r.to)}`;
 }
 
+const shooting = new Set<string>();
 async function shootAfter(reg: string) {
   if (!W(reg)) { ui.toast(t('Pehle round shuru karo')); return }
-  ui.flash();
+  if (shooting.has(reg)) return;   // the camera is already opening for this car
+  shooting.add(reg); ui.flash();
   try {
     const r = await takePhoto();
     if (!r) return;
     act.photoPending(reg, 'after', r.preview);
     try { act.addPhoto(reg, 'after', r.url, undefined, r.file) } finally { act.photoPending(reg, 'after', null) }
   } catch (e: any) { ui.toast(t(e?.hi || 'Photo nahi gayi. Dobara try karo')) }
+  finally { shooting.delete(reg) }
 }
 
 /* ---------- the track: one circle per car, green check when done, violet ring on the one he is on ---------- */
@@ -442,17 +445,17 @@ function RoundSheet({ close }: { close: () => void }) {
       <SheetTitle title={t('Apna round chuno')} sub={t('Round = ek area ki saari gaadiyan. Round lete hi uski saari gaadiyan aapke naam ho jaati hain.')} />
       <View style={{ gap: 10 }}>
         {all.map(r => {
-          const on = r.id === mine.id;
+          const on = r.id === mine.id, taken = !!(r as any).washer && (r as any).washer !== me().id && !on;
           return (
-            <Pressy key={r.id} onPress={() => { if (on || act.pickRound(r.id)) close() }} accessibilityLabel={`${r.name}, ${r.count} gaadi`} accessibilityState={{ selected: on }} scaleTo={0.98}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 18, backgroundColor: on ? 'rgba(84,9,218,0.06)' : c.card, borderWidth: on ? 1.5 : 1, borderColor: on ? c.primary : c.line }}>
+            <Pressy key={r.id} onPress={() => { if (taken) { ui.toast(t('Yeh round kisi aur washer ke paas hai. Manager se poochho')); return } if (on || act.pickRound(r.id)) close() }} accessibilityLabel={`${r.name}, ${r.count} gaadi`} accessibilityState={{ selected: on }} scaleTo={0.98}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 18, backgroundColor: on ? 'rgba(84,9,218,0.06)' : c.card, opacity: taken ? 0.55 : 1, borderWidth: on ? 1.5 : 1, borderColor: on ? c.primary : c.line }}>
               <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: on ? c.primary : c.soft, alignItems: 'center', justifyContent: 'center' }}>
                 <Icon name="pin" size={22} color={on ? '#fff' : c.primary} />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 15.5, letterSpacing: -0.2, color: c.fg }}>{r.name}</Text>
                 <Text numberOfLines={2} style={{ fontFamily: F.body, fontSize: 12.5, lineHeight: 18, color: c.grey }}>{r.areas}</Text>
-                <Text style={[TNUM, { fontFamily: F.semi, fontSize: 12.5, color: c.primary, marginTop: 2 }]}>{r.count} {t('gaadi')}</Text>
+                <Text style={[TNUM, { fontFamily: F.semi, fontSize: 12.5, color: c.primary, marginTop: 2 }]}>{r.count} {t('gaadi')}{taken ? ` · ${t('kisi aur ke paas')}` : ''}</Text>
               </View>
               {on ? <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center' }}><Icon name="check" size={14} color="#fff" /></View> : null}
             </Pressy>

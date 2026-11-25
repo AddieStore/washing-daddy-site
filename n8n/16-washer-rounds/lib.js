@@ -59,6 +59,7 @@ async function handleRounds({ washer, body, http, token, dbId }) {
   const round = rslug(body && body.round);
   const known = roundsOf(pages).find(r => r.id === round);
   if (!round || !known) return { ok: false, error: 'unknown round' };
+  if (known.washer && known.washer !== washer) return { ok: false, error: 'taken', washer: known.washer };   // a round that another washer already has is changed by ops in Notion
   const ids = pagesToMove(pages, round, washer);
   let moved = 0;
   for (const id of ids) {

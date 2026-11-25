@@ -51,7 +51,7 @@ type Session = { washerId: string | null; real?: boolean; name?: string; phone?:
 // slots/order/locked: the round as a timeline (lib/slots.ts): which slot each car sits in, the order, and whether the washer locked it
 type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash>; slots?: Record<string, number>; order?: string[]; locked?: boolean; locked_at?: string | null; checkin_at?: string | null; checkin_photo?: string | null; checkin_uniform?: Uniform | null; checkout_at?: string | null };
 // the check-in selfie: shirt_match/shirt_share come from lib/shirt.ts; the cap is ticked by the washer and reviewed by the manager
-export type Uniform = { shirt_match: boolean; shirt_share: number; self_confirmed: true; shirt_color?: string };
+export type Uniform = { shirt_match: boolean; shirt_share: number; self_confirmed?: true; shirt_color?: string };
 type Selfie = { date: string; washer: string; url?: string; asset_id?: string };
 // the app language the washer picked in onboarding; only 'hinglish' and 'hi' are translated today, the rest fall back (see act.setLangPref)
 export type LangPref = Lang;
@@ -626,7 +626,7 @@ export const act = {
   // "Hub pahunch gaya": the morning check-in, seen live on the dashboard
   async checkIn(o?: { photo?: string; at?: string; shirt?: { shirt_match: boolean; shirt_share: number; shirt_color?: string } }) {
     ensureDay(); const day = S.day!; if (day.checkin_at) return true;
-    const uniform: Uniform | null = o?.shirt ? { shirt_match: o.shirt.shirt_match, shirt_share: o.shirt.shirt_share, self_confirmed: true, ...(o.shirt.shirt_color ? { shirt_color: o.shirt.shirt_color } : {}) } : null;
+    const uniform: Uniform | null = o?.shirt ? { shirt_match: o.shirt.shirt_match, shirt_share: o.shirt.shirt_share, ...(o.shirt.shirt_color ? { shirt_color: o.shirt.shirt_color } : {}) } : null;
     const photo = o?.photo && o.photo.length <= 40000 ? o.photo : null;
     day.checkin_at = o?.at || isoIST(); if (photo) day.checkin_photo = photo; if (uniform) day.checkin_uniform = uniform;
     noteAttend({ in: day.checkin_at }); save(); emit(); ui.haptic([20, 40, 20]);
