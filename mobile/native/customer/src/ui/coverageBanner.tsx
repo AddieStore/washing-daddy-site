@@ -112,7 +112,7 @@ export function CoverageBanner() {
               style={{ height: 44, borderRadius: 14, backgroundColor: V, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}>
               {busy ? <ActivityIndicator color="#fff" /> : <>
                 <Svg width={18} height={18} viewBox="0 0 24 24" fill="none"><Path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15L6 16z" stroke="#fff" strokeWidth={1.8} strokeLinejoin="round" /><Path d="M10 20.5a2 2 0 0 0 4 0" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" /></Svg>
-                <Txt weight={600} size={14} color="#fff">Notify me · count me in</Txt>
+                <Txt weight={600} size={14} color="#fff">Count me in</Txt>
               </>}
             </Pressable3></View>
             <Pressable3 onPress={() => openAddressPicker()} accessibilityRole="button" haptics={false} scaleTo={0.97} style={{ height: 44, paddingHorizontal: 14, borderRadius: 14, backgroundColor: '#F4F4F5', justifyContent: 'center' }}>
