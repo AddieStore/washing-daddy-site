@@ -113,7 +113,7 @@ const config: ExpoConfig = {
     [
       'expo-build-properties',
       {
-        ios: { useFrameworks: 'static' },
+        ios: { useFrameworks: 'dynamic' },
         // Firebase Android BoM 35 needs Kotlin 2.3 (the customer app hit the same)
         android: { minSdkVersion: 24, kotlinVersion: '2.3.21' },
       },

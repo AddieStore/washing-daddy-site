@@ -9,7 +9,7 @@ export const C = {
   V: '#5409DA', V2: '#6E2CF0', V3: '#8A55F5', VD: '#2A0A6B', DARK: '#221838', INK: '#120B22',
   SKIN: '#E7A57A', SKIN2: '#D68E63', SAF: '#FFBA08', SAF2: '#E09A00', SAF3: '#FFD166',
   SKY1: '#E9E0FF', SKY2: '#F6F2FF', BLD: '#E0D4FF', BLD2: '#D3C2FB', BLD3: '#EFE8FF',
-  ROAD: '#E9E3F5', ROAD2: '#D9CFEC', LAMP: '#3A3152', PANT: '#2E2645', PANT2: '#3C3358', MINT: '#14C08A', PINK: '#FF6FA3',
+  ROAD: '#1B1626', ROAD2: '#3B3450', LAMP: '#3A3152', PANT: '#2E2645', PANT2: '#3C3358', MINT: '#14C08A', PINK: '#FF6FA3',
 } as const;
 export const FONT = 'Poppins_700Bold';
 export const ND = Platform.OS !== 'web';
@@ -117,7 +117,7 @@ export function Street({ x0 }: { x0: number }) {
   return <G>{lamp(60)}{tree(150, 18)}{tree(178, 12)}{lamp(260)}{tree(340, 16)}</G>;
 }
 export function RoadDashes({ x0 }: { x0: number }) {
-  return <G>{[0, 1, 2, 3, 4, 5].map(i => <Rect key={i} x={x0 + i * 70 + 12} y={214} width={34} height={3.5} rx={1.75} fill="#fff" />)}</G>;
+  return <G>{[0, 1, 2, 3, 4, 5].map(i => <Rect key={i} x={x0 + i * 70 + 12} y={213.5} width={34} height={4} rx={2} fill="#F4F1FA" />)}</G>;
 }
 
 /* ---------- scooter rig (viewBox 360 x 232, wheels sit on y=202) ---------- */

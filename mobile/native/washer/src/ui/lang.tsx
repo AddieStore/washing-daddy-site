@@ -11,12 +11,15 @@ import { F, R, useTheme } from './theme';
 
 type S<T> = StyleProp<T>;
 
+/** the soft violet-tinted lift the customer app puts under its cards (light mode only) */
+export const cardLift = (c: { shadow: boolean }) => (c.shadow ? { shadowColor: '#1A1033', shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 } as const : {});
+
 /** ONE white rounded card (radius 16, hairline, no shadow) holding rows separated by hairline dividers. */
 export function Group({ children, style }: { children?: React.ReactNode; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   const kids = React.Children.toArray(children).filter(Boolean);
   return (
-    <View style={[{ backgroundColor: c.card, borderRadius: R.card, borderWidth: StyleSheet.hairlineWidth, borderColor: c.line, overflow: 'hidden' }, style]}>
+    <View style={[{ backgroundColor: c.card, borderRadius: 20, borderWidth: 1, borderColor: c.shadow ? 'rgba(23,23,23,0.06)' : c.line, overflow: 'hidden' }, cardLift(c), style]}>
       {kids.map((k, i) => (
         <View key={(React.isValidElement(k) && k.key) || i} style={i > 0 ? { borderTopWidth: StyleSheet.hairlineWidth * 2, borderTopColor: c.line, marginLeft: 0 } : undefined}>{k}</View>
       ))}
@@ -27,7 +30,7 @@ export function Group({ children, style }: { children?: React.ReactNode; style?:
 /** Small grey label above a Group (13/500 #7A7A80). */
 export function SectionLabel({ children, style }: { children?: React.ReactNode; style?: S<ViewStyle> }) {
   const { c } = useTheme();
-  return <Text accessibilityRole="header" style={[{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: c.grey, marginTop: 24, marginBottom: 8, marginLeft: 4 }, style as any]}>{children}</Text>;
+  return <Text accessibilityRole="header" style={[{ fontFamily: F.bold, fontSize: 17, lineHeight: 24, letterSpacing: -0.3, color: c.fg, marginTop: 28, marginBottom: 10, marginLeft: 2 }, style as any]}>{children}</Text>;
 }
 
 /** Group row: 56px, thin 22px line icon, 15/500 label, grey value, chevron. Old props (title/subtitle/right/divider) still work. */
@@ -60,9 +63,11 @@ export function Row({
   const body = (
     <>
       {icon ? (
-        <View style={{ width: 24, alignItems: 'center' }}>
-          {typeof icon === 'string' ? <Icon name={icon as IconName} size={22} color={destructive ? c.red : c.fg} /> : icon}
-        </View>
+        typeof icon === 'string' ? (
+          <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: destructive ? 'rgba(232,56,79,0.09)' : 'rgba(84,9,218,0.08)' }}>
+            <Icon name={icon as IconName} size={19} color={destructive ? c.red : c.primary} />
+          </View>
+        ) : <View style={{ width: 36, alignItems: 'center' }}>{icon}</View>
       ) : null}
       <View style={{ flex: 1, minWidth: 0, paddingVertical: 8 }}>
         <Text numberOfLines={2} style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 21, color: col }}>{text}</Text>
@@ -73,7 +78,7 @@ export function Row({
     </>
   );
   const st: S<ViewStyle> = [
-    { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, minHeight: 56 },
+    { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, minHeight: 60 },
     divider && { borderBottomWidth: StyleSheet.hairlineWidth * 2, borderBottomColor: c.line },
     style,
   ];
@@ -167,7 +172,7 @@ export function SheetHeader({ title, action, onAction, actionIcon, style }: { ti
 export function Receipt({ title, children, footer, style }: { title?: string; children?: React.ReactNode; footer?: React.ReactNode; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   return (
-    <View style={[{ backgroundColor: c.card, borderRadius: R.card, borderWidth: StyleSheet.hairlineWidth, borderColor: c.line, overflow: 'hidden' }, style]}>
+    <View style={[{ backgroundColor: c.card, borderRadius: 20, borderWidth: 1, borderColor: c.shadow ? 'rgba(23,23,23,0.06)' : c.line, overflow: 'hidden' }, cardLift(c), style]}>
       <View style={{ padding: 16, gap: 12 }}>
         {title ? <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 22, letterSpacing: -0.2, color: c.fg }}>{title}</Text> : null}
         {children}

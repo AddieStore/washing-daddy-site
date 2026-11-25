@@ -17,14 +17,16 @@ export const brand = {
 } as const;
 
 export const F = {
-  shout: 'Anton_400Regular',
-  hero: 'Poppins_700Bold',
-  // Pronto r5 scale (customer app): 400 body, 500 label, 600 title, 700 figure, 800 hero.
-  body: 'Poppins_400Regular',
-  medium: 'Poppins_500Medium',
-  semi: 'Poppins_600SemiBold',
-  bold: 'Poppins_700Bold',
-  black: 'Poppins_800ExtraBold',   // Pronto r5: hero headlines are ExtraBold (customer app)
+  // Same type as the customer app: Plus Jakarta Sans for text and figures, Bricolage Grotesque for big display lines.
+  shout: 'BricolageGrotesque_800ExtraBold',
+  hero: 'BricolageGrotesque_700Bold',
+  display: 'BricolageGrotesque_700Bold',
+  displayBlack: 'BricolageGrotesque_800ExtraBold',
+  body: 'PlusJakartaSans_400Regular',
+  medium: 'PlusJakartaSans_500Medium',
+  semi: 'PlusJakartaSans_600SemiBold',
+  bold: 'PlusJakartaSans_700Bold',
+  black: 'PlusJakartaSans_800ExtraBold',
 } as const;
 
 export type Tokens = {
@@ -90,8 +92,8 @@ export const lightTokens: Tokens = {
   // Pronto look shared with the customer app (customer src/theme.ts + pages/parts.tsx): grey page, white floating cards, neutral ink ramp.
   // 2026-11-21: brand canvas from the customer app (customer src/theme.ts C.canvas / C.tabBar), white cards float on it.
   // 2026-11-24 feel pass (DESIGN-REFERENCE): neutral canvas, two text colours only (#141414 / #7A7A80), hairline #EDEDF0.
-  bg: '#F6F6F7',
-  stage: '#EFEFF2',
+  bg: '#FFFFFF',
+  stage: '#F4F4F5',
   fg: '#141414',
   fg2: '#7A7A80',
   fg3: '#7A7A80',
@@ -116,10 +118,10 @@ export const lightTokens: Tokens = {
   heroTrack: 'rgba(255,255,255,0.22)',
   heroInk: '#FFFFFF',
   shadowColor: '#1A1033',
-  canvas: '#F6F6F7',
+  canvas: '#FFFFFF',
   grey: '#7A7A80',
-  navOn: '#1A1A1F',
-  navOnInk: '#FFFFFF',
+  navOn: '#E9DEFF',
+  navOnInk: '#5409DA',
   navShadow: '#000000',
 };
 
@@ -129,8 +131,8 @@ export const darkTokens: Tokens = {
   canvas: '#101012',
   ink: '#F4F4F5',
   grey: '#9A9AA2',
-  navOn: '#F4F4F5',
-  navOnInk: '#141414',
+  navOn: '#3A2670',
+  navOnInk: '#FFFFFF',
   navShadow: '#000000',
   stage: '#08080A',
   fg: '#F4F4F5',

@@ -2,12 +2,13 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { FloatingTabBar, type IconName } from '../../ui';
-import { Extra, openReqs, route, useStore } from '../../state/store';
+import { Extra, S, openReqs, route, useStore } from '../../state/store';
 import { t } from '../../lib/i18n';
 
 const TABS: { name: string; label: string; icon: IconName }[] = [
   { name: 'index', label: 'Round', icon: 'tabRound' },
   { name: 'extra', label: 'Extra', icon: 'tabExtra' },
+  { name: 'attendance', label: 'Hazri', icon: 'id' },
   { name: 'paisa', label: 'Paisa', icon: 'tabPaisa' },
   { name: 'profile', label: 'Profile', icon: 'tabMe' },
 ];
@@ -17,7 +18,7 @@ function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   useStore();
   const active = state.routes[state.index]?.name;
   const reqs = route().reduce((a, car) => a + openReqs(car.reg).filter((q) => q.status === 'open').length, 0);
-  const badge: Record<string, number> = { index: reqs, extra: Extra.shown().length };
+  const badge: Record<string, number> = { index: reqs, extra: Extra.shown().length, attendance: S.day?.checkin_at ? 0 : 1 };
   const select = (name: string) => {
     const rt = state.routes.find((r) => r.name === name);
     if (!rt) return;

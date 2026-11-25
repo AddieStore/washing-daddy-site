@@ -59,8 +59,12 @@ export default function JobAlert() {
           </View>
         </Group>
         <View style={{ gap: 12, marginTop: 20 }}>
-          <Button label={t('Lo yeh kaam')} variant="violet" onPress={accept} />
-          <Button label={t('Nahi karna')} variant="ghost" onPress={() => act.alertPass()} />
+          {job.washer_id
+            ? <Button label={t('Kaam dekho')} variant="violet" onPress={accept} />
+            : <>
+                <Button label={t('Accept · Lo yeh kaam')} variant="violet" onPress={accept} />
+                <Button label={t('Deny')} variant="ghost" onPress={() => act.alertPass()} />
+              </>}
         </View>
       </Animated.View>
     </View>

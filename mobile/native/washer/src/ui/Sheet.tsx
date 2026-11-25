@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -41,6 +42,21 @@ export function Sheet({
     return () => { show.remove(); hide.remove(); };
   }, []);
 
+  // swipe down on the handle area to close (any sheet)
+  const drag = useRef(new Animated.Value(0)).current;
+  const closeRef = useRef(onClose); closeRef.current = onClose;
+  const pan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderMove: (_, g) => { drag.setValue(Math.max(0, g.dy)) },
+    onPanResponderRelease: (_, g) => {
+      if (g.dy > 90 || g.vy > 0.8) closeRef.current();
+      else Animated.spring(drag, { toValue: 0, useNativeDriver: true, speed: 20, bounciness: 0 }).start();
+    },
+    onPanResponderTerminate: () => { Animated.spring(drag, { toValue: 0, useNativeDriver: true, speed: 20, bounciness: 0 }).start() },
+  })).current;
+  useEffect(() => { if (visible) drag.setValue(0) }, [visible, drag]);
+
   useEffect(() => {
     if (visible) {
       setMounted(true);
@@ -72,11 +88,13 @@ export function Sheet({
               {
                 backgroundColor: c.sheetBg,
                 maxHeight: height * 0.92,
-                transform: [{ translateY }],
+                transform: [{ translateY: Animated.add(translateY, drag) }],
               },
             ]}
           >
-            <View style={[s.grab, { backgroundColor: c.fg3, opacity: 0.35 }]} />
+            <View {...pan.panHandlers} accessibilityLabel="Neeche kheench ke band karo" style={[{ height: 40, alignItems: 'center', justifyContent: 'center', marginTop: -8 }, Platform.OS === 'web' ? ({ userSelect: 'none', cursor: 'grab', touchAction: 'none' } as any) : null]}>
+              <View style={[s.grab, { backgroundColor: c.fg3, opacity: 0.35, marginTop: 0, marginBottom: 0 }]} />
+            </View>
             <ScrollView
               bounces={false}
               keyboardShouldPersistTaps="handled"
