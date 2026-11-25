@@ -23,8 +23,20 @@ function Loop({ k, tile, ms, top, h, children, rm, span }: { k: number; tile: nu
   );
 }
 
+// a puffy cumulus: flat base, overlapping rounded lobes, a soft lavender underside and a few lighter inner puffs for depth
 const Cloud = ({ x, y, s = 1 }: { x: number; y: number; s?: number }) => (
-  <Path d={`M${x} ${y} h${44 * s} a${8 * s} ${8 * s} 0 0 0 -6 ${-13 * s} a${11 * s} ${11 * s} 0 0 0 -19 ${-5 * s} a${9 * s} ${9 * s} 0 0 0 -16 ${6 * s} a${7 * s} ${7 * s} 0 0 0 -3 ${12 * s} z`} fill="#fff" />
+  <G>
+    <Ellipse cx={x + 28 * s} cy={y - 1 * s} rx={29 * s} ry={4 * s} fill="#CDBDF2" opacity={0.45} />
+    <Rect x={x} y={y - 10 * s} width={57 * s} height={10 * s} rx={5 * s} fill="#fff" />
+    <Circle cx={x + 13 * s} cy={y - 13 * s} r={9.5 * s} fill="#fff" />
+    <Circle cx={x + 26 * s} cy={y - 21 * s} r={13 * s} fill="#fff" />
+    <Circle cx={x + 40 * s} cy={y - 14 * s} r={10 * s} fill="#fff" />
+    <Circle cx={x + 50 * s} cy={y - 10 * s} r={6.5 * s} fill="#fff" />
+    <Circle cx={x + 6 * s} cy={y - 7 * s} r={5 * s} fill="#fff" />
+    <Ellipse cx={x + 30 * s} cy={y - 5 * s} rx={22 * s} ry={4.4 * s} fill="#E7DFFA" opacity={0.8} />
+    <Circle cx={x + 33 * s} cy={y - 11 * s} r={6 * s} fill="#F3EEFF" />
+    <Circle cx={x + 19 * s} cy={y - 10 * s} r={4.4 * s} fill="#F3EEFF" />
+  </G>
 );
 function Skyline({ x0 }: { x0: number }) {
   const b = [[0, 122, 34], [34, 96, 46], [80, 136, 26], [106, 112, 38], [150, 140, 24], [174, 88, 40], [214, 120, 30], [244, 104, 52], [296, 132, 28], [324, 92, 36]];
@@ -36,11 +48,11 @@ function Skyline({ x0 }: { x0: number }) {
 // street furniture passing by: dark lamp posts and soft round trees
 function Street({ x0 }: { x0: number }) {
   const lamp = (x: number) => <G key={'l' + x}>
-    <Path d={`M${x0 + x} 198 L${x0 + x} 48 C${x0 + x} 38 ${x0 + x + 7} 34 ${x0 + x + 16} 34 L${x0 + x + 23} 34`} stroke="#3A3152" strokeWidth={3} fill="none" strokeLinecap="round" />
-    <Rect x={x0 + x + 19} y={31} width={14} height={6.5} rx={3.2} fill="#3A3152" />
-    <Ellipse cx={x0 + x + 26} cy={40} rx={6} ry={3} fill={SAF} opacity={0.9} />
-    <Path d={`M${x0 + x + 20} 41 L${x0 + x + 12} 66 L${x0 + x + 40} 66 L${x0 + x + 32} 41Z`} fill={SAF} opacity={0.08} />
-    <Rect x={x0 + x - 3} y={192} width={6} height={6} rx={1.5} fill="#3A3152" />
+    <Path d={`M${x0 + x} 198 L${x0 + x} 42 C${x0 + x} 29 ${x0 + x + 9} 24 ${x0 + x + 20} 24 L${x0 + x + 29} 24`} stroke="#3A3152" strokeWidth={4.2} fill="none" strokeLinecap="round" />
+    <Rect x={x0 + x + 24} y={20} width={20} height={9} rx={4.5} fill="#3A3152" />
+    <Ellipse cx={x0 + x + 34} cy={31.5} rx={8.5} ry={4} fill={SAF} opacity={0.95} />
+    <Path d={`M${x0 + x + 26} 33 L${x0 + x + 14} 66 L${x0 + x + 54} 66 L${x0 + x + 42} 33Z`} fill={SAF} opacity={0.09} />
+    <Rect x={x0 + x - 4.5} y={190} width={9} height={8} rx={2} fill="#3A3152" />
   </G>;
   // a leafy tree like the reference art: forked brown trunk, a canopy of overlapping leaf clusters in three greens
   // (dark underside, mid body, light sunlit top-left), scalloped edge
@@ -133,19 +145,11 @@ function Body() {
         <Rect x={124} y={80} width={10} height={30} rx={5} fill={VD} opacity={0.55} />
         <Path d="M62 113 h74" stroke={VD} strokeWidth={2} opacity={0.35} strokeLinecap="round" />
       </G>
-      {/* scooter shell: smooth curves with a shine, like the delivery-scooter reference, in WD violet */}
-      <Path d="M82 152 C82 130 102 116 134 114 L192 114 C208 114 216 124 218 138 L216 152 Z" fill={V} />
-      <Path d="M96 140 C100 128 116 120 138 119 L188 119" stroke={V3} strokeWidth={3.4} fill="none" strokeLinecap="round" opacity={0.9} />
-      <Path d="M92 150 C94 142 100 138 108 138" stroke={VD} strokeWidth={2} fill="none" strokeLinecap="round" opacity={0.5} />
-      <Circle cx={92} cy={140} r={3.6} fill="#FF5A5A" /><Circle cx={92} cy={140} r={1.4} fill="#FFB3B3" />
-      <Path d="M218 156 L300 156 L300 150 L220 150Z" fill={DARK} />
-      <Path d="M224 150 C227 124 241 104 256 94 C263 89 271 93 271 100 L274 122 C275 136 284 145 298 151 L224 152Z" fill={V} />
-      <Path d="M236 140 C240 122 250 108 260 100" stroke={V3} strokeWidth={3.4} fill="none" strokeLinecap="round" opacity={0.9} />
-      <Path d="M250 160 C258 142 290 142 300 160 L292 162 C284 152 266 152 258 162 Z" fill={V} /><Path d="M254 156 C262 148 284 148 292 156" stroke={V3} strokeWidth={2} fill="none" strokeLinecap="round" opacity={0.8} />
-      <Path d="M268 98 L272 172" stroke={DARK} strokeWidth={6} strokeLinecap="round" />
-      <Ellipse cx={288} cy={118} rx={5} ry={8} fill="#E8E2F5" /><Ellipse cx={288} cy={118} rx={3.2} ry={6} fill={SAF} />
-      <Path d="M268 96 L264 76" stroke={DARK} strokeWidth={4.6} strokeLinecap="round" /><Path d="M254 76 L274 72" stroke={DARK} strokeWidth={5} strokeLinecap="round" />
-      <Path d="M268 74 L274 56" stroke={DARK} strokeWidth={2} strokeLinecap="round" /><Ellipse cx={276} cy={52} rx={4.4} ry={5.6} fill={DARK} /><Ellipse cx={276} cy={52} rx={2.2} ry={3} fill="#4A3F6B" />
+      {/* rear body + side panel */}
+      <Path d="M80 166 C80 140 100 124 132 122 L196 122 C210 122 218 132 218 146 L220 158 L244 160 L240 170 L150 172 C148 158 136 150 120 150 C104 150 92 158 90 172 L80 172 Z" fill={DARK} />
+      <Path d="M104 132 C112 127 124 126 136 126 L190 126 C200 126 206 132 206 142 L118 150 C108 150 100 142 104 132Z" fill={V} />
+      <Path d="M112 134 L196 132" stroke={V3} strokeWidth={3} strokeLinecap="round" />
+      <Circle cx={84} cy={150} r={3.5} fill="#FF5A5A" />
       {/* foam bucket hooked on the rack */}
       <Path d="M62 118 C62 108 86 108 86 118" stroke={DARK} strokeWidth={2} fill="none" />
       <Path d="M58 124 L90 124 L86 150 C85.6 153 83.5 155 80.5 155 L67.5 155 C64.5 155 62.4 153 62 150 Z" fill={SAF} />
@@ -154,36 +158,44 @@ function Body() {
       <Circle cx={63} cy={122} r={5} fill="#fff" /><Circle cx={71} cy={119} r={6.5} fill="#fff" /><Circle cx={80} cy={120} r={5.5} fill="#fff" /><Circle cx={87} cy={122} r={4} fill="#fff" />
       <Circle cx={75} cy={112} r={2.4} fill="#fff" stroke="#D8C8FF" strokeWidth={0.8} /><Circle cx={84} cy={108} r={1.6} fill="#fff" stroke="#D8C8FF" strokeWidth={0.8} />
       {/* seat */}
-      <Path d="M128 114 C130 105 142 103 160 103 L198 105 C207 106 208 114 202 118 L132 119Z" fill={INK} />
-      <Path d="M138 106 C150 104 170 104 190 106" stroke="#3A3152" strokeWidth={1.6} fill="none" strokeLinecap="round" />
-      {/* legs: relaxed bent knee, grey trousers with a highlight, white sneaker on the floorboard */}
-      <Path d="M150 100 C172 94 212 98 228 106 C238 111 238 122 231 127 L233 150 L216 150 L212 130 C194 128 168 126 150 120 Z" fill="#3B3858" />
-      <Path d="M168 108 C188 106 212 108 226 114" stroke="#5A567A" strokeWidth={3.4} fill="none" strokeLinecap="round" />
-      <Path d="M222 128 L224 146" stroke="#000" strokeOpacity={0.16} strokeWidth={2} strokeLinecap="round" />
-      <Path d="M213 148 L238 148 C245 148 249 153 249 158 L213 158Z" fill="#fff" /><Path d="M213 154.6 L249 154.6 L249 159 L213 159Z" fill="#2B1B66" /><Path d="M228 150 L236 150 M227 153 L235 153" stroke="#C9C3D6" strokeWidth={1.1} strokeLinecap="round" />
-      {/* rider: violet long-sleeve top with soft shading, leaning into the ride */}
-      <Path d="M146 108 C140 84 150 60 170 51 C186 45 203 49 209 60 L216 73 C208 81 198 87 192 93 L194 108 Z" fill="#6E2CF0" />
-      <Path d="M146 108 C141 88 147 68 156 58 L168 100 L160 108Z" fill="#5409DA" opacity={0.8} />
-      <Path d="M172 50 C187 45 203 49 209 60 L215 71 C210 75 205 79 200 82 C198 69 189 55 172 50Z" fill="#8A55F5" opacity={0.9} />
-      <Path d="M158 86 L190 80" stroke="#fff" strokeOpacity={0.3} strokeWidth={2} strokeLinecap="round" />
-      <Path d="M192 50 L202 62 L196 48" fill="#fff" opacity={0.0} /><Path d="M196 47 C200 44 208 46 211 51 L204 58 Z" fill="#EDE7FF" />
-      {/* arm: long sleeve out to the grip, light cuff, hand around the bar */}
-      <Path d="M198 60 L226 80 L248 76" stroke="#6E2CF0" strokeWidth={12} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M226 80 L248 76" stroke="#8A55F5" strokeWidth={3} fill="none" strokeLinecap="round" opacity={0.8} />
-      <Rect x={244} y={69.6} width={4.4} height={12.4} rx={2} fill="#EDE7FF" />
-      <Circle cx={198} cy={60} r={7.4} fill="#6E2CF0" /><Circle cx={255} cy={75.4} r={5.8} fill={SKIN} /><Rect x={253} y={69.4} width={6} height={7.6} rx={3} fill={SKIN} />
-      {/* head in profile, like the reference: neck, big rounded skull, forehead, nose, smile, cheek, eye; violet helmet with strap */}
-      <Path d="M214 46 L217 60 L228 60 L226 46Z" fill="#D88F63" />
-      <Path d="M224 20 C234 19 240 26 239 32 L243 37 C243.6 38.4 242.4 39.4 240.4 39.4 L239 40 C239.4 44 238 47 235 49 C231 52 224 50 221 45 L220 28Z" fill={SKIN} />
-      <Circle cx={232} cy={40} r={3.4} fill="#FF7B7B" opacity={0.32} />
-      <Path d="M229 25 Q233 22.6 237.6 24.4" stroke="#2A1B22" strokeWidth={1.8} fill="none" strokeLinecap="round" />
-      <Ellipse cx={233.4} cy={30.4} rx={1.9} ry={2.5} fill="#1A1033" /><Circle cx={234} cy={29.5} r={0.7} fill="#fff" />
-      <Path d="M230.4 43.4 Q235 48 239.6 42.6" stroke="#8A2F3A" strokeWidth={1.8} fill="none" strokeLinecap="round" />
-      <Path d="M202 38 C200 12 216 6 230 12 C240 16 243 25 241 30 L238 23 C231 18 218 19 210 25 L208 42Z" fill={V} />
-      <Path d="M205 24 C208 12 220 8 231 12" stroke="#8A55F5" strokeWidth={3.6} fill="none" strokeLinecap="round" />
-      <Path d="M204 32 L211 32" stroke={SAF} strokeWidth={3} strokeLinecap="round" />
-      <Path d="M212 24 C220 18 232 19 240 25 L240 29 C232 24 220 24 212 29Z" fill="rgba(255,255,255,0.4)" />
-      <Path d="M212 40 L215 50 L224 52" stroke={VD} strokeWidth={2.2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M126 118 C128 110 140 108 158 108 L198 110 C206 111 207 119 201 123 L130 124 Z" fill={INK} />
+      {/* front fork, leg shield, fender, headlight, bars, mirror */}
+      <Path d="M266 98 L270 176" stroke={DARK} strokeWidth={7} strokeLinecap="round" />
+      <Path d="M238 170 L252 108 C254 100 262 95 268 98 L274 102 L262 150 L274 170 Z" fill={DARK} />
+      <Path d="M248 108 C262 102 276 106 282 116 L292 148 C282 148 270 154 262 166 L250 168 Z" fill={V} />
+      <Path d="M254 114 C264 110 273 113 279 121" stroke={V3} strokeWidth={3} fill="none" strokeLinecap="round" />
+      <Path d="M246 160 C254 146 286 146 296 162 L288 164 C278 154 260 154 254 164 Z" fill={V} />
+      <Ellipse cx={289} cy={126} rx={4} ry={6.5} fill={SAF} />
+      <Path d="M266 98 L262 76" stroke={DARK} strokeWidth={5} strokeLinecap="round" />
+      <Path d="M252 76 L272 72" stroke={DARK} strokeWidth={5} strokeLinecap="round" />
+      <Path d="M266 74 L272 58" stroke={DARK} strokeWidth={2} strokeLinecap="round" />
+      <Ellipse cx={274} cy={54} rx={4} ry={5} fill={DARK} />
+      {/* legs + shoe */}
+      <Path d="M150 98 C172 94 214 98 230 106 C238 111 238 122 231 126 L234 156 L218 156 L214 130 C196 128 168 126 150 120 Z" fill="#2E2645" />
+      <Path d="M170 112 C190 112 210 114 224 118" stroke="#40375C" strokeWidth={4} fill="none" strokeLinecap="round" />
+      <Path d="M214 153 L238 153 C244 153 248 157 248 162 L214 162 Z" fill="#fff" />
+      <Rect x={214} y={160} width={34} height={3} fill="#C9C3D6" />
+      {/* torso: jacket with reflective stripes */}
+      <Path d="M146 106 C142 84 150 60 168 50 C182 42 198 44 206 54 L216 70 C208 78 198 84 190 90 L192 106 Z" fill={V2} />
+      <Path d="M168 50 C182 42 198 44 206 54 L216 70 C210 76 204 80 198 84 C196 70 188 56 168 50Z" fill="#8048F3" />
+      <Path d="M148 96 C146 84 148 72 154 62 L160 100 Z" fill={V} opacity={0.6} />
+      <Path d="M150 80 L190 74" stroke="#fff" strokeWidth={3.5} strokeLinecap="round" />
+      <Path d="M156 66 L170 58 M159 71 L173 63" stroke="#fff" strokeWidth={2} strokeLinecap="round" opacity={0.85} />
+      {/* arm to the handlebar */}
+      <Path d="M196 58 L224 82 L250 76" stroke={V} strokeWidth={12} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M240 78 L246 77" stroke="#fff" strokeWidth={12} />
+      <Circle cx={254} cy={75} r={5.5} fill={SKIN} />
+      {/* collar, helmet, face, visor */}
+      <Path d="M196 46 C200 40 210 38 214 44 L208 52 Z" fill="#fff" />
+      <Circle cx={212} cy={26} r={20} fill={V} />
+      <Path d="M196 20 C200 8 214 4 226 10" stroke={V3} strokeWidth={3.5} fill="none" strokeLinecap="round" />
+      <Path d="M194 30 L208 30" stroke={SAF} strokeWidth={3} strokeLinecap="round" />
+      <Path d="M220 20 C230 20 236 26 236 34 C236 42 230 46 222 45 Z" fill={SKIN} />
+      <Path d="M228 28 L231 28" stroke={DARK} strokeWidth={2} strokeLinecap="round" />
+      <Path d="M226 38 C228 40 231 40 233 38" stroke="#9A4F2E" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+      <Path d="M214 16 C226 14 238 20 240 30 L240 34" stroke="#fff" strokeWidth={2.5} fill="none" strokeLinecap="round" />
+      <Path d="M216 18 C226 17 236 22 238 30 L226 30 C224 24 220 20 216 18Z" fill="rgba(255,255,255,0.35)" />
+      <Path d="M214 44 C218 46 224 46 230 44" stroke={VD} strokeWidth={2.5} fill="none" strokeLinecap="round" />
     </G>
   );
 }
