@@ -176,4 +176,11 @@ assert.equal(m.waCountGate({ sends: 3, window_start: new Date(T0 - 3700000).toIS
   await m.waSendCode({ phone: '9876504210' }, x.deps);
   assert.ok(!x.sent[0]._url.includes('evil'));
 }
+/* ---------- a number put on the deny list while its code is pending ---------- */
+{
+  const w = world();
+  await m.waSendCode({ phone: '9876504210' }, w.deps);
+  w.deps.deny = '+919876504210';
+  assert.equal((await m.waVerifyCode({ phone: '9876504210', code: '111111' }, w.deps)).body.code, 'expired');
+}
 console.log('all WhatsApp OTP tests passed');

@@ -132,6 +132,9 @@ async function waVerifyCode(reqBody, deps) {
     const phone = waPhone(b.phone);
     const code = b.code;
     if (!phone || !waCodeOk(code)) return await fail('bad_code');
+    // admin numbers never sign in with a WhatsApp code (also covers a number added to WA_OTP_DENY while a code was pending)
+    const deny = WA_DENY.concat(String(deps.deny || '').split(',').map(s => s.trim()).filter(Boolean));
+    if (deny.indexOf(phone) >= 0) return await fail('expired');
     const g = await waSetup(deps);
     if (!g) return await fail('server');
     const url = g.docs + 'waotp/' + encodeURIComponent(phone);
