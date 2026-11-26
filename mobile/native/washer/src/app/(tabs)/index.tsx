@@ -5,10 +5,9 @@ import { Animated, Linking, Pressable, StyleSheet, Text, View, useWindowDimensio
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  PullToRefresh, Button, CallButton, CarArt, Chip, F, Group, HeaderIconButton, Icon, Plate, Pressy, Row, SectionLabel, SlideToConfirm, ui, useTheme, WeekStrip,
+  PullToRefresh, Button, CallButton, CarArt, Chip, F, Group, HeaderIconButton, Icon, Plate, Pressy, Row, SectionLabel, ui, useTheme, WeekStrip,
 } from '../../ui';
 import { RoundHeroArt, DoneArt, EmptyArt } from '../../ui/art';
-import { cardShadow } from '../../ui/theme';
 import { DAY, Money, Route, S, W, act, carBy, isOnline, me, openReqs, planName, route, useStore, view } from '../../state/store';
 import { STATUS, navOf, telOf } from '../../lib/data';
 import { TASK, tasksFor } from '../../lib/schedule';
@@ -19,8 +18,7 @@ import { openLocationSettings, useLocality } from '../../lib/geo';
 import { FadeUp, TNUM } from '../../screens/DayParts';
 import { openAddCar } from '../../screens/AddCar';
 import { openHelpSheet } from '../../screens/sheets';
-import { CheckInCard } from '../../screens/RoundTimeline';
-import { CheckOutCard } from '../../screens/CheckOutCard';
+import { AttendanceCard, DayCard } from '../../screens/DayCards';
 import { openRewards, useOutlook } from '../../screens/RewardsCards';
 import { EARLY_DAYS } from '../../lib/rewards';
 import { useDayMarks } from '../../lib/history';
@@ -288,19 +286,17 @@ export default function RoundScreen() {
   const hi = t(h < 12 ? 'Subah bakhair' : h < 17 ? 'Namaste' : 'Shaam ho gayi');
   const cn = Route.counts();
   const finished = started && cn.total > 0 && cn.done + cn.skipped >= cn.total;
-  const [slideKey, setSlideKey] = useState(0);
-  const showSlide = !started && cn.total > 0;
   const width = Math.min(ww, 440);
   return (
     <View style={{ flex: 1, backgroundColor: c.card }}>
-      <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: showSlide ? 200 : 120, backgroundColor: c.card }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 120, backgroundColor: c.card }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <HeroBand top={insets.top} width={width} greeting={hi} name={w.name.split(' ')[0]} />
         <View style={{ marginTop: -OVERLAP, borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: c.card, paddingHorizontal: 16, paddingTop: 20, flexGrow: 1 }}>
-          {!started ? <FadeUp index={0} style={{ marginBottom: 16 }}><CheckInCard /></FadeUp> : null}
-          <FadeUp index={1}><Summary started={started} /></FadeUp>
+          <FadeUp index={0}><AttendanceCard /></FadeUp>
+          {cn.total ? <FadeUp index={1} style={{ marginTop: 16 }}><DayCard /></FadeUp> : null}
+          <FadeUp index={2} style={{ marginTop: 24 }}><Summary started={started} /></FadeUp>
           {!cn.total ? <FadeUp index={2}><NoCars width={width} /></FadeUp> : null}
           {finished ? <FadeUp index={2}><DoneCard width={width} done={cn.done} /></FadeUp> : cn.total ? <FadeUp index={2}><NextCar started={started} /></FadeUp> : null}
-          {started ? <FadeUp index={3} style={{ marginTop: 16 }}><CheckOutCard /></FadeUp> : null}
           <FadeUp index={4}><AllCars /></FadeUp>
           <FadeUp index={5}><Week /></FadeUp>
           <FadeUp index={6}><RewardsRow /></FadeUp>
@@ -310,14 +306,6 @@ export default function RoundScreen() {
           </FadeUp>
         </View>
       </PullToRefresh>
-      {showSlide ? (
-        <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: insets.bottom + 92, paddingHorizontal: 16 }}>
-          <View style={[{ backgroundColor: c.card, borderRadius: 20, padding: 10, borderWidth: StyleSheet.hairlineWidth * 2, borderColor: c.line }, cardShadow(c)]}>
-            <SlideToConfirm label={t('Round shuru karo')} resetKey={slideKey} onDone={() => { if (!act.startRound()) setSlideKey((k) => k + 1); }} />
-            <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.grey, textAlign: 'center', marginTop: 6 }}>{t('Shuru karte hi har customer ko aapka naam aur time dikh jayega.')}</Text>
-          </View>
-        </View>
-      ) : null}
     </View>
   );
 }

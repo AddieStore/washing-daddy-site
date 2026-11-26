@@ -15,7 +15,8 @@ import { t } from '../lib/i18n';
 import { hm12, t12 } from '../lib/time';
 import { takePhoto } from '../lib/photo';
 import { WashGuide } from '../screens/WashGuide';
-import { HsrpPlate, InteriorButton, ExtrasRow, ReqCard, RoundIcon, ScreenBar, Shot, TaskRow, WashTimer, openNoteSheet, openPhotoSheet, openSkipSheet, openSuccessSheet, type ShotItem } from '../screens/JobParts';
+import { HsrpPlate, InteriorButton, ExtrasRow, ReqCard, RoundIcon, ScreenBar, Shot, TaskRow, WashTimer, openNoteSheet, openPhotoSheet, openSkipSheet, type ShotItem } from '../screens/JobParts';
+import { openCarDone } from '../screens/DayCards';
 import { ReportSection, ReportSummary, StartCapture, newStartInfo, openLeaveSheet, saveStartInfo } from '../screens/JobReport';
 
 const ORDER = ['scheduled', 'on_the_way', 'arrived', 'washing', 'done'];
@@ -221,7 +222,7 @@ export default function JobScreen() {
     if (act.finish(reg)) {
       const nx = Route.nextReg();
       const n = nx ? carBy(nx) : null;
-      openSuccessSheet(car.customer, nx && n ? { reg: nx, model: n.model } : null, goPaisa);
+      openCarDone(reg, nx && n ? { reg: nx, model: n.model } : null, goPaisa);
     }
   };
   const startWash = () => { if (!wd) return; act.startWash(reg); saveStartInfo(reg, startInfo.current, wd.issues) };

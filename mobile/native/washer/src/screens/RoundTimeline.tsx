@@ -42,26 +42,6 @@ function build(order: string[], slots: Record<string, number>, drag?: { reg: str
 export type ScrollCtl = { ref: React.MutableRefObject<any>; y: { current: number } };
 
 /* ---------------- check-in ---------------- */
-export function CheckInCard() {
-  useStore();
-  const { c } = useTheme();
-  const at = S.day?.checkin_at;
-  if (at) {
-    return (
-      <Group>
-        <Row icon="check" label={t('Hub pahunch gaye')} right={<Chip tone="green" icon="check">{t12(at)}</Chip>} />
-      </Group>
-    );
-  }
-  if (S.day?.started) return null;
-  return (
-    <Group>
-      <Row icon="pin" label={t('Hub pahunch gaya')} sub={t('Round se pehle hub par check-in karo')} onPress={openAttendance}
-        right={<View style={st.checkGo}><Icon name="check" size={18} color="#fff" /></View>} />
-    </Group>
-  );
-}
-
 /* ---------------- slot picker sheet ---------------- */
 function openSlotSheet(reg: string) {
   sheet.open(close => <SlotSheet reg={reg} close={close} />);

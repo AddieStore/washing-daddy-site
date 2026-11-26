@@ -286,26 +286,3 @@ function PhotoSheet({ title, reg, kind, list, can, retake, close }: { title: str
   );
 }
 
-export function openSuccessSheet(customer: string, next: { reg: string; model: string } | null, goPaisa: () => void) {
-  sheet.open(close => <SuccessSheet customer={customer} next={next} goPaisa={goPaisa} close={close} />);
-}
-function SuccessSheet({ customer, next, goPaisa, close }: { customer: string; next: { reg: string; model: string } | null; goPaisa: () => void; close: () => void }) {
-  const { c } = useTheme();
-  const pop = useRef(new Animated.Value(0)).current;
-  useEffect(() => { Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 10, bounciness: 12 }).start() }, [pop]);
-  return (
-    <View style={{ alignItems: 'center', paddingTop: 6 }}>
-      <Animated.View style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 14, backgroundColor: c.ok, alignItems: 'center', justifyContent: 'center', transform: [{ scale: pop }] }}>
-        <Icon name="check" size={34} color="#fff" />
-      </Animated.View>
-      <Text style={{ fontFamily: F.bold, fontSize: 24, lineHeight: 30, letterSpacing: -0.5, color: c.fg }}>{t('Chamak gayi!')}</Text>
-      <Text style={{ fontFamily: F.body, fontSize: 14, color: c.grey, marginTop: 4, marginBottom: 18, textAlign: 'center' }}>{t(`${customer} ke phone pe pahunch gaya`)}</Text>
-      <View style={{ alignSelf: 'stretch' }}>
-        {next
-          ? <Button variant="primary" iconRight="arrow" label={t(`Agli gaadi: ${next.model}`)} onPress={() => { act.setCurrent(next.reg); close() }} />
-          : <Button variant="primary" label={t('Round poora · hisaab dekho')} onPress={() => { close(); goPaisa() }} />}
-      </View>
-      <LinkButton label={t('Yahin raho')} onPress={close} style={{ marginTop: 6 }} />
-    </View>
-  );
-}

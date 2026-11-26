@@ -13,3 +13,4 @@ export * from './Footer';
 export * from './TopBar';
 export * from './DotBg';
 export * from './lang';
+export * from './reward';
