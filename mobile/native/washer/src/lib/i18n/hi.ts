@@ -807,4 +807,11 @@ Object.assign(HI, {
   "Start code": "स्टार्ट कोड",
 });
 
+Object.assign(HI, {
+  "Aaj gaadi alag jagah khadi hai": "आज गाड़ी अलग जगह खड़ी है",
+  "Map mein kholo": "मैप में खोलो",
+  "Alag jagah": "अलग जगह",
+  "aapse door": "आपसे दूर",
+});
+
 export { HI as T, HI_PATTERNS as P };

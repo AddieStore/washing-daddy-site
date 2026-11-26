@@ -42,7 +42,9 @@ export const ISSUES: { key: string; label: string }[] = [
 ];
 export const DELAYS: string[] = ['Pichli gaadi mein der', 'Traffic / door', 'Paani ki dikkat', 'Customer ka intezaar', 'Tabiyat theek nahi', 'Saaman laane gaya'];
 export const ABANDON_REASONS: string[] = ['Baarish', 'Paani khatam', 'Customer ne roka', 'Gaadi hat gayi', 'Tabiyat / emergency', 'Saaman khatam', 'Aur koi wajah'];
-export type Req = { id: string; reg: string; kind: string; text: string; spots: string[]; created_at: string; status: string; seen_at?: string; done_at?: string; washer_reply?: string };
+export type Req = { id: string; reg: string; kind: string; text: string; spots: string[]; created_at: string; status: string; seen_at?: string; done_at?: string; washer_reply?: string;
+  // kind 'spot' only: the car is parked somewhere else (customer app, park alerts). Wash days from..to, IST.
+  lat?: number; lng?: number; acc?: number; from?: string; to?: string; until_back?: boolean; parked_at?: string };
 export type Job = {
   id: string; washer_id?: string; status?: string; service?: string; price?: number; car?: string; reg?: string;
   area?: string; customer_name?: string; phone?: string; note?: string; lat?: number; lng?: number; date?: string;
@@ -85,7 +87,7 @@ export const setShare = (v: number) => { if (isFinite(v) && v >= 0.1 && v <= 0.9
 export const STATUS: Record<WashStatus, string> = { scheduled: 'Baaki', on_the_way: 'Raaste mein', arrived: 'Pahunch gaye', washing: 'Wash chal raha', done: 'Ho gaya', skipped: 'Skip' };
 export const SKIPS = ['Gaadi nahi mili', 'Baarish', 'Gate band tha', 'Customer ne mana kiya', 'Gaadi nikal chuki thi'];
 export const NOTE_CHIPS = ['Bird dropping saaf kar di', 'Tyre mein hawa kam lagi', 'Naya scratch dikha, photo bheji', 'Body cover fold kar diya', 'Andar kuch saman pada tha, chhua nahi'];
-export const REQ_KIND: Record<string, string> = { note: 'Customer ka note', rewash: 'Dobara wash chahiye', skip_tomorrow: 'Aaj wash mat karna' };
+export const REQ_KIND: Record<string, string> = { note: 'Customer ka note', rewash: 'Dobara wash chahiye', skip_tomorrow: 'Aaj wash mat karna', spot: 'Alag jagah' };
 export const JOIN_AREAS = ['GH-9 Paschim Vihar', 'GH-6 Paschim Vihar', 'GH-14 Paschim Vihar', 'Meera Bagh', 'Sundar Vihar', 'Guru Hari Apartments'];
 
 // where an area sits on the map, same table the customer app draws its map from [lng,lat]
@@ -130,11 +132,27 @@ export function cleanWash(r: unknown): Wash {
   return w;
 }
 export function cleanReq(v: Record<string, unknown>, id: string): Req {
+  const spot = v.kind === 'spot' ? { lat: Number(v.lat), lng: Number(v.lng), acc: numOr(v.acc, 0) ?? 0, from: String(v.from || ''), to: String(v.to || ''), until_back: !!v.until_back } : null;
   return {
-    ...(v as object), id, reg: String(v.reg || ''), kind: String(v.kind || 'note'), text: v.text == null ? '' : String(v.text),
+    ...(v as object), ...spot, id, reg: String(v.reg || ''), kind: String(v.kind || 'note'), text: v.text == null ? '' : String(v.text),
     created_at: String(v.created_at || ''), status: String(v.status || 'open'), spots: Array.isArray(v.spots) ? v.spots.map(String) : [],
   } as Req;
 }
+/** Does this request-doc say "the car is parked elsewhere" on wash date `date` (YYYY-MM-DD, IST)? */
+export const spotApplies = (q: Req, date: string): boolean =>
+  q.kind === 'spot' && q.status !== 'cancelled' && q.status !== 'done' && isFinite(Number(q.lat)) && isFinite(Number(q.lng)) && (!!q.lat || !!q.lng)
+  && !!q.from && !!q.to && q.from <= date && date <= q.to;
+/** The newest applicable spot of a list of requests, or null. */
+export const pickSpot = (reqs: Req[], reg: string, date: string): Req | null =>
+  reqs.filter(q => q.reg === reg && spotApplies(q, date)).sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))[0] || null;
+export const spotMapsUrl = (q: { lat?: number; lng?: number }) => `https://www.google.com/maps/search/?api=1&query=${q.lat},${q.lng}`;
+/** Straight-line metres between two points. */
+export function distM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lng - a.lng) * r;
+  const h = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLo / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(h));
+}
+export const distText = (m: number) => m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
 // a car from the book (n8n workflow 9) into the shape the screens draw
 export function shapeBookCar(c: Record<string, unknown>): Car {
   const model = String(c.model || ''), make = String(c.make || '');

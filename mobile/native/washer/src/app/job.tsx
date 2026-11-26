@@ -6,8 +6,9 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { Button, CarArt, Chip, Empty, F, Group, Icon, PullToRefresh, Row, SectionLabel, StickyBar, Pressy, ui, useTheme } from '../ui';
 import { WorkingArt } from '../ui/art';
 import { CarPic } from '../screens/CarPhoto';
-import { Route, RT, W, act, route, photoSrc, carBy, ensureDay, openReqs, planName, skipAsk, S, useStore, DAY, view, MIN_PHOTOS, photoNeeds } from '../state/store';
-import { STATUS, navOf, telOf } from '../lib/data';
+import { Route, RT, W, act, route, photoSrc, carBy, ensureDay, openReqs, planName, skipAsk, spotFor, S, useStore, DAY, view, MIN_PHOTOS, photoNeeds } from '../state/store';
+import { STATUS, distM, navOf, telOf } from '../lib/data';
+import { useMyPos } from '../lib/places';
 import type { Photo } from '../lib/data';
 import { SPOTS, isSundayIST } from '../lib/washGuide';
 import { tasksFor } from '../lib/schedule';
@@ -15,7 +16,7 @@ import { t } from '../lib/i18n';
 import { hm12, t12 } from '../lib/time';
 import { takePhoto } from '../lib/photo';
 import { WashGuide } from '../screens/WashGuide';
-import { HsrpPlate, InteriorButton, ExtrasRow, ReqCard, RoundIcon, ScreenBar, Shot, TaskRow, WashTimer, openNoteSheet, openPhotoSheet, openSkipSheet, type ShotItem } from '../screens/JobParts';
+import { HsrpPlate, InteriorButton, ExtrasRow, ReqCard, SpotCard, RoundIcon, ScreenBar, Shot, TaskRow, WashTimer, openNoteSheet, openPhotoSheet, openSkipSheet, type ShotItem } from '../screens/JobParts';
 import { openCarDone } from '../screens/DayCards';
 import { ReportSection, ReportSummary, StartCapture, newStartInfo, openLeaveSheet, saveStartInfo } from '../screens/JobReport';
 
@@ -125,13 +126,17 @@ export default function JobScreen() {
   const wd = reg ? W(reg) : null;
   const st = wd ? wd.status : 'scheduled';
   const unseen = reg ? openReqs(reg).filter(q => q.status === 'open').length : 0;
+  const spot = reg ? spotFor(reg) : null;
+  const { pos } = useMyPos();   // only if the phone already allows location: never asks here
+  const spotM = spot && pos ? distM(pos, { lat: Number(spot.lat), lng: Number(spot.lng) }) : null;
+  const spotOpen = !!spot && spot.status === 'open';
   const lastReg = useRef<string | null>(null);
   const [spotPend, setSpotPend] = useState<Record<string, string>>({});
 
   // keep S.current in step with what is shown
   useEffect(() => { if (reg && S.current !== reg) act.setCurrent(reg) }, [reg]);
   // opening a car with an open request counts as "seen"
-  useFocusEffect(useCallback(() => { if (reg && unseen) act.markSeen(reg) }, [reg, unseen]));
+  useFocusEffect(useCallback(() => { if (reg && (unseen || spotOpen)) act.markSeen(reg) }, [reg, unseen, spotOpen]));
   useEffect(() => { lastReg.current = reg || null }, [reg]);
 
   const goPaisa = () => router.navigate('/paisa' as any);
@@ -253,6 +258,7 @@ export default function JobScreen() {
         <ScreenBar title={car.society ? `${car.society} · ${car.house}` : car.house} back onBack={goRound} />
         <View style={{ paddingHorizontal: 16, gap: 12 }}>
           <CarHeader reg={reg} st={st} />
+          {spot ? <SpotCard q={spot} meters={spotM} /> : null}
           <Stepper steps={steps} />
 
           {st === 'washing' ? <View style={{ alignItems: 'center' }}><WorkingArt width={220} /></View> : null}

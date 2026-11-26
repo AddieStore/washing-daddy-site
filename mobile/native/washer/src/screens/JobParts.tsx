@@ -1,6 +1,6 @@
 // Pieces of the car screen and the money screen: the top bar, plate, tasks, photo tiles, request notes and the sheets.
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, Linking, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { F, Icon, Chip, Group, Row, SheetHeader, TaskIcon, sheet, ui, useTheme } from '../ui';
@@ -9,7 +9,7 @@ import { act, photoSrc, syncState } from '../state/store';
 import { t } from '../lib/i18n';
 import { t12 } from '../lib/time';
 import { TASK, type TaskKey } from '../lib/schedule';
-import { NOTE_CHIPS, SKIPS, REQ_KIND, type Photo, type Req, type Wash } from '../lib/data';
+import { NOTE_CHIPS, SKIPS, REQ_KIND, distText, spotMapsUrl, type Photo, type Req, type Wash } from '../lib/data';
 import { ChipPick } from './JobReport';
 
 /* ---------- top bar with a sync chip ---------- */
@@ -208,6 +208,24 @@ export function ReqCard({ q, customer }: { q: Req; customer: string }) {
         <View style={{ flex: 1 }}><Button variant="secondary" size="md" disabled={seen} label={seen ? t('Dekh liya ✓') : t('Dekh liya')} onPress={() => act.reqSeen(q.id)} /></View>
         <View style={{ flex: 1 }}><Button variant="primary" size="md" label={t('Kar diya')} onPress={() => act.reqDone(q.id)} /></View>
       </View>
+    </View>
+  );
+}
+
+/* ---------- customer parked the car somewhere else today (park alerts): one clear card, one big button ---------- */
+export function SpotCard({ q, meters }: { q: Req; meters: number | null }) {
+  const { c, dark } = useTheme();
+  return (
+    <View accessibilityRole="alert" style={{ gap: 10, padding: 14, borderRadius: 16, backgroundColor: dark ? 'rgba(245,158,11,0.16)' : '#FFF6E0', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(217,119,6,0.4)' }}>
+      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+        <Icon name="pin" size={22} color="#D97706" />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontFamily: F.bold, fontSize: 16, lineHeight: 22, color: c.fg }}>{t('Aaj gaadi alag jagah khadi hai')}</Text>
+          {meters != null ? <Text style={{ fontFamily: F.medium, fontSize: 12.5, lineHeight: 17, color: c.grey }}>{distText(meters)} {t('aapse door')}</Text> : null}
+        </View>
+      </View>
+      {q.text ? <Text style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: c.fg }}>{'“'}{q.text}{'”'}</Text> : null}
+      <Button variant="primary" size="md" icon="pin" label={t('Map mein kholo')} onPress={() => { void Linking.openURL(spotMapsUrl(q)) }} />
     </View>
   );
 }

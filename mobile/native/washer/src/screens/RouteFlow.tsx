@@ -4,11 +4,11 @@
 import React from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { F, Icon, Pressy as BasePressy, sheet, ui, useTheme } from '../ui';
+import { Chip, F, Icon, Pressy as BasePressy, sheet, ui, useTheme } from '../ui';
 import { CarArt } from '../ui';
 import { CarPic } from './CarPhoto';
 import { HsrpPlate, WashTimer, openSkipSheet } from './JobParts';
-import { DAY, MIN_PHOTOS, Rounds, me, Route, W, act, carBy, openReqs, photoNeeds, planName, route, useStore, view } from '../state/store';
+import { DAY, MIN_PHOTOS, Rounds, me, Route, W, act, carBy, openReqs, spotFor, photoNeeds, planName, route, useStore, view } from '../state/store';
 import { STATUS, navOf, telOf } from '../lib/data';
 import type { Car } from '../lib/data';
 import { PLAN, TASK, tasksFor, type PlanId } from '../lib/schedule';
@@ -417,7 +417,10 @@ export function RouteList({ nowReg }: { nowReg: string | null }) {
               </View>
               <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                 <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 15.5, letterSpacing: -0.2, color: c.fg }}>{car.model}</Text>
-                <Text numberOfLines={1} style={[TNUM, { fontFamily: F.medium, fontSize: 12, color: c.grey }]}>{car.plate}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text numberOfLines={1} style={[TNUM, { fontFamily: F.medium, fontSize: 12, color: c.grey }]}>{car.plate}</Text>
+                  {spotFor(car.reg) ? <Chip tone="amber" icon="pin">{t('Alag jagah')}</Chip> : null}
+                </View>
                 <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12, color: c.grey }}>{[car.society ? car.house : car.spot, car.customer].filter(Boolean).join(' · ')}</Text>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 3 }}>

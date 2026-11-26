@@ -11,7 +11,7 @@ import { backend, type Data, type DbError, type Unsub } from '../backend';
 import { isoIST, dateIST, addDaysStr, daysInMonth } from '../lib/time';
 import { PLAN, TASK, tasksFor, normReg, isPlan, type TaskKey } from '../lib/schedule';
 import {
-  WASHERS, ensureRound, PHONE_TO_WASHER, setShare, DEMO_ROSTER, DEMO_ROUND_META, type RoundInfo, ROUNDS_URL, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
+  WASHERS, ensureRound, PHONE_TO_WASHER, setShare, DEMO_ROSTER, DEMO_ROUND_META, type RoundInfo, ROUNDS_URL, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, pickSpot, shapeBookCar,
   type Car, type Wash, type Req, type Job, type WasherDoc, type KitItem, type KitKind, type WasherInfo, type Photo,
 } from '../lib/data';
 import { setLang, t } from '../lib/i18n';
@@ -369,9 +369,12 @@ export const Route = {
   },
   counts() { const ws = route().map(c => W(c.reg)).filter(Boolean) as Wash[]; return { total: route().length, done: ws.filter(w => w.status === 'done').length, skipped: ws.filter(w => w.status === 'skipped').length } },
 };
+// kind 'spot' (car parked elsewhere) is not a request to answer: it has its own card (spotFor) and nothing to mark done
 export const openReqs = (reg: string) => Object.values(R)
-  .filter(q => q.reg === reg && q.status !== 'done' && !(q.kind === 'skip_tomorrow' && addDaysStr((q.created_at || '').slice(0, 10) || DAY, 1) !== DAY))
+  .filter(q => q.reg === reg && q.kind !== 'spot' && q.status !== 'done' && !(q.kind === 'skip_tomorrow' && addDaysStr((q.created_at || '').slice(0, 10) || DAY, 1) !== DAY))
   .sort((a, b) => ((a.created_at || '') < (b.created_at || '') ? -1 : 1));
+/** The "parked elsewhere" note that applies to this car on wash date `date` (default: today), newest first, or null. */
+export const spotFor = (reg: string, date: string = DAY): Req | null => pickSpot(Object.values(R), reg, date);
 export const skipAsk = (reg: string) => openReqs(reg).find(q => q.kind === 'skip_tomorrow');
 
 /* ---------------- data layer: the only place that talks to the db ---------------- */
@@ -776,6 +779,7 @@ export const act = {
   },
   // opening a car with an open request counts as "seen"
   markSeen(reg: string) {
+    const sp = spotFor(reg); if (sp && sp.status === 'open') Sync.setRequest(sp.id, { status: 'seen', seen_at: isoIST() });
     const wd = W(reg); if (!wd || ['done', 'skipped'].includes(wd.status)) return;
     const open = openReqs(reg).filter(q => q.status === 'open'); if (!open.length) return;
     open.forEach(q => Sync.setRequest(q.id, { status: 'seen', seen_at: isoIST() }));
@@ -1145,6 +1149,7 @@ function demoExtras() {
   const reqs: Data[] = [
     { reg: rs[0].reg, kind: 'note', text: 'Aaj boot ke andar bhi thoda saaf kar dena, mitti hai.', spots: [], created_at: DAY + 'T05:48:00+05:30', status: 'open' },
     { reg: rs[2].reg, kind: 'rewash', text: 'Kal roof pe daag reh gaye the.', spots: ['Roof', 'Peeche ka sheesha'], created_at: y + 'T19:10:00+05:30', status: 'open' },
+    { reg: rs[3].reg, kind: 'spot', text: 'Gaadi aaj society ke bahar, main gate ke saamne wali road pe khadi hai.', lat: 28.6706, lng: 77.1046, acc: 18, parked_at: y + 'T22:40:00+05:30', from: DAY, to: addDaysStr(DAY, 1), until_back: false, created_at: y + 'T22:42:00+05:30', status: 'open' },
     { reg: rs[4].reg, kind: 'skip_tomorrow', text: 'Kal gaadi garage mein hai.', spots: [], created_at: y + 'T21:30:00+05:30', status: 'open' },
   ];
   reqs.forEach((r, i) => db.doc('requests/demo' + (i + 1)).set(r));

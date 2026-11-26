@@ -801,3 +801,10 @@ Object.assign(T, {
   "Pahunch ke customer se start code lo": "போய்ச் சேர்ந்ததும் வாடிக்கையாளரிடம் தொடக்கக் குறியீடு வாங்கு",
   "Start code": "தொடக்கக் குறியீடு",
 });
+
+Object.assign(T, {
+  "Aaj gaadi alag jagah khadi hai": "இன்று கார் வேறு இடத்தில் நிறுத்தப்பட்டுள்ளது",
+  "Map mein kholo": "வரைபடத்தில் திற",
+  "Alag jagah": "வேறு இடம்",
+  "aapse door": "உங்களிடமிருந்து தொலைவில்",
+});

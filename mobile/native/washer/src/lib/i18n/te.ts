@@ -796,3 +796,10 @@ Object.assign(T, {
   "Pahunch ke customer se start code lo": "చేరుకున్నాక కస్టమర్ నుండి స్టార్ట్ కోడ్ తీసుకో",
   "Start code": "స్టార్ట్ కోడ్",
 });
+
+Object.assign(T, {
+  "Aaj gaadi alag jagah khadi hai": "ఈరోజు కారు వేరే చోట పార్క్ చేసి ఉంది",
+  "Map mein kholo": "మ్యాప్‌లో తెరవండి",
+  "Alag jagah": "వేరే చోటు",
+  "aapse door": "మీ నుండి దూరం",
+});
