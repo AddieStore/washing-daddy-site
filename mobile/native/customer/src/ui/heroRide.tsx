@@ -23,8 +23,20 @@ function Loop({ k, tile, ms, top, h, children, rm, span }: { k: number; tile: nu
   );
 }
 
+// a puffy cumulus: flat base, overlapping rounded lobes, a soft lavender underside and a few lighter inner puffs for depth
 const Cloud = ({ x, y, s = 1 }: { x: number; y: number; s?: number }) => (
-  <Path d={`M${x} ${y} h${44 * s} a${8 * s} ${8 * s} 0 0 0 -6 ${-13 * s} a${11 * s} ${11 * s} 0 0 0 -19 ${-5 * s} a${9 * s} ${9 * s} 0 0 0 -16 ${6 * s} a${7 * s} ${7 * s} 0 0 0 -3 ${12 * s} z`} fill="#fff" />
+  <G>
+    <Ellipse cx={x + 28 * s} cy={y - 1 * s} rx={29 * s} ry={4 * s} fill="#CDBDF2" opacity={0.45} />
+    <Rect x={x} y={y - 10 * s} width={57 * s} height={10 * s} rx={5 * s} fill="#fff" />
+    <Circle cx={x + 13 * s} cy={y - 13 * s} r={9.5 * s} fill="#fff" />
+    <Circle cx={x + 26 * s} cy={y - 21 * s} r={13 * s} fill="#fff" />
+    <Circle cx={x + 40 * s} cy={y - 14 * s} r={10 * s} fill="#fff" />
+    <Circle cx={x + 50 * s} cy={y - 10 * s} r={6.5 * s} fill="#fff" />
+    <Circle cx={x + 6 * s} cy={y - 7 * s} r={5 * s} fill="#fff" />
+    <Ellipse cx={x + 30 * s} cy={y - 5 * s} rx={22 * s} ry={4.4 * s} fill="#E7DFFA" opacity={0.8} />
+    <Circle cx={x + 33 * s} cy={y - 11 * s} r={6 * s} fill="#F3EEFF" />
+    <Circle cx={x + 19 * s} cy={y - 10 * s} r={4.4 * s} fill="#F3EEFF" />
+  </G>
 );
 function Skyline({ x0 }: { x0: number }) {
   const b = [[0, 122, 34], [34, 96, 46], [80, 136, 26], [106, 112, 38], [150, 140, 24], [174, 88, 40], [214, 120, 30], [244, 104, 52], [296, 132, 28], [324, 92, 36]];
@@ -35,21 +47,52 @@ function Skyline({ x0 }: { x0: number }) {
 }
 // street furniture passing by: dark lamp posts and soft round trees
 function Street({ x0 }: { x0: number }) {
-  const lamp = (x: number) => <G key={'l' + x}>
-    <Path d={`M${x0 + x} 198 L${x0 + x} 104 C${x0 + x} 96 ${x0 + x + 6} 92 ${x0 + x + 14} 92 L${x0 + x + 20} 92`} stroke="#3A3152" strokeWidth={2.6} fill="none" strokeLinecap="round" />
-    <Rect x={x0 + x + 16} y={89} width={12} height={6} rx={3} fill="#3A3152" />
-    <Ellipse cx={x0 + x + 22} cy={97} rx={5} ry={2.5} fill={SAF} opacity={0.9} />
-    <Rect x={x0 + x - 3} y={192} width={6} height={6} rx={1.5} fill="#3A3152" />
+  // far side of the road: lamps and trees are drawn small, as seen from the rider's lane, standing back on the verge
+  const lamp = (x: number, f = 0.52) => <G key={'l' + x} transform={`translate(${x0 + x} 198) scale(${f}) translate(${-(x0 + x)} -198)`}>
+    <Path d={`M${x0 + x} 198 L${x0 + x} 42 C${x0 + x} 29 ${x0 + x + 9} 24 ${x0 + x + 20} 24 L${x0 + x + 29} 24`} stroke="#3A3152" strokeWidth={4.2} fill="none" strokeLinecap="round" />
+    <Rect x={x0 + x + 24} y={20} width={20} height={9} rx={4.5} fill="#3A3152" />
+    <Ellipse cx={x0 + x + 34} cy={31.5} rx={8.5} ry={4} fill={SAF} opacity={0.95} />
+    <Path d={`M${x0 + x + 26} 33 L${x0 + x + 14} 66 L${x0 + x + 54} 66 L${x0 + x + 42} 33Z`} fill={SAF} opacity={0.09} />
+    <Rect x={x0 + x - 4.5} y={190} width={9} height={8} rx={2} fill="#3A3152" />
   </G>;
-  const tree = (x: number, r: number) => <G key={'t' + x}>
-    <Rect x={x0 + x - 2} y={176} width={4} height={22} rx={2} fill="#3A3152" />
-    <Circle cx={x0 + x} cy={170 - r} r={r} fill="#D8C8FF" />
-    <Circle cx={x0 + x - r * 0.35} cy={170 - r * 1.2} r={r * 0.55} fill="#E4D8FF" />
+  // a leafy tree like the reference art: forked brown trunk, a canopy of overlapping leaf clusters in three greens
+  // (dark underside, mid body, light sunlit top-left), scalloped edge
+  const tree = (x: number, s: number) => {
+    const X = x0 + x, cy = 196 - 62 * s, c = (dx: number, dy: number, r: number, f: string, k: string) => <Circle key={k} cx={X + dx * s} cy={cy + dy * s} r={r * s} fill={f} />;
+    return <G key={'t' + x}>
+      <Path d={`M${X - 4.5 * s} 198 L${X - 2.6 * s} 168 L${X + 2.6 * s} 168 L${X + 4.5 * s} 198Z`} fill="#8A5A3C" />
+      <Path d={`M${X} 178 L${X - 14 * s} 158 M${X} 176 L${X + 15 * s} 154 M${X - 1} 186 L${X - 7 * s} 172`} stroke="#8A5A3C" strokeWidth={3.2 * s} strokeLinecap="round" fill="none" />
+      <Path d={`M${X + 2.6 * s} 170 L${X + 4.4 * s} 198`} stroke="#6B4129" strokeWidth={1.6 * s} />
+      {[c(-24, 12, 15, '#3F8F4C', 'a'), c(24, 14, 14, '#3F8F4C', 'b'), c(0, 20, 17, '#3A8546', 'c'), c(-34, 2, 10, '#3F8F4C', 'd'), c(34, 4, 10, '#3A8546', 'e')]}
+      {[c(-18, 0, 20, '#5FB36B', 'f'), c(19, -2, 19, '#58AC64', 'g'), c(0, -12, 23, '#62B86D', 'h'), c(-30, -8, 11, '#5FB36B', 'i'), c(31, -9, 11, '#58AC64', 'j')]}
+      {[c(-12, -16, 13, '#8BD36F', 'k'), c(7, -24, 11, '#96DA77', 'l'), c(-25, -4, 9, '#8BD36F', 'm'), c(14, -10, 8, '#7CC866', 'n'), c(-2, -30, 8, '#A3E083', 'o')]}
+      {[[-16, -18], [4, -28], [-28, -6], [12, -12]].map(([dx, dy], i) => <Path key={'v' + i} d={`M${X + dx * s} ${cy + dy * s + 3 * s} q${3 * s} ${-5 * s} ${7 * s} ${-1 * s}`} stroke="#5FB36B" strokeWidth={1.2 * s} fill="none" strokeLinecap="round" opacity={0.7} />)}
+    </G>;
+  };
+  return <G>{tree(48, 0.5)}{lamp(88)}{tree(142, 0.4)}{tree(176, 0.58)}{lamp(236)}{tree(292, 0.46)}{tree(334, 0.62)}{lamp(386, 0.46)}</G>;
+}
+// the far side of the road: a grass verge with tufts, small flowers and bushes (the trees and lamps stand on it, see Street)
+function Verge({ x0 }: { x0: number }) {
+  const tufts = [8, 31, 52, 77, 101, 124, 139, 163, 190, 214, 236, 259, 281, 303, 326, 349, 371, 392];
+  const flowers: [number, string][] = [[20, '#FF6FA3'], [64, '#FFBA08'], [112, '#FFFFFF'], [152, '#FF8A5B'], [205, '#FF6FA3'], [247, '#FFFFFF'], [290, '#FFBA08'], [334, '#FF8A5B'], [380, '#FF6FA3']];
+  const bushes = [44, 130, 226, 312, 396];
+  return <G>
+    {/* a dark green hedge line behind everything, like the reference: rounded bumps of two greens */}
+    {[[10, 17, 12], [40, 22, 15], [78, 18, 11], [116, 24, 14], [160, 16, 10], [196, 23, 14], [238, 18, 12], [276, 25, 15], [318, 17, 11], [352, 22, 13], [392, 16, 10]].map(([x, rx, ry]) => <Ellipse key={'h' + x} cx={x0 + x} cy={190} rx={rx} ry={ry} fill="#3F8147" />)}
+    {[[26, 14, 8], [96, 15, 9], [178, 14, 8], [258, 16, 9], [336, 14, 8]].map(([x, rx, ry]) => <Ellipse key={'H' + x} cx={x0 + x} cy={190} rx={rx} ry={ry} fill="#4F9A58" />)}
+    <Rect x={x0} y={189} width={400} height={10} fill="#86CC8F" />
+    <Rect x={x0} y={189} width={400} height={2.2} fill="#A9DEB0" />
+    {bushes.map(x => <G key={'b' + x}><Ellipse cx={x0 + x} cy={190} rx={10} ry={6.5} fill="#5FB36B" /><Ellipse cx={x0 + x + 3} cy={188} rx={6} ry={4} fill="#86CF92" /></G>)}
+    {tufts.map(x => <Path key={'g' + x} d={`M${x0 + x} 190 q-1.6 -5.5 -4.4 -7 M${x0 + x} 190 q.2 -7 1 -8.6 M${x0 + x} 190 q2 -5.2 5 -6.4`} stroke="#4FA35D" strokeWidth={1.5} strokeLinecap="round" fill="none" />)}
+    {flowers.map(([x, c]) => <G key={'f' + x}>
+      <Path d={`M${x0 + x} 190 v-7`} stroke="#4FA35D" strokeWidth={1.2} strokeLinecap="round" />
+      {[[-1.9, 0], [1.9, 0], [0, -1.9], [0, 1.9]].map(([dx, dy], i) => <Circle key={i} cx={x0 + x + dx} cy={182.4 + dy} r={1.7} fill={c} />)}
+      <Circle cx={x0 + x} cy={182.4} r={1} fill="#FFD166" />
+    </G>)}
   </G>;
-  return <G>{lamp(60)}{tree(150, 18)}{tree(178, 12)}{lamp(260)}{tree(340, 16)}</G>;
 }
 function Road({ x0 }: { x0: number }) {
-  return <G>{[0, 1, 2, 3, 4, 5].map(i => <Rect key={i} x={x0 + i * 70 + 12} y={214} width={34} height={3.5} rx={1.75} fill="#fff" />)}</G>;
+  return <G>{[0, 1, 2, 3, 4, 5].map(i => <Rect key={i} x={x0 + i * 70 + 12} y={213.5} width={34} height={4} rx={2} fill="#F4F1FA" />)}</G>;
 }
 
 function Wheel({ cx, cy, k, spin }: { cx: number; cy: number; k: number; spin: SharedValue<number> }) {
@@ -195,15 +238,17 @@ export const HeroRide = React.memo(function HeroRide({ width }: { width: number 
       <Loop k={k} tile={360} ms={22000} top={0} h={200} rm={rm} span={width}>{x0 => <Skyline key={x0} x0={x0} />}</Loop>
       {/* road */}
       <Svg width={width} height={H} viewBox={`0 0 ${width / k} ${VB_H}`} style={{ position: 'absolute', left: 0, top: 0 }}>
-        <Rect x={0} y={198} width={width / k} height={34} fill="#ECE7F5" />
-        <Rect x={0} y={198} width={width / k} height={2} fill="#DCD3EC" />
+        <Rect x={0} y={198} width={width / k} height={34} fill="#1B1626" />
+        <Rect x={0} y={198} width={width / k} height={2.5} fill="#3B3450" />
+        <Rect x={0} y={229.5} width={width / k} height={2.5} fill="#2A2339" />
       </Svg>
+      <Loop k={k} tile={400} ms={2100} top={0} h={200} rm={rm} span={width}>{x0 => <Verge key={x0} x0={x0} />}</Loop>
       <Loop k={k} tile={400} ms={2100} top={0} h={200} rm={rm} span={width}>{x0 => <Street key={x0} x0={x0} />}</Loop>
       <Loop k={k} tile={420} ms={2200} top={0} h={VB_H} rm={rm} span={width}>{x0 => <Road key={x0} x0={x0} />}</Loop>
       {/* rider group */}
       <Reanimated.View style={[{ position: 'absolute', left: ox, top: 0, width: RW, height: H }, ride]}>
         <Svg width={RW} height={H} viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ position: 'absolute' }}>
-          <Ellipse cx={190} cy={202} rx={100} ry={5} fill="rgba(30,15,70,0.10)" />
+          <Ellipse cx={190} cy={203} rx={100} ry={5} fill="rgba(0,0,0,0.38)" />
         </Svg>
         <Streak k={k} y={70} w={28} d={0} rm={rm} />
         <Streak k={k} y={88} w={18} d={300} rm={rm} />
@@ -232,6 +277,26 @@ export function RiderArt({ w, spin }: { w: number; spin?: SharedValue<number> })
         <Svg width={VB_W * k} height={VB_H * k} viewBox={`0 0 ${VB_W} ${VB_H}`}><Body /></Svg>
         <Flag k={k} rm={rm || w < 120} />
       </View>
+    </View>
+  );
+}
+
+/** soft clouds drifting across the whole upper hero (behind the headline), in rows at different speeds */
+export function SkyClouds({ width, height }: { width: number; height: number }) {
+  const rm = !!useReducedMotion() || !useActive(), k = Math.min(1.45, width / 360);
+  const rows: { top: number; ms: number; op: number; items: [number, number][] }[] = [
+    { top: 4, ms: 95000, op: 0.9, items: [[20, 1.5], [200, 1.9]] },
+    { top: 72, ms: 70000, op: 0.7, items: [[120, 1.7], [300, 1.3]] },
+    { top: 142, ms: 120000, op: 0.8, items: [[0, 1.3], [210, 2.0]] },
+    { top: 214, ms: 84000, op: 0.65, items: [[90, 1.6], [270, 1.4]] },
+  ];
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width, height, overflow: 'hidden' }}>
+      {rows.map((r, i) => (
+        <View key={i} style={{ opacity: r.op }}>
+          <Loop k={k} tile={360} ms={r.ms} top={r.top} h={70} rm={rm} span={width}>{x0 => <G key={x0}>{r.items.map(([x, sc], j) => <Cloud key={j} x={x0 + x} y={52} s={sc} />)}</G>}</Loop>
+        </View>
+      ))}
     </View>
   );
 }

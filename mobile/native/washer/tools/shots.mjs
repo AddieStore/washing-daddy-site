@@ -33,6 +33,7 @@ const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
 const page = await ctx.newPage();
 page.on('pageerror', e => report.push('pageerror: ' + e.message.split('\n')[0]));
+page.on('console', m => { if (m.type() === 'error') report.push('console.error: ' + m.text().split('\n')[0].slice(0, 200)); });
 page.setDefaultTimeout(8000);
 // served over http (file:// breaks expo-router's history.replaceState)
 const srv = http.createServer((req, res) => { res.setHeader('content-type', 'text/html; charset=utf-8'); fs.createReadStream(html).pipe(res); });
@@ -181,6 +182,8 @@ await step('onboarding', async () => {
 
 /* any "join / waiting" gate would show here instead of the round */
 await step('home-wait', async () => { await waitFor('Round', 20000); await settle(1500); });
+/* the demo drops an Extra job offer ~25 s after login: wait for it and shoot/dismiss it now so it cannot cover later steps */
+await step('job-alert', async () => { await page.waitForFunction(() => /Nahi karna/.test(document.body.innerText), null, { timeout: 40000 }).catch(() => {}); await settle(500); await clearAlert(); });
 
 /* ---------- 2. tabs ---------- */
 await step('tab-round', async () => {
@@ -205,12 +208,12 @@ const profileSheet = (name, row, waitText, shotName, o = {}) => step(name, async
 });
 await profileSheet('lang-sheet', 'Bhasha', 'Hinglish', 'profile-language-picker');
 await profileSheet('help-sheet', 'Madad / SOS', null, 'profile-help-sos-sheet');
-await profileSheet('refer-sheet', 'Dost ko laao', null, 'profile-refer-sheet');
+await profileSheet('refer-sheet', 'Refer & earn', null, 'profile-refer-sheet');
 await profileSheet('sync-sheet', 'Customer app se sync', null, 'profile-sync-sheet');
 await profileSheet('reset-sheet', 'Aaj ka round reset', null, 'profile-reset-round-sheet');
 await profileSheet('logout-sheet', 'Log out', null, 'profile-logout-sheet');
 await profileSheet('photo-sheet', 'Profile photo badlo', null, 'profile-photo-chooser-sheet');
-await profileSheet('kit-add-sheet', 'Saaman add karo', 'Kya hai?', 'profile-add-kit-sheet');
+await profileSheet('kit-add-sheet', 'Mera saaman', null, 'profile-add-kit-sheet');
 await step('docs-upload-sheet', async () => {
   await toProfile();
   const b = page.getByRole('button', { name: /Upload karo/ }).filter({ visible: true }).first();
@@ -220,8 +223,7 @@ await step('docs-upload-sheet', async () => {
 });
 await step('theme-dark', async () => {
   await toProfile();
-  await tap('Raat', { settle: 900 }); await shot('profile-dark-mode', { full: true });
-  await tap('Din', { settle: 600 });
+  await tap('Screen', { settle: 900 }); await settle(600); await shot('profile-screen-sheet'); await closeSheet();
 });
 
 /* screens with a back button: rewards, complaints, round setup */
@@ -239,11 +241,11 @@ const goBack = async () => {
   if (await b.count()) await b.click(); else await page.goBack().catch(() => {});
   await settle(800);
 };
-await subScreen('rewards', 'Attendance aur bonus', null, 'profile-rewards');
+await subScreen('rewards', 'Bonus aur rewards', null, 'profile-rewards');
 await subScreen('complaints', 'Customer feedback', null, 'profile-complaints');
 await step('round-setup', async () => {
   await toProfile();
-  await tap('Apna round set karo', { settle: 1200 });
+  await tap('Apna round', { settle: 1200 });
   await waitFor('Slot mein nahi', 6000).catch(() => {});
   await settle(800);
   await shot('round-setup', { full: true });
@@ -275,8 +277,8 @@ await step('slot-sheet', async () => {
 });
 await step('today', async () => {
   await toRound();
-  await tap('Aaj ka round', { settle: 1000 });
-  await waitFor('Gaadiyon ki list');
+  await tap('Gaadi', { settle: 1000 });
+  await waitFor('Aaj ki kamai');
   await settle(900);
   await shot('today-round', { full: true });
   await scrolledShot('today-round-bottom');
@@ -306,6 +308,38 @@ await step('job', async () => {
   await shot('job-before-round-start', { full: true });
 });
 
+
+/* ---------- 5. the round and one car through every state ---------- */
+const plateOf = () => page.evaluate(() => { const e = [...document.querySelectorAll('[aria-label]')].reverse().find(e => /^[A-Z]{2}\s?\d{1,2}\s?[A-Z]{1,3}\s?\d{3,4} /.test(e.getAttribute('aria-label'))); return e && e.getAttribute('aria-label') });
+const barTap = async t => { await clearAlert(); const b = page.getByText(t, { exact: true }).filter({ visible: true }).last(); await b.click(); await settle(900); };
+await step('round-states', async () => {
+  await goBack().catch(() => {});
+  await toRound();
+  await shot('round-idle');
+  // the slide-to-confirm is a drag: take the handle (arrow) to the right
+  const slide = page.getByText('Round shuru karo', { exact: true }).filter({ visible: true }).first();
+  const bb = await slide.boundingBox();
+  await page.mouse.move(bb.x - 120, bb.y + bb.height / 2); await page.mouse.down();
+  await page.mouse.move(bb.x + 250, bb.y + bb.height / 2, { steps: 12 }); await page.mouse.up();
+  await settle(1200);
+  await page.evaluate(() => { getSelection()?.removeAllRanges(); document.body.style.userSelect = 'none' });
+  await shot('round-started', { full: true });
+});
+await step('car-states', async () => {
+  const plate = await plateOf();
+  if (!plate) throw new Error('no car card');
+  await page.locator(`[aria-label="${plate}"]`).first().click(); await settle(1200);
+  // the demo moves cars along by itself, so walk whatever state the car is in through the rest of the steps
+  const seen = new Set();
+  for (let i = 0; i < 6; i++) {
+    const state = await page.evaluate(() => { const t = document.body.innerText; return /Nikla · gaadi ki taraf/.test(t) ? 'scheduled' : /Pahuncha · gaadi ke paas/.test(t) ? 'on-the-way' : /Wash shuru karo/.test(t) ? 'arrived' : /Wash khatam karo/.test(t) ? 'washing' : 'other' });
+    if (seen.has(state)) break; seen.add(state);
+    await shot('car-' + state, { full: state !== 'scheduled' });
+    if (state === 'washing') { await scrolledShot('car-washing-bottom'); await barTap('Wash khatam karo'); await settle(800); await shot('car-back-guard-sheet'); await closeSheet(); break; }
+    await barTap({ scheduled: 'Nikla · gaadi ki taraf', 'on-the-way': 'Pahuncha · gaadi ke paas', arrived: 'Wash shuru karo' }[state] || 'x');
+  }
+});
+fs.writeFileSync(path.join(out, '_flow-note.txt'), 'see report');
 fs.writeFileSync(path.join(out, '_report.txt'), report.join('\n') + '\n');
 await browser.close(); srv.close();
 console.log(report.length ? '\n' + report.join('\n') : '\nall steps reached');

@@ -1,18 +1,16 @@
-// Today's round in detail: the totals, what he earned (his own share), first start / last finish, every car in slot order,
-// and the map of the places he serves.
+// Today's round in detail (v22 look): totals as ONE Group, every car in slot order as ONE Group of rows, and the places he serves.
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { DashCard, Footer, Empty, F, SectionTitle, useTheme } from '../ui';
+import { Button, Chip, F, Group, Row, SectionLabel, useTheme } from '../ui';
 import { DAY, act, useStore } from '../state/store';
 import { todayData } from '../lib/history';
 import { usePlaces, useMyPos } from '../lib/places';
-import { dayLong, hm12, short12 } from '../lib/time';
+import { dayLong } from '../lib/time';
 import { isHindi, t } from '../lib/i18n';
 import { ScreenBar } from '../screens/JobParts';
-import { DayRowCard, DaySummary, FadeUp, TNUM, TimelineRow } from '../screens/DayParts';
+import { DayCarGroup, DaySummary, FadeUp } from '../screens/DayParts';
 import MapView from '../screens/MapView';
-import { Button } from '../ui';
 
 export default function TodayScreen() {
   useStore();
@@ -22,36 +20,24 @@ export default function TodayScreen() {
   const { pos, ask } = useMyPos();
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-            <ScreenBar back title={t('Aaj ka round')} />
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
-        <Text accessibilityRole="header" style={{ fontFamily: F.black, fontSize: 22, lineHeight: 28, letterSpacing: -0.3, color: c.fg, marginBottom: 16 }}>{dayLong(DAY, isHindi())}</Text>
+      <ScreenBar back title={t('Aaj ka round')} />
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
+        <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 22, lineHeight: 28, letterSpacing: -0.5, color: c.fg, marginBottom: 12, marginLeft: 4 }}>{dayLong(DAY, isHindi())}</Text>
         <DaySummary d={d} earnLabel={t('Aaj ki kamai')} />
-        <SectionTitle title={t('Gaadiyon ki list')} action={`${d.rows.length}`} style={{ marginTop: 24 }} />
+        <SectionLabel>{t('Gaadiyon ki list')} · {d.rows.length}</SectionLabel>
         {d.rows.length
-          ? <View>{d.rows.map((r, i) => (
-            <FadeUp key={r.reg} index={i + 3}>
-              <TimelineRow time={r.eta ? short12(hm12(r.eta)) : ''} last={i === d.rows.length - 1}>
-                <DayRowCard r={r} onPress={() => { act.setCurrent(r.reg); router.push('/job'); }} />
-              </TimelineRow>
-            </FadeUp>
-          ))}</View>
-          : <Empty title={t('Koi gaadi nahi')} text={t('Book mein aaj aapke naam koi active gaadi nahi hai.')} />}
+          ? <DayCarGroup rows={d.rows} onPress={(r) => { act.setCurrent(r.reg); router.push('/job'); }} />
+          : <Group><Row icon="car" label={t('Koi gaadi nahi')} sub={t('Book mein aaj aapke naam koi active gaadi nahi hai.')} /></Group>}
         {places.length ? (
           <>
-            <SectionTitle title={t('Jahan aap kaam karte ho')} style={{ marginTop: 24 }} />
-            <MapView places={places} me={pos} height={360} />
+            <SectionLabel>{t('Jahan aap kaam karte ho')}</SectionLabel>
+            <FadeUp index={4}><MapView places={places} me={pos} height={320} /></FadeUp>
             {!pos ? <Button variant="ghost" label={t('Meri location')} icon="pin" onPress={ask} style={{ marginTop: 12 }} /> : null}
-            <DashCard style={{ marginTop: 12, padding: 16, gap: 8 }}>
-              {places.map((p) => (
-                <View key={p.id} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-                  <Text numberOfLines={1} style={{ flex: 1, fontFamily: F.semi, fontSize: 14, lineHeight: 20, color: c.fg }}>{p.label}</Text>
-                  <Text style={{ fontFamily: F.black, fontSize: 14, lineHeight: 20, color: c.primary, ...TNUM }}>{p.cars.length} {t('gaadi')}</Text>
-                </View>
-              ))}
-            </DashCard>
+            <Group style={{ marginTop: 12 }}>
+              {places.map((p) => <Row key={p.id} icon="pin" label={p.label} right={<Chip tone="violet">{p.cars.length} {t('gaadi')}</Chip>} />)}
+            </Group>
           </>
         ) : null}
-        <View style={{ marginHorizontal: -16, marginTop: 'auto' }}><Footer /></View>
       </ScrollView>
     </View>
   );

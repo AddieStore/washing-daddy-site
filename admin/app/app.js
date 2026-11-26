@@ -252,6 +252,12 @@ function buildBar() {
   $('#bar').innerHTML = `<div class="bar-brand"><div class="logo">${ic('droplet' in P ? 'drop' : 'sparkle', 20, 2)}</div>Washing Daddy</div>` + TABS.map(t => `<button class="press ${t.id === tab ? 'on' : ''}" data-a="tab" data-id="${t.id}" aria-label="${t.name}">${ic(t.icon, 24)}<span class="bl">${t.name}</span></button>`).join('');
   $('#hLogo').innerHTML = ic('drop', 22, 2);
 }
+window.addEventListener('hashchange', () => {
+  const p = (location.hash || '').slice(1).split('/'); if (!TABS.find(t => t.id === p[0])) return;
+  tab = p[0]; if (p[1]) { if (tab === 'catalog') UI.kind = p[1]; if (tab === 'content') UI.ctab = p[1]; if (tab === 'offers') UI.offer = p[1] }
+  if (tab === 'catalog' && p[2]) UI.view = p[2];
+  try { buildBar(); rerender(true); window.scrollTo({ top: 0 }) } catch (e) { console.error(e) }
+});
 function setTab(id) { tab = id; history.replaceState(null, '', '#' + id); buildBar(); rerender(true); window.scrollTo({ top: 0 }) }
 
 let dirty = false;
@@ -322,6 +328,8 @@ const FEATURES = [
   ['reschedule', 'undo', 'Reschedule', 'Customers moving a booking'], ['cancel', 'x', 'Cancel booking', 'Customers cancelling a booking'],
   ['ratings', 'star', 'Ratings', 'Ratings on cards and rating after a wash'], ['store', 'bag', 'Car store', 'The Store tab and its entry on Home'],
   ['plans', 'plan', 'Monthly plans', 'Daily wash plans and sign-up'],
+  ['notify', 'bell', 'Notify me (not in your area yet)', 'The card with the neighbours bar and Count me in'], ['whatsappLogin', 'whatsapp', 'WhatsApp sign-in code', 'Off sends the code by SMS only'],
+  ['guest', 'user', 'Skip login (guest)', 'The Skip button on the sign-in screen'],
 ];
 const SECTIONS = [['hero', 'Hero banner', 'The big violet header on Home'], ['instantCards', 'Instant and Schedule cards', 'The two entry cards'], ['packs', 'Wash packs', 'The packs carousel'], ['referBanner', 'Refer banner', 'Refer a friend strip'], ['services', 'All services grid', 'The a la carte grid'], ['trust', 'Trust footer', 'Your car is in professional hands'], ['passPromo', 'WD Pass promo', 'The pass sheet on Home'], ['more', 'Plans and Store row', 'Monthly plans / Car store shortcuts']];
 const TABS_CFG = [['washes', 'Washes tab', 'Bookings and wash history'], ['money', 'Money tab', 'Also needs the wallet switch'], ['profile', 'Profile tab', 'Account, addresses, help']];
@@ -397,6 +405,7 @@ function screenSettings() {
   <div class="card rise"><div class="ch-title" style="padding:0"><b>Fees</b><small>Shown in the app, n8n re-prices on the server</small></div>
     <div class="row2">${fld('Convenience fee', 'fees.convenience', { t: 'num', money: 1, first: 1 })}${fld('Free above', 'fees.convenienceBelow', { t: 'num', money: 1, first: 1, small: 'order total' })}</div>
     <div class="row2">${fld('GST', 'fees.gstPct', { t: 'num', unit: '%' })}${fld('Visit fee', 'fees.visit', { t: 'num', money: 1 })}</div>
+    <div class="row2">${fld('Washer gets', 'washerSharePct', { t: 'num', unit: '%', first: 1, small: 'of each wash, shown in the WD Partner app' })}</div>
     <label class="lbl">Extra on every slot of the day <small>flat ₹ added to all slots in that part</small></label>
     <div class="row3"><div class="money"><span>₹</span><input class="field" inputmode="numeric" data-cfg="fees.surcharge.morning" data-t="num" value="${esc(G('fees.surcharge.morning'))}" aria-label="Morning"></div><div class="money"><span>₹</span><input class="field" inputmode="numeric" data-cfg="fees.surcharge.afternoon" data-t="num" value="${esc(G('fees.surcharge.afternoon'))}" aria-label="Afternoon"></div><div class="money"><span>₹</span><input class="field" inputmode="numeric" data-cfg="fees.surcharge.evening" data-t="num" value="${esc(G('fees.surcharge.evening'))}" aria-label="Evening"></div></div>
     <div class="row3" style="margin-top:4px"><span class="mini">Morning</span><span class="mini">Afternoon</span><span class="mini">Evening</span></div></div>
@@ -414,6 +423,7 @@ function screenSettings() {
     <div class="row2" style="margin-top:4px">${slF('Washers per slot', 'capacityPerSlot', 3)}</div>
     <label class="lbl">Closed dates <small>no bookings that day</small></label><div class="chips wrap">${(sc.closedDates || []).map(d => `<span class="chip">${esc(d)} <button data-a="cdel" data-d="${esc(d)}" aria-label="Remove" style="margin-left:2px;display:grid">${ic('x', 14)}</button></span>`).join('')}</div>
     <div style="display:flex;gap:8px;margin-top:8px"><input type="date" class="field" id="newClosed"><button class="btn soft press" data-a="cadd">Add</button></div></div>
+  ${window.WDAreas ? window.WDAreas.card() : ''}
   <div class="card rise"><div class="ch-title" style="padding:0"><b>Support contacts</b></div>${fld('WhatsApp number', 'support.whatsapp', { first: 1, ph: '10 digits' })}${fld('Phone number', 'support.phone', { ph: '10 digits' })}${fld('Email', 'support.email')}</div>
   <div class="card flush rise"><div class="ch-title"><b>Tools</b></div>
     <button class="trow tap press hov" data-a="import"><div class="ico">${ic('download', 18)}</div><div class="t"><b>Import app defaults</b><small>Adds the app's built-in services, coupons, pages and settings that are missing. Never overwrites.</small></div></button>
@@ -649,6 +659,7 @@ document.addEventListener('click', async e => {
   if (A === 'ledit') return openLegal(ds.id); if (A === 'lnew') return openLegal();
   if (A === 'hedit') return openHelp(ds.id); if (A === 'hnew') return openHelp();
   if (A === 'mv') return move(ds.id, +ds.d);
+  if (A === 'areas') return window.WDAreas && window.WDAreas.open();
   if (A === 'import') return importDefaults();
   if (A === 'export') return exportJSON();
   if (A === 'signout') { stopLive(); await window.WDAuth.signOut(); return showGate() }
@@ -766,6 +777,6 @@ async function boot() {
   $('#app').hidden = true; $('#main').innerHTML = skeleton();
   WDAuth.ready().then(signedIn);
 }
-window.WDCTL = { S, G, tileHTML, openCatalog, openCoupon, openPass, openButton, openLegal, openHelp, setTab, UI, rerender };
+window.WDCTL = { S, G, D, openSheet, closeSheet, snack, esc, ic, DEMO, tileHTML, openCatalog, openCoupon, openPass, openButton, openLegal, openHelp, setTab, UI, rerender };
 boot();
 })();

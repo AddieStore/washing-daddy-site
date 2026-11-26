@@ -87,7 +87,7 @@ export function GlowField({ label, value, onChange, readOnly, keyboardType, pref
         {prefix ? <Txt size={15} color={INK} style={{ marginRight: 8 }}>{prefix}</Txt> : null}
         <TextInput value={value} editable={!readOnly} onChangeText={onChange} onFocus={() => set(true)} onBlur={() => set(false)} keyboardType={keyboardType} maxLength={maxLength} autoCapitalize={autoCapitalize}
           accessibilityLabel={label} placeholderTextColor={MUTE}
-          style={[{ flex: 1, minWidth: 0, fontFamily: F.b500, fontSize: 15, color: readOnly ? MUTE : INK, paddingVertical: 12, includeFontPadding: false, textAlignVertical: 'center' }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]} />
+          style={[{ flex: 1, minWidth: 0, fontFamily: F.b500, fontSize: 16, color: readOnly ? MUTE : INK, paddingVertical: 12, includeFontPadding: false, textAlignVertical: 'center' }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]} />
         {right}
       </Reanimated.View>
       {hint ? <Txt size={12} color={MUTE} style={{ marginTop: 6 }}>{hint}</Txt> : null}

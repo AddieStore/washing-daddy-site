@@ -6,7 +6,7 @@ import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Footer } from '../ui/Footer';
 import { Back, Chev, Plan, Wallet, Help, Gift, Pin, Info, Shield, Logout, Car, Cart } from '../ui/icons';
-import { useApp, profile, fmtPhone, openPage, closePage, go, wallet, passView, feature, autopayView } from '../state';
+import { useApp, act, isGuest, profile, fmtPhone, openPage, closePage, go, wallet, passView, feature, autopayView } from '../state';
 import { Buttons } from './Home';
 import { REFERRAL } from '../data/reference';
 import { sheets } from '../sheets';
@@ -21,7 +21,8 @@ export default function Profile() {
   const ui = useApp(), ins = useInsets(), p = profile(), pushed = ui.pages.length > 0, pv = passView(), plan = pv.plans[0], bal = wallet().balance, showPass = feature('pass') && (!!pv.active || !!plan);
   const ic = (X: any) => <X size={18} color={G.mute} strokeWidth={1.5} />;
   const tic = (X: any) => <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}><X size={19} color={C.violet} strokeWidth={1.7} /></View>;
-  const name = (p.first + ' ' + p.last).trim() || 'Your profile';
+  const guest = isGuest();
+  const name = guest ? 'Guest' : (p.first + ' ' + p.last).trim() || 'Your profile';
   const tile = (label: string, icon: React.ReactNode, f: () => void, badge?: string) => (
     <Tap key={label} label={label} onPress={f} style={card({ flex: 1, height: 96, padding: 12, justifyContent: 'space-between', borderRadius: 20 })}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -47,9 +48,10 @@ export default function Profile() {
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Txt weight={700} size={24} color="#fff" numberOfLines={1}>{name}</Txt>
-              <Txt size={14} color="rgba(255,255,255,0.82)" style={TNUM}>+91 {fmtPhone(p.phone)}</Txt>
-              <Pressable onPress={() => openPage({ k: 'profileEdit' })} hitSlop={8} style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                <Txt weight={600} size={14} color="#FFD166">Edit profile</Txt><Chev size={14} color="#FFD166" strokeWidth={1.8} />
+              {guest ? <Txt size={14} color="rgba(255,255,255,0.82)">You are browsing as a guest</Txt> : <Txt size={14} color="rgba(255,255,255,0.82)" style={TNUM}>+91 {fmtPhone(p.phone)}</Txt>}
+              <Pressable onPress={() => (guest ? act.askLogin() : openPage({ k: 'profileEdit' }))} hitSlop={8} accessibilityRole="button" accessibilityLabel={guest ? 'Log in' : 'Edit profile'}
+                style={guest ? { marginTop: 8, alignSelf: 'flex-start', height: 36, paddingHorizontal: 16, borderRadius: 18, backgroundColor: '#FFD166', flexDirection: 'row', alignItems: 'center', gap: 4 } : { marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <Txt weight={guest ? 700 : 600} size={14} color={guest ? '#141414' : '#FFD166'}>{guest ? 'Login' : 'Edit profile'}</Txt>{guest ? null : <Chev size={14} color="#FFD166" strokeWidth={1.8} />}
               </Pressable>
             </View>
           </FadeUp>

@@ -49,4 +49,9 @@ export interface Auth {
 // Thrown by send/confirm: a short reason plus Hinglish wording for the screen
 export type AuthError = Error & { code: string; hi: string };
 
-export type Backend = { mode: 'live' | 'demo'; db: Db; auth: Auth };
+// File storage (Firebase Storage in the installed app). put() uploads a local file uri or a data: URL and answers the download URL.
+export interface Store {
+  put(path: string, src: string): Promise<string>;
+}
+
+export type Backend = { mode: 'live' | 'demo'; db: Db; auth: Auth; storage: Store };

@@ -12,6 +12,7 @@ const ENDPOINTS = [
   ['wd-wallet-topup', 'WD Money top-up'],
   ['wd-gift-claim', 'Gift card lagao'],
   ['wd-pass-buy', 'WD Pass becho'],
+  ['wd-waitlist', 'Notify me (waitlist)'],
   ['wd-pronto-paid', 'Paisa aaya (from workflow 8)'],
   ['wd-rzp-confirm', 'Razorpay paisa pakka karo'],
   ['wd-rzp-hook', 'Razorpay webhook'],

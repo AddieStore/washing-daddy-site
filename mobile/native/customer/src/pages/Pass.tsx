@@ -235,7 +235,7 @@ export default function Pass({ id }: { id?: string }) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, backgroundColor: '#FFF4D1', borderRadius: 999, paddingLeft: 10, paddingRight: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(255,186,8,0.55)' }}>
                   <Star size={14} color={SAFFRON} strokeWidth={1.5} />
                   <Txt weight={600} size={13} color="#5A3E00">You save </Txt>
-                  <CountUp to={rs(save)} duration={900} delay={300} style={[TNUM, { fontFamily: 'Poppins_700Bold', fontSize: 14, color: '#5A3E00', marginLeft: -4 }]} />
+                  <CountUp to={rs(save)} duration={900} delay={300} style={[TNUM, { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: '#5A3E00', marginLeft: -4 }]} />
                   <Txt weight={500} size={13} color="#5A3E00" style={{ marginLeft: -2 }}> vs single washes</Txt>
                 </View>
               ) : null}
@@ -291,7 +291,7 @@ export default function Pass({ id }: { id?: string }) {
             <>
               <Pressable accessibilityLabel="Price breakup" onPress={() => openPassBreakup(p.id)} style={{ width: 108 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Caption>incl. GST</Caption><View style={{ transform: [{ rotate: '90deg' }] }}><Chev size={13} color={G.sub} strokeWidth={1.5} /></View></View>
-                <CountUp to={rs(q.total)} duration={500} style={[TNUM, { fontFamily: 'Poppins_600SemiBold', fontSize: 20, color: G.ink }]} />
+                <CountUp to={rs(q.total)} duration={500} style={[TNUM, { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 20, color: G.ink }]} />
               </Pressable>
               <PrimaryBtn label={`Buy pass · ${rs(q.total)}`} busy={busy} onPress={pay} style={{ flex: 1 }} />
             </>

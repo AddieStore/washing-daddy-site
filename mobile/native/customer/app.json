@@ -21,7 +21,8 @@
           "whatsapp"
         ],
         "NSLocationWhenInUseUsageDescription": "Washing Daddy uses your location to put the pin at your door so our washer can find you.",
-        "NSPhotoLibraryUsageDescription": "Pick a photo of your car to show it on your home screen."
+        "NSPhotoLibraryUsageDescription": "Pick a photo of your car to show it on your home screen.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -35,11 +36,24 @@
         {
           "action": "VIEW",
           "autoVerify": false,
-          "data": [{ "scheme": "https", "host": "washingdaddy.com", "pathPrefix": "/invite" }],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "data": [
+            {
+              "scheme": "https",
+              "host": "washingdaddy.com",
+              "pathPrefix": "/invite"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
-      "permissions": ["android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION", "android.permission.POST_NOTIFICATIONS"],
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
       ],
@@ -64,7 +78,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static"
+            "useFrameworks": "dynamic"
           },
           "android": {
             "minSdkVersion": 24,

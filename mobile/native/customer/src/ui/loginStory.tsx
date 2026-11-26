@@ -48,7 +48,7 @@ function Skyline({ W, h, color, seed, speed, windows }: { W: number; h: number; 
   const parts = useMemo(() => {
     const r = seeded(seed), out: { x: number; w: number; h: number; win: number[] }[] = []; let x = 0;
     while (x < W - 20) { const w = 22 + Math.round(r() * 26), hh = h * (0.4 + r() * 0.6); out.push({ x, w, h: hh, win: Array.from({ length: 8 }, () => r()) }); x += w + 2 }
-    const left = W - x; out[out.length - 1].w += left; return out;
+    const left = W - x; if (out.length) out[out.length - 1].w += left; return out;
   }, [W, h, seed]);
   const tile = (
     <Svg width={W} height={h}>
@@ -69,9 +69,46 @@ function Star({ x, y, d }: { x: number; y: number; d: number }) {
 /** the login page paints the story on a light lavender sky that melts into white; splash and primer keep the deep-violet one */
 export const LightCtx = createContext(false);
 /** tone 0 = night, 1 = dawn, 2 = morning, 3 = bright day: the sun climbs and the sky warms as the story goes */
+/** slow-moving landmarks of the city, drawn as soft silhouettes: India Gate, a mandir shikhara, a Mughal dome with minarets */
+function Landmarks({ W, h, color, speed }: { W: number; h: number; color: string; speed: number }) {
+  const p = useLoop(speed), st = useAnimatedStyle(() => ({ transform: [{ translateX: -p.value * W }] }));
+  const x0 = W * 0.08, x1 = W * 0.42, x2 = W * 0.74;
+  const tile = (
+    <Svg width={W} height={h}>
+      <G fill={color}>
+        {/* India Gate: a tall block with the arch cut out, a cap and two small domes */}
+        <Path d={`M${x0} ${h} V${h - 50} H${x0 + 6} V${h - 56} H${x0 + 46} V${h - 50} H${x0 + 52} V${h} H${x0 + 36} V${h - 22} a10 12 0 0 0 -20 0 V${h}Z`} />
+        <Rect x={x0 + 10} y={h - 62} width={32} height={6} rx={1.5} /><Circle cx={x0 + 8} cy={h - 60} r={3} /><Circle cx={x0 + 44} cy={h - 60} r={3} />
+        {/* mandir: stepped tower with a kalash on top */}
+        <Path d={`M${x1} ${h} V${h - 18} H${x1 + 6} V${h - 30} H${x1 + 12} V${h - 44} H${x1 + 18} V${h - 58} H${x1 + 24} V${h - 70} L${x1 + 28} ${h - 76} L${x1 + 32} ${h - 70} V${h - 58} H${x1 + 38} V${h - 44} H${x1 + 44} V${h - 30} H${x1 + 50} V${h - 18} H${x1 + 56} V${h}Z`} />
+        <Rect x={x1 + 27.4} y={h - 90} width={1.2} height={14} /><Circle cx={x1 + 28} cy={h - 90} r={2.2} />
+        {/* Mughal dome with two minarets and a flag */}
+        <Path d={`M${x2} ${h} V${h - 26} H${x2 + 64} V${h}Z`} /><Path d={`M${x2 + 12} ${h - 26} a20 24 0 0 1 40 0Z`} /><Rect x={x2 + 31.4} y={h - 58} width={1.2} height={10} /><Circle cx={x2 + 32} cy={h - 58} r={1.8} />
+        <Rect x={x2 - 8} y={h - 52} width={6} height={52} rx={2} /><Circle cx={x2 - 5} cy={h - 54} r={4} /><Rect x={x2 + 66} y={h - 52} width={6} height={52} rx={2} /><Circle cx={x2 + 69} cy={h - 54} r={4} />
+      </G>
+    </Svg>
+  );
+  return <Animated.View style={[{ position: 'absolute', left: 0, bottom: 0, width: W * 2, height: h, flexDirection: 'row' }, st]}>{tile}{tile}</Animated.View>;
+}
+/** a toran of marigold-coloured pennants strung across the top, swaying a little */
+function Toran({ W }: { W: number }) {
+  const sway = usePulse(1600), st = useAnimatedStyle(() => ({ transform: [{ rotate: interpolate(sway.value, [0, 1], [-0.6, 0.6]) + 'deg' }] }));
+  const n = Math.max(8, Math.round(W / 26)), cols = ['#FF9F1C', '#FFFFFF', '#2EC4B6', '#FF6FA3', '#FFBA08'];
+  return (
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: -6, top: 0, width: W + 12, height: 34, transformOrigin: '50% 0%' }, st]}>
+      <Svg width={W + 12} height={34}>
+        <Path d={`M0 4 Q${(W + 12) / 2} 20 ${W + 12} 4`} stroke="rgba(84,9,218,0.35)" strokeWidth={1.4} fill="none" />
+        {Array.from({ length: n }, (_, i) => {
+          const t = (i + 0.5) / n, x = t * (W + 12), y = 4 + 16 * (1 - Math.pow(2 * t - 1, 2)) * 0.5 * 2 / 2;
+          return <G key={i}><Path d={`M${x - 7} ${y} L${x + 7} ${y} L${x} ${y + 17}Z`} fill={cols[i % cols.length]} stroke="rgba(84,9,218,0.18)" strokeWidth={0.6} /><Circle cx={x} cy={y + 5} r={1.4} fill="rgba(84,9,218,0.35)" /></G>;
+        })}
+      </Svg>
+    </Animated.View>
+  );
+}
 export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: number; road?: boolean }) {
   const light = useContext(LightCtx);
-  const sky = light ? ['#E2D3FF', '#ECE2FF', '#F3ECFF'] : [['rgba(58,5,153,0)', '#4B12C9', '#6A2BF0'], ['rgba(84,9,218,0)', '#7A3AF2', '#FF9E7A'], ['rgba(110,40,235,0)', '#8E55F5', '#FFC08A'], ['rgba(130,70,245,0)', '#A97BFF', '#FFE2A8']][tone];
+  const sky = light ? ['#FFFFFF', '#FFFFFF', '#FAF7FF'] : [['rgba(58,5,153,0)', '#4B12C9', '#6A2BF0'], ['rgba(84,9,218,0)', '#7A3AF2', '#FF9E7A'], ['rgba(110,40,235,0)', '#8E55F5', '#FFC08A'], ['rgba(130,70,245,0)', '#A97BFF', '#FFE2A8']][tone];
   const sunY = [H - 40, H - 70, H - 105, H - 140][tone], sunC = (light ? ['#FFE9A6', '#FFDF8A', '#FFD470', '#FFCB4A'] : ['#CDB8FF', '#FFC58A', '#FFD470', '#FFE49A'])[tone];
   const glow = usePulse(2400);
   const sunSt = useAnimatedStyle(() => ({ transform: [{ scale: 1 + glow.value * 0.06 }], opacity: 0.55 + glow.value * 0.2 }));
@@ -84,7 +121,9 @@ export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: num
       <View style={abs(W * (0.62 + tone * 0.04) - 38, sunY - 38, { width: 76, height: 76, borderRadius: 38, backgroundColor: sunC, opacity: 0.95 })} />
       {[0, 1, 2].map(i => <Cloud key={i} x={(i * 140 + 20 + tone * 30) % (W - 60)} y={14 + i * 22} w={64 + i * 18} d={i * 700} />)}
       <Skyline W={W} h={96} color={light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.10)'} seed={3 + tone} speed={42000} />
+      {light ? <Landmarks W={W} h={100} color="rgba(84,9,218,0.09)" speed={60000} /> : null}
       <Skyline W={W} h={70} color={light ? 'rgba(84,9,218,0.14)' : 'rgba(46,10,120,0.55)'} seed={11 + tone} speed={26000} windows={!light && tone < 2} />
+      {light ? <Toran W={W} /> : null}
       <View style={abs(0, H - 36, { width: W, height: 36, backgroundColor: light ? 'transparent' : '#2A0F6B' })}>
         {light ? <LinearGradient colors={['#D9CBFA', '#F3ECFF']} style={StyleSheet.absoluteFill} /> : null}
         <View style={{ height: 3, backgroundColor: light ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.28)' }} />
@@ -98,7 +137,7 @@ export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: num
 function Cloud({ x, y, w, d }: { x: number; y: number; w: number; d: number }) {
   const light = useContext(LightCtx);
   const p = usePulse(3600, d), st = useAnimatedStyle(() => ({ transform: [{ translateX: p.value * 16 }] }));
-  return <Animated.View style={[abs(x, y, { width: w, height: w * 0.3, borderRadius: w, backgroundColor: light ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.16)' }), st]} />;
+  return <Animated.View style={[abs(x, y, { width: w, height: w * 0.3, borderRadius: w, backgroundColor: light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.16)' }), st]} />;
 }
 
 /* ------------------------------------------------------------------ the car */
@@ -135,36 +174,67 @@ const ARM: Record<Pose, { box: [number, number]; pivot: [number, number]; at: [n
   gun: { box: [86, 60], pivot: [8, 8], at: [66, 52] }, wave: { box: [50, 90], pivot: [8, 80], at: [66, -18] },
   phone: { box: [60, 60], pivot: [8, 8], at: [66, 52] }, give: { box: [60, 60], pivot: [8, 8], at: [66, 52] }, thumb: { box: [50, 60], pivot: [8, 8], at: [66, 52] },
 };
+/* Flat, rounded characters in the style of the delivery illustrations we use elsewhere: a big friendly head with an open smile and
+   blushed cheeks, soft shoulders, a polo with a collar, sleeves that turn into skin at the forearm, trousers with a fold,
+   sneakers. The right arm is its own layer so it can wave, hold the spray gun, show the phone or hand over the keys. */
+const shade = (hex: string, a: number) => { const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255, f = (v: number) => Math.round(v * (1 - a)); return `rgb(${f(r)},${f(g)},${f(b)})`; };
+function Hand({ x, y, r = 5.4, skin, fingers }: { x: number; y: number; r?: number; skin: string; fingers?: boolean }) {
+  return <G>
+    <Circle cx={x} cy={y} r={r} fill={skin} />
+    {fingers ? [[-5.5, -5.5], [-1.8, -8], [2.2, -8], [6, -5.2]].map(([dx, dy], i) => <Circle key={i} cx={x + dx} cy={y + dy} r={2.4} fill={skin} />) : null}
+  </G>;
+}
 export function Person({ look, pose, h = 160, delay = 0 }: { look: PersonLook; pose: Pose; h?: number; delay?: number }) {
-  const k = h / 160, sway = usePulse(1100, delay), swing = usePulse(pose === 'wave' ? 380 : 700, delay), blink = usePulse(1800);
+  const k = h / 160, sway = usePulse(1100, delay), swing = usePulse(pose === 'wave' ? 380 : 700, delay);
   const a = ARM[pose], deg = pose === 'wave' ? [-14, 14] : pose === 'gun' ? [-6, 6] : [-3, 3];
   const bodySt = useAnimatedStyle(() => ({ transform: [{ translateY: sway.value * -2 }] }));
   const armSt = useAnimatedStyle(() => ({ transform: [{ rotate: interpolate(swing.value, [0, 1], deg) + 'deg' }] }));
-  const sleeve = look.shirt, skin = look.skin;
+  const sleeve = look.shirt, skin = look.skin, dark = shade(sleeve, 0.14), skinD = shade(skin, 0.1), hair = look.hair || '#1A1033';
   return (
     <View style={{ width: 100 * k, height: h }}>
       <Animated.View style={[{ width: 100, height: 160, transform: [{ scale: k }], transformOrigin: '0px 0px' }, bodySt]}>
         <Svg width={100} height={160} viewBox="0 0 100 160" style={abs(0, 0)}>
-          <Ellipse cx={50} cy={156} rx={30} ry={4} fill="#000" opacity={0.2} />
-          <Rect x={37} y={98} width={12} height={52} rx={6} fill={look.pants} /><Rect x={51} y={98} width={12} height={52} rx={6} fill={look.pants} />
-          <Path d="M33 150 h17 a4 4 0 0 1 4 4 v1 h-21z" fill="#17112A" /><Path d="M50 150 h17 a4 4 0 0 1 4 4 v1 h-21z" fill="#17112A" />
-          <Path d="M30 66 Q30 52 44 52 L56 52 Q70 52 70 66 L70 104 Q70 108 66 108 L34 108 Q30 108 30 104Z" fill={sleeve} />
-          <Path d="M22 60 Q16 62 17 76 L19 92" stroke={sleeve} strokeWidth={10} strokeLinecap="round" fill="none" /><Circle cx={19.5} cy={95} r={5} fill={skin} />
-          {look.badge ? <><Circle cx={50} cy={72} r={9} fill="#fff" /><Rect x={44} y={70} width={12} height={4} rx={2} fill={SAFF} /></> : null}
-          <Rect x={45} y={44} width={10} height={11} rx={4} fill={skin} />
-          <Circle cx={50} cy={32} r={15} fill={skin} /><Circle cx={35.5} cy={34} r={3} fill={skin} />
-          <Circle cx={45} cy={34} r={1.7} fill="#1A1033" /><Circle cx={56} cy={34} r={1.7} fill="#1A1033" /><Path d="M45 40 Q50.5 44.5 56 40" stroke="#1A1033" strokeWidth={1.8} fill="none" strokeLinecap="round" />
-          {look.cap ? <><Path d="M33 29 A17 15 0 0 1 67 29 Z" fill={SAFF} /><Rect x={47} y={26} width={26} height={6} rx={3} fill="#E5A400" /><Circle cx={50} cy={20} r={3} fill="#5409DA" /></>
-            : <Path d="M34 30 Q33 14 50 14 Q68 14 66 30 Q60 22 50 22 Q40 22 34 30Z" fill={look.hair || '#1A1033'} />}
+          <Ellipse cx={50} cy={157} rx={30} ry={3.6} fill="#000" opacity={0.16} />
+          {/* legs with a fold, then sneakers */}
+          <Path d="M36 104 H49 V148 H37.5 Z" fill={look.pants} /><Path d="M51 104 H64 V148 H52.5 Z" fill={look.pants} />
+          <Path d="M43 112 Q45 128 42.6 146" stroke="#000" strokeOpacity={0.14} strokeWidth={1.6} fill="none" strokeLinecap="round" /><Path d="M57.6 112 Q59 128 57.6 146" stroke="#000" strokeOpacity={0.14} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+          <Path d="M34 148 H50 Q54 148 54 152 V155 Q54 157 52 157 H36 Q33 157 33 154 Z" fill="#F4F1FA" /><Path d="M33.4 153.4 H54 V156 Q54 157 52 157 H36 Q33.4 157 33.4 154.4Z" fill="#2B1B66" opacity={0.85} />
+          <Path d="M50 148 H66 Q70 148 70 152 V155 Q70 157 68 157 H52 Q49 157 49 154 Z" fill="#F4F1FA" /><Path d="M49.4 153.4 H70 V156 Q70 157 68 157 H52 Q49.4 157 49.4 154.4Z" fill="#2B1B66" opacity={0.85} />
+          {/* torso: soft shoulders, a darker side, polo collar and placket */}
+          <Path d="M30 70 Q30 54 45 54 L55 54 Q70 54 70 70 L69 108 Q69 111 66 111 L34 111 Q31 111 31 108 Z" fill={sleeve} />
+          <Path d="M58 56 Q70 56 70 70 L69 108 Q69 111 66 111 L60 111 Q64 84 58 56Z" fill={dark} opacity={0.55} />
+          <Path d="M43 53.5 L50 63 L57 53.5 Q50 57 43 53.5Z" fill="#fff" opacity={0.92} /><Path d="M50 62 V78" stroke="#000" strokeOpacity={0.18} strokeWidth={1.4} strokeLinecap="round" />
+          {look.badge ? <Path d="M56.5 70 h7 v6 q0 3 -3.5 4.4 q-3.5 -1.4 -3.5 -4.4z" fill="#fff" opacity={0.95} /> : null}
+          <Rect x={30.5} y={104} width={39} height={7} rx={3} fill="#17112A" opacity={0.9} /><Rect x={46.5} y={104.6} width={7} height={5.8} rx={1.6} fill={SAFF} />
+          {/* left arm hangs: sleeve to the elbow, then skin, hand */}
+          <Path d="M34 62 Q24 66 23 80" stroke={sleeve} strokeWidth={11.5} strokeLinecap="round" fill="none" /><Path d="M23 79 Q22 90 24.5 98" stroke={skin} strokeWidth={8} strokeLinecap="round" fill="none" />
+          <Circle cx={34} cy={62} r={7} fill={sleeve} /><Circle cx={65.5} cy={62} r={7} fill={sleeve} /><Hand x={25} y={101} r={5} skin={skin} />
+          {/* head: neck, ears, face, cheeks, brows, eyes, nose, open smile */}
+          <Rect x={44.5} y={44} width={11} height={13} rx={4.5} fill={skinD} />
+          <Circle cx={34.6} cy={33} r={3.4} fill={skin} /><Circle cx={65.4} cy={33} r={3.4} fill={skin} />
+          <Ellipse cx={50} cy={31} rx={15.6} ry={17.4} fill={skin} />
+          <Circle cx={40.8} cy={37.4} r={3.2} fill="#FF7B7B" opacity={0.3} /><Circle cx={59.4} cy={37.4} r={3.2} fill="#FF7B7B" opacity={0.3} />
+          <Path d="M40.6 27.6 Q44 25.2 47.4 27" stroke={hair} strokeWidth={1.7} fill="none" strokeLinecap="round" /><Path d="M52.6 27 Q56 25.2 59.4 27.6" stroke={hair} strokeWidth={1.7} fill="none" strokeLinecap="round" />
+          <Ellipse cx={44} cy={31.8} rx={1.8} ry={2.3} fill="#1A1033" /><Ellipse cx={56} cy={31.8} rx={1.8} ry={2.3} fill="#1A1033" /><Circle cx={44.6} cy={31} r={0.6} fill="#fff" /><Circle cx={56.6} cy={31} r={0.6} fill="#fff" />
+          <Path d="M50.6 33.4 Q52.4 36.6 50 37.4" stroke={skinD} strokeWidth={1.3} fill="none" strokeLinecap="round" />
+          <Path d="M43.6 39.6 Q50 48 56.4 39.6 Q50 41.6 43.6 39.6Z" fill="#8A2F3A" /><Path d="M45.2 40.2 Q50 42.4 54.8 40.2 L54 42 Q50 43.6 46 42Z" fill="#fff" />
+          {look.cap ? <>
+            <Path d="M33 29 Q33 12 50 12 Q67 12 67 29 Q58 22.5 50 22.5 Q42 22.5 33 29Z" fill={SAFF} />
+            <Path d="M33.4 28.6 Q42 22.8 50 22.8 Q58 22.8 66.6 28.6 Q58 25.6 50 25.6 Q42 25.6 33.4 28.6Z" fill="#E5A400" />
+            <Path d="M55 22 Q70 18 78 24 Q72 28 58 26.5Z" fill="#E5A400" /><Circle cx={50} cy={16.5} r={2.4} fill="#5409DA" />
+            <Path d="M34.6 29 Q33.6 36 35 38" stroke={hair} strokeWidth={3} strokeLinecap="round" fill="none" /><Path d="M65.4 29 Q66.4 36 65 38" stroke={hair} strokeWidth={3} strokeLinecap="round" fill="none" />
+          </> : <>
+            <Circle cx={38.5} cy={20} r={8.4} fill={hair} /><Circle cx={47} cy={14.6} r={9.6} fill={hair} /><Circle cx={57} cy={15.4} r={9.6} fill={hair} /><Circle cx={64.4} cy={22.6} r={7.6} fill={hair} /><Circle cx={35} cy={28} r={5.6} fill={hair} />
+            <Path d="M36 28 Q38 20 48 21.6 Q56 23.4 64.6 28 Q60 19.4 50 19 Q40 19 36 28Z" fill={hair} /><Circle cx={43} cy={18.6} r={2.6} fill="#fff" opacity={0.08} />
+          </>}
         </Svg>
-        <Animated.View style={[abs(60 - (a.pivot[0] - 8), 52 - (a.pivot[1] - 8), { width: a.box[0], height: a.box[1], transformOrigin: `${a.pivot[0]}px ${a.pivot[1]}px` }), armSt]}>
+        <Animated.View style={[abs(57 - (a.pivot[0] - 8), 52 - (a.pivot[1] - 8), { width: a.box[0], height: a.box[1], transformOrigin: `${a.pivot[0]}px ${a.pivot[1]}px` }), armSt]}>
           <Svg width={a.box[0]} height={a.box[1]} viewBox={`0 0 ${a.box[0]} ${a.box[1]}`}>
-            {pose === 'gun' ? <><Path d="M8 8 L30 26" stroke={sleeve} strokeWidth={10} strokeLinecap="round" /><Path d="M30 26 L38 30" stroke={skin} strokeWidth={8} strokeLinecap="round" />
-              <Rect x={34} y={20} width={24} height={13} rx={4} fill="#3B3560" /><Rect x={56} y={24} width={22} height={5} rx={2.5} fill={SAFF} /><Rect x={40} y={31} width={7} height={14} rx={3} fill="#2B2552" /></> : null}
-            {pose === 'wave' ? <><Path d="M8 80 L26 34" stroke={sleeve} strokeWidth={10} strokeLinecap="round" /><Circle cx={28} cy={26} r={7} fill={skin} /></> : null}
-            {pose === 'phone' ? <><Path d="M8 8 L26 30 L30 14" stroke={sleeve} strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" fill="none" /><Circle cx={30} cy={12} r={5} fill={skin} /><Rect x={26} y={-2} width={16} height={26} rx={4} fill="#17112A" /><Rect x={28} y={1} width={12} height={20} rx={2.5} fill="#8E6BFF" /></> : null}
-            {pose === 'give' ? <><Path d="M8 8 L34 26" stroke={sleeve} strokeWidth={10} strokeLinecap="round" /><Circle cx={38} cy={29} r={6} fill={skin} /></> : null}
-            {pose === 'thumb' ? <><Path d="M8 8 L26 28" stroke={sleeve} strokeWidth={10} strokeLinecap="round" /><Circle cx={29} cy={30} r={7} fill={skin} /><Rect x={26} y={14} width={6} height={13} rx={3} fill={skin} /></> : null}
+            {pose === 'gun' ? <><Path d="M8 8 L26 22" stroke={sleeve} strokeWidth={11.5} strokeLinecap="round" /><Path d="M26 22 L39 30" stroke={skin} strokeWidth={8} strokeLinecap="round" /><Rect x={34} y={20} width={24} height={13} rx={4.5} fill="#3B3560" /><Rect x={56} y={24} width={22} height={5} rx={2.5} fill={SAFF} /><Rect x={40} y={31} width={7} height={14} rx={3} fill="#2B2552" /><Hand x={41} y={32} r={5.2} skin={skin} /></> : null}
+            {pose === 'wave' ? <><Path d="M8 80 L21 48" stroke={sleeve} strokeWidth={11.5} strokeLinecap="round" /><Path d="M21 48 L27 30" stroke={skin} strokeWidth={8} strokeLinecap="round" /><Hand x={28} y={24} r={6.4} skin={skin} fingers /></> : null}
+            {pose === 'phone' ? <><Path d="M8 8 L25 28" stroke={sleeve} strokeWidth={11} strokeLinecap="round" /><Path d="M25 28 L30 16" stroke={skin} strokeWidth={7.6} strokeLinecap="round" /><Rect x={26} y={-2} width={16} height={26} rx={4} fill="#17112A" /><Rect x={28} y={1} width={12} height={20} rx={2.5} fill="#8E6BFF" /><Hand x={31} y={14} r={5} skin={skin} /></> : null}
+            {pose === 'give' ? <><Path d="M8 8 L27 21" stroke={sleeve} strokeWidth={11.5} strokeLinecap="round" /><Path d="M27 21 L40 29" stroke={skin} strokeWidth={8} strokeLinecap="round" /><Hand x={42} y={30} r={5.6} skin={skin} /></> : null}
+            {pose === 'thumb' ? <><Path d="M8 8 L25 27" stroke={sleeve} strokeWidth={11.5} strokeLinecap="round" /><Path d="M25 27 L29 31" stroke={skin} strokeWidth={8} strokeLinecap="round" /><Rect x={26} y={14} width={6.4} height={14} rx={3.2} fill={skin} /><Hand x={30} y={32} r={6.4} skin={skin} /></> : null}
           </Svg>
         </Animated.View>
       </Animated.View>
@@ -174,7 +244,7 @@ export function Person({ look, pose, h = 160, delay = 0 }: { look: PersonLook; p
 
 /* ------------------------------------------------------------------ small parts */
 function Card({ x, y, delay, children, w = 168 }: { x: number; y: number; delay: number; children: ReactNode; w?: number }) {
-  const p = usePop(delay), bob = usePulse(1300, delay), st = useAnimatedStyle(() => ({ opacity: Math.min(1, p.value * 1.6), transform: [{ translateY: (1 - p.value) * 22 + bob.value * -3 }, { scale: 0.8 + p.value * 0.2 }] }));
+  const p = usePop(delay), bob = usePulse(1300, delay), st = useAnimatedStyle(() => ({ opacity: Math.min(1, p.value * 1.6), transform: [{ translateY: (1 - p.value) * 22 + bob.value * -3 }] }));
   return <Animated.View style={[abs(x, y, { width: w, borderRadius: 16, backgroundColor: '#fff', padding: 10, shadowColor: '#1A0A4D', shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6 }), st]}>{children}</Animated.View>;
 }
 const Tick = ({ s = 18 }: { s?: number }) => <View style={{ width: s, height: s, borderRadius: s / 2, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' }}><Svg width={s * 0.62} height={s * 0.62} viewBox="0 0 14 14"><Path d="M2.5 7.5 L5.5 10.5 L11.5 4" stroke="#fff" strokeWidth={2.6} fill="none" strokeLinecap="round" strokeLinejoin="round" /></Svg></View>;
@@ -191,7 +261,7 @@ export function Drop({ x, y, dx, dy, ms, delay, r = 4 }: { x: number; y: number;
   return <Animated.View style={[abs(x, y, { width: r * 2, height: r * 1.4, borderRadius: r, backgroundColor: '#BFE6FF' }), st]} />;
 }
 function Stage({ W, H, children }: { W: number; H: number; children: ReactNode }) {
-  const s = Math.min(W / DW, H / DH, 1.2);
+  const s = W >= DW ? 1 : W / DW;   // 1:1 whenever the phone is wide enough: scaling the cards makes their text soft
   return <View style={{ position: 'absolute', left: (W - DW) / 2, top: (H - DH) / 2, width: DW, height: DH, transform: [{ scale: s }] }}>{children}</View>;
 }
 
@@ -344,9 +414,9 @@ export function LoginStory({ W, H = 220, ms = 4600 }: { W: number; H?: number; m
       <View style={{ width: W }}>
         <View style={{ width: W, height: H, overflow: 'hidden' }}>
           <Animated.View key={i} entering={FadeIn.duration(420)} exiting={FadeOut.duration(280)} style={abs(0, 0)}><Scene W={W} H={H} /></Animated.View>
-          <LinearGradient pointerEvents="none" colors={['#E2D3FF', 'rgba(226,211,255,0)']} style={abs(0, 0, { width: W, height: 26 })} />
+          
         </View>
-        <LinearGradient colors={['#F3ECFF', '#FFFFFF']} style={{ paddingHorizontal: SP.l + 4, paddingTop: SP.m, minHeight: 104 }}>
+        <LinearGradient colors={['#FFFFFF', '#FFFFFF']} style={{ paddingHorizontal: SP.l + 4, paddingTop: SP.m, minHeight: 104 }}>
           <Animated.View key={'t' + i} entering={FadeIn.duration(420).delay(140)} exiting={FadeOut.duration(200)}>
             <Txt weight={700} size={26} color="#1A1033" style={{ lineHeight: 33 }}>{SLIDES[i].t}</Txt>
             <Txt size={14} color="#5B5275" style={{ lineHeight: 20, marginTop: 4 }}>{SLIDES[i].s}</Txt>

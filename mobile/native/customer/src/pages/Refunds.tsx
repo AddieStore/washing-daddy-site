@@ -19,7 +19,7 @@ export default function Refunds() {
   useApp();
   const ins = useInsets(), load = useSkeleton(), [ref, setRef] = useState(false), list = refunds();
   return (
-    <View style={{ flex: 1, backgroundColor: G.raised }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <PageBar title="My refunds" />
       {load ? <View style={{ padding: 16, gap: 12 }}>{[0, 1, 2].map(i => <Skel key={i} h={96} r={16} />)}</View> : (
         <ScrollView refreshControl={<RefreshControl refreshing={ref} onRefresh={async () => { setRef(true); try { await act.refresh() } catch {} setRef(false) }} tintColor={V} colors={[V]} />}

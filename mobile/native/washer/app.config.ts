@@ -58,6 +58,7 @@ const config: ExpoConfig = {
     buildNumber: '20',
     supportsTablet: false,
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,   // only standard HTTPS: no export-compliance question on every upload
       NSCameraUsageDescription:
         'WD Partner uses the camera so you can take before and after photos of each car you wash.',
       NSLocationWhenInUseUsageDescription:
@@ -113,7 +114,7 @@ const config: ExpoConfig = {
     [
       'expo-build-properties',
       {
-        ios: { useFrameworks: 'static' },
+        ios: { useFrameworks: 'dynamic' },
         // Firebase Android BoM 35 needs Kotlin 2.3 (the customer app hit the same)
         android: { minSdkVersion: 24, kotlinVersion: '2.3.21' },
       },

@@ -16,12 +16,12 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient as SvgGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, IconName } from './Icons';
 import { ui } from './bus';
-import { usePressSpring } from './motion';
-import { F, R, brand, cardBox, cardShadow, useTheme } from './theme';
+import { usePressSpring, withBase } from './motion';
+import { F, R, TYPE, brand, cardBox, cardShadow, useTheme } from './theme';
 
 type S<T> = StyleProp<T>;
 const useNative = Platform.OS !== 'web';
@@ -34,7 +34,7 @@ export function Pressy({
   onLongPress,
   disabled,
   style,
-  scaleTo = 0.96,
+  scaleTo = 0.97,
   children,
   accessibilityLabel,
   accessibilityRole = 'button',
@@ -52,8 +52,8 @@ export function Pressy({
   accessibilityState?: { selected?: boolean; checked?: boolean; disabled?: boolean };
   hitSlop?: number;
 }) {
-  // Pronto press: spring to 0.96 and back with a small overshoot (no scale with reduced motion)
-  const { scale: v, down, up } = usePressSpring(scaleTo);
+  // Press: scale 0.97 + soft opacity in 90 ms, short spring back (see usePressSpring).
+  const { scale: v, opacity, down, up } = usePressSpring(scaleTo);
   return (
     <Pressable
       onPress={onPress}
@@ -66,7 +66,7 @@ export function Pressy({
       accessibilityState={{ disabled: !!disabled, ...accessibilityState }}
       hitSlop={hitSlop}
     >
-      <Animated.View style={[style, { transform: [{ scale: v }] }]}>{children}</Animated.View>
+      <Animated.View style={[style, { opacity: withBase(opacity, style), transform: [{ scale: v }] }]}>{children}</Animated.View>
     </Pressable>
   );
 }
@@ -74,77 +74,111 @@ export function Pressy({
 /* ------------------------------------------------------------------ */
 /* Buttons                                                             */
 /* ------------------------------------------------------------------ */
-export type ButtonVariant = 'gold' | 'violet' | 'ink' | 'ghost' | 'mint' | 'sos';
+/** primary / secondary / ghost / destructive. gold, violet, ink, mint, sos are older names kept so existing screens compile (gold/violet/mint = primary, ink = dark solid, sos = destructive). */
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'gold' | 'violet' | 'ink' | 'mint' | 'sos';
+export type ButtonSize = 'lg' | 'md' | 'sm';
+const BTN_H: Record<ButtonSize, number> = { lg: 52, md: 44, sm: 36 };
 
 export function Button({
   label,
   onPress,
-  variant = 'gold',
+  variant = 'primary',
+  size = 'lg',
   icon,
   iconRight,
   disabled,
+  loading,
   style,
   full = true,
 }: {
   label: string;
   onPress?: () => void;
   variant?: ButtonVariant;
+  /** lg 52 (default, primary actions), md 44, sm 36 */
+  size?: ButtonSize;
   icon?: IconName;
   iconRight?: IconName;
   disabled?: boolean;
+  /** replaces the label with a spinner, keeps the width, blocks taps */
+  loading?: boolean;
   style?: S<ViewStyle>;
   /** stretch to the container width (default true) */
   full?: boolean;
 }) {
   const { c, dark, onViolet } = useTheme();
-  // Customer Cta: minHeight 56, radius 16, violet with a violet shadow; disabled = soft lilac, no shadow; secondary = white card, violet text.
-  const v: Record<ButtonVariant, { bg: string; fg: string; shadow?: boolean; card?: boolean }> = {
-    gold: { bg: c.primary, fg: '#fff', shadow: true },
-    violet: { bg: c.primary, fg: '#fff', shadow: true },
-    ink: { bg: dark ? c.tile2 : '#171717', fg: '#fff' },
-    ghost: { bg: c.card, fg: dark ? '#CDB6FF' : '#5409DA', card: true },
-    mint: { bg: brand.mint, fg: '#06281D' },
-    sos: { bg: '#dc2626', fg: '#fff' },
-  };
-  if (onViolet) {   // on a violet block: white button with violet text; secondary = translucent white
-    v.gold = v.violet = v.ink = { bg: '#FFFFFF', fg: '#5409DA' };
-    v.ghost = { bg: 'rgba(255,255,255,0.18)', fg: '#FFFFFF' };
+  const kind: 'primary' | 'secondary' | 'ghost' | 'destructive' | 'ink' =
+    variant === 'gold' || variant === 'violet' || variant === 'mint' ? 'primary' : variant === 'sos' ? 'destructive' : variant;
+  const brandInk = dark ? '#CDB6FF' : c.primary;
+  let bg = c.primary, fg = '#fff', border: string | undefined;
+  if (kind === 'secondary') { bg = c.card; fg = c.fg; border = c.line; }
+  else if (kind === 'ghost') { bg = 'transparent'; fg = brandInk; }
+  else if (kind === 'destructive') { bg = brand.red; fg = '#fff'; }
+  else if (kind === 'ink') { bg = dark ? c.tile2 : '#141414'; fg = '#fff'; }
+  if (onViolet) {
+    if (kind === 'secondary' || kind === 'ghost') { bg = 'rgba(255,255,255,0.16)'; fg = '#fff'; border = undefined; }
+    else { bg = '#FFFFFF'; fg = '#5409DA'; }
   }
-  const t = v[variant];
-  const bg = disabled ? (onViolet ? 'rgba(255,255,255,0.14)' : dark ? 'rgba(255,255,255,0.08)' : '#E6E0F5') : t.bg;
-  const fg = disabled ? (onViolet ? 'rgba(255,255,255,0.5)' : dark ? 'rgba(255,255,255,0.4)' : '#6B6483') : t.fg;
-  const sh = !disabled && !onViolet && c.shadow
-    ? t.shadow ? ({ shadowColor: brand.violet, shadowOpacity: 0.32, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4 } as const)
-      : t.card ? cardShadow(c) : null
-    : null;
+  // Disabled keeps the same size: brand at ~30% (video: pale, never grey), label stays white-ish.
+  const off = !!disabled;
+  const wrapOpacity = off ? (kind === 'primary' || kind === 'destructive' || kind === 'ink' ? 0.32 : 0.45) : 1;
+  const h = BTN_H[size];
   return (
     <Pressy
-      onPress={onPress}
-      disabled={disabled}
+      onPress={() => { if (kind === 'primary') ui.haptic(8); onPress?.(); }}
+      disabled={off || !!loading}
       accessibilityLabel={label}
+      accessibilityState={{ busy: !!loading } as any}
+      scaleTo={0.97}
       style={[
         b.btn,
         {
           backgroundColor: bg,
-          minHeight: 56,
+          minHeight: h,
+          borderRadius: size === 'sm' ? 10 : 12,
+          paddingVertical: size === 'lg' ? 12 : 6,
+          paddingHorizontal: size === 'sm' ? 14 : 20,
+          borderWidth: border ? 1 : 0,
+          borderColor: border,
+          opacity: wrapOpacity,
           alignSelf: full ? 'stretch' : 'flex-start',
         },
-        sh,
         style,
       ]}
     >
-      {icon ? <Icon name={icon} size={18} color={fg} /> : null}
-      <Text style={[b.txt, { color: fg, fontSize: 16 }]} numberOfLines={2}>
-        {label}
-      </Text>
-      {iconRight ? <Icon name={iconRight} size={18} color={fg} /> : null}
+      {loading ? (
+        <Spinner color={fg} />
+      ) : (
+        <>
+          {icon ? <Icon name={icon} size={18} color={fg} /> : null}
+          <Text style={[b.txt, { color: fg, fontSize: size === 'sm' ? 13 : 15, lineHeight: 20 }]} numberOfLines={2}>
+            {label}
+          </Text>
+          {iconRight ? <Icon name={iconRight} size={18} color={fg} /> : null}
+        </>
+      )}
     </Pressy>
   );
 }
 
+/** 16px ring spinner (RN Animated rotate on a bordered view). */
+export function Spinner({ color = '#fff', size = 18 }: { color?: string; size?: number }) {
+  const r = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const l = Animated.loop(Animated.timing(r, { toValue: 1, duration: 800, easing: Easing.linear, useNativeDriver: useNative }));
+    l.start();
+    return () => l.stop();
+  }, [r]);
+  return (
+    <Animated.View
+      accessibilityRole="progressbar"
+      style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: color, borderTopColor: 'transparent', transform: [{ rotate: r.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}
+    />
+  );
+}
+
 const b = StyleSheet.create({
-  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 16 },
-  txt: { fontFamily: F.semi, textAlign: 'center', flexShrink: 1 },
+  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  txt: { fontFamily: F.semi, letterSpacing: -0.1, textAlign: 'center', flexShrink: 1 },
 });
 
 export function LinkButton({
@@ -181,10 +215,10 @@ export function Card({ children, style, onPress }: { children?: React.ReactNode;
 export function Section({ title, meta, children, style }: { title?: string; meta?: string; children?: React.ReactNode; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   return (
-    <View style={[{ marginTop: 24 }, style]}>
+    <View style={[{ marginTop: 28 }, style]}>
       {title || meta ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-          {title ? <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 18, lineHeight: 26, color: c.fg, flexShrink: 1 }}>{title}</Text> : <View />}
+          {title ? <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 20, lineHeight: 26, letterSpacing: -0.5, color: c.fg, flexShrink: 1 }}>{title}</Text> : <View />}
           {meta ? <Text style={{ fontFamily: F.body, fontSize: 12, color: c.fg3 }}>{meta}</Text> : null}
         </View>
       ) : null}
@@ -201,29 +235,31 @@ export function Eyebrow({ children, style }: { children?: React.ReactNode; style
 export function BigTitle({ children, em, size = 44, style }: { children?: React.ReactNode; em?: string; size?: number; style?: S<TextStyle> }) {
   const { c } = useTheme();
   return (
-    <Text accessibilityRole="header" style={[{ fontFamily: F.black, fontSize: Math.min(size, 30), lineHeight: Math.min(size, 30) * 1.15, letterSpacing: -0.5, color: c.fg, marginTop: 4 }, style]}>
+    <Text accessibilityRole="header" style={[{ fontFamily: F.bold, fontSize: Math.min(size, 30), lineHeight: Math.min(size, 30) * 1.15, letterSpacing: -0.8, color: c.fg, marginTop: 4 }, style]}>
       {children}
       {em ? <Text style={{ color: c.em }}>{children ? ' ' : ''}{em}</Text> : null}
     </Text>
   );
 }
 
-export type ChipTone = 'violet' | 'green' | 'grey' | 'red' | 'dark';
+export type ChipTone = 'violet' | 'green' | 'grey' | 'red' | 'dark' | 'amber' | 'blue';
 /** Pronto Pill: full pill, 12 medium text on a quiet tint. */
 export function Chip({ children, icon, tone = 'violet', style }: { children?: React.ReactNode; icon?: IconName; tone?: ChipTone; style?: S<ViewStyle> }) {
   const { c, dark } = useTheme();
   const T: Record<ChipTone, [string, string]> = {
     violet: [dark ? 'rgba(139,92,246,0.22)' : 'rgba(84,9,218,0.08)', dark ? '#CDB6FF' : '#5409DA'],
     green: [dark ? 'rgba(92,230,181,0.14)' : '#F0FAF4', dark ? '#5CE6B5' : '#16a34a'],
-    grey: [dark ? c.tile2 : '#ECECF0', c.fg2],
+    grey: [dark ? c.tile2 : '#F1F1F4', c.fg2],
     red: [dark ? 'rgba(248,113,113,0.16)' : '#FEF2F2', dark ? '#FCA5A5' : '#dc2626'],
     dark: [c.primary, '#fff'],
+    amber: [dark ? 'rgba(255,186,8,0.16)' : '#FFF6DB', dark ? '#FFD66B' : '#9A6A00'],
+    blue: [dark ? 'rgba(46,139,255,0.18)' : '#EAF3FF', dark ? '#8DC1FF' : '#1D6FE0'],
   };
   const [bg, fg] = T[tone];
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 28, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: bg }, style]}>
-      {icon ? <Icon name={icon} size={14} color={fg} /> : null}
-      <Text style={{ fontFamily: F.medium, fontSize: 12, color: fg }}>{children}</Text>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 24, paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999, backgroundColor: bg }, style]}>
+      {icon ? <Icon name={icon} size={13} color={fg} /> : null}
+      <Text style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 16, color: fg }}>{children}</Text>
     </View>
   );
 }
@@ -282,52 +318,6 @@ export function XChip({ kind, label, small, style }: { kind?: XKind | string; la
       <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: small ? 11 : 12, color: t.fg }}>{label}</Text>
     </View>
   );
-}
-
-export function Row({
-  icon,
-  iconColor,
-  title,
-  subtitle,
-  right,
-  onPress,
-  divider,
-  style,
-}: {
-  icon?: IconName | React.ReactNode;
-  iconColor?: string;
-  title: string;
-  subtitle?: string;
-  right?: React.ReactNode;
-  onPress?: () => void;
-  /** bottom hairline (use on all but the last row; put the rows in one white Card with overflow hidden) */
-  divider?: boolean;
-  style?: S<ViewStyle>;
-}) {
-  const { c } = useTheme();
-  // Customer ListRow: 56px, 18px grey line icon, 15px title, chevron on tappable rows, hairline between rows.
-  const body = (
-    <>
-      {icon ? (
-        <View style={{ width: 24, alignItems: 'center' }}>
-          {typeof icon === 'string' ? <Icon name={icon as IconName} size={18} color={iconColor ?? c.fg3} /> : icon}
-        </View>
-      ) : null}
-      <View style={{ flex: 1, minWidth: 0, paddingVertical: 10 }}>
-        <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 22, color: c.fg }}>{title}</Text>
-        {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3, marginTop: 2 }}>{subtitle}</Text> : null}
-      </View>
-      {right}
-      {onPress && !right ? <Icon name="chevron" size={18} color={c.fg3} /> : null}
-    </>
-  );
-  const st: S<ViewStyle> = [
-    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, minHeight: 56 },
-    divider && { borderBottomWidth: 1, borderBottomColor: c.line },
-    style,
-  ];
-  if (onPress) return <Pressy onPress={onPress} scaleTo={0.985} accessibilityLabel={title} style={st}>{body}</Pressy>;
-  return <View style={st}>{body}</View>;
 }
 
 export function LegacyTile({ emoji, value, unit, label, style }: { emoji?: string; value: string | number; unit?: string; label?: string; style?: S<ViewStyle> }) {
@@ -564,17 +554,50 @@ export function Field({ big = true, style, onFocus, onBlur, multiline, label, bo
 /* ------------------------------------------------------------------ */
 export function Empty({ title, text, style, icon, action }: { title: string; text?: string; style?: S<ViewStyle>; icon?: IconName; action?: React.ReactNode }) {
   const { c } = useTheme();
-  // Customer Empty: art circle, 600 title, grey sub, optional CTA.
+  // Calm empty state: hairline card, small grey icon tile, 17/600 title, 13 grey sub, optional CTA. Left-aligned copy would look odd at this size, so centred.
   return (
-    <View style={[cardBox(c), cardShadow(c), { paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center' }, style]}>
-      <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-        <Icon name={icon ?? 'drop'} size={30} color={c.primary} />
+    <View style={[cardBox(c), { paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center' }, style]}>
+      <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: c.soft, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+        <Icon name={icon ?? 'drop'} size={26} color={c.fg3} />
       </View>
-      <Text style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 24, color: c.fg, textAlign: 'center' }}>{title}</Text>
-      {text ? <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: c.fg3, textAlign: 'center', marginTop: 4 }}>{text}</Text> : null}
+      <Text style={{ fontFamily: F.semi, fontSize: 17, lineHeight: 22, letterSpacing: -0.3, color: c.fg, textAlign: 'center' }}>{title}</Text>
+      {text ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3, textAlign: 'center', marginTop: 4 }}>{text}</Text> : null}
       {action ? <View style={{ marginTop: 16, alignSelf: 'stretch' }}>{action}</View> : null}
     </View>
   );
+}
+
+/** Skeleton block: soft grey, slow opacity pulse. Compose rows with SkeletonRow. */
+export function Skeleton({ w = '100%', h = 14, r = 8, style }: { w?: number | string; h?: number; r?: number; style?: S<ViewStyle> }) {
+  const { c } = useTheme();
+  const a = useRef(new Animated.Value(0.55)).current;
+  useEffect(() => {
+    const l = Animated.loop(Animated.sequence([
+      Animated.timing(a, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: useNative }),
+      Animated.timing(a, { toValue: 0.55, duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: useNative }),
+    ]));
+    l.start();
+    return () => l.stop();
+  }, [a]);
+  return <Animated.View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[{ width: w as any, height: h, borderRadius: r, backgroundColor: c.tile2, opacity: a }, style]} />;
+}
+
+/** Skeleton for a 56px list row: 36 tile + two lines. Wrap in a Card or ListGroup. */
+export function SkeletonRow({ style }: { style?: S<ViewStyle> }) {
+  return (
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, minHeight: 56 }, style]}>
+      <Skeleton w={36} h={36} r={12} />
+      <View style={{ flex: 1, gap: 6 }}><Skeleton w="55%" h={13} /><Skeleton w="35%" h={11} /></View>
+    </View>
+  );
+}
+
+/** Text with the DESIGN-REFERENCE scale: pick a role with `v`, tracking and colour follow. `tone` 'muted' = the one grey. */
+export function Txt({ v: role = 'body', tone, style, children, ...rest }: React.ComponentProps<typeof Text> & { v?: keyof typeof TYPE; tone?: 'ink' | 'muted' | 'brand' }) {
+  const { c } = useTheme();
+  const t = tone ?? (role === 'body' || role === 'caption' ? 'muted' : 'ink');
+  const color = t === 'muted' ? c.fg3 : t === 'brand' ? c.primary : c.fg;
+  return <Text {...rest} style={[TYPE[role], { color }, style]}>{children}</Text>;
 }
 
 export function DemoNote({ children, style }: { children?: React.ReactNode; style?: S<TextStyle> }) {
@@ -707,9 +730,9 @@ export function Stepper({ steps, style }: { steps: StepItem[]; style?: S<ViewSty
 /* ------------------------------------------------------------------ */
 /* Slide to confirm                                                    */
 /* ------------------------------------------------------------------ */
-const KNOB = 44;
+const KNOB = 40;
 const PAD = 6;
-const H = 56;
+const H = 52;
 
 export function SlideToConfirm({
   label,
@@ -761,7 +784,7 @@ export function SlideToConfirm({
     setDone(true);
     nudge.stopAnimation();
     nudge.setValue(0);
-    Animated.spring(x, { toValue: widthRef.current - KNOB - PAD * 2, useNativeDriver: useNative, speed: 20, bounciness: 6 }).start();
+    Animated.spring(x, { toValue: widthRef.current - KNOB - PAD * 2, useNativeDriver: useNative, speed: 30, bounciness: 0 }).start();
     ui.haptic([20, 40, 20]);
     onDoneRef.current();
   }, [x, nudge]);
@@ -779,7 +802,7 @@ export function SlideToConfirm({
     const loop = Animated.loop(
       Animated.sequence([
         Animated.delay(2200),
-        Animated.timing(nudge, { toValue: 14, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: useNative }),
+        Animated.timing(nudge, { toValue: 10, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: useNative }),
         Animated.timing(nudge, { toValue: 0, duration: 260, easing: Easing.inOut(Easing.cubic), useNativeDriver: useNative }),
       ]),
     );
@@ -807,7 +830,7 @@ export function SlideToConfirm({
           dragging.current = false;
           const t = widthRef.current - KNOB - PAD * 2;
           if (t > 0 && g.dx >= t * 0.85) complete();
-          else Animated.spring(x, { toValue: 0, useNativeDriver: useNative, speed: 14, bounciness: 12 }).start();
+          else Animated.spring(x, { toValue: 0, useNativeDriver: useNative, speed: 26, bounciness: 2 }).start();
         },
         onPanResponderTerminate: () => {
           dragging.current = false;
@@ -839,20 +862,20 @@ export function SlideToConfirm({
     >
       <Animated.View
         pointerEvents="none"
-        style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: width || '100%', borderRadius: R.button, backgroundColor: 'rgba(255,255,255,0.14)', transform: [{ translateX: width ? fillX : -9999 }] }}
+        style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: width || '100%', borderRadius: R.button, backgroundColor: 'rgba(255,255,255,0.12)', transform: [{ translateX: width ? fillX : -9999 }] }}
       />
-      <Animated.View pointerEvents="none" style={{ ...StyleSheet.absoluteFill as object, alignItems: 'center', justifyContent: 'center', paddingLeft: 44, paddingRight: 16, opacity: done ? 0 : txtOpacity }}>
-        <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 15, color: fg }}>{label}</Text>
+      <Animated.View pointerEvents="none" style={{ ...StyleSheet.absoluteFill as object, alignItems: 'center', justifyContent: 'center', paddingLeft: 40, paddingRight: 16, opacity: done ? 0 : txtOpacity }}>
+        <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 15, letterSpacing: -0.1, color: fg }}>{label}</Text>
       </Animated.View>
       <Animated.View
         {...pan.panHandlers}
         style={{
-          position: 'absolute', left: PAD, top: PAD, width: KNOB, height: KNOB, borderRadius: R.button - 2, backgroundColor: knobBg,
+          position: 'absolute', left: PAD, top: PAD, width: KNOB, height: KNOB, borderRadius: R.button - 4, backgroundColor: knobBg,
           alignItems: 'center', justifyContent: 'center', transform: [{ translateX: knobX }],
           ...(Platform.OS === 'web' ? ({ cursor: 'grab', touchAction: 'none', userSelect: 'none' } as any) : null),
         }}
       >
-        <Icon name={done ? 'check' : 'arrow'} size={22} color={knobFg} />
+        <Icon name={done ? 'check' : 'arrow'} size={20} color={knobFg} />
       </Animated.View>
     </Pressable>
   );
@@ -861,55 +884,22 @@ export function SlideToConfirm({
 /* ------------------------------------------------------------------ */
 /* Customer-style building blocks (2026-11 redesign)                   */
 /* ------------------------------------------------------------------ */
-/** Customer Auth Cta: full-width violet button (minHeight 56, radius 16, violet shadow). Disabled = soft lilac. `busy` (string) replaces the label and blocks taps. */
+/** Full-width primary button (52). `busy` (string or true) shows a spinner and blocks taps; disabled = same size, pale brand. */
 export function Cta({ label, onPress, disabled, busy, style }: { label: string; onPress?: () => void; disabled?: boolean; busy?: string | boolean; style?: S<ViewStyle> }) {
-  const { c, dark, onViolet } = useTheme();
-  const off = !!disabled || !!busy;
-  const bg = disabled ? (onViolet ? 'rgba(255,255,255,0.14)' : dark ? 'rgba(255,255,255,0.08)' : '#E6E0F5') : onViolet ? '#FFFFFF' : c.primary;
-  const fg = disabled ? (onViolet ? 'rgba(255,255,255,0.5)' : dark ? 'rgba(255,255,255,0.4)' : '#6B6483') : onViolet ? '#5409DA' : '#fff';
-  const txt = typeof busy === 'string' ? busy : label;
-  return (
-    <Pressy
-      onPress={onPress}
-      disabled={off}
-      accessibilityLabel={label}
-      style={[
-        { minHeight: 56, borderRadius: 16, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', paddingHorizontal: 16, opacity: busy ? 0.85 : 1 },
-        !disabled && !onViolet && c.shadow ? { shadowColor: brand.violet, shadowOpacity: 0.32, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4 } : null,
-        style,
-      ]}
-    >
-      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 16, color: fg }}>{txt}</Text>
-    </Pressy>
-  );
+  return <Button label={typeof busy === 'string' ? busy : label} onPress={onPress} disabled={disabled} loading={!!busy} style={style} />;
 }
 
-export const VIOLET_GRAD = ['#6A1BF2', '#5409DA', '#36058F'] as const;
+export const VIOLET_GRAD = ['#5409DA', '#5409DA', '#5409DA'] as const;
 /**
- * Customer violet hero block: diagonal gradient #6A1BF2 > #5409DA > #36058F, a faint white circle top-right, children on top.
- * `top` handles the status-bar inset (default safe-area top + 8; pass a number to override, 0 for none).
+ * Brand header block: flat #5409DA, no gradient or decoration. `top` handles the status-bar inset (default safe-area top + 8; 0 for none).
  * `pad` = bottom padding (use 56 and a -40 marginTop on the next card to overlap). `rounded` rounds the bottom corners (24).
  */
 export function VioletHero({ children, pad = 56, top, rounded, style }: { children?: React.ReactNode; pad?: number; top?: number; rounded?: boolean; style?: S<ViewStyle> }) {
   const insets = useSafeAreaInsets();
-  const [box, setBox] = useState({ w: 390, h: 220 });
-  const id = 'vhero' + React.useId().replace(/[^a-zA-Z0-9]/g, '');
   return (
     <View
-      onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
       style={[{ overflow: 'hidden', backgroundColor: '#5409DA', paddingTop: top ?? insets.top + 8, paddingHorizontal: 16, paddingBottom: pad }, rounded ? { borderBottomLeftRadius: 24, borderBottomRightRadius: 24 } : null, style]}
     >
-      <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Defs>
-          <SvgGradient id={id} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={VIOLET_GRAD[0]} />
-            <Stop offset="0.5" stopColor={VIOLET_GRAD[1]} />
-            <Stop offset="1" stopColor={VIOLET_GRAD[2]} />
-          </SvgGradient>
-        </Defs>
-        <Rect x={0} y={0} width={box.w} height={box.h} fill={`url(#${id})`} />
-        <Circle cx={box.w - 50} cy={70} r={100} fill="#fff" fillOpacity={0.07} />
-      </Svg>
       {children}
     </View>
   );
@@ -919,7 +909,7 @@ export function VioletHero({ children, pad = 56, top, rounded, style }: { childr
 export function IconTile({ icon, tone, size = 36, children, style }: { icon?: IconName; tone?: string; size?: number; children?: React.ReactNode; style?: S<ViewStyle> }) {
   const { c, dark } = useTheme();
   const col = tone ?? c.primary;
-  let bg = dark ? 'rgba(122,66,240,0.2)' : 'rgba(84,9,218,0.08)';
+  let bg = dark ? 'rgba(122,66,240,0.2)' : '#F4F4F6';
   const m = tone ? /^#([0-9a-f]{6})$/i.exec(tone) : null;
   if (m) { const n = parseInt(m[1], 16); bg = `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${dark ? 0.2 : 0.12})`; }
   return (
@@ -943,7 +933,7 @@ export function ListRow({ icon, tile, tone, title, sub, right, onPress, last, di
     <>
       {lead}
       <View style={{ flex: 1, minWidth: 0, paddingVertical: 10 }}>
-        <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 22, color: danger ? brand.red : c.fg }}>{title}</Text>
+        <Text style={{ fontFamily: F.semi, fontSize: 15, lineHeight: 22, letterSpacing: -0.1, color: danger ? brand.red : c.fg }}>{title}</Text>
         {sub ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3, marginTop: 2 }}>{sub}</Text> : null}
       </View>
       {right}
@@ -951,7 +941,7 @@ export function ListRow({ icon, tile, tone, title, sub, right, onPress, last, di
     </>
   );
   const st: S<ViewStyle> = [{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, minHeight: 56, borderBottomWidth: divider || last === false ? 1 : 0, borderBottomColor: c.line }, style];
-  if (onPress) return <Pressy onPress={onPress} scaleTo={0.985} accessibilityLabel={label ?? title} style={st}>{body}</Pressy>;
+  if (onPress) return <Pressy onPress={onPress} scaleTo={0.99} accessibilityLabel={label ?? title} style={st}>{body}</Pressy>;
   return <View style={st}>{body}</View>;
 }
 

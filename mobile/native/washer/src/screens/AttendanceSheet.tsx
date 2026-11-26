@@ -2,10 +2,11 @@
 // WD T-shirt. The T-shirt colour is checked on the phone (lib/shirt.ts); the cap cannot be, so he ticks it himself
 // and the manager reviews the photo in the admin panel. After 2 misses he can still send it: nobody is locked out.
 import React, { useRef, useState } from 'react';
+import { router } from 'expo-router';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { Button, F, Icon, SuccessTick, brand, sheet, ui, useTheme } from '../ui';
+import { Button, F, Group, Icon, Row, SuccessTick, brand, sheet, ui, useTheme } from '../ui';
 import { act } from '../state/store';
 import { t } from '../lib/i18n';
 import { takePhoto } from '../lib/photo';
@@ -15,7 +16,7 @@ import { SheetTitle } from './sheets';
 const MAX_PHOTO = 40000;   // chars of the data URL the checkins doc may carry
 
 /** Run the colour check on a ~48px JPEG of the photo. null when it cannot be read (the washer is not blocked). */
-async function readShirt(uri: string): Promise<ShirtResult | null> {
+export async function readShirt(uri: string): Promise<ShirtResult | null> {
   try {
     const r = await manipulateAsync(uri, [{ resize: { width: 48 } }], { compress: 0.8, format: SaveFormat.JPEG, base64: true });
     return r.base64 ? checkShirtJpeg(r.base64) : null;
@@ -41,15 +42,7 @@ function Figure({ size = 120 }: { size?: number }) {
 }
 
 function Tip({ text }: { text: string }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(84,9,218,0.08)' }}>
-        <Icon name="check" size={14} color={c.primary} />
-      </View>
-      <Text style={{ flex: 1, fontFamily: F.body, fontSize: 14, lineHeight: 20, color: c.fg2 }}>{text}</Text>
-    </View>
-  );
+  return <Row icon="check" label={text} />;
 }
 
 type Shot = { preview: string; url: string; shirt: ShirtResult | null };
@@ -97,12 +90,12 @@ function AttendanceBody({ close }: { close: () => void }) {
       <SheetTitle title={t('Hazri ki photo')} sub={t('Cap aur WD T-shirt pehen kar apni photo lo')} />
       {!shot ? (
         <View>
-          <View style={{ alignItems: 'center', paddingVertical: 16, backgroundColor: c.inputBg, borderRadius: 16 }}><Figure /></View>
-          <View style={{ gap: 12, marginTop: 16, marginBottom: 16 }}>
+          <View style={{ alignItems: 'center', paddingVertical: 16, backgroundColor: c.canvas, borderRadius: 16 }}><Figure /></View>
+          <Group style={{ marginTop: 16, marginBottom: 16 }}>
             <Tip text={t('Seedhe khade ho, chehra saaf dikhe')} />
             <Tip text={t('Cap sir par, T-shirt poori dikhe')} />
             <Tip text={t('Roshni mein ho, peeche se nahi')} />
-          </View>
+          </Group>
           {busy ? <ActivityIndicator color={c.primary} style={{ marginBottom: 8 }} /> : null}
           <Button variant="violet" icon="cam" label={t('Photo lo')} onPress={snap} disabled={busy} />
         </View>
@@ -114,7 +107,7 @@ function AttendanceBody({ close }: { close: () => void }) {
           </View>
           <View accessibilityLiveRegion="polite" style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             {matched ? <SuccessTick size={28} /> : null}
-            <Text style={{ flex: 1, fontFamily: matched ? F.semi : F.body, fontSize: 14, lineHeight: 20, color: matched ? c.fg : c.fg2 }}>
+            <Text style={{ flex: 1, fontFamily: matched ? F.semi : F.body, fontSize: 14, lineHeight: 20, color: matched ? c.fg : c.grey }}>
               {matched ? t('T-shirt pehchan li') : t('T-shirt ka rang nahi mila, roshni mein dobara photo lo')}
             </Text>
           </View>
@@ -128,7 +121,7 @@ function AttendanceBody({ close }: { close: () => void }) {
               <Text style={{ flex: 1, fontFamily: F.semi, fontSize: 16, color: c.fg }}>{t('Cap aur T-shirt pehne hain?')}</Text>
             </Pressable>
           ) : null}
-          <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.fg3, marginTop: 6 }}>{t('Manager yeh photo dekhega')}</Text>
+          <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.grey, marginTop: 6 }}>{t('Manager yeh photo dekhega')}</Text>
           <View style={{ gap: 12, marginTop: 16 }}>
             {matched || canForce ? (
               <Button variant="violet" icon="check" disabled={!canSend} label={matched ? t('Hazri lagao') : t('Phir bhi bhejo (manager dekhega)')} onPress={send} />
@@ -144,5 +137,6 @@ function AttendanceBody({ close }: { close: () => void }) {
 
 /** Check-in entry point: the sheet first, act.checkIn() only once the photo is accepted. */
 export function openAttendance() {
-  sheet.open(close => <AttendanceBody close={close} />);
+  router.navigate('/attendance' as any);   // attendance is its own tab now; the old sheet below is kept for reference only
 }
+export const OldAttendanceSheet = () => sheet.open(close => <AttendanceBody close={close} />);

@@ -68,7 +68,7 @@ const Line = ({ k, v, copy, strong, count }: { k: string; v: string; copy?: bool
   <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, minHeight: 32, paddingVertical: 4 }}>
     <Txt size={13} color={G.mute} style={{ width: 96 }}>{k}</Txt>
     <Pressable disabled={!copy} onPress={() => act.copy(v, 'Copied')} style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 6 }}>
-      {count ? <CountUp to={v} delay={500} style={[TNUM, { fontFamily: 'Poppins_600SemiBold', fontSize: 16, textAlign: 'right', color: G.ink }]} /> : <Txt weight={strong ? 600 : 500} size={strong ? 16 : 14} style={[TNUM, { textAlign: 'right', flexShrink: 1 }]}>{v}</Txt>}
+      {count ? <CountUp to={v} delay={500} style={[TNUM, { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 16, textAlign: 'right', color: G.ink }]} /> : <Txt weight={strong ? 600 : 500} size={strong ? 16 : 14} style={[TNUM, { textAlign: 'right', flexShrink: 1 }]}>{v}</Txt>}
       {copy ? <Copy size={14} color={G.mute} strokeWidth={1.5} /> : null}
     </Pressable>
   </View>

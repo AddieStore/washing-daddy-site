@@ -9,8 +9,10 @@ import { Footer } from '../ui/Footer';
 import { Back, Help as HelpIc, Pin } from '../ui/icons';
 import { FadeUp, Shimmer } from '../ui/motion';
 import { JobRider, showsRider, showsCode, StartCode } from '../ui/JobRider';
-import { A, car, doc, history7, liveHead, activeStage, feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
+import { carryNote, washNotices, A, car, doc, history7, liveHead, activeStage, feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
 import { sheets } from '../sheets';
+import { dayPhotos } from '../sheets/DaySheet';
+import { src as imgSrc } from '../img';
 import { inr, fmt, iso, TODAY, ampm } from '../data/dates';
 import { slotLabel } from '../state';
 import { G, card, Tap, TNUM, PAGE_BG } from './parts';
@@ -73,6 +75,7 @@ export function JobCard({ j, onPress }: { j: Job; onPress: () => void }) {
         {j.saved > 0 && !gone ? <Txt size={13} color={G.pos} style={TNUM}>{`  •  ${inr(j.saved)} saved`}</Txt> : null}
         <Txt size={13} color={G.sub} style={TNUM}>{`  •  ${durText(j.mins)}`}</Txt>
       </View>
+      {done && j.photo && imgSrc(j.photo) ? <PhotoStrip items={[{ src: imgSrc(j.photo), label: 'After' }]} /> : null}
       {j.washer || !gone ? (
         <View style={{ marginTop: 12, backgroundColor: G.raised, borderRadius: 10, padding: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -126,7 +129,7 @@ function dailyRows(): DailyRow[] {
   const c = car(), d = doc(c), rows: DailyRow[] = [];
   const live = activeStage(d), st: DailyRow['status'] = live ? 'live' : d.status === 'done' ? 'done' : d.status === 'skipped' ? 'skipped' : 'scheduled';
   if (!d.notStarted && !(d.status === 'scheduled' && d.first)) {
-    rows.push({ date: d.date, status: st, label: liveHead(c).big, washer: d.washer?.name || c.washer, time: d.finished_at ? ampm(d.finished_at) : undefined, mins: d.minutes, tasks: d.tasks.filter(t => t.done).map(t => t.label).join(', '), photos: d.photos?.length || 0, litres: d.water_litres, note: d.status === 'skipped' ? d.skip_reason || undefined : undefined });
+    rows.push({ date: d.date, status: st, label: liveHead(c).big, washer: d.washer?.name || c.washer, time: d.finished_at ? ampm(d.finished_at) : undefined, mins: d.minutes, tasks: d.tasks.filter(t => t.done).map(t => t.label).join(', '), photos: d.photos?.length || 0, litres: d.water_litres, note: d.status === 'skipped' ? [d.skip_reason, carryNote(c, d)].filter(Boolean).join('. ') || undefined : undefined });
   }
   // earlier mornings: history7 rows are [date, "Washer · 6:38 AM · 11 min" | skip reason, tasks]
   history7(c).forEach(([dt, title, sub]) => {
@@ -147,13 +150,47 @@ function LivePulse() {
     </View>
   );
 }
+/** the washer's replies (seen / done / re-wash status) and the one-tap rating for today's wash */
+function WashNotices() {
+  const list = washNotices();
+  if (!list.length) return null;
+  return <View style={{ marginTop: 16, gap: 12 }}>{list.map((n, i) => (
+    <View key={i} style={card({ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
+      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: n.tint, alignItems: 'center', justifyContent: 'center' }}><Txt size={16}>{n.icon}</Txt></View>
+      <View style={{ flex: 1 }}><Txt weight={500} size={15}>{n.title}</Txt><Txt size={13} color={G.sub} style={{ marginTop: 2, lineHeight: 18 }}>{n.sub}</Txt></View>
+      <Tap label={n.btn} onPress={n.act} style={{ minHeight: 40, paddingHorizontal: 12, justifyContent: 'center' }}><Txt weight={600} size={14} color={C.violet}>{n.btn}</Txt></Tap>
+    </View>))}</View>;
+}
+/** the photos of a wash, shown on the card itself so the customer knows they are there before opening it */
+function PhotoStrip({ items, total }: { items: { src: any; label: string }[]; total?: number }) {
+  if (!items.length) return null;
+  const show = items.slice(0, 4), more = (total ?? items.length) - show.length;
+  return (
+    <View style={{ marginTop: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <Txt size={13}>📷</Txt><Txt weight={600} size={13}>{`${total ?? items.length} photo${(total ?? items.length) > 1 ? 's' : ''}`}</Txt><Txt size={12} color={G.mute}>· tap to view</Txt>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {show.map((p, i) => (
+          <View key={i} style={{ flex: 1, aspectRatio: 1, maxHeight: 76, borderRadius: 12, overflow: 'hidden', backgroundColor: G.raised }}>
+            <Image source={p.src} resizeMode="cover" accessibilityLabel={p.label + ' photo'} style={{ width: '100%', height: '100%' }} />
+            <View style={{ position: 'absolute', left: 4, bottom: 4, borderRadius: 6, paddingHorizontal: 5, height: 16, backgroundColor: 'rgba(20,20,20,0.6)', justifyContent: 'center' }}><Txt weight={600} size={9} color="#fff" style={{ lineHeight: 12 }}>{p.label}</Txt></View>
+            {i === show.length - 1 && more > 0 ? <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(20,20,20,0.55)', alignItems: 'center', justifyContent: 'center' }}><Txt weight={700} size={16} color="#fff">{`+${more}`}</Txt></View> : null}
+          </View>
+        ))}
+        {Array.from({ length: Math.max(0, 4 - show.length) }, (_, i) => <View key={'e' + i} style={{ flex: 1 }} />)}
+      </View>
+    </View>
+  );
+}
 function DailyCard({ r }: { r: DailyRow }) {
   const live = r.status === 'live', done = r.status === 'done', skip = r.status === 'skipped';
-  const tone = skip ? G.mute : done ? G.pos : C.violet, badge = live ? 'Live now' : done ? 'Done' : skip ? 'Skipped' : 'Scheduled';
+  const tone = skip ? G.mute : done ? G.pos : C.violet, badge = live ? 'Live now' : done ? 'Done' : skip ? (r.note?.startsWith('Wash could not') ? 'Stopped' : 'Skipped') : 'Scheduled';
   const isToday = r.date === iso(TODAY);
-  const facts = [r.washer, r.time ? `Finished ${r.time}` : '', r.mins ? `${r.mins} min` : '', r.litres ? `${r.litres} L water` : '', r.photos ? `${r.photos} photo${r.photos > 1 ? 's' : ''}` : ''].filter(Boolean);
+  const thumbs = r.status === 'skipped' || r.status === 'scheduled' ? [] : dayPhotos(r.date);
+  const facts = [r.washer, r.time ? `Finished ${r.time}` : '', r.mins ? `${r.mins} min` : '', r.litres ? `${r.litres} L water` : ''].filter(Boolean);
   return (
-    <Tap onPress={() => sheets.day(r.date)} style={card({ padding: 16, ...(live ? { borderWidth: 1.5, borderColor: C.violet } : null) })}>
+    <Tap onPress={() => (isToday && r.photos ? sheets.proof() : sheets.day(r.date))} style={card({ padding: 16, ...(live ? { borderWidth: 1.5, borderColor: C.violet } : null) })}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         {live ? <LivePulse /> : null}
         <Txt weight={500} size={17} style={{ flex: 1 }}>{isToday ? 'Today' : dayLabel(r.date)}</Txt>
@@ -162,6 +199,7 @@ function DailyCard({ r }: { r: DailyRow }) {
       <Txt size={13} color={G.sub} style={{ marginTop: 4 }}>{r.note || r.label}</Txt>
       {facts.length ? <Txt size={12} color={G.mute} style={{ marginTop: 8, ...TNUM }}>{facts.join('  •  ')}</Txt> : null}
       {r.tasks ? <Txt size={12} color={G.mute} style={{ marginTop: 4 }} numberOfLines={2}>{r.tasks}</Txt> : null}
+      <PhotoStrip items={thumbs} />
     </Tap>
   );
 }
@@ -186,7 +224,7 @@ export function BookingsBody({ tab: isTab }: { tab?: boolean }) {
       <ScrollView ref={ref} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.violet} colors={[C.violet]} />} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: isTab ? 0 : 48 }}>
         <SegSwitch value={seg} onChange={setSeg} items={items} />
         {loading ? <ListSkeleton /> : seg === 'daily' ? (
-          daily.length ? <View style={{ marginTop: 16, gap: 12 }}>{daily.map((r, i) => <FadeUp key={'d' + r.date} index={i}><DailyCard r={r} /></FadeUp>)}</View> : (
+          daily.length ? <><WashNotices /><View style={{ marginTop: 16, gap: 12 }}>{daily.map((r, i) => <FadeUp key={'d' + r.date} index={i}><DailyCard r={r} /></FadeUp>)}</View></> : (
             <FadeUp><View style={{ alignItems: 'center', paddingTop: 72, paddingHorizontal: 32 }}>
               <EmptyArt />
               <Txt weight={500} size={17} style={{ marginTop: 16 }}>No daily washes yet</Txt>

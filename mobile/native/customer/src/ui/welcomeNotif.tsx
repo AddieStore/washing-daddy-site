@@ -1,6 +1,6 @@
 /* Welcome flow, after the code: a short "Setting things up for you…" screen and the notifications primer (a lock-screen mock with three
    notification cards that float in one by one and then keep bobbing). Own artwork only. */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming,
@@ -87,12 +87,30 @@ function PhoneMock() {
   );
 }
 
+/** The phone mock is drawn at 300 x 372. It gets whatever height is left between the headline and the button, and is scaled down
+ *  (from its bottom edge) to fit it, so on smaller phones it is never cut off by the headline above or the button below. */
+const MOCK_W = 300, MOCK_H = 372;
+function PhoneFit() {
+  const [h, setH] = useState(0);
+  const s = h > 0 ? Math.min(1, (h - SP.l) / MOCK_H) : 0;
+  return (
+    <View onLayout={e => setH(e.nativeEvent.layout.height)} style={{ flex: 1, marginTop: SP.l, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' }}>
+      {s > 0.3 ? (
+        <View style={{ width: MOCK_W * s, height: MOCK_H * s }}>
+          <View style={{ position: 'absolute', left: 0, top: 0, width: MOCK_W, height: MOCK_H, transform: [{ scale: s }], transformOrigin: '0px 0px' }}><PhoneMock /></View>
+        </View>
+      ) : null}
+      {/* the phone is cropped at the bottom on purpose: fade its lower edge into the page so the crop looks deliberate */}
+      <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', C.page]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 28 }} />
+    </View>
+  );
+}
+
 /** Skip top right, headline, the phone mock, a big CTA. onAllow runs the system ask; onSkip just moves on. */
 export function NotifPrimer({ onAllow, onSkip, busy }: { onAllow: () => void; onSkip: () => void; busy?: boolean }) {
   const ins = useInsets();
   return (
-    <View style={{ flex: 1, backgroundColor: C.canvas, alignItems: 'center' }}>
-      <View style={{ position: 'absolute', top: -120, width: 460, height: 460, borderRadius: 230, backgroundColor: 'rgba(84,9,218,0.05)' }} />
+    <View style={{ flex: 1, backgroundColor: C.page, alignItems: 'center' }}>
       <View style={{ flex: 1, width: '100%', maxWidth: 440 }}>
         <View style={{ paddingTop: ins.top + SP.m, paddingHorizontal: PAD + 4, alignItems: 'flex-end' }}>
           <Pressable3 onPress={onSkip} haptics={false} accessibilityRole="button" accessibilityLabel="Skip notifications" hitSlop={10}
@@ -104,10 +122,8 @@ export function NotifPrimer({ onAllow, onSkip, busy }: { onAllow: () => void; on
           <Txt weight={700} size={28} color={INK} style={{ lineHeight: 36, textAlign: 'center' }}>Know the moment your <Txt weight={700} size={28} color={C.violet}>washer</Txt> arrives</Txt>
           <Txt size={15} color={SEC} style={{ lineHeight: 22, textAlign: 'center', marginTop: SP.s }}>About your washes, photo proof and offers. Nothing else.</Txt>
         </FadeUp>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', marginTop: SP.l }}>
-          <PhoneMock />
-        </View>
-        <View style={{ paddingHorizontal: PAD + 4, paddingTop: SP.l, paddingBottom: Math.max(ins.bottom, SP.l) + SP.l, backgroundColor: C.canvas }}>
+        <PhoneFit />
+        <View style={{ paddingHorizontal: PAD + 4, paddingTop: SP.l, paddingBottom: Math.max(ins.bottom, SP.l) + SP.l, backgroundColor: C.page }}>
           <FadeUp delay={900}>
             <Cta label="Turn on notifications" busy={busy ? 'One moment…' : false} onPress={onAllow} />
             <Txt size={12} color="#6B6483" style={{ textAlign: 'center', marginTop: SP.m }}>You can change this any time in Settings</Txt>

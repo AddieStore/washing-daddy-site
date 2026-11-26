@@ -21,7 +21,7 @@ export default function Legal() {
   useApp();
   const pages = legalPages('profile');
   return (
-    <View style={{ flex: 1, backgroundColor: G.raised }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <PageBar title="Legal & Privacy" />
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <View style={card({ overflow: 'hidden' })}>

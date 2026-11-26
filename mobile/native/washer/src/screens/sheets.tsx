@@ -2,7 +2,7 @@
 import React from 'react';
 import { Linking, Text, View } from 'react-native';
 import { setStringAsync } from 'expo-clipboard';
-import { Button, F, Icon, LinkButton, Pressy, sheet, ui, useTheme } from '../ui';
+import { Button, F, Group, Icon, LinkButton, Row, SheetHeader, sheet, ui, useTheme, type IconName } from '../ui';
 import { MODE, S, act, me, outboxSize, syncState } from '../state/store';
 import { t } from '../lib/i18n';
 import { OWNER_PHONE, waTo } from '../lib/data';
@@ -10,49 +10,45 @@ import { LANGS } from '../lib/langs';
 
 const open = (url: string) => { void Linking.openURL(url).catch(() => {}) };
 
-export function SheetTitle({ title, sub }: { title: string; sub?: string }) {
+/** Sheet heading: big left title + optional small outlined action on the right (SheetHeader), grey sub line under it. */
+export function SheetTitle({ title, sub, action, onAction, actionIcon }: { title: string; sub?: string; action?: string; onAction?: () => void; actionIcon?: IconName }) {
   const { c } = useTheme();
   return (
     <View style={{ marginBottom: 16 }}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 20, lineHeight: 28, color: c.fg }}>{title}</Text>
-      {sub ? <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: c.fg3, marginTop: 4 }}>{sub}</Text> : null}
+      <SheetHeader title={title} action={action} onAction={onAction} actionIcon={actionIcon} style={{ paddingBottom: sub ? 4 : 0 }} />
+      {sub ? <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: c.grey }}>{sub}</Text> : null}
     </View>
   );
 }
 
 function Note({ children }: { children: React.ReactNode }) {
   const { c } = useTheme();
-  return <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.fg3, textAlign: 'center', marginTop: 12 }}>{children}</Text>;
+  return <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.grey, textAlign: 'center', marginTop: 12 }}>{children}</Text>;
 }
 
-function LinkRow({ title, sub, onPress, first }: { title: string; sub?: string; onPress: () => void; first?: boolean }) {
+/** Radio dot used by the Language and Theme sheets. */
+function Dot({ on }: { on: boolean }) {
   const { c } = useTheme();
   return (
-    <Pressy
-      onPress={onPress}
-      scaleTo={0.985}
-      accessibilityLabel={title}
-      style={[{ paddingVertical: 10, paddingHorizontal: 16, minHeight: 56, justifyContent: 'center' }, !first && { borderTopWidth: 1, borderTopColor: c.line }]}
-    >
-      <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 22, color: c.fg }}>{title}</Text>
-      {sub ? <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3 }}>{sub}</Text> : null}
-    </Pressy>
+    <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: on ? 0 : 1.5, borderColor: c.line, backgroundColor: on ? c.primary : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+      {on ? <Icon name="check" size={13} color="#fff" /> : null}
+    </View>
   );
 }
 
-function RowsBox({ children }: { children: React.ReactNode }) {
-  const { c } = useTheme();
-  return <View style={{ borderRadius: 16, backgroundColor: c.inputBg, overflow: 'hidden' }}>{children}</View>;
+/** Transparent "Band karo" text button at the foot of a sheet. */
+function CloseLink({ close, label = 'Band karo' }: { close: () => void; label?: string }) {
+  return <View style={{ alignItems: 'center' }}><LinkButton label={t(label)} onPress={close} /></View>;
 }
 
-/** The little 🧽 ····· 🚗 strip. */
+/** The little sponge ..... car strip. */
 function BeamSync({ right }: { right: string }) {
   const { c } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginVertical: 14 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
       <Text style={{ fontSize: 26 }}>🧽</Text>
       <View style={{ flexDirection: 'row', gap: 6 }}>
-        {[0, 1, 2, 3].map(i => <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.fg, opacity: 0.25 + i * 0.25 }} />)}
+        {[0, 1, 2, 3].map(i => <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.fg, opacity: 0.2 + i * 0.25 }} />)}
       </View>
       <Text style={{ fontSize: 26 }}>{right}</Text>
     </View>
@@ -73,19 +69,10 @@ function SyncBody({ label, n, close }: { label: string; n: number; close: () => 
     <View>
       <SheetTitle title={t('Customer app se sync')} sub={t(label)} />
       <BeamSync right="🚗" />
-      <RowsBox>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 16, minHeight: 56 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 22, color: c.fg }}>{t('Ruke hue update')}</Text>
-            <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3 }}>{t('Net nahi ho to phone pe safe rehte hain')}</Text>
-          </View>
-          <Text style={{ fontFamily: F.black, fontSize: 24, lineHeight: 30, color: c.fg, fontVariant: ['tabular-nums'] }}>{n}</Text>
-        </View>
-        <View style={{ paddingVertical: 10, paddingHorizontal: 16, minHeight: 56, justifyContent: 'center', borderTopWidth: 1, borderTopColor: c.line }}>
-          <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 22, color: c.fg }}>{t('Photo')}</Text>
-          <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3 }}>{t('Chhoti photo jaati hai (is version mein)')}</Text>
-        </View>
-      </RowsBox>
+      <Group>
+        <Row label={t('Ruke hue update')} sub={t('Net nahi ho to phone pe safe rehte hain')} right={<Text style={{ fontFamily: F.bold, fontSize: 22, color: c.fg, fontVariant: ['tabular-nums'] }}>{n}</Text>} />
+        <Row label={t('Photo')} sub={t('Chhoti photo jaati hai (is version mein)')} />
+      </Group>
       <View style={{ marginTop: 16 }}>
         {n > 0 && MODE === 'live'
           ? <Button label={t('Abhi bhejo')} variant="violet" onPress={() => { act.flushNow(); close() }} />
@@ -102,25 +89,25 @@ export function openHelpSheet() {
 function HelpBody({ close }: { close: () => void }) {
   const w = me();
   const who = `${w.name} (+91 ${w.phone})`;
-  const items: [string, string][] = [
-    ['Paisa nahi mila / hisaab galat', 'Payment ya hisaab ki problem'],
-    ['Customer se problem', 'Customer ne kuch kaha ya mana kiya'],
-    ['App ya photo ki dikkat', 'App chal nahi raha'],
-    ['Gaadi ko nuksaan hua', 'Scratch ya toot-phoot'],
+  const items: [string, string, IconName][] = [
+    ['Paisa nahi mila / hisaab galat', 'Payment ya hisaab ki problem', 'tabPaisa'],
+    ['Customer se problem', 'Customer ne kuch kaha ya mana kiya', 'user'],
+    ['App ya photo ki dikkat', 'App chal nahi raha', 'cam'],
+    ['Gaadi ko nuksaan hua', 'Scratch ya toot-phoot', 'car'],
   ];
   return (
     <View>
       <SheetTitle title={t('Madad chahiye?')} sub={t('Kya hua? Manager ko WhatsApp pe seedha message jayega.')} />
-      <RowsBox>
-        {items.map(([ti, d], i) => (
-          <LinkRow key={ti} first={i === 0} title={t(ti)} sub={t(d)} onPress={() => open(waTo(`Namaste Manager, ${who}. ${ti}.`))} />
+      <Group>
+        {items.map(([ti, d, ic]) => (
+          <Row key={ti} icon={ic} label={t(ti)} sub={t(d)} onPress={() => open(waTo(`Namaste Manager, ${who}. ${ti}.`))} />
         ))}
-      </RowsBox>
+      </Group>
       <View style={{ marginTop: 16 }}>
         <Button label={t('SOS · Manager ko abhi call karo')} variant="sos" onPress={() => open('tel:' + OWNER_PHONE)} />
       </View>
       <Note>{t('Accident ya khatre mein pehle 112 pe call karo.')}</Note>
-      <View style={{ alignItems: 'center' }}><LinkButton label={t('Band karo')} onPress={close} /></View>
+      <CloseLink close={close} />
     </View>
   );
 }
@@ -140,14 +127,17 @@ function ReferBody({ close }: { close: () => void }) {
   return (
     <View>
       <SheetTitle title={t('Dost ko laao')} sub={t('Dost sign-up pe aapka code bataye aur kaam shuru kare, toh aapko bonus milega.')} />
-      <View style={{ marginTop: 8, padding: 20, borderRadius: 16, backgroundColor: c.inputBg, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.primary, alignItems: 'center' }}>
-        <Text accessibilityLabel={code} style={{ fontFamily: F.bold, fontSize: 32, lineHeight: 40, letterSpacing: 2.7, color: c.primary }}>{code}</Text>
-      </View>
+      <Group>
+        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+          <Text style={{ fontFamily: F.medium, fontSize: 12, color: c.grey, marginBottom: 4 }}>{t('Aapka code')}</Text>
+          <Text accessibilityLabel={code} style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, letterSpacing: 2.4, color: c.primary }}>{code}</Text>
+        </View>
+      </Group>
       <View style={{ marginTop: 16, gap: 12 }}>
         <Button label={t('WhatsApp pe bhejo')} variant="violet" onPress={() => open('https://wa.me/?text=' + encodeURIComponent(msg))} />
         <Button label={t('Code copy karo')} variant="ghost" onPress={copy} />
       </View>
-      <View style={{ alignItems: 'center' }}><LinkButton label={t('Band karo')} onPress={close} /></View>
+      <CloseLink close={close} />
     </View>
   );
 }
@@ -157,7 +147,7 @@ function ConfirmBody({ title, sub, go, goLabel, close }: { title: string; sub: s
     <View>
       <SheetTitle title={title} sub={sub} />
       <Button label={goLabel} variant="violet" onPress={() => { close(); go() }} />
-      <View style={{ alignItems: 'center' }}><LinkButton label={t('Rehne do')} onPress={close} /></View>
+      <CloseLink close={close} label="Rehne do" />
     </View>
   );
 }
@@ -192,30 +182,42 @@ export function openLangSheet() {
 }
 
 function LangBody({ close }: { close: () => void }) {
-  const { c } = useTheme();
   const cur = S.lang || 'hinglish';
   return (
     <View>
       <SheetTitle title={t('Bhasha')} sub={t('App ki bhasha chuno')} />
-      <RowsBox>
-        {LANGS.map((l, i) => {
-          const on = l.code === cur;
-          return (
-            <Pressy key={l.code} scaleTo={0.985} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={l.label + ', ' + l.sub}
-              onPress={() => { ui.haptic(6); act.setLang(l.code); close() }}
-              style={[{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 16, minHeight: 56 }, i > 0 && { borderTopWidth: 1, borderTopColor: c.line }]}>
-              <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: on ? c.primary : c.line, backgroundColor: on ? c.primary : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-                {on ? <Icon name="check" size={14} color="#fff" /> : null}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 22, color: c.fg }}>{l.label}</Text>
-                <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 18, color: c.fg3 }}>{t(l.sub)}</Text>
-              </View>
-            </Pressy>
-          );
-        })}
-      </RowsBox>
-      <View style={{ alignItems: 'center' }}><LinkButton label={t('Band karo')} onPress={close} /></View>
+      <Group>
+        {LANGS.map(l => (
+          <Row key={l.code} label={l.label} sub={t(l.sub)} right={<Dot on={l.code === cur} />}
+            onPress={() => { ui.haptic(6); act.setLang(l.code); close() }} />
+        ))}
+      </Group>
+      <CloseLink close={close} />
+    </View>
+  );
+}
+
+/** Theme picker: Din / Raat / Auto as radio rows. */
+export function openThemeSheet() {
+  sheet.open(close => <ThemeBody close={close} />);
+}
+
+function ThemeBody({ close }: { close: () => void }) {
+  const opts: { value: 'light' | 'dark' | 'auto'; label: string; sub: string; icon: IconName }[] = [
+    { value: 'light', label: 'Din', sub: 'Dhoop mein "Din" saaf dikhta hai', icon: 'sun' },
+    { value: 'dark', label: 'Raat', sub: 'Andhere mein aankhon ko aaram', icon: 'bell' },
+    { value: 'auto', label: 'Auto', sub: 'Phone ki setting ke hisaab se', icon: 'reset' },
+  ];
+  return (
+    <View>
+      <SheetTitle title={t('Screen')} sub={t('App ka rang chuno')} />
+      <Group>
+        {opts.map(o => (
+          <Row key={o.value} icon={o.icon} label={t(o.label)} sub={t(o.sub)} right={<Dot on={S.theme === o.value} />}
+            onPress={() => { ui.haptic(6); act.setTheme(o.value); close() }} />
+        ))}
+      </Group>
+      <CloseLink close={close} />
     </View>
   );
 }
