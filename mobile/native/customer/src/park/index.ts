@@ -122,7 +122,7 @@ export function ready() {
 }
 
 /* ---------------------------------------------------------------- permissions */
-const AP = PermissionsAndroid.PERMISSIONS as any;
+const AP = ((PermissionsAndroid as any)?.PERMISSIONS || {}) as any;   // undefined on web
 const BT = AP.BLUETOOTH_CONNECT || 'android.permission.BLUETOOTH_CONNECT';
 const NOTIF = AP.POST_NOTIFICATIONS || 'android.permission.POST_NOTIFICATIONS';
 const sdk = () => (IS_ANDROID ? Number(Platform.Version) || 0 : 0);
