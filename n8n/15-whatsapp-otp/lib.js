@@ -18,7 +18,7 @@ const WA_MAX_TRIES = 5;                 // wrong codes before that code is dead 
 // Spend caps across numbers (each WhatsApp code costs money and someone could cycle through numbers):
 const WA_IP_MAX = 20;                   // codes per hour from one client IP (n8n env WA_OTP_IP_MAX overrides)
 const WA_ALL_MAX = 300;                 // codes per hour in total (n8n env WA_OTP_HOURLY_MAX overrides); over it the app uses SMS
-const WA_GRAPH_VERSION = 'v23.0';       // Meta Graph API version (n8n env WA_GRAPH_VERSION overrides)
+const WA_GRAPH_VERSION = 'v25.0';       // Meta Graph API version (n8n env WA_GRAPH_VERSION overrides)
 // Numbers that never get a WhatsApp code: the admins (their number is admin in the Firestore rules). They sign in by SMS.
 const WA_DENY = ['+917701808924'];
 

@@ -48,7 +48,7 @@ The `waotp` collection is closed to every app by the rules' catch-all
   The service account needs **Firebase Authentication Admin** and **Cloud Datastore User** (same as 12).
 - Optional `WA_OTP_DENY` = more numbers that must use SMS, comma separated, `+91...`.
 - Optional `WA_OTP_IP_MAX` (default 20) and `WA_OTP_HOURLY_MAX` (default 300): the hourly spend caps.
-- Optional `WA_GRAPH_VERSION` (default in `lib.js`): the Meta Graph API version, e.g. `v23.0`. Meta retires a version about
+- Optional `WA_GRAPH_VERSION` (default in `lib.js`): the Meta Graph API version, e.g. `v25.0` (valid until Jul 2028). Meta retires a version about
   two years after release; bump it here or in `lib.js` when Meta warns.
 
 Then `docker compose -f /root/docker-compose.yml up -d n8n`, import `15-whatsapp-otp.json`, **Publish**.
