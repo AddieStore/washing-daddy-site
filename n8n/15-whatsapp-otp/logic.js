@@ -2,14 +2,16 @@
 //   saRaw     the service account JSON (n8n env FIREBASE_SA_JSON, same key as workflow 12)
 //   project   optional n8n env FIREBASE_PROJECT_ID; must match the key's project when set
 //   deny      optional extra numbers that never get a WhatsApp code (n8n env WA_OTP_DENY, comma separated, +91...)
-//   wa        { token, phoneId, template, lang }   (n8n env WA_TOKEN, WA_PHONE_ID, WA_OTP_TEMPLATE, WA_OTP_LANG)
+//   wa        { token, phoneId, template, lang, version }   (n8n env WA_TOKEN, WA_PHONE_ID, WA_OTP_TEMPLATE, WA_OTP_LANG, WA_GRAPH_VERSION)
+//   ip        the caller's IP (from the webhook headers, '' when unknown); ipMax / allMax: hourly caps (env WA_OTP_IP_MAX, WA_OTP_HOURLY_MAX)
 //   http({method,url,headers,body}) -> {status, body}   never throws; status 0 = no answer
 //   now() -> ms, sleep(ms), jitter() -> ms of extra delay on a failure, newCode() -> '123456', salt() -> base64
 // Each returns { status, body } for the Respond node.
-//   waSendCode   body { ok:true } | { ok:false, code: bad_number | use_sms | wait (+ wait seconds) | too_many | not_on_whatsapp | server }
+//   waSendCode   body { ok:true } | { ok:false, code: bad_number | use_sms | wait (+ wait seconds) | too_many | busy | not_on_whatsapp | server }
+//                busy = the per-IP or all-numbers hourly cap is reached: the app sends an SMS instead
 //   waVerifyCode body { ok:true, token } | { ok:false, code: bad_code | wrong_code | expired | too_many | server }
 
-const WA_GRAPH = 'https://graph.facebook.com/v21.0/';
+const WA_GRAPH = v => 'https://graph.facebook.com/' + (/^v\d{1,3}\.\d$/.test(String(v || '')) ? v : WA_GRAPH_VERSION) + '/';
 
 async function waSetup(deps) {
   const sa = parseSa(deps.saRaw);
@@ -43,7 +45,20 @@ async function waSetup(deps) {
     if (r.status === 409 || st === 'FAILED_PRECONDITION' || st === 'ABORTED') return 'conflict';
     return 'error';
   };
-  return { sa, auth, docs, getDoc, patch };
+  // one more on a windowed hourly counter doc, unless it is full: 'ok' | 'full' | 'error'
+  const bump = async (url, max) => {
+    for (let round = 0; round < 4; round++) {
+      const d = await getDoc(url);
+      if (!d) return 'error';
+      const gate = waCountGate(d.fields, deps.now(), max);
+      if (!gate.ok) return 'full';
+      const w = await patch(url, { sends: gate.sends, window_start: gate.window_start }, d.missing ? null : d.updateTime);
+      if (w === 'ok') return 'ok';
+      if (w !== 'conflict') return 'error';
+    }
+    return 'error';
+  };
+  return { sa, auth, docs, getDoc, patch, bump };
 }
 
 function waFailer(deps) {
@@ -73,6 +88,17 @@ async function waSendCode(reqBody, deps) {
       const now = deps.now();
       const gate = waSendGate(d.fields, now);
       if (!gate.ok) return await fail(gate.code, gate.wait ? { wait: gate.wait } : undefined);
+      // spend caps, counted only when this number may get a code: per client IP, then all numbers together
+      if (round === 0) {
+        if (deps.ip) {
+          const ipr = await g.bump(g.docs + 'waotp/' + waIpKey(g.sa.private_key, deps.ip), waLimit(deps.ipMax, WA_IP_MAX));
+          if (ipr === 'full') return await fail('busy');          // shared mobile IPs (CGNAT) are common: SMS instead, not a lock-out
+          if (ipr !== 'ok') return await fail('server');
+        }
+        const all = await g.bump(g.docs + 'waotp/_all', waLimit(deps.allMax, WA_ALL_MAX));
+        if (all === 'full') return await fail('busy');
+        if (all !== 'ok') return await fail('server');
+      }
       const code = deps.newCode(), salt = deps.salt();
       // store first (counted even if WhatsApp then fails, so a broken send cannot be retried in a tight loop)
       const w = await g.patch(url, {
@@ -83,7 +109,7 @@ async function waSendCode(reqBody, deps) {
       if (w === 'conflict') continue;
       if (w !== 'ok') return await fail('server');
       const r = await deps.http({
-        method: 'POST', url: WA_GRAPH + encodeURIComponent(wa.phoneId) + '/messages',
+        method: 'POST', url: WA_GRAPH(wa.version) + encodeURIComponent(wa.phoneId) + '/messages',
         headers: { Authorization: 'Bearer ' + wa.token, 'Content-Type': 'application/json' },
         body: JSON.stringify(waMessage(phone, code, wa.template, wa.lang)),
       });
@@ -106,6 +132,9 @@ async function waVerifyCode(reqBody, deps) {
     const phone = waPhone(b.phone);
     const code = b.code;
     if (!phone || !waCodeOk(code)) return await fail('bad_code');
+    // admin numbers never sign in with a WhatsApp code (also covers a number added to WA_OTP_DENY while a code was pending)
+    const deny = WA_DENY.concat(String(deps.deny || '').split(',').map(s => s.trim()).filter(Boolean));
+    if (deny.indexOf(phone) >= 0) return await fail('expired');
     const g = await waSetup(deps);
     if (!g) return await fail('server');
     const url = g.docs + 'waotp/' + encodeURIComponent(phone);
