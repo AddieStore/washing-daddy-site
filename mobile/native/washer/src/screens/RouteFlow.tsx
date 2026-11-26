@@ -409,7 +409,7 @@ export function RouteList({ nowReg }: { nowReg: string | null }) {
               </View>
             ) : null}
             <Pressy onPress={() => openCarSheet(car.reg)} accessibilityLabel={`${car.model} ${car.plate}`} scaleTo={0.98}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 74, marginBottom: 10, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: done ? 'rgba(34,197,139,0.07)' : now ? 'rgba(84,9,218,0.06)' : c.card,
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 74, marginBottom: 10, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: done ? '#EEF9F4' : now ? '#F4F0FF' : c.card,   // solid fills: a see-through fill lets Android draw its shadow through the box
                 borderWidth: now ? 1.5 : 1, borderColor: now ? c.primary : done ? 'rgba(34,197,139,0.35)' : 'rgba(23,23,23,0.08)', opacity: skipped ? 0.65 : 1,
                 shadowColor: '#1A1033', shadowOpacity: now ? 0.1 : 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: now ? 3 : 1 }}>
               <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? GREEN : skipped ? '#F2B01E' : now ? c.primary : c.soft }}>
