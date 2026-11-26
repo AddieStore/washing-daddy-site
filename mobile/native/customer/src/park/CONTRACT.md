@@ -31,3 +31,5 @@ Sheet: the sheet file calls onShowPark(p => openSheet(<ParkSpotSheet park={p}/>)
 ## iPhone
 No public API tells a closed iOS app that car Bluetooth/CarPlay disconnected. Off on iPhone for now; options later:
 a Shortcuts "CarPlay disconnects" automation that opens washingdaddy://park-here, or CLVisit monitoring.
+
+Build: versionCode 35 (parking alerts), Android only.
