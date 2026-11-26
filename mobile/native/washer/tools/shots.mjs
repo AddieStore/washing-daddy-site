@@ -257,7 +257,7 @@ await step('round-setup', async () => {
 const toRound = async () => { await goTab('Round'); await page.evaluate(`(() => { const e = (${SCROLLER})(); e && e.scrollTo(0, 0) })()`); await settle(300); };
 await step('attendance-sheet', async () => {
   await toRound();
-  await tap('Hub pahunch gaya', { settle: 900 });
+  await tap('Check-in karo', { settle: 900 });
   await waitFor('Hazri ki photo');
   await settle(600);
   await shot('round-attendance-sheet');
@@ -317,10 +317,16 @@ await step('round-states', async () => {
   await toRound();
   await shot('round-idle');
   // the slide-to-confirm is a drag: take the handle (arrow) to the right
-  const slide = page.getByText('Round shuru karo', { exact: true }).filter({ visible: true }).first();
+  await shot('round-idle-full', { full: true });
+  const slide = page.getByTestId('start-slide');
+  await slide.scrollIntoViewIfNeeded();
   const bb = await slide.boundingBox();
-  await page.mouse.move(bb.x - 120, bb.y + bb.height / 2); await page.mouse.down();
-  await page.mouse.move(bb.x + 250, bb.y + bb.height / 2, { steps: 12 }); await page.mouse.up();
+  await page.mouse.move(bb.x + 30, bb.y + bb.height / 2); await page.mouse.down();
+  await page.mouse.move(bb.x + bb.width * 0.55, bb.y + bb.height / 2, { steps: 8 });
+  await shot('round-slide-mid');
+  await page.mouse.move(bb.x + bb.width - 10, bb.y + bb.height / 2, { steps: 8 }); await page.mouse.up();
+  await sleep(350);
+  await shot('round-slide-burst');
   await settle(1200);
   await page.evaluate(() => { getSelection()?.removeAllRanges(); document.body.style.userSelect = 'none' });
   await shot('round-started', { full: true });
@@ -338,6 +344,24 @@ await step('car-states', async () => {
     if (state === 'washing') { await scrolledShot('car-washing-bottom'); await barTap('Wash khatam karo'); await settle(800); await shot('car-back-guard-sheet'); await closeSheet(); break; }
     await barTap({ scheduled: 'Nikla · gaadi ki taraf', 'on-the-way': 'Pahuncha · gaadi ke paas', arrived: 'Wash shuru karo' }[state] || 'x');
   }
+});
+await step('attendance-month', async () => {
+  await goBack().catch(() => {}); await toRound();
+  await tap('Mahine ki attendance', { settle: 900 });
+  await settle(500);
+  await shot('attendance-month');
+  await closeSheet();
+});
+await step('check-out-summary', async () => {
+  await toRound();
+  await tap('Check-in karo', { settle: 600 }).catch(() => {});
+  await closeSheet();
+  await page.getByText('Check-out karo', { exact: true }).filter({ visible: true }).first().click().catch(() => {});
+  await settle(500);
+  await shot('checkout-confirm');
+  await page.getByText('Haan, check-out karo', { exact: true }).filter({ visible: true }).first().click().catch(() => {});
+  await settle(1800);
+  await shot('day-summary');
 });
 fs.writeFileSync(path.join(out, '_flow-note.txt'), 'see report');
 fs.writeFileSync(path.join(out, '_report.txt'), report.join('\n') + '\n');
