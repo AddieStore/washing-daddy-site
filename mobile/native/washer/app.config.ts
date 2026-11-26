@@ -24,6 +24,9 @@ const PACKAGE = 'com.washingdaddy.washer'; // must not change: store listings ca
 
 const notifSounds = (fs.existsSync(path.join(__dirname, 'assets/notif')) ? fs.readdirSync(path.join(__dirname, 'assets/notif')) : []).filter(f => /^wd_(c_.+|extra)\.wav$/.test(f)).map(f => `./assets/notif/${f}`);
 
+// GOOGLE_MAPS_API_KEY comes from the build environment (CI secret), never from the repo. Empty = the map shows the drawn fallback.
+const mapsKey = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
+
 const config: ExpoConfig = {
   name: 'WD Partner',
   slug: 'wd-partner',
@@ -122,6 +125,7 @@ const config: ExpoConfig = {
       ? ['@react-native-firebase/app', '@react-native-firebase/auth', '@react-native-firebase/messaging']
       : []),
   ] as ExpoConfig['plugins'],
+  extra: { googleMapsKey: mapsKey },
   experiments: { typedRoutes: false },
 };
 
