@@ -1305,7 +1305,8 @@ export const act = {
       try { await AUTH.sendWhatsApp(phone10); otpVia = 'whatsapp'; return 'whatsapp' }
       catch (e: any) {
         const code = e && e.code;
-        if (code !== 'not_ready' && code !== 'use_sms' && code !== 'not_on_whatsapp') throw e;
+        // rate limits for this number stand; anything else on WhatsApp's side (not live, cap reached, Meta down) falls back to SMS
+        if (code === 'wait' || code === 'too_many' || code === 'bad_number' || code === 'offline') throw e;
         if (code === 'not_on_whatsapp') toast("This number isn't on WhatsApp. Sending an SMS instead.");
       }
     }

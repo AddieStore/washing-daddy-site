@@ -38,6 +38,7 @@ const WA_ERR: Record<string, string> = {
   bad_number: "That number doesn't look right.",
   use_sms: 'This number signs in by SMS.',
   too_many: 'Too many codes for this number. Wait a while and try again.',
+  busy: "WhatsApp codes are busy right now. We'll send an SMS instead.",
   not_on_whatsapp: "This number isn't on WhatsApp. We'll send an SMS instead.",
   bad_code: 'Enter the 6-digit code.',
   wrong_code: 'That code is wrong. Check WhatsApp and try again.',

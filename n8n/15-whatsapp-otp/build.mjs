@@ -20,9 +20,11 @@ const http = async o => {
     return { status: Number(r && r.statusCode) || 0, body: b };
   } catch (e) { return { status: 0, body: null } }
 };
-const out = await ${fn}($input.first().json.body, {
+const inp = $input.first().json;
+const out = await ${fn}(inp.body, {
   saRaw: $env.FIREBASE_SA_JSON, project: $env.FIREBASE_PROJECT_ID, deny: $env.WA_OTP_DENY,
-  wa: { token: $env.WA_TOKEN, phoneId: $env.WA_PHONE_ID, template: $env.WA_OTP_TEMPLATE, lang: $env.WA_OTP_LANG || 'en' },
+  wa: { token: $env.WA_TOKEN, phoneId: $env.WA_PHONE_ID, template: $env.WA_OTP_TEMPLATE, lang: $env.WA_OTP_LANG || 'en', version: $env.WA_GRAPH_VERSION },
+  ip: waClientIp(inp.headers), ipMax: $env.WA_OTP_IP_MAX, allMax: $env.WA_OTP_HOURLY_MAX,
   http, now: () => Date.now(), jitter: () => crypto.randomInt(0, 400), newCode: waNewCode, salt: () => crypto.randomBytes(16).toString('base64'),
   sleep: ms => new Promise(r => (typeof setTimeout === 'function' ? setTimeout(r, ms) : r())),
 });

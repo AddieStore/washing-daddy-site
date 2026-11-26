@@ -3,7 +3,7 @@
 import fs from 'node:fs'; import crypto from 'node:crypto'; import assert from 'node:assert/strict';
 
 const src = fs.readFileSync(new URL('./lib.js', import.meta.url), 'utf8') + '\n' + fs.readFileSync(new URL('./logic.js', import.meta.url), 'utf8');
-const m = new Function('crypto', src + '; return { waPhone, waCodeOk, waNewCode, waHash, waSame, waSendGate, waMessage, waSendCode, waVerifyCode, FCM_AUD };')(crypto);
+const m = new Function('crypto', src + '; return { waPhone, waCodeOk, waNewCode, waHash, waSame, waSendGate, waMessage, waSendCode, waVerifyCode, waClientIp, waIpKey, waCountGate, FCM_AUD };')(crypto);
 
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const SA = { type: 'service_account', project_id: 'wd-test-project', client_email: 'otp@wd-test-project.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }) };
@@ -42,7 +42,7 @@ function world({ waFails = null, users = [] } = {}) {
   const http = async ({ method, url, body }) => {
     if (url === 'https://oauth2.googleapis.com/token') return { status: 200, body: { access_token: 'AT' } };
     if (url.startsWith('https://graph.facebook.com/')) {
-      const b = JSON.parse(body); sent.push(b);
+      const b = JSON.parse(body); b._url = url; sent.push(b);
       return waFails ? { status: 400, body: { error: { code: waFails } } } : { status: 200, body: { messages: [{ id: 'wamid.x' }] } };
     }
     if (url.startsWith(base)) {
@@ -129,5 +129,51 @@ function world({ waFails = null, users = [] } = {}) {
   assert.equal((await m.waSendCode({ phone: '9876504210' }, k.deps)).body.code, 'server');
   const nw = world(); nw.deps.wa = {};
   assert.equal((await m.waSendCode({ phone: '9876504210' }, nw.deps)).body.code, 'server');
+}
+/* ---------- spend caps: per client IP and all numbers together ---------- */
+assert.equal(m.waClientIp({ 'x-forwarded-for': '203.0.113.9, 10.0.0.1' }), '203.0.113.9');
+assert.equal(m.waClientIp({ 'x-real-ip': '2001:db8::1' }), '2001:db8::1');
+assert.equal(m.waClientIp({ 'x-forwarded-for': 'evil/../x' }), '');
+assert.equal(m.waClientIp(null), '');
+assert.match(m.waIpKey('k', '203.0.113.9'), /^ip_[A-Za-z0-9_-]{32}$/);
+assert.notEqual(m.waIpKey('k', '203.0.113.9'), m.waIpKey('k', '203.0.113.10'));
+assert.equal(m.waCountGate({ sends: 3, window_start: new Date(T0 - 1000).toISOString() }, T0, 3).ok, false);
+assert.equal(m.waCountGate({ sends: 3, window_start: new Date(T0 - 3700000).toISOString() }, T0, 3).sends, 1);
+{
+  const w = world(); w.deps.ip = '203.0.113.9'; w.deps.ipMax = '3'; w.deps.newCode = () => '123123';
+  const nums = ['9000000011', '9000000012', '9000000013', '9000000014'];
+  for (let i = 0; i < 3; i++) assert.equal((await m.waSendCode({ phone: nums[i] }, w.deps)).body.ok, true, 'ip send ' + i);
+  assert.equal((await m.waSendCode({ phone: nums[3] }, w.deps)).body.code, 'busy', '4th number from the same IP in the hour: SMS instead');
+  assert.equal(w.sent.length, 3);
+  assert.ok(!Object.keys(w.docs).some(k => k.includes('203.0.113.9')), 'the IP itself is never stored');
+  w.deps.ip = '198.51.100.7';
+  assert.equal((await m.waSendCode({ phone: nums[3] }, w.deps)).body.ok, true, 'another IP still works');
+  w.deps.ip = '203.0.113.9'; w.tick(61 * 60000);
+  assert.equal((await m.waSendCode({ phone: '9000000015' }, w.deps)).body.ok, true, 'next hour the IP may send again');
+  // a refused number (wait) does not use up the IP's budget
+  w.deps.ip = '192.0.2.1'; w.deps.ipMax = '2';
+  assert.equal((await m.waSendCode({ phone: '9000000016' }, w.deps)).body.ok, true);
+  for (let i = 0; i < 5; i++) assert.equal((await m.waSendCode({ phone: '9000000016' }, w.deps)).body.code, 'wait');
+  assert.equal((await m.waSendCode({ phone: '9000000017' }, w.deps)).body.ok, true);
+}
+{
+  const w = world(); w.deps.allMax = 2; w.deps.newCode = () => '321321';
+  assert.equal((await m.waSendCode({ phone: '9000000021' }, w.deps)).body.ok, true);
+  assert.equal((await m.waSendCode({ phone: '9000000022' }, w.deps)).body.ok, true);
+  const r = await m.waSendCode({ phone: '9000000023' }, w.deps);
+  assert.equal(r.status, 200); assert.equal(r.body.code, 'busy', 'over the hourly total the app falls back to SMS');
+  assert.equal(w.sent.length, 2);
+}
+/* ---------- Graph API version ---------- */
+{
+  const w = world();
+  await m.waSendCode({ phone: '9876504210' }, w.deps);
+  assert.match(w.sent[0]._url, /^https:\/\/graph\.facebook\.com\/v\d+\.0\/1234\/messages$/);
+  const v = world(); v.deps.wa.version = 'v25.0';
+  await m.waSendCode({ phone: '9876504210' }, v.deps);
+  assert.ok(v.sent[0]._url.startsWith('https://graph.facebook.com/v25.0/'));
+  const x = world(); x.deps.wa.version = '../evil';
+  await m.waSendCode({ phone: '9876504210' }, x.deps);
+  assert.ok(!x.sent[0]._url.includes('evil'));
 }
 console.log('all WhatsApp OTP tests passed');

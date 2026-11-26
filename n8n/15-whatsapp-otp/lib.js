@@ -15,6 +15,10 @@ const WA_RESEND_MS = 30 * 1000;         // at most one code every 30 s per numbe
 const WA_WINDOW_MS = 60 * 60 * 1000;    // and at most WA_MAX_SENDS codes per number per hour
 const WA_MAX_SENDS = 5;
 const WA_MAX_TRIES = 5;                 // wrong codes before that code is dead (ask for a new one)
+// Spend caps across numbers (each WhatsApp code costs money and someone could cycle through numbers):
+const WA_IP_MAX = 20;                   // codes per hour from one client IP (n8n env WA_OTP_IP_MAX overrides)
+const WA_ALL_MAX = 300;                 // codes per hour in total (n8n env WA_OTP_HOURLY_MAX overrides); over it the app uses SMS
+const WA_GRAPH_VERSION = 'v23.0';       // Meta Graph API version (n8n env WA_GRAPH_VERSION overrides)
 // Numbers that never get a WhatsApp code: the admins (their number is admin in the Firestore rules). They sign in by SMS.
 const WA_DENY = ['+917701808924'];
 
@@ -44,6 +48,26 @@ function waSendGate(rec, now) {
   if (sends >= WA_MAX_SENDS) return { ok: false, code: 'too_many' };
   return { ok: true, sends: sends + 1, window_start: inWindow ? rec.window_start : new Date(now).toISOString() };
 }
+// A windowed hourly counter (the per-IP and the all-numbers docs). rec = the doc (or {}). -> { ok, sends, window_start }
+function waCountGate(rec, now, max) {
+  const ws = Date.parse(rec && rec.window_start || '');
+  const inWindow = Number.isFinite(ws) && now - ws < WA_WINDOW_MS;
+  const sends = inWindow && Number.isInteger(rec.sends) ? rec.sends : 0;
+  if (sends >= max) return { ok: false, sends, window_start: rec.window_start };
+  return { ok: true, sends: sends + 1, window_start: inWindow ? rec.window_start : new Date(now).toISOString() };
+}
+// The client IP as Caddy passes it on (first X-Forwarded-For entry, else X-Real-IP); '' when unknown.
+function waClientIp(headers) {
+  const h = headers && typeof headers === 'object' ? headers : {};
+  const xff = String(h['x-forwarded-for'] || '').split(',')[0].trim();
+  const ip = xff || String(h['x-real-ip'] || '').trim();
+  return /^[0-9a-fA-F:.]{3,45}$/.test(ip) ? ip : '';
+}
+// Firestore doc id for an IP's counter: keyed hash, so the IP itself is never stored
+function waIpKey(key, ip) {
+  return 'ip_' + b64url(crypto.createHmac('sha256', String(key)).update('ip|' + ip).digest()).slice(0, 32);
+}
+const waLimit = (v, dflt) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : dflt };
 // The Cloud API body for an approved AUTHENTICATION template with a copy-code button (Meta's standard OTP template:
 // the code goes in the body and again in the button).
 function waMessage(phone, code, template, lang) {

@@ -7,7 +7,7 @@ app to pass Google's app check, and almost every customer already has WhatsApp. 
 
 | Webhook | Does |
 |---|---|
-| `POST /webhook/wd-wa-otp-send` | Body `{phone: "9876504210"}`. Sends a fresh code on WhatsApp. Answers `{ok:true}` or `{ok:false, code}`: `bad_number`, `use_sms` (admin numbers), `wait` (+ `wait` seconds, one code per 30 s), `too_many` (5 codes an hour per number), `not_on_whatsapp`, `server`. |
+| `POST /webhook/wd-wa-otp-send` | Body `{phone: "9876504210"}`. Sends a fresh code on WhatsApp. Answers `{ok:true}` or `{ok:false, code}`: `bad_number`, `use_sms` (admin numbers), `wait` (+ `wait` seconds, one code per 30 s), `too_many` (5 codes an hour per number), `busy` (spend cap reached: 20 codes an hour from one IP, 300 an hour in total), `not_on_whatsapp`, `server`. On anything but `wait` / `too_many` / `bad_number` the app sends an SMS instead. |
 | `POST /webhook/wd-wa-otp-verify` | Body `{phone, code}`. Answers `{ok:true, token}` (a Firebase custom token) or `{ok:false, code}`: `bad_code`, `wrong_code`, `expired` (10 minutes, and each code works once), `too_many` (5 wrong tries kill the code), `server`. |
 
 ## How it works
@@ -23,7 +23,11 @@ app to pass Google's app check, and almost every customer already has WhatsApp. 
 3. The app calls `signInWithCustomToken`.
 
 Admin numbers (`+917701808924`, plus any in `WA_OTP_DENY`) never get a WhatsApp code: their number is their admin right
-in the rules, so they sign in by SMS only. The `waotp` collection is closed to every app by the rules' catch-all
+in the rules, so they sign in by SMS only. **Spend caps.** Every WhatsApp code costs money, so besides the per-number limits there is an hourly cap per client IP
+(`waotp/ip_<keyed hash>`, the IP itself is never stored; Indian mobile networks share IPs, so going over it means SMS, not a
+lock-out) and an hourly cap over all numbers (`waotp/_all`). Both are counted only when a number is actually allowed a code.
+
+The `waotp` collection is closed to every app by the rules' catch-all
 (`match /{other=**}`); only this workflow's service account reads it. The workflow keeps **no execution data**.
 
 ## Setup (once)
@@ -43,6 +47,9 @@ in the rules, so they sign in by SMS only. The `waotp` collection is closed to e
 - `FIREBASE_SA_JSON`, `NODE_FUNCTION_ALLOW_BUILTIN=crypto`, `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`: already set for workflow 12.
   The service account needs **Firebase Authentication Admin** and **Cloud Datastore User** (same as 12).
 - Optional `WA_OTP_DENY` = more numbers that must use SMS, comma separated, `+91...`.
+- Optional `WA_OTP_IP_MAX` (default 20) and `WA_OTP_HOURLY_MAX` (default 300): the hourly spend caps.
+- Optional `WA_GRAPH_VERSION` (default in `lib.js`): the Meta Graph API version, e.g. `v23.0`. Meta retires a version about
+  two years after release; bump it here or in `lib.js` when Meta warns.
 
 Then `docker compose -f /root/docker-compose.yml up -d n8n`, import `15-whatsapp-otp.json`, **Publish**.
 Nothing to change in the app: the next time a customer asks for a code, it goes out on WhatsApp.
