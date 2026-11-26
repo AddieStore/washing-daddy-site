@@ -1,5 +1,6 @@
 // Day sheet: what the customer sees after tapping a date on the Daily tab (or "today's photos").
 // Order: hero summary, PHOTOS card, the coloured "time stem" timeline, then the details. Real accounts only ever show what the washer wrote.
+import { LinearGradient as Grad } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Image, ScrollView, Animated, Easing, Modal, Pressable, Platform, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect, Circle as SCircle } from 'react-native-svg';
@@ -133,21 +134,21 @@ const Head = ({ icon, title, right }: { icon: string; title: string; right?: str
     {right ? <Txt size={12} color={P.muted} weight={500}>{right}</Txt> : null}
   </View>);
 const Stat = ({ v, l }: { v: string; l: string }) => (
-  <View style={{ flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.14)' }}>
-    <Txt weight={600} size={16} color="#fff" style={NUM}>{v}</Txt><Txt size={11} color="rgba(255,255,255,0.75)">{l}</Txt>
+  <View style={{ flexGrow: 1, flexBasis: 88, minWidth: 88, alignItems: 'center', paddingVertical: 10, paddingHorizontal: 6, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.14)' }}>
+    <Txt weight={600} size={16} color="#fff" style={[NUM, { lineHeight: 21 }]} numberOfLines={1}>{v}</Txt><Txt size={11} color="rgba(255,255,255,0.75)" style={{ lineHeight: 15 }}>{l}</Txt>
   </View>);
 
 function Hero({ m }: { m: Model }) {
   const badgeBg = m.stopped ? '#FEE2E2' : m.status === 'live' ? SAFFRON : m.status === 'done' ? '#DCFCE7' : 'rgba(255,255,255,0.9)', badgeFg = m.stopped ? '#B91C1C' : m.status === 'live' ? '#3B2A00' : m.status === 'done' ? '#15803D' : '#525252';
   const initials = (m.washer || 'W').trim().slice(0, 1).toUpperCase();
   return (
-    <View style={{ borderRadius: 20, overflow: 'hidden', padding: 16 }}>
-      <Svg width="100%" height="100%" style={{ position: 'absolute', left: 0, top: 0 }} preserveAspectRatio="none">
-        <Defs><LinearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor="#6D28F0" /><Stop offset="1" stopColor="#3A0599" /></LinearGradient></Defs>
-        <Rect width="100%" height="100%" fill="url(#hg)" />
-      </Svg>
-      <View pointerEvents="none" style={{ position: 'absolute', right: -30, top: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: SAFFRON, opacity: 0.22 }} />
-      <View pointerEvents="none" style={{ position: 'absolute', right: 40, bottom: -40, width: 80, height: 80, borderRadius: 40, backgroundColor: '#fff', opacity: 0.08 }} />
+    <View style={{ borderRadius: 20, padding: 16, backgroundColor: '#4A12C4' }}>
+      {/* decoration lives in its own clipped layer so it can never cut the content */}
+      <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: 20, overflow: 'hidden' }}>
+        <Grad colors={['#6D28F0', '#3A0599']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <View style={{ position: 'absolute', right: -30, top: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: SAFFRON, opacity: 0.22 }} />
+        <View style={{ position: 'absolute', right: 40, bottom: -40, width: 80, height: 80, borderRadius: 40, backgroundColor: '#fff', opacity: 0.08 }} />
+      </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Txt weight={600} size={20} color="#fff" style={{ flex: 1 }}>{m.title}</Txt>
         <View style={{ backgroundColor: badgeBg, borderRadius: 10, paddingVertical: 4, paddingHorizontal: 10 }}><Txt weight={600} size={12} color={badgeFg}>{m.badge}</Txt></View>
@@ -157,12 +158,12 @@ function Hero({ m }: { m: Model }) {
         <View style={{ width: 52, height: 52, borderRadius: 26, borderWidth: 2, borderColor: SAFFRON, overflow: 'hidden', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
           {m.photo ? <Image source={m.photo} resizeMode="cover" accessibilityLabel={m.washer + ' photo'} style={{ width: 52, height: 52 }} /> : <Txt weight={600} size={20} color={C.violet}>{initials}</Txt>}
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Txt weight={600} size={16} color="#fff">{m.washer}</Txt>
           <Txt size={13} color="rgba(255,255,255,0.82)" numberOfLines={1}>{m.car}{m.plate ? ' · ' + m.plate : ''}</Txt>
         </View>
       </View>
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
         <Stat v={m.minutes ? `${m.minutes} min` : '-'} l="Total time" />
         <Stat v={m.rating ? '★ ' + m.rating.stars + '.0' : 'Not rated'} l="Rating" />
         <Stat v={m.photoCount ? String(m.photoCount) : '0'} l="Photos" />
@@ -317,7 +318,7 @@ export function DaySheet({ date, onIssue }: { date: string; onIssue?: () => void
   const m = useMemo(() => buildModel(date), [date]), [zoom, setZoom] = useState<Ph | null>(null), { height } = useWindowDimensions();
   return (
     <View>
-      <ScrollView style={{ maxHeight: Math.max(420, height * 0.82) }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+      <ScrollView style={{ maxHeight: Math.max(420, height * 0.82), flexGrow: 0 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
         <Hero m={m} />
         <PhotosCard m={m} onZoom={setZoom} />
         <Stem m={m} />

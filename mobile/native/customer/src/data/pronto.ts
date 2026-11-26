@@ -37,6 +37,7 @@ export type Job = {
   paidOnline?: number;  // what the gateway took for the whole order (ondemand order_paid); a recurring month's visits share one order
   eta?: string;         // instant: when the washer should reach the car (ISO, IST); 15 min within 1 km
   photo?: string | null;   // the washer's closing photo of an instant job (ondemand/{id}.photo)
+  photos?: { src: string; label?: string }[];   // ondemand/{id}.photos[] (before/after/...), when the washer app writes them
   washerAt?: { lat: number; lng: number; at: string };   // live washer position while on the way (WD Partner, every ~30 s)
   carAt?: { lat: number; lng: number };                  // where the car is parked
   washer?: Washer | null; stars?: number; review?: string; createdAt: string;
@@ -74,9 +75,9 @@ export function demoPX(): PX {
     jobs: [
       { id: 'j2', mode: 'scheduled', status: 'upcoming', date: iso(addDays(TODAY, 2)), slot: '09:00', addressId: 'a1', total: 293.55, saved: 150, mins: 55, pay: 'paid', payVia: 'UPI', createdAt: at(-1),
         lines: [{ key: 'foam', id: 'foam', name: 'Foam Wash', q: 1, price: 249, mrp: 399, mins: 35 }], washer: null },
-      { id: 'j1', mode: 'instant', status: 'done', date: iso(addDays(TODAY, -2)), slot: '', addressId: 'a1', total: 156.45, saved: 100, mins: 25, pay: 'paid', payVia: 'WD Money', createdAt: at(-2, '08:40'),
+      { id: 'j1', photos: [{ src: 'before', label: 'Before' }, { src: 'after', label: 'After' }], mode: 'instant', status: 'done', date: iso(addDays(TODAY, -2)), slot: '', addressId: 'a1', total: 156.45, saved: 100, mins: 25, pay: 'paid', payVia: 'WD Money', createdAt: at(-2, '08:40'),
         lines: [{ key: 'ext', id: 'ext', name: 'Exterior Pressure Wash', q: 1, price: 149, mrp: 249, mins: 25 }], washer: { name: 'Chotte', rating: 4.8, jobs: 312 }, stars: 5 },
-      { id: 'j0', mode: 'scheduled', status: 'done', date: iso(addDays(TODAY, -9)), slot: '17:30', addressId: 'a1', total: 470.4, saved: 300, mins: 65, pay: 'paid', payVia: 'UPI', createdAt: at(-10),
+      { id: 'j0', photo: 'after', mode: 'scheduled', status: 'done', date: iso(addDays(TODAY, -9)), slot: '17:30', addressId: 'a1', total: 470.4, saved: 300, mins: 65, pay: 'paid', payVia: 'UPI', createdAt: at(-10),
         lines: [{ key: 'int', id: 'int', name: 'Interior Cleaning', q: 1, price: 199, mrp: 299, mins: 30 }, { key: 'vac', id: 'vac', name: 'Vacuum Service', q: 1, price: 149, mrp: 249, mins: 20 }, { key: 'tyre', id: 'tyre', name: 'Tyre & Rim Polish', q: 1, price: 99, mrp: 149, mins: 15 }],
         washer: { name: 'Shahrukh', rating: 4.6, jobs: 188 } },
     ],
