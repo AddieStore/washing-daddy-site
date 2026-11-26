@@ -161,27 +161,31 @@ function WashNotices() {
       <Tap label={n.btn} onPress={n.act} style={{ minHeight: 40, paddingHorizontal: 12, justifyContent: 'center' }}><Txt weight={600} size={14} color={C.violet}>{n.btn}</Txt></Tap>
     </View>))}</View>;
 }
-/** the photos of a wash, shown on the card itself as a small stack in the bottom-right corner (before behind, after on top) */
+/** the photos of a wash, fanned on the card in the bottom-right corner: up to 3 portrait cards, After on top (straight), Before back-left, others back-right */
 function PhotoStrip({ items, total }: { items: { src: any; label: string }[]; total?: number }) {
   if (!items.length) return null;
-  const n = total ?? items.length, top = items.slice(0, 2), SZ = 64, extra = n > 2 ? n : 0;
-  const stack = top.map((p, i) => ({ p, i, depth: top.length - 1 - i }));   // last item (After) sits on top
+  const n = total ?? items.length, extra = n > 3 ? n : 0;
+  const [before, after, other] = items.length === 1 ? [undefined, items[0], undefined] : [items[0], items[1], items[2]];
+  const W = 148, H = 134, FW = 88, FH = 117, BW = 78, BH = 104;
+  const cards = [
+    other && { p: other, w: BW, h: BH, left: W - BW - 2, bottom: 22, rot: 10, z: 1 },
+    before && { p: before, w: BW, h: BH, left: 4, bottom: 14, rot: -12, z: 2 },
+    after && { p: after, w: FW, h: FH, left: 34, bottom: 0, rot: before ? 2 : 0, z: 3 },
+  ].filter(Boolean) as { p: { src: any; label: string }; w: number; h: number; left: number; bottom: number; rot: number; z: number }[];
   return (
-    <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', minHeight: SZ + 18 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 6, flexShrink: 1 }}>
-        <Txt size={13}>📷</Txt><Txt weight={600} size={13}>{`${n} photo${n > 1 ? 's' : ''}`}</Txt><Txt size={12} color={G.mute}>· tap to view</Txt>
+    <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', minHeight: H + 8 }}>
+      <View style={{ flexShrink: 1, paddingBottom: 6, paddingRight: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Txt size={13}>📷</Txt><Txt weight={600} size={13} numberOfLines={1}>{`${n} photo${n > 1 ? 's' : ''}`}</Txt></View>
+        <Txt size={12} color={G.mute} style={{ marginTop: 2 }}>tap to view</Txt>
       </View>
-      <View accessibilityLabel={`${n} photos`} style={{ width: SZ + 24, height: SZ + 14, marginRight: 2 }}>
-        {stack.map(({ p, i }) => {
-          const front = i === stack.length - 1, rot = stack.length === 1 ? 0 : front ? 5 : -7;
-          return (
-            <View key={i} style={{ position: 'absolute', right: front ? 0 : 14, bottom: front ? 0 : 6, width: SZ, height: SZ, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: '#fff', backgroundColor: G.raised,
-              transform: [{ rotate: rot + 'deg' }], shadowColor: '#1A1033', shadowOpacity: 0.18, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 3 + i }}>
-              <Image source={p.src} resizeMode="cover" accessibilityLabel={p.label + ' photo'} style={{ width: '100%', height: '100%' }} />
-              <View style={{ position: 'absolute', left: 3, bottom: 3, borderRadius: 6, paddingHorizontal: 5, height: 16, backgroundColor: 'rgba(20,20,20,0.6)', justifyContent: 'center' }}><Txt weight={600} size={9} color="#fff" style={{ lineHeight: 12 }}>{p.label}</Txt></View>
-            </View>);
-        })}
-        {extra ? <View style={{ position: 'absolute', right: -4, top: -2, minWidth: 22, height: 22, paddingHorizontal: 5, borderRadius: 11, backgroundColor: C.violet, borderWidth: 2, borderColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 8 }}><Txt weight={700} size={11} color="#fff" style={{ lineHeight: 14 }}>{extra}</Txt></View> : null}
+      <View accessibilityLabel={`${n} photos`} style={{ width: W, height: H }}>
+        {cards.map(({ p, w, h, left, bottom, rot, z }) => (
+          <View key={p.label + z} style={{ position: 'absolute', left, bottom, width: w, height: h, borderRadius: 14, overflow: 'hidden', borderWidth: 3, borderColor: '#fff', backgroundColor: G.raised, zIndex: z,
+            transform: [{ rotate: rot + 'deg' }], shadowColor: '#1A1033', shadowOpacity: 0.22, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 + z }}>
+            <Image source={p.src} resizeMode="cover" accessibilityLabel={p.label + ' photo'} style={{ width: '100%', height: '100%' }} />
+            {z === 3 ? <View style={{ position: 'absolute', left: 5, bottom: 5, borderRadius: 7, paddingHorizontal: 6, height: 18, backgroundColor: 'rgba(20,20,20,0.6)', justifyContent: 'center' }}><Txt weight={600} size={10} color="#fff" style={{ lineHeight: 13 }}>{p.label}</Txt></View> : null}
+          </View>))}
+        {extra ? <View style={{ position: 'absolute', right: 0, top: 0, zIndex: 10, minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: C.violet, borderWidth: 2, borderColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 12 }}><Txt weight={700} size={11} color="#fff" style={{ lineHeight: 14 }}>{extra}</Txt></View> : null}
       </View>
     </View>
   );
