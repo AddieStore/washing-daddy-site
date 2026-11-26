@@ -17,9 +17,9 @@ export const G = { line: 'rgba(23,23,23,0.08)', ink: '#171717', sub: '#525252', 
 const SHADOW_S = { shadowColor: '#1A1033', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } };
 const SHADOW_F = { shadowColor: '#1A1033', shadowOpacity: 0.12, shadowRadius: 24, shadowOffset: { width: 0, height: 8 } };
 /** r5 card: white, no hairline, radius 16, soft spread shadow (Pronto). Pass borderWidth to bring an outline back for selected states. */
-export const card = (extra?: object): ViewStyle => ({ backgroundColor: '#fff', borderWidth: 0, borderColor: G.line, borderRadius: 16, shadowColor: '#1A1033', shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 3, ...extra });
+export const card = (extra?: object): ViewStyle => ({ backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(23,23,23,0.06)', borderRadius: 16, shadowColor: '#1A1033', shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 3, ...extra });
 /** soft grey page behind white cards (cart, schedule, bookings, money, profile) */
-export const PAGE_BG = '#F6F2FF';   // = C.canvas
+export const PAGE_BG = '#FFFFFF';   // every page is white (cards keep a hairline so they still read)
 const SPR_IN = { damping: 18, stiffness: 420, mass: 0.6 }, SPR_OUT = { damping: 11, stiffness: 320, mass: 0.6 };
 export const TNUM: TextStyle = { fontVariant: ['tabular-nums'] };
 

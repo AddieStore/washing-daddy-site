@@ -6,7 +6,9 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const android = existsSync('./firebase/google-services.json'), ios = existsSync('./firebase/GoogleService-Info.plist');
-  const firebase = android || ios;
+  // An iOS prebuild without GoogleService-Info.plist must leave the Firebase plugins out (their iOS mod requires the file).
+  const iosBuild = process.env.EAS_BUILD_PLATFORM === 'ios' || process.argv.some(a => a === 'ios');
+  const firebase = iosBuild ? ios : android || ios;
   // WD_RELEASE=1 (set by the release build jobs) must never produce a demo build: without Firebase config the
   // app silently falls back to the demo backend (OTP 1234, fake data). Fail the build instead.
   if (process.env.WD_RELEASE === '1') {

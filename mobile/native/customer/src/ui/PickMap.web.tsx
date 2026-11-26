@@ -12,7 +12,7 @@ const MAJ_I = 5, MAJ_J = 4;                  // every 5th column / 4th row is a 
 const ROADS = ['Ring Road', 'Mall Road', 'Rohini Marg', 'Sector Link Rd', 'Station Rd', 'Park Avenue', 'Canal Road', 'MG Road'];
 const AREAS = ['Sunder Park', 'Metro Stn', 'City Mall', 'Govt School', 'Sai Mandir', 'Civil Hospital', 'Community Hall', 'Petrol Pump'];
 const RIVER_P = 1900;                        // river repeats every RIVER_P px of world y
-const FONT = 'Poppins_400Regular, Poppins, sans-serif';
+const FONT = 'PlusJakartaSans_400Regular, Poppins, sans-serif';
 const LBL = '#9A9AA3', VIOLET = '#5409DA';
 const M_LAT = 111320;                        // metres per degree of latitude
 const mod = (n: number, m: number) => ((n % m) + m) % m;

@@ -415,6 +415,32 @@ function rateLimit(ctx, key, max, windowMs) {
   list.push(now); sd.rl[key] = list; return true;
 }
 // Phone -> caller, config, feature flags. -> { ok, phone, cfg } | { ok:false, res }
+/* ======================= service areas =======================
+   appcfg/customer.areas = [{ id, name, lat, lng, r }] (r in metres), drawn in the admin dashboard; the same list the app reads
+   (mobile/native/customer/src/data/areas.ts: keep normAreas in step). Nothing usable saved -> the built-in Paschim Vihar circle. */
+const DEFAULT_AREAS = [{ id: 'paschim-vihar', name: 'Paschim Vihar', lat: 28.6692, lng: 77.1006, r: 1300 }];
+function areasOf(v) {
+  const out = [];
+  (Array.isArray(v) ? v : []).forEach((x, i) => {
+    if (!isObj(x) || x.paused === true) return;
+    const lat = +x.lat, lng = +x.lng, r = +x.r;
+    if (!(lat > 6 && lat < 37 && lng > 68 && lng < 98 && r >= 100 && r <= 30000)) return;
+    out.push({ id: String(x.id || 'area-' + i).slice(0, 40), name: String(x.name || 'Service area').slice(0, 60), lat, lng, r: Math.round(r) });
+  });
+  return out.length ? out : DEFAULT_AREAS;
+}
+function metres(aLat, aLng, bLat, bLng) {
+  const R = 6371000, k = Math.PI / 180, dLat = (bLat - aLat) * k, dLng = (bLng - aLng) * k;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * k) * Math.cos(bLat * k) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+/** the circle the point is in, or null (also null when the point has no usable coordinates) */
+function areaFor(areas, lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return areas.find(a => metres(lat, lng, a.lat, a.lng) <= a.r) || null;
+}
+const NOT_SERVED = "We are currently not available at this address. We're adding new locations every month: tap Notify me on Home and we'll tell you first.";
+
 async function gate(ctx, req, feature) {
   const h = (req && req.headers) || {};
   const t = await verifyIdToken(ctx, h.authorization || h.Authorization);
@@ -424,7 +450,7 @@ async function gate(ctx, req, feature) {
   const cfg = cfgOf(appcfg && appcfg.data, slotsCfg && slotsCfg.data);
   if (cfg.maintenance) return { ok: false, res: fail(503, 'We are doing some maintenance. Try again in a little while.' + NOTHING) };
   for (const f of [].concat(feature || [])) if (!cfg.feat(f)) return { ok: false, res: fail(403, 'This is switched off right now.' + NOTHING) };
-  return { ok: true, phone: t.phone, uid: t.uid, cfg };
+  return { ok: true, phone: t.phone, uid: t.uid, cfg, areas: areasOf(appcfg && appcfg.data && appcfg.data.areas) };
 }
 // Same request from the same phone within 2 minutes -> same order id (a retry never makes a second order)
 // rzp / gateway only pick how to pay, so leave them out: switching to the Cashfree backup keeps the same order.
@@ -527,6 +553,8 @@ async function bookingCreate(ctx, req) {
   if (existing) return resumeOrder(ctx, existing, phone);
   const addr = await fsGet(ctx, 'addresses', String(b.addressId || ''));
   if (!addr || addr.data.phone !== phone) return fail(400, 'Add the address where your car is parked.' + NOTHING);
+  // only inside a service circle; an address without map coordinates cannot be checked, so it is refused too
+  if (!areaFor(g.areas, num(addr.data.lat, NaN), num(addr.data.lng, NaN))) return fail(409, NOT_SERVED + NOTHING, { code: 'not_served' });
   const q = await quote(ctx, phone, g.cfg, b, true); if (!q.ok) return q.res;
   const shown = num(b.shownTotal, NaN);
   if (Number.isFinite(shown) && q.bill.total > shown + 1) return fail(409, 'Prices changed: the total is now ' + fmtR(q.bill.total) + '. Go back to the cart to see it.' + NOTHING);
@@ -927,7 +955,32 @@ async function bookingReschedule(ctx, req) {
   });
 }
 
-const HANDLERS = { 'wd-booking-create': bookingCreate, 'wd-booking-cancel': bookingCancel, 'wd-booking-reschedule': bookingReschedule,
+// "Notify me" from the Home banner of a customer outside every service circle: waitlist/{+91number} = the spot they asked
+// about. One doc per number (asking again moves the spot and counts it). Ravi gets a Telegram line.
+// How many neighbours are waiting near a spot (within WAIT_RADIUS m, not yet told): the app shows it as a progress bar toward WAIT_GOAL
+// cars, the number that makes a new area worth opening. `peek: true` only reads the count.
+const WAIT_GOAL = 25, WAIT_RADIUS = 1500;
+async function waitNear(ctx, lat, lng) {
+  try {
+    const all = await fsList(ctx, 'waitlist');
+    return all.filter(d => d && d.data && d.data.status !== 'told' && metres(num(d.data.lat, NaN), num(d.data.lng, NaN), lat, lng) <= WAIT_RADIUS).length;
+  } catch (e) { return 0 }
+}
+async function waitlist(ctx, req) {
+  const g = await gate(ctx, req); if (!g.ok) return g.res;
+  const b = isObj(req.body) ? req.body : {}, lat = num(b.lat, NaN), lng = num(b.lng, NaN);
+  if (!(lat > 6 && lat < 37 && lng > 68 && lng < 98)) return fail(400, 'Add your address or turn on location first.');
+  if (b.peek === true) return reply(200, { ok: true, near: await waitNear(ctx, lat, lng), goal: WAIT_GOAL });
+  if (!rateLimit(ctx, 'wl:' + g.phone, 5, 3600000)) return fail(429, 'You are already on the list. We will tell you.');
+  const cur = await fsGet(ctx, 'waitlist', g.phone), now = nowIST(ctx.now), area = clean(b.area, 120), name = clean(b.name, 80) || clean(cur && cur.data.name, 80);
+  const doc = { phone: g.phone, name, lat, lng, area, created_at: cur ? cur.data.created_at || now : now, updated_at: now, asks: num(cur && cur.data.asks, 0) + 1,
+    inside: !!areaFor(g.areas, lat, lng), status: cur && cur.data.status === 'told' ? 'told' : 'waiting' };
+  await fsCommit(ctx, [wSet(ctx, 'waitlist', g.phone, doc)]);
+  const near = await waitNear(ctx, lat, lng);
+  return reply(200, { ok: true, near, goal: WAIT_GOAL }, cur ? {} : { notify: '📍 Notify me: ' + g.phone + (name ? ' (' + name + ')' : '') + ' wants us in ' + (area || 'a new area') + ' · ' + lat.toFixed(5) + ',' + lng.toFixed(5) });
+}
+
+const HANDLERS = { 'wd-booking-create': bookingCreate, 'wd-waitlist': waitlist, 'wd-booking-cancel': bookingCancel, 'wd-booking-reschedule': bookingReschedule,
   'wd-coupon-validate': couponValidate, 'wd-wallet-topup': walletTopup, 'wd-gift-claim': giftClaim, 'wd-pass-buy': passBuy, 'wd-pronto-paid': prontoPaid,
   'wd-rzp-confirm': rzpConfirm, 'wd-rzp-hook': rzpHook };
 // Never throws: any crash becomes a 500 the app can show, and an alert for Ravi.

@@ -3,27 +3,32 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Linking, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  PullToRefresh, Button, CallButton, CarArt, Chip, F, Group, HeaderIconButton, Icon, Plate, Pressy, Row, SectionLabel, ui, useTheme, WeekStrip,
+  PullToRefresh, Button, CallButton, CarArt, Chip, F, Group, HeaderIconButton, Icon, PCard, Plate, Pressy, PTitle, Row, SectionLabel, SlideToConfirm, StatTile, ui, useTheme, WeekStrip,
 } from '../../ui';
 import { RoundHeroArt, DoneArt, EmptyArt } from '../../ui/art';
-import { DAY, Money, Route, S, W, act, carBy, isOnline, me, openReqs, planName, route, useStore, view } from '../../state/store';
+import { cardShadow } from '../../ui/theme';
+import { DAY, Extra, Money, Rounds, wFeature, Route, S, W, act, carBy, isOnline, me, openReqs, planName, route, useStore, view } from '../../state/store';
 import { STATUS, navOf, telOf } from '../../lib/data';
 import { TASK, tasksFor } from '../../lib/schedule';
 import { dayShort, hm12, hourIST, rupee, short12, t12 } from '../../lib/time';
 import { isHindi, t } from '../../lib/i18n';
-import { SyncChipLive } from '../../screens/TopBar';
+import { DutyToggle } from '../../ui/TopBar';
 import { openLocationSettings, useLocality } from '../../lib/geo';
 import { FadeUp, TNUM } from '../../screens/DayParts';
 import { openAddCar } from '../../screens/AddCar';
 import { openHelpSheet } from '../../screens/sheets';
-import { AttendanceCard, DayCard } from '../../screens/DayCards';
+import { CheckInCard } from '../../screens/RoundTimeline';
+import { CheckOutCard } from '../../screens/CheckOutCard';
+import { DayCard } from '../../screens/DayCards';
 import { openRewards, useOutlook } from '../../screens/RewardsCards';
 import { EARLY_DAYS } from '../../lib/rewards';
 import { useDayMarks } from '../../lib/history';
 import { dayStripDays } from '../../lib/strip';
 import { CarPic } from '../../screens/CarPhoto';
+import { NowCard, RouteList, RouteTrack, openRoundSheet } from '../../screens/RouteFlow';
 
 const ART = 168;                  // the art sits at the bottom of the band, greeting + chips above it
 const BAND = 230;                 // visible hero height under the status bar
@@ -33,19 +38,17 @@ const WASH: Record<string, 'violet' | 'green' | 'grey' | 'amber'> = { scheduled:
 
 /* ---------- hero band ---------- */
 function PlaceChip() {
-  const g = useLocality();
-  if (g.status === 'error') return null;
-  const chip = (txt: string) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 0, height: 28, paddingHorizontal: 10, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.72)', maxWidth: 150 }}>
-      <Icon name="pin" size={13} color="#5409DA" />
-      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 16, color: '#141414', flexShrink: 1 }}>{txt}</Text>
-    </View>
+  useStore();
+  const r = Rounds.mine();
+  return (
+    <Pressy onPress={wFeature('round_picker') ? openRoundSheet : undefined} accessibilityLabel={`${t('Round badlo')}: ${r.name}`} scaleTo={0.97} hitSlop={8}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minWidth: 0, height: 30, paddingLeft: 10, paddingRight: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.85)', maxWidth: 200 }}>
+        <Icon name="pin" size={13} color="#5409DA" />
+        <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 16, color: '#141414', flexShrink: 1 }}>{r.areas.split(' · ')[0]}{r.areas.includes(' · ') ? ' +' : ''}</Text>
+        {wFeature('round_picker') ? <View style={{ transform: [{ rotate: '90deg' }] }}><Icon name="chevron" size={13} color="#5409DA" /></View> : null}
+      </View>
+    </Pressy>
   );
-  if (g.status === 'denied') {
-    return <Pressy onPress={openLocationSettings} accessibilityLabel={t('Location chalu karo')} scaleTo={0.96} hitSlop={8}>{chip(t('Location chalu karo'))}</Pressy>;
-  }
-  const txt = g.text || (g.status === 'loading' || g.status === 'idle' ? t('Location…') : t('Location'));
-  return <View accessibilityLabel={txt}>{chip(txt)}</View>;
 }
 
 function ProgressChip({ done, total }: { done: number; total: number }) {
@@ -64,25 +67,33 @@ function HeroBand({ top, width, greeting, name }: { top: number; width: number; 
   const finished = started && cn.total > 0 && cn.done + cn.skipped >= cn.total;
   const progress = cn.total ? (cn.done + cn.skipped) / cn.total : 0;
   return (
-    <View style={{ backgroundColor: dark ? '#1E1633' : SKY }}>
+    <View style={{ backgroundColor: c.card }}>
+     <View style={{ backgroundColor: dark ? '#1E1633' : SKY }}>
       <View style={{ height: top }} />
       <View style={{ height: BAND }}>
         <View style={{ position: 'absolute', left: 0, bottom: 0 }}><RoundHeroArt width={width} height={ART} progress={progress} done={finished} /></View>
         <View style={{ position: 'absolute', left: 16, right: 16, top: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text accessibilityRole="header" numberOfLines={1} style={{ flex: 1, minWidth: 0, fontFamily: F.bold, fontSize: 24, lineHeight: 32, letterSpacing: -0.6, color: dark ? '#F4F4F5' : '#141414' }}>{greeting}, {name}</Text>
+            <View accessibilityRole="header" style={{ flex: 1, minWidth: 0 }}>
+              <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 18, color: dark ? '#C9BFE6' : '#5B4B8A' }}>{greeting}</Text>
+              <Text numberOfLines={1} style={{ fontFamily: F.display, fontSize: 30, lineHeight: 36, letterSpacing: -1, color: dark ? '#F4F4F5' : '#141414' }}>{name}</Text>
+            </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <HeaderIconButton icon="calendar" label={t('Round badlo')} onPress={() => router.push('/round-setup')} />
-              <HeaderIconButton icon="bell" label={t('Madad / SOS')} onPress={openHelpSheet} />
-              <HeaderIconButton icon="plus" label={t('Nayi gaadi add karo')} onPress={openAddCar} />
+              <DutyToggle />
+              {wFeature('help_sos') ? <HeaderIconButton icon="bell" label={t('Madad / SOS')} onPress={openHelpSheet} /> : null}
+              {wFeature('add_car') ? <HeaderIconButton icon="plus" label={t('Nayi gaadi add karo')} onPress={openAddCar} /> : null}
             </View>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
             <PlaceChip />
             {cn.total ? <ProgressChip done={cn.done} total={cn.total} /> : null}
           </View>
         </View>
       </View>
+     </View>
+      {/* just below the (solid black) road the lavender of the hero fades to plain white: no black here, no line */}
+      <LinearGradient pointerEvents="none" colors={dark ? ['#1E1633', 'rgba(28,28,31,1)'] : [SKY, '#EEE7FF', '#F8F5FF', '#FFFFFF']}
+        locations={dark ? [0, 1] : [0, 0.4, 0.75, 1]} style={{ height: 72 }} />
     </View>
   );
 }
@@ -103,91 +114,29 @@ function DutySwitch() {
   );
 }
 
-/* ---------- today summary: ONE group ---------- */
-function Summary({ started }: { started: boolean }) {
-  useStore();
-  const { c } = useTheme();
-  const on = isOnline();
-  const cn = Route.counts();
-  const etas = Route.etaList(), rt = route();
-  const first = W(rt[0]?.reg)?.eta || etas[0], last = W(rt[rt.length - 1]?.reg)?.eta || etas[etas.length - 1];
-  const left = cn.total - cn.done - cn.skipped;
-  const cars = !cn.total ? '0' : started ? `${cn.done}/${cn.total}${left ? '' : ' ✓'}` : `${cn.total}`;
-  return (
-    <>
-      <SectionLabel style={{ marginTop: 0 }}>{t('Aaj ka round')} · {dayShort(DAY, isHindi())}</SectionLabel>
-      <Group>
-        <Row icon="sun" label={t(on ? 'Duty ON' : 'Duty OFF')} sub={t(on ? 'Customers ko dikh rahe ho' : 'Abhi duty band hai')} right={<DutySwitch />} />
-        <Row icon="car" label={t('Gaadi')} value={cars} onPress={() => router.push('/today')} />
-        <Row icon="gift" label={t('Aaj ki kamai')} value={rupee(Money.today())} onPress={() => router.push('/paisa' as any)} />
-        {cn.total ? <Row icon="clock" label={t(started ? 'Pehli shuruat' : 'Pehli gaadi')} value={first ? short12(hm12(first)) : '–'} /> : null}
-        {cn.total ? <Row icon="flag" label={t('Aakhri khatam')} value={last ? `~${short12(hm12(last))}` : '–'} /> : null}
-      </Group>
-    </>
-  );
-}
-
-/* ---------- next car: highlighted card with an ETA chip ---------- */
-function XChips({ reg, plan }: { reg: string; plan: string }) {
-  const ks = tasksFor(reg, plan, DAY).filter((k) => k !== 'pressure' && k !== 'dry');
-  if (!ks.length) return null;
-  return <>{ks.map((k) => <Chip key={k} tone="blue">{t(TASK[k].hi)}</Chip>)}</>;
-}
-
-function NextCar({ started }: { started: boolean }) {
-  const { c, dark } = useTheme();
-  const rt = route();
-  const nr = started ? (Route.liveReg() || Route.nextReg()) : rt[0]?.reg;
-  if (!nr) return null;
-  const car = carBy(nr), wd = W(nr);
-  if (!car) return null;
-  const q = openReqs(nr).length, nav = navOf(car), tel = telOf(car.phone);
-  const e0 = wd?.eta || Route.etaList()[Math.max(0, rt.findIndex((x) => x.reg === nr))];
-  const eta = e0 ? short12(hm12(e0)) : '';
-  const label = !started ? t('Pehli gaadi') : t(wd?.status === 'scheduled' ? 'Agli gaadi' : 'Abhi chal raha');
-  return (
-    <View style={{ marginTop: 24 }}>
-      <View style={{ borderRadius: 16, padding: 14, backgroundColor: dark ? 'rgba(139,92,246,0.14)' : '#F3EEFF', borderWidth: StyleSheet.hairlineWidth * 2, borderColor: dark ? 'rgba(139,92,246,0.3)' : '#E3D8FF' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <Text style={{ fontFamily: F.semi, fontSize: 13, lineHeight: 18, color: c.primary }}>{label}</Text>
-          {eta ? <Chip tone="dark" icon="clock">{eta}</Chip> : null}
-        </View>
-        <Pressy onPress={() => { act.setCurrent(nr); router.push('/job'); }} accessibilityLabel={`${car.plate} ${car.model}`} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 }}>
-          <CarPic reg={nr} w={84} h={60} size={26} radius={14}><CarArt car={car} width={84} height={36} /></CarPic>
-          <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-            <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 18, lineHeight: 24, letterSpacing: -0.3, color: c.fg }}>{car.model}</Text>
-            <Plate reg={car.plate} />
-            <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.grey }}>{car.house} · {car.spot}</Text>
-          </View>
-          <Icon name="chevron" size={18} color={c.grey} />
-        </Pressy>
-        {started || q ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-            <Chip tone="grey">{planName(car)}</Chip>
-            <XChips reg={nr} plan={car.plan} />
-            {q ? <Chip tone="amber" icon="note">{t(`${q} customer request${q > 1 ? 's' : ''}`)}</Chip> : null}
-          </View>
-        ) : null}
-        {started && (nav || tel) ? (
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 12 }}>
-            {nav ? <Button variant="ghost" label={t('Raasta')} icon="pin" style={{ flex: 1 }} onPress={() => { void Linking.openURL(nav).catch(() => {}); }} /> : null}
-            {tel ? <CallButton small label={t('Call')} phone={tel.slice(4)} /> : null}
-          </View>
-        ) : null}
-        {started ? <Button variant="violet" label={t(wd?.status === 'scheduled' ? 'Chalo' : 'Kholo')} iconRight="arrow" style={{ marginTop: 10 }} onPress={() => { act.setCurrent(nr); router.push('/job'); }} /> : null}
-      </View>
-    </View>
-  );
-}
-
 /* ---------- state cards: all done / no cars ---------- */
 function DoneCard({ width, done }: { width: number; done: number }) {
   const { c } = useTheme();
+  useStore();
+  const nExtra = Extra.shown().length;
   return (
     <View style={{ marginTop: 24, alignItems: 'center', borderRadius: 16, backgroundColor: c.card, borderWidth: StyleSheet.hairlineWidth * 2, borderColor: c.line, paddingTop: 16, paddingBottom: 20, paddingHorizontal: 16 }}>
       <DoneArt width={Math.min(width - 64, 300)} />
       <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 20, lineHeight: 26, letterSpacing: -0.4, color: c.fg, marginTop: 8 }}>{t('Aaj ka round poora')}</Text>
-      <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 19, color: c.grey, textAlign: 'center', marginTop: 2 }}>{t(`${done} gaadi chamka di. Hisaab Paisa tab mein dekho.`)}</Text>
+      <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 19, color: c.grey, textAlign: 'center', marginTop: 2 }}>{t(`${done} gaadi chamka di. Monthly kaam poora.`)}</Text>
+      <View style={{ height: 1, alignSelf: 'stretch', backgroundColor: c.line, marginVertical: 16 }} />
+      <Pressy onPress={() => router.push('/extra' as any)} accessibilityLabel={t('Extra kaam')} scaleTo={0.98}
+        style={{ alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(255,186,8,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="tabExtra" size={20} color="#C77700" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontFamily: F.semi, fontSize: 14.5, color: c.fg }}>{t('Ab extra kaam')}</Text>
+          <Text style={{ fontFamily: F.body, fontSize: 12.5, color: c.grey }}>{nExtra ? t(`${nExtra} kaam aapke liye`) : t('Naye kaam aate hi yahan dikhenge')}</Text>
+        </View>
+        {nExtra ? <View style={{ minWidth: 24, height: 24, borderRadius: 12, paddingHorizontal: 7, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: F.bold, fontSize: 12, color: '#fff' }}>{nExtra}</Text></View> : null}
+        <Icon name="chevron" size={18} color={c.grey} />
+      </Pressy>
     </View>
   );
 }
@@ -201,64 +150,6 @@ function NoCars({ width }: { width: number }) {
       <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 20, lineHeight: 26, letterSpacing: -0.4, color: c.fg, marginTop: 8 }}>{loading ? t('List aa rahi hai…') : t('Koi gaadi nahi')}</Text>
       <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 19, color: c.grey, textAlign: 'center', marginTop: 2 }}>{loading ? t('Book se aaj ka round padha ja raha hai.') : t('Aaj aapke naam koi gaadi nahi hai. Manager se baat karo.')}</Text>
     </View>
-  );
-}
-
-/* ---------- all cars: ONE group of rows ---------- */
-function AllCars() {
-  useStore();
-  const { c } = useTheme();
-  const lay = Route.layout();
-  const regs = [...lay.slots.flat(), ...lay.pool];
-  const cn = Route.counts();
-  if (!regs.length) return null;
-  return (
-    <>
-      <SectionLabel>{t('Saari gaadiyan')} · {cn.total}</SectionLabel>
-      <Group>
-        {regs.map((reg) => {
-          const car = carBy(reg);
-          if (!car) return null;
-          const wd = W(reg), st = wd ? wd.status : 'scheduled';
-          const late = Route.isLate(reg);
-          const q = openReqs(reg).length;
-          const eta = st === 'done' && wd?.finished_at ? short12(t12(wd.finished_at)) : Route.slotEta(reg) ? short12(hm12(Route.slotEta(reg) as string)) : (wd?.eta || Route.etaList()[route().findIndex((x) => x.reg === reg)]) ? short12(hm12((wd?.eta || Route.etaList()[route().findIndex((x) => x.reg === reg)]) as string)) : '';
-          return (
-            <Pressy key={reg} onPress={() => { act.setCurrent(reg); router.push('/job'); }} accessibilityLabel={`${car.plate} ${car.model}`} scaleTo={0.99}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingHorizontal: 16, paddingVertical: 8, opacity: st === 'done' || st === 'skipped' ? 0.72 : 1 }}>
-              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Plate reg={car.plate} style={{ paddingVertical: 1, paddingHorizontal: 6 }} />
-                  {q ? <Chip tone="amber" style={{ minHeight: 20, paddingVertical: 0, paddingHorizontal: 7 }}>{q}</Chip> : null}
-                </View>
-                <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 21, color: c.fg }}>{car.model}</Text>
-                <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: late ? '#dc2626' : c.grey, ...TNUM }}>{eta ? `${eta} · ` : ''}{car.house}</Text>
-              </View>
-              {late ? <Chip tone="red" style={{ alignSelf: 'center' }}>{t('Late')}</Chip> : null}
-              <Chip tone={WASH[st] || 'grey'} style={{ alignSelf: 'center' }}>{t(wd ? STATUS[wd.status] : 'Baaki')}</Chip>
-              <Icon name="chevron" size={18} color={c.grey} />
-            </Pressy>
-          );
-        })}
-        <Row icon="redo" label={t('Round badlo')} onPress={() => router.push('/round-setup')} />
-      </Group>
-    </>
-  );
-}
-
-/* ---------- date strip + rewards + new customer ---------- */
-function Week() {
-  const marks = useDayMarks();
-  const [sel, setSel] = useState(DAY);
-  useFocusEffect(useCallback(() => { setSel(DAY) }, []));
-  const pick = (k: string) => { setSel(k); router.push(k === DAY ? '/today' : { pathname: '/day', params: { date: k } }); };
-  return (
-    <>
-      <SectionLabel>{t('Pichhle din')}</SectionLabel>
-      <Group style={{ paddingHorizontal: 8, paddingVertical: 8 }}>
-        <WeekStrip scroll days={dayStripDays(marks)} selected={sel} onSelect={pick} jumpLabel={t('Aaj')} />
-      </Group>
-    </>
   );
 }
 
@@ -278,6 +169,7 @@ function RewardsRow() {
 /* ---------- screen ---------- */
 export default function RoundScreen() {
   useStore();
+  useEffect(() => { void Rounds.load() }, []);
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const { width: ww } = useWindowDimensions();
@@ -286,26 +178,35 @@ export default function RoundScreen() {
   const hi = t(h < 12 ? 'Subah bakhair' : h < 17 ? 'Namaste' : 'Shaam ho gayi');
   const cn = Route.counts();
   const finished = started && cn.total > 0 && cn.done + cn.skipped >= cn.total;
+  const [slideKey, setSlideKey] = useState(0);
+  const showSlide = false;   // the goal card (DayCard) carries the start slide now
+  const nowReg = Route.liveReg() || Route.nextReg();
   const width = Math.min(ww, 440);
   return (
     <View style={{ flex: 1, backgroundColor: c.card }}>
-      <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 120, backgroundColor: c.card }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: showSlide ? 200 : 120, backgroundColor: c.card }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <HeroBand top={insets.top} width={width} greeting={hi} name={w.name.split(' ')[0]} />
-        <View style={{ marginTop: -OVERLAP, borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: c.card, paddingHorizontal: 16, paddingTop: 20, flexGrow: 1 }}>
-          <FadeUp index={0}><AttendanceCard /></FadeUp>
-          {cn.total ? <FadeUp index={1} style={{ marginTop: 16 }}><DayCard /></FadeUp> : null}
-          <FadeUp index={2} style={{ marginTop: 24 }}><Summary started={started} /></FadeUp>
-          {!cn.total ? <FadeUp index={2}><NoCars width={width} /></FadeUp> : null}
-          {finished ? <FadeUp index={2}><DoneCard width={width} done={cn.done} /></FadeUp> : cn.total ? <FadeUp index={2}><NextCar started={started} /></FadeUp> : null}
-          <FadeUp index={4}><AllCars /></FadeUp>
-          <FadeUp index={5}><Week /></FadeUp>
-          <FadeUp index={6}><RewardsRow /></FadeUp>
-          <FadeUp index={7}>
-            <SectionLabel>{t('Naya customer')}</SectionLabel>
-            <Group><Row icon="plus" label={t('Nayi gaadi add karo')} sub={t('Naya customer mila? Manager manzoori denge.')} onPress={openAddCar} /></Group>
-          </FadeUp>
+        <View style={{ backgroundColor: c.card, paddingHorizontal: 16, marginTop: 0, paddingTop: 4, flexGrow: 1, gap: 16 }}>
+          {!started ? <FadeUp index={0}><CheckInCard /></FadeUp> : null}
+          {cn.total ? <FadeUp index={0}><DayCard /></FadeUp> : null}
+          {!cn.total ? <FadeUp index={1}><NoCars width={width} /></FadeUp> : null}
+          {started && nowReg && !finished ? <FadeUp key={nowReg} index={1}><NowCard reg={nowReg} /></FadeUp> : null}
+          {finished ? <FadeUp index={1}><DoneCard width={width} done={cn.done} /></FadeUp> : null}
+          {started ? <FadeUp index={2}><CheckOutCard /></FadeUp> : null}
+          {cn.total ? <FadeUp index={3}><RouteTrack /></FadeUp> : null}
+          {cn.total ? <FadeUp index={4}><RouteList nowReg={started && !finished ? nowReg : null} /></FadeUp> : null}
+          {wFeature('rewards') ? <FadeUp index={5}><RewardsRow /></FadeUp> : null}
+          {wFeature('add_car') ? <FadeUp index={6}><Group><Row icon="plus" label={t('Nayi gaadi add karo')} sub={t('Naya customer mila? Manager manzoori denge.')} onPress={openAddCar} /></Group></FadeUp> : null}
         </View>
       </PullToRefresh>
+      {showSlide ? (
+        <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: insets.bottom + 92, paddingHorizontal: 16 }}>
+          <View style={[{ backgroundColor: c.card, borderRadius: 20, padding: 10, borderWidth: StyleSheet.hairlineWidth * 2, borderColor: c.line }, cardShadow(c)]}>
+            <SlideToConfirm label={t('Round shuru karo')} resetKey={slideKey} onDone={() => { if (!act.startRound()) setSlideKey((k) => k + 1); }} />
+            <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: c.grey, textAlign: 'center', marginTop: 6 }}>{t('Shuru karte hi har customer ko aapka naam aur time dikh jayega.')}</Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }

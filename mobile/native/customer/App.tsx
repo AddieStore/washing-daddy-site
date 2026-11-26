@@ -6,7 +6,9 @@ import { useFonts } from 'expo-font';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Anton_400Regular } from '@expo-google-fonts/anton';
 import { AlfaSlabOne_400Regular } from '@expo-google-fonts/alfa-slab-one';
-import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
+import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
+import { BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold } from '@expo-google-fonts/bricolage-grotesque';
+import { Poppins_700Bold } from '@expo-google-fonts/poppins';   // only for the "WD" letters on the rider's flag and kit box (heroRide.tsx), kept as they were
 import { DAY, NIGHT, ThemeContext, InkContext } from './src/theme';
 import { boot, useApp, S } from './src/state';
 import { ToastHost, SheetHost, ConfettiHost } from './src/ui/hosts';
@@ -29,7 +31,7 @@ if (EU && !(globalThis as any).__wdErrHandler) {
 }
 
 export default function App() {
-  const [fonts] = useFonts({ Anton_400Regular, AlfaSlabOne_400Regular, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold });
+  const [fonts] = useFonts({ Anton_400Regular, AlfaSlabOne_400Regular, PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold, Poppins_700Bold });
   const ui = useApp(), scheme = useColorScheme();
   const [booted, setBooted] = useState(false);
   useEffect(() => { boot().finally(() => setBooted(true)) }, []);

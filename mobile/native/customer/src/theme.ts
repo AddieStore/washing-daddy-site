@@ -14,7 +14,7 @@ export const C = {
   tint: '#F4F4F5', tint2: '#F4F4F5', grey: '#737373', hair: 'rgba(23,23,23,0.08)', card: '#FFFFFF', green: '#16a34a',
   text2: '#525252',
   // Brand surfaces: a soft violet-tinted canvas behind white cards (signed-in app, login sheet), the deep brand violets for the login top.
-  canvas: '#F6F2FF', canvas2: '#EDE5FF', tabBar: '#FBF9FF', hairViolet: 'rgba(84,9,218,0.10)', brandTop: '#5409DA', brandDeep: '#3A0599', saffron: '#FFBA08',
+  canvas: '#F6F2FF', canvas2: '#EDE5FF', tabBar: '#FFFFFF', page: '#FFFFFF', hairViolet: 'rgba(84,9,218,0.10)', brandTop: '#5409DA', brandDeep: '#3A0599', saffron: '#FFBA08',
 };
 
 // Layout tokens on a 4px grid. SP.page = side margin, SP.section = space between page sections, SP.card = padding inside a card,
@@ -25,18 +25,21 @@ export const HIT = 44;   // minimum touch target (iOS HIG)
 export const SHADOW_SM = { shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 } as const;
 // r5: cards lose their hairline and float on a soft spread shadow over a grey page (Pronto)
 export const SHADOW_CARD = { shadowColor: '#1A1033', shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 3 } as const;
-export const PAGE_GREY = '#F6F2FF';   // = C.canvas
+export const PAGE_GREY = '#FFFFFF';   // every page is white; C.canvas (lavender) is only for small tinted surfaces
 export const SHADOW_FLOAT = { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 8 } as const;
 
-// Poppins type scale (r5): 400 body, 500 labels, 600 titles (any 500 text >= 17px renders 600), 700 numbers, 800 hero headline.
+// Type: Plus Jakarta Sans for everything you read and tap (400 body, 500 labels, 600 titles, 700 numbers), Bricolage Grotesque for the
+// few big expressive headlines (home hero, page heroes). Any 500 text >= 17px renders 600.
 export const F = {
-  shout: 'Poppins_500Medium',
-  hero: 'Poppins_500Medium',
-  body: 'Poppins_400Regular',
-  b500: 'Poppins_500Medium',
-  b600: 'Poppins_600SemiBold',
-  b700: 'Poppins_700Bold',
-  b800: 'Poppins_800ExtraBold',
+  display: 'BricolageGrotesque_800ExtraBold',
+  display700: 'BricolageGrotesque_700Bold',
+  shout: 'BricolageGrotesque_700Bold',
+  hero: 'BricolageGrotesque_700Bold',
+  body: 'PlusJakartaSans_400Regular',
+  b500: 'PlusJakartaSans_500Medium',
+  b600: 'PlusJakartaSans_600SemiBold',
+  b700: 'PlusJakartaSans_700Bold',
+  b800: 'PlusJakartaSans_800ExtraBold',
 };
 
 export type Ink = {
@@ -72,11 +75,11 @@ export type Theme = {
 };
 
 export const DAY: Theme = {
-  day: true, bg: C.canvas, dots: 'transparent',
+  day: true, bg: C.page, dots: 'transparent',
   page: creamInk, card: creamInk, block: creamInk,
   cardBg: C.card, cardBorder: C.hair, cardBorderW: 1, shadow: null,
   blockBg: C.white, blockBorder: C.hair,
-  sheetBg: C.white, tabBg: C.tabBar, barBg: C.canvas,
+  sheetBg: C.white, tabBg: C.tabBar, barBg: C.page,
   todayBg: C.violet, todayFg: C.white,
 };
 

@@ -88,7 +88,7 @@ export function PayWebHost() {
   if (!job) return null;
   return (
     <Modal visible animationType="slide" onRequestClose={() => job.onClose()} statusBarTranslucent>
-      <View style={{ flex: 1, backgroundColor: '#F6F3FF', paddingTop: ins.top }}>
+      <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingTop: ins.top }}>
         <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: '#E7E0FA', backgroundColor: '#fff' }}>
           <Pressable accessibilityLabel="Close payment" onPress={() => job.onClose()} hitSlop={12} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}><Close size={22} color="#1a1a1a" /></Pressable>
           <View style={{ flex: 1, alignItems: 'center' }}>
@@ -97,7 +97,7 @@ export function PayWebHost() {
           </View>
           <View style={{ width: 40 }} />
         </View>
-        <WebView ref={ref} style={{ flex: 1, backgroundColor: '#F6F3FF' }}
+        <WebView ref={ref} style={{ flex: 1, backgroundColor: '#FFFFFF' }}
           source={source!} originWhitelist={['*']} javaScriptEnabled domStorageEnabled thirdPartyCookiesEnabled
           setSupportMultipleWindows={false} onLoadEnd={() => setBusy(false)}
           onRenderProcessGone={() => job.onClose()} onError={() => { setBusy(false); job.onMsg({ t: 'load' }) }}

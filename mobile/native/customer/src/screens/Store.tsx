@@ -70,7 +70,7 @@ export default function Store() {
   list.forEach(p => { const last = rows[rows.length - 1]; if (p.wide && cat === 'All') rows.push([p]); else if (last && last.length === 1 && !(last[0].wide && cat === 'All')) last.push(p); else rows.push([p]); });
   return (
     <Light>
-      <Page {...({ ref: sc } as any)} bottom={0} style={{ backgroundColor: C.canvas }}
+      <Page {...({ ref: sc } as any)} bottom={0} style={{ backgroundColor: C.page }}
         header={<PTop title="Store" sub="Gear for a car that's washed daily" right={<PIconBtn label="Cart" badge={n} onPress={() => sheets.cart()}><Cart size={18} color={P.grey} strokeWidth={1.5} /></PIconBtn>} />}>
         <Banner />
         <PCard style={{ marginTop: 12 }} pad={16}>
@@ -92,7 +92,7 @@ export default function Store() {
             </View>
           ))}
         </View>
-        <Footer bg={C.canvas} bleed={16} />
+        <Footer bg={C.page} bleed={16} />
       </Page>
     </Light>
   );

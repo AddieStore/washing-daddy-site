@@ -97,6 +97,41 @@ const rec = r => { all.push(r); return r; };
     check('missing service account: 503 + alert', r8.status === 503 && /Workflow 13/.test(r8.alert), r8);
   }
 
+  // ================= service areas + waitlist =================
+  {
+    const sd = seed();
+    sd['addresses/far'] = { phone: ME, label: 'Office', flat: '4th floor', area: 'Cyber City, Gurugram', lat: 28.4950, lng: 77.0895 };
+    sd['addresses/nopin'] = { phone: ME, label: 'Other', flat: 'B-12', area: 'Paschim Vihar' };
+    const W = makeWorld(K, sd);
+    const far = rec(await call(W, 'wd-booking-create', cart({ addressId: 'far' })));
+    check('address outside every service circle: 409, not available, nothing charged, no order', far.status === 409 && /not available at this address/.test(far.body.message) && /Nothing was charged/.test(far.body.message) && W.cfOrders.size === 0, far);
+    const nopin = rec(await call(W, 'wd-booking-create', cart({ addressId: 'nopin' })));
+    check('address without map coordinates is refused too', nopin.status === 409 && W.cfOrders.size === 0, nopin);
+    const near = rec(await call(W, 'wd-booking-create', cart()));
+    check('address inside the built-in Paschim Vihar circle still books', near.status === 200 && near.body.ok !== false, near);
+    // the dashboard draws Gurugram and drops Paschim Vihar
+    const sd2 = seed(); sd2['addresses/far'] = sd['addresses/far'];
+    sd2['appcfg/customer'] = Object.assign({}, sd2['appcfg/customer'], { areas: [{ id: 'ggn', name: 'Cyber City', lat: 28.4950, lng: 77.0890, r: 2000 }, { id: 'junk', lat: 99, lng: 0, r: 5 }] });
+    const W2 = makeWorld(K, sd2);
+    const ggn = rec(await call(W2, 'wd-booking-create', cart({ addressId: 'far' })));
+    const pv = rec(await call(W2, 'wd-booking-create', cart({ addressId: 'a1', lines: [{ id: 'foam', q: 1 }] })));
+    check('dashboard circles replace the built-in one (junk entries ignored)', ggn.status === 200 && pv.status === 409, [ggn.status, pv.status]);
+    // Notify me
+    const w0 = rec(await call(W, 'wd-waitlist', { lat: 28.4950, lng: 77.0895, area: 'Cyber City', name: 'Asha' }, { auth: '' }));
+    check('waitlist needs a signed-in customer', w0.status === 401, w0);
+    const w1 = rec(await call(W, 'wd-waitlist', { lat: 28.4950, lng: 77.0895, area: 'Cyber City', name: 'Asha' }));
+    const doc = (W.docs.get('waitlist/' + ME) || {}).data;
+    check('waitlist: saved under the verified number with the spot, Ravi told once', w1.status === 200 && w1.body.ok === true && doc && doc.phone === ME && doc.area === 'Cyber City' && doc.asks === 1 && doc.inside === false && doc.status === 'waiting' && /Notify me/.test(w1.notify || ''), { w1, doc });
+    const w2 = rec(await call(W, 'wd-waitlist', { lat: 28.4960, lng: 77.0900, area: 'Cyber City', phone: OTHER }));
+    const doc2 = (W.docs.get('waitlist/' + ME) || {}).data;
+    check('asking again moves the spot and counts it; a phone in the body is ignored; no second Telegram line', w2.status === 200 && doc2.asks === 2 && doc2.lat === 28.4960 && doc2.name === 'Asha' && !W.docs.get('waitlist/' + OTHER) && !w2.notify, doc2);
+    check('waitlist answers how many are waiting nearby, and a peek writes nothing', w1.body.near === 1 && w1.body.goal === 25, w1.body);
+    const pk = rec(await call(W, 'wd-waitlist', { lat: 28.4955, lng: 77.0898, peek: true }));
+    check('peek: counts neighbours within 1.5 km without saving', pk.status === 200 && pk.body.near === 1 && pk.body.goal === 25 && !pk.notify, pk.body);
+    const w3 = rec(await call(W, 'wd-waitlist', { lat: 0, lng: 0 }));
+    check('waitlist: a spot outside India is refused', w3.status === 400, w3);
+  }
+
   // ================= booking create -> Cashfree -> webhook =================
   {
     const W = makeWorld(K, seed());
@@ -444,7 +479,7 @@ const rec = r => { all.push(r); return r; };
     check('workflow 8: a tip does NOT take the Pronto branch', !log8t.order.includes('Pronto ko bhejo (workflow 13)') && log8t.order.includes('Pronto order?'), log8t.order);
     const s13 = JSON.stringify(WF13) + JSON.stringify(WF8);
     check('no secrets in either workflow file', !/BEGIN (RSA )?PRIVATE KEY|cf_test_secret|rzp_test_secret|rzp_hook_secret|TEST_APP_ID|ya29\./.test(s13));
-    check('every 13 webhook path is unique and POST', new Set(WF13.nodes.filter(n => n.type.endsWith('webhook')).map(n => n.parameters.path)).size === 10 && WF13.nodes.filter(n => n.type.endsWith('webhook')).every(n => n.parameters.httpMethod === 'POST'));
+    check('every 13 webhook path is unique and POST', new Set(WF13.nodes.filter(n => n.type.endsWith('webhook')).map(n => n.parameters.path)).size === 11 && WF13.nodes.filter(n => n.type.endsWith('webhook')).every(n => n.parameters.httpMethod === 'POST'));
   }
   console.log(`# pass ${pass}  fail ${fail}`);
   process.exit(fail ? 1 : 0);

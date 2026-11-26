@@ -6,9 +6,10 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
-import { Anton_400Regular } from '@expo-google-fonts/anton';
+import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
+import { BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold } from '@expo-google-fonts/bricolage-grotesque';
 import { AlfaSlabOne_400Regular } from '@expo-google-fonts/alfa-slab-one';
-import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
+import { Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { ThemeProvider, useTheme } from '../ui/theme';
 import { UiHosts } from '../ui/Hosts';
 import { boot, onForeground, useStore, view, S } from '../state/store';
@@ -48,7 +49,7 @@ function Gate() {
 }
 
 export default function RootLayout() {
-  const [fontsOk, fontErr] = useFonts({ Anton_400Regular, AlfaSlabOne_400Regular, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold });
+  const [fontsOk, fontErr] = useFonts({ AlfaSlabOne_400Regular, Poppins_600SemiBold, Poppins_700Bold, PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold, BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold });
   useStore();
   useEffect(() => {
     boot();

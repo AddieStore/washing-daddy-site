@@ -107,13 +107,8 @@ function mkMap(el, onPick) {
   if (window.L && L.map) {
     try {
       lm = L.map(el, { zoomControl: true, scrollWheelZoom: false }).setView([28.669, 77.096], 14);
-      const dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
-      // CARTO tiles first; if they fail to load (blocked or down), switch once to the OpenStreetMap tile server
-      const carto = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`, { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }).addTo(lm);
-      let fails = 0, loaded = 0, swapped = false;
-      carto.on('tileload', () => { loaded++ });
-      carto.on('tileerror', () => { if (swapped || loaded > 0 || ++fails < 3) return; swapped = true; lm.removeLayer(carto);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(lm) });
+      // OpenStreetMap tiles: CARTO's free tiles now answer with an "API key required" picture instead of failing, so they cannot be used
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(lm);
     } catch (e) { console.warn('leaflet', e); lm = null; el.innerHTML = ''; el.className = el.className.replace(/leaflet\S*/g, '') }
   }
   if (lm) {
@@ -508,7 +503,7 @@ function boardView() {
 }
 function attView() {
   const a = OPSB.attendance(), L = OPSB.S.loaded.att; if (!a.rows.length && !a.absent.length) return rsl(L) || empty('No check-ins on ' + dShort(OPSB.day) + '.');
-  return `<div class="cardlist">${a.rows.map(r => `<div class="rowc plain"><div class="gr"><b>${esc(r.name)}</b><span class="s">In ${esc(OPS.fmtTime(r.check_in_at) || '-')} · out ${esc(OPS.fmtTime(r.check_out_at) || 'still working')} · ${num(r.hours).toFixed(1)} h</span><span class="s">${num(r.cars_done)} done · ${num(r.cars_skipped)} skipped${r.last_seen_at ? ' · seen ' + esc(OPS.ago(r.last_seen_at)) : ''}</span></div>${safeSrc(r.check_in_photo) ? `<img class="avatar" src="${esc(r.check_in_photo)}" alt="Check-in selfie" data-act="zoom" data-src="${esc(r.check_in_photo)}">` : ''}</div>`).join('')}
+  return `<div class="cardlist">${a.rows.map(r => `<div class="rowc plain"><div class="gr"><b>${esc(r.name)}</b><span class="s">In ${esc(OPS.fmtTime(r.check_in_at) || '-')} · out ${esc(OPS.fmtTime(r.check_out_at) || 'still working')} · ${num(r.hours).toFixed(1)} h</span><span class="s">${num(r.cars_done)} done · ${num(r.cars_skipped)} skipped${r.last_seen_at ? ' · seen ' + esc(OPS.ago(r.last_seen_at)) : ''}</span>${r.check_in_uniform ? `<span class="s"><span class="pill ${r.check_in_uniform.shirt_match ? 'green' : 'amber'}">${r.check_in_uniform.shirt_match ? esc(({ blue: 'Blue', white: 'White' })[r.check_in_uniform.shirt_color] || 'WD') + ' T-shirt verified' : 'T-shirt not verified: check the photo'}</span></span>` : ''}</div>${safeSrc(r.check_in_photo) ? `<img class="avatar" src="${esc(r.check_in_photo)}" alt="Check-in selfie" data-act="zoom" data-src="${esc(r.check_in_photo)}">` : ''}</div>`).join('')}
     ${a.absent.map(r => `<div class="rowc plain"><div class="gr"><b>${esc(r.name)}</b><span class="s">Has a round but no check-in</span></div><span class="pill red">Absent</span></div>`).join('')}</div>`;
 }
 function skipView() {
@@ -746,7 +741,7 @@ async function boot() {
   $('#hLogo').innerHTML = ic('drop', 22);
   if (DEMO) $('#bBack').href = '../app/?demo=1';
   window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (SECS[h] && h !== UI.sec && !$('#app').hidden) goto(h, true) });
-  if (DEMO) { OPS.demo(); return show() }
+  if (DEMO) { OPS.demo(); try { OPSB.demo() } catch (e) { console.warn(e) } return show() }
   try { await loadScript('../wd-sync.js') } catch (e) { return showGate("Couldn't load. Check the internet.") }
   WDAuth.ready().then(signedIn);
 }

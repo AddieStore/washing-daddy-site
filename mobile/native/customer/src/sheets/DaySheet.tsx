@@ -7,6 +7,7 @@ import { C, SP } from '../theme';
 import { Txt as KTxt, TxtProps } from '../ui/kit';
 import { P, NUM, Tap, POutline } from '../ui/pr';
 import { IMG } from '../img';
+import { WashGlyph, type GlyphKind } from '../ui/washGlyph';
 import { SPOT_LABEL, Photo, COND_LABEL, ISSUE_LABEL, ABANDON_LABEL, TASK_LABEL } from '../data/model';
 import { TODAY, fmt, iso, parse, ampm, t2m, hm } from '../data/dates';
 import { car, doc, dayDetail, realAcct, photosOf, carryNote, ratedToday, requestsFor, history7, activeStage } from '../state';
@@ -15,11 +16,11 @@ const Txt = (p: TxtProps) => <KTxt {...p} color={p.color ?? P.ink} />;
 const ND = Platform.OS !== 'web';
 const SAFFRON = '#FFBA08', SAFFRON_D = '#B45309';
 // one colour + icon per stage / task, all from the violet / saffron family plus a few warm and cool accents
-const TASK_STYLE: Record<string, { c: string; i: string }> = {
-  pressure: { c: '#5409DA', i: '💦' }, foam: { c: '#8B5CF6', i: '🫧' }, interior: { c: '#F59E0B', i: '🧽' },
-  tyre: { c: '#EA580C', i: '🛞' }, detailing: { c: '#C026D3', i: '✨' }, dry: { c: '#0EA5E9', i: '🧺' }, other: { c: '#7C3AED', i: '✓' },
+const TASK_STYLE: Record<string, { c: string; i: string; g: GlyphKind }> = {
+  pressure: { c: '#5409DA', i: '💦', g: 'pressure' }, foam: { c: '#8B5CF6', i: '🫧', g: 'foam' }, interior: { c: '#F59E0B', i: '🧽', g: 'interior' },
+  tyre: { c: '#EA580C', i: '🛞', g: 'tyre' }, detailing: { c: '#C026D3', i: '✨', g: 'detailing' }, dry: { c: '#0EA5E9', i: '🧺', g: 'dry' }, other: { c: '#7C3AED', i: '✓', g: 'other' },
 };
-const STAGE_STYLE = { onway: { c: '#7C3AED', i: '🛵' }, arrived: { c: '#A855F7', i: '📍' }, started: { c: '#4F46E5', i: '▶' }, finished: { c: SAFFRON, i: '🏁' } };
+const STAGE_STYLE: Record<string, { c: string; i: string; g: GlyphKind }> = { onway: { c: '#7C3AED', i: '🛵', g: 'onway' }, arrived: { c: '#A855F7', i: '📍', g: 'arrived' }, started: { c: '#4F46E5', i: '▶', g: 'started' }, finished: { c: '#E09A00', i: '🏁', g: 'finished' } };
 const SPOT_ORDER = ['driver_mat', 'passenger_mat', 'back_seat', 'boot', 'dashboard'];
 const keyOf = (label: string) => { const l = label.toLowerCase(); return l.includes('foam') ? 'foam' : l.includes('interior') || l.includes('mat') || l.includes('seat') ? 'interior' : l.includes('tyre') ? 'tyre' : l.includes('detail') || l.includes('polish') ? 'detailing' : l.includes('dr') && l.includes('hand') ? 'dry' : l.includes('pressure') ? 'pressure' : 'other' };
 const dur = (a?: string | null, b?: string | null) => (a && b ? Math.max(0, t2m(b) - t2m(a)) : null);
@@ -38,6 +39,13 @@ type Model = {
 
 const m2 = (m: number) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(Math.round(m % 60)).padStart(2, '0');
 
+/** the photos of a day (before, after, inside spots, flagged) for the thumbnail strip on the Daily cards; [] when there are none */
+export function dayPhotos(date: string): { src: any; label: string }[] {
+  try {
+    const m = buildModel(date);
+    return [m.before, m.after, ...m.spots.map(x => x.ph), ...m.flagged].filter(Boolean).map(p => ({ src: p!.src, label: p!.label }));
+  } catch { return [] }
+}
 function buildModel(date: string): Model { return { cond: null, issues: [], damage: null, stopped: null, ...build0(date) } as Model }
 const reasonOf = (r: string) => ABANDON_LABEL[r] || r;
 type Part = Omit<Model, 'cond' | 'issues' | 'damage' | 'stopped'> & Partial<Pick<Model, 'cond' | 'issues' | 'damage' | 'stopped'>>;
@@ -217,14 +225,14 @@ function PhotosCard({ m, onZoom }: { m: Model; onZoom: (p: Ph) => void }) {
 }
 
 /* ---------- the time stem ---------- */
-type Node = { key: string; c: string; i: string; title: string; sub?: string; at: string | null; gap: number | null; done: boolean };
+type Node = { key: string; c: string; i: string; g: GlyphKind; title: string; sub?: string; at: string | null; gap: number | null; done: boolean };
 function nodesOf(m: Model): Node[] {
   const raw: Omit<Node, 'gap'>[] = [];
   if (m.on) raw.push({ key: 'on', ...STAGE_STYLE.onway, title: `${m.washer} set off`, sub: 'On the way with the pressure washer', at: m.on, done: true });
   if (m.arr) raw.push({ key: 'arr', ...STAGE_STYLE.arrived, title: 'Reached your car', at: m.arr, done: true });
   if (m.st) raw.push({ key: 'st', ...STAGE_STYLE.started, title: 'Wash started', at: m.st, done: true });
-  m.tasks.forEach((t, i) => { const s = TASK_STYLE[t.key] || TASK_STYLE.other; raw.push({ key: 't' + i, c: s.c, i: s.i, title: t.label, sub: t.done ? undefined : 'Next', at: t.at, done: t.done }); });
-  if (m.stopped) raw.push({ key: 'stop', c: '#DC2626', i: '⏹', title: 'Stopped', sub: `${m.stopped.reason} · ${m.stopped.minutes} min spent`, at: null, done: true });
+  m.tasks.forEach((t, i) => { const s = TASK_STYLE[t.key] || TASK_STYLE.other; raw.push({ key: 't' + i, c: s.c, i: s.i, g: s.g, title: t.label, sub: t.done ? undefined : 'Next', at: t.at, done: t.done }); });
+  if (m.stopped) raw.push({ key: 'stop', c: '#DC2626', i: '⏹', g: 'stop', title: 'Stopped', sub: `${m.stopped.reason} · ${m.stopped.minutes} min spent`, at: null, done: true });
   if (m.fin && !m.stopped) raw.push({ key: 'fin', ...STAGE_STYLE.finished, title: m.minutes ? `Finished in ${m.minutes} min` : 'Finished', sub: 'Photos sent here and on WhatsApp', at: m.fin, done: true });
   let prev: string | null = null;
   return raw.map(n => { const g = n.at && prev ? dur(prev, n.at) : null; if (n.at) prev = n.at; return { ...n, gap: g }; });
@@ -248,7 +256,7 @@ function StemRow({ n, i, last, pulse }: { n: Node; i: number; last: boolean; pul
         <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
           {pulse ? <Animated.View style={[{ position: 'absolute', width: 36, height: 36, borderRadius: 18, backgroundColor: n.c }, ring]} /> : null}
           <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: n.done ? n.c : '#fff', borderWidth: 2, borderColor: n.c, alignItems: 'center', justifyContent: 'center', shadowColor: n.c, shadowOpacity: 0.35, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }}>
-            <Txt size={16}>{n.i}</Txt>
+            <WashGlyph kind={n.g} size={24} ink={n.done ? '#fff' : n.c} acc={n.done ? '#FFD166' : n.c} />
           </View>
         </View>
         <View style={{ flex: 1 }}>

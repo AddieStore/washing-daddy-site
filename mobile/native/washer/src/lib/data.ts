@@ -6,6 +6,7 @@ export type Car = {
   plate: string; reg: string; make: string; model: string; label: string; plan: PlanId;
   img?: 'scorpio' | 'civic'; type: CarType; color: string; house: string; spot: string;
   customer: string; phone?: string; keys?: string; fee?: number | null;
+  society?: string;   // the housing society; `house` is then the flat / house number inside it
   mine?: boolean; pending?: boolean; status?: string;   // cars the washer added himself (newcars/)
 };
 export type WashStatus = 'scheduled' | 'on_the_way' | 'arrived' | 'washing' | 'done' | 'skipped';
@@ -76,8 +77,10 @@ export const OWNER_PHONE = '+917701808924';
 export const OWNER_WA = '917701808924';
 const N8N_HOOKS = 'https://n8n.washingdaddy.com/webhook/';
 export const BOOK_URL = N8N_HOOKS + 'wd-washer-cars';
+export const ROUNDS_URL = N8N_HOOKS + 'wd-washer-rounds';   // list rounds / take a round (n8n workflow 16)
 export const PIN_URL = N8N_HOOKS + 'wd-washer-pin';   // phone + PIN login (n8n workflow 12)
-export const SHARE = 0.5;   // half of what a car pays is the washer's
+export let SHARE = 0.5;   // half of what a car pays is the washer's; HQ can change it (appcfg/customer.washerSharePct)
+export const setShare = (v: number) => { if (isFinite(v) && v >= 0.1 && v <= 0.9) SHARE = v };
 
 export const STATUS: Record<WashStatus, string> = { scheduled: 'Baaki', on_the_way: 'Raaste mein', arrived: 'Pahunch gaye', washing: 'Wash chal raha', done: 'Ho gaya', skipped: 'Skip' };
 export const SKIPS = ['Gaadi nahi mili', 'Baarish', 'Gate band tha', 'Customer ne mana kiya', 'Gaadi nikal chuki thi'];
@@ -108,7 +111,7 @@ export const mapsOf = (j: { lat?: unknown; lng?: unknown; area?: string }) => {
 };
 // Google Maps link for a round car: the area pin if we know it, else a search on society, spot and Paschim Vihar
 export const navOf = (c?: Car | null) => {
-  const a = String(c?.house || '').trim();
+  const a = String(c?.society || c?.house || '').trim();
   if (!a) return null;
   return AREA_LL[a] ? mapsOf({ area: a }) : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([a, c!.spot, 'Paschim Vihar, Delhi'].filter(Boolean).join(', '))}`;
 };
@@ -138,7 +141,7 @@ export function shapeBookCar(c: Record<string, unknown>): Car {
   return {
     ...(c as object), plate: String(c.plate), reg: normReg(c.plate), make, model, label: (make ? make + ' ' : '') + model,
     plan: isPlan(c.plan) ? c.plan : 'std', type: (['suv', 'mpv', 'sedan', 'hatch'].includes(String(c.type)) ? c.type : 'suv') as CarType,
-    color: safeColor(c.color), house: String(c.house || ''), spot: String(c.spot || ''), customer: String(c.customer || 'Customer'),
+    color: safeColor(c.color), society: c.society ? String(c.society) : undefined, house: String(c.house || ''), spot: String(c.spot || ''), customer: String(c.customer || 'Customer'),
     phone: c.phone ? String(c.phone) : undefined, fee: numOr(c.fee, null), img: undefined,
   };
 }
@@ -147,22 +150,32 @@ export function shapeBookCar(c: Record<string, unknown>): Car {
 // The installed app never shows these: its round comes from the book.
 const demo = (c: Omit<Car, 'reg' | 'label'>): Car => ({ ...c, reg: normReg(c.plate), label: c.make + ' ' + c.model });
 export const DEMO_ROSTER: Record<string, Car[]> = {
+  // Chotte's morning: 10 cars in two societies, in the order operations wants them washed (first car on top).
   chotte: [
-    demo({ plate: 'DL 4C AB 2731', make: 'Mahindra', model: 'Scorpio N', plan: 'pro', img: 'scorpio', type: 'suv', color: '#3c4436', house: 'House 212', spot: 'Gate ke bahar, neem ke neeche', customer: 'Arjun M.', keys: 'Chaabi guard ke paas', phone: '9876504210', fee: 1800 }),
-    demo({ plate: 'DL 3C BK 0419', make: 'Honda', model: 'Civic', plan: 'std', img: 'civic', type: 'sedan', color: '#e9e9ec', house: 'House 212', spot: 'Gate ke andar', customer: 'Arjun M.', keys: 'Customer khud kholenge', phone: '9876504210', fee: 999 }),
-    demo({ plate: 'DL 8C AF 5521', make: 'Toyota', model: 'Fortuner', plan: 'pro', type: 'suv', color: '#f2f2f0', house: 'House 198', spot: 'Corner wali parking', customer: 'Mehra ji', phone: '9811000198', fee: 1800 }),
-    demo({ plate: 'HR 26 DK 4471', make: 'Kia', model: 'Seltos', plan: 'pro', type: 'suv', color: '#b3261e', house: 'House 240', spot: 'Park ke saamne', customer: 'Sana K.', phone: '9811000240', fee: 1800 }),
-    demo({ plate: 'DL 1C Z 4410', make: 'Maruti', model: 'Swift', plan: 'legacy', type: 'hatch', color: '#2e6fd8', house: 'House 251', spot: 'Lane 3, bijli ke khambe ke paas', customer: 'Gupta ji', phone: '9811000251', fee: 600 }),
-    demo({ plate: 'DL 7C Q 1186', make: 'MG', model: 'Hector', plan: 'pro', type: 'suv', color: '#1d1d22', house: 'House 266', spot: 'Basement gate', customer: 'Rohit S.', phone: '9811000266', fee: 1800 }),
-    demo({ plate: 'DL 9C AX 3302', make: 'Hyundai', model: 'Creta', plan: 'std', type: 'suv', color: '#8a8f98', house: 'House 289', spot: 'Ghar ke saamne', customer: 'Kapoor ji', phone: '9811000289', fee: 999 }),
-    demo({ plate: 'DL 2C AR 6640', make: 'Toyota', model: 'Innova Hycross', plan: 'exc', type: 'mpv', color: '#cfc7b8', house: 'House 301', spot: 'Society gate no. 2', customer: 'Bhatia ji', phone: '9811000301', fee: 2500 }),
+    demo({ plate: 'DL 4C AB 2731', make: 'Mahindra', model: 'Scorpio N', plan: 'pro', img: 'scorpio', type: 'suv', color: '#3c4436', society: 'GH-9 Paschim Vihar', house: 'Flat 212', spot: 'Tower A, neem ke neeche', customer: 'Arjun M.', keys: 'Chaabi guard ke paas', phone: '9876504210', fee: 1800 }),
+    demo({ plate: 'DL 3C BK 0419', make: 'Honda', model: 'Civic', plan: 'std', img: 'civic', type: 'sedan', color: '#e9e9ec', society: 'GH-9 Paschim Vihar', house: 'Flat 214', spot: 'Tower A, basement', customer: 'Arjun M.', keys: 'Customer khud kholenge', phone: '9876504210', fee: 999 }),
+    demo({ plate: 'DL 8C AF 5521', make: 'Toyota', model: 'Fortuner', plan: 'pro', type: 'suv', color: '#f2f2f0', society: 'GH-9 Paschim Vihar', house: 'Flat 198', spot: 'Corner wali parking', customer: 'Mehra ji', phone: '9811000198', fee: 1800 }),
+    demo({ plate: 'HR 26 DK 4471', make: 'Kia', model: 'Seltos', plan: 'pro', type: 'suv', color: '#b3261e', society: 'GH-9 Paschim Vihar', house: 'Flat 240', spot: 'Park ke saamne', customer: 'Sana K.', phone: '9811000240', fee: 1800 }),
+    demo({ plate: 'DL 1C Z 4410', make: 'Maruti', model: 'Swift', plan: 'legacy', type: 'hatch', color: '#2e6fd8', society: 'GH-9 Paschim Vihar', house: 'Flat 251', spot: 'Lane 3, bijli ke khambe ke paas', customer: 'Gupta ji', phone: '9811000251', fee: 600 }),
+    demo({ plate: 'DL 7C Q 1186', make: 'MG', model: 'Hector', plan: 'pro', type: 'suv', color: '#1d1d22', society: 'GH-9 Paschim Vihar', house: 'Flat 266', spot: 'Basement gate', customer: 'Rohit S.', phone: '9811000266', fee: 1800 }),
+    demo({ plate: 'DL 9C AX 3302', make: 'Hyundai', model: 'Creta', plan: 'std', type: 'suv', color: '#8a8f98', society: 'GH-6 Paschim Vihar', house: 'Flat 12', spot: 'Gate no. 1 ke andar', customer: 'Kapoor ji', phone: '9811000289', fee: 999 }),
+    demo({ plate: 'DL 2C AR 6640', make: 'Toyota', model: 'Innova Hycross', plan: 'exc', type: 'mpv', color: '#cfc7b8', society: 'GH-6 Paschim Vihar', house: 'Flat 31', spot: 'Society gate no. 2', customer: 'Bhatia ji', phone: '9811000301', fee: 2500 }),
+    demo({ plate: 'DL 6C M 3391', make: 'Hyundai', model: 'Verna', plan: 'std', type: 'sedan', color: '#6b6f76', society: 'GH-6 Paschim Vihar', house: 'Flat 45', spot: 'Block C parking', customer: 'Neha T.', phone: '9811001402', fee: 999 }),
+    demo({ plate: 'DL 5C N 7720', make: 'Tata', model: 'Nexon', plan: 'std', type: 'suv', color: '#1f8a8a', society: 'GH-6 Paschim Vihar', house: 'Flat 58', spot: 'Block C, lift ke paas', customer: 'Anand R.', phone: '9811001488', fee: 999 }),
   ],
   shahrukh: [
-    demo({ plate: 'DL 5C N 7720', make: 'Tata', model: 'Nexon', plan: 'std', type: 'suv', color: '#1f8a8a', house: 'GH-14, 88', spot: 'Tower B parking', customer: 'Anand R.', phone: '9811001488', fee: 999 }),
-    demo({ plate: 'DL 6C M 3391', make: 'Hyundai', model: 'Verna', plan: 'std', type: 'sedan', color: '#6b6f76', house: 'GH-14, 102', spot: 'Gate ke paas', customer: 'Neha T.', phone: '9811001402', fee: 999 }),
-    demo({ plate: 'DL 4C AN 9013', make: 'Mahindra', model: 'XUV 700', plan: 'pro', type: 'suv', color: '#0f2a4a', house: 'Meera Bagh, 41', spot: 'Ghar ke bahar', customer: 'Singh sahab', phone: '9811004141', fee: 1800 }),
-    demo({ plate: 'DL 3C CE 2208', make: 'Maruti', model: 'Baleno', plan: 'legacy', type: 'hatch', color: '#c0392b', house: 'Sundar Vihar, 17', spot: 'Gali ke end mein', customer: 'Verma ji', phone: '9811001717', fee: 500 }),
-    demo({ plate: 'DL 8C BB 6075', make: 'Skoda', model: 'Slavia', plan: 'std', type: 'sedan', color: '#e8e3d8', house: 'Guru Hari Apt, C-4', spot: 'Visitor parking', customer: 'Iyer ji', phone: '9811000004', fee: 999 }),
-    demo({ plate: 'DL 1C AA 0550', make: 'Toyota', model: 'Camry', plan: 'res', type: 'sedan', color: '#121212', house: 'Sundar Vihar, 3', spot: 'Garage', customer: 'Malik sahab', phone: '9811000003', fee: 5555 }),
+    demo({ plate: 'DL 5C N 7720', make: 'Tata', model: 'Nexon', plan: 'std', type: 'suv', color: '#1f8a8a', society: 'GH-14 Paschim Vihar', house: 'Flat 88', spot: 'Tower B parking', customer: 'Anand R.', phone: '9811001488', fee: 999 }),
+    demo({ plate: 'DL 6C M 3391', make: 'Hyundai', model: 'Verna', plan: 'std', type: 'sedan', color: '#6b6f76', society: 'GH-14 Paschim Vihar', house: 'Flat 102', spot: 'Gate ke paas', customer: 'Neha T.', phone: '9811001402', fee: 999 }),
+    demo({ plate: 'DL 4C AN 9013', make: 'Mahindra', model: 'XUV 700', plan: 'pro', type: 'suv', color: '#0f2a4a', society: 'Meera Bagh', house: 'House 41', spot: 'Ghar ke bahar', customer: 'Singh sahab', phone: '9811004141', fee: 1800 }),
+    demo({ plate: 'DL 3C CE 2208', make: 'Maruti', model: 'Baleno', plan: 'legacy', type: 'hatch', color: '#c0392b', society: 'Sundar Vihar', house: 'House 17', spot: 'Gali ke end mein', customer: 'Verma ji', phone: '9811001717', fee: 500 }),
+    demo({ plate: 'DL 1C AA 0550', make: 'Toyota', model: 'Camry', plan: 'res', type: 'sedan', color: '#121212', society: 'Sundar Vihar', house: 'House 3', spot: 'Garage', customer: 'Malik sahab', phone: '9811000003', fee: 5555 }),
+    demo({ plate: 'DL 8C BB 6075', make: 'Skoda', model: 'Slavia', plan: 'std', type: 'sedan', color: '#e8e3d8', society: 'Guru Hari Apartments', house: 'Flat C-4', spot: 'Visitor parking', customer: 'Iyer ji', phone: '9811000004', fee: 999 }),
   ],
 };
+
+// A round = every car of one area collected into one list. Any washer can take a round; its cars then go to him.
+export type RoundInfo = { id: string; name: string; areas: string; count: number };
+export const DEMO_ROUND_META: { id: string; name: string; areas: string }[] = [
+  { id: 'chotte', name: 'Paschim Vihar Round A', areas: 'GH-9 · GH-6 Paschim Vihar' },
+  { id: 'shahrukh', name: 'Paschim Vihar Round B', areas: 'GH-14 · Meera Bagh · Sundar Vihar' },
+];

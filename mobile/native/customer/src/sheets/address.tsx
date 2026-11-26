@@ -50,7 +50,7 @@ export function SearchBox({ value, onChange, placeholder = 'Search for your loca
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: 48, borderRadius: 12, paddingHorizontal: 12, backgroundColor: RAISED, borderWidth: f ? 1.5 : 1, borderColor: f ? C.violet : 'transparent' }}>
       <Search size={18} color={C.violet} strokeWidth={1.5} />
-      <TextInput value={value} onChangeText={onChange} onFocus={() => setF(true)} onBlur={() => setF(false)} placeholder={placeholder} placeholderTextColor={MUTE} style={[{ flex: 1, fontFamily: 'Poppins_400Regular', fontSize: 14, color: INK, paddingVertical: 0, includeFontPadding: false, textAlignVertical: 'center' }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]} />
+      <TextInput value={value} onChangeText={onChange} onFocus={() => setF(true)} onBlur={() => setF(false)} placeholder={placeholder} placeholderTextColor={MUTE} style={[{ flex: 1, fontFamily: 'PlusJakartaSans_400Regular', fontSize: 15, color: INK, paddingVertical: 0, includeFontPadding: false, textAlignVertical: 'center' }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]} />
       {value ? <Pressable accessibilityLabel="Clear" hitSlop={8} onPress={() => onChange('')}><Close size={16} color={MUTE} strokeWidth={1.5} /></Pressable> : null}
     </View>
   );

@@ -6,7 +6,7 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { Button, CarArt, Chip, Empty, F, Group, Icon, PullToRefresh, Row, SectionLabel, StickyBar, Pressy, ui, useTheme } from '../ui';
 import { WorkingArt } from '../ui/art';
 import { CarPic } from '../screens/CarPhoto';
-import { Route, RT, W, act, route, photoSrc, carBy, ensureDay, openReqs, planName, skipAsk, S, useStore, DAY, view, MIN_PHOTOS, MIN_BEFORE, photoNeeds } from '../state/store';
+import { Route, RT, W, act, route, photoSrc, carBy, ensureDay, openReqs, planName, skipAsk, S, useStore, DAY, view, MIN_PHOTOS, photoNeeds } from '../state/store';
 import { STATUS, navOf, telOf } from '../lib/data';
 import type { Photo } from '../lib/data';
 import { SPOTS, isSundayIST } from '../lib/washGuide';
@@ -244,13 +244,13 @@ export default function JobScreen() {
   else bar = nxReg && nxCar ? { ...nextBar, summary: t('Skip kiya'), summaryLabel: t('Aaj ke liye') } : { label: t('Round par wapas'), onPress: leave, summary: t('Skip kiya'), summaryLabel: t('Aaj ke liye') };
 
   const photoHint = need && need.sunday
-    ? t(`Pehle ki ${Math.max(0, MIN_BEFORE - need.before)}, baad ki ${Math.max(0, MIN_PHOTOS - afterN)} aur andar ki ${need.missing.length} photo baaki hain, phir wash band hogi`)
-    : t(`Pehle ki ${Math.min(need ? need.before : 0, MIN_BEFORE)}/${MIN_BEFORE} aur baad ki ${Math.min(afterN, MIN_PHOTOS)}/${MIN_PHOTOS} photo lo, phir wash band hogi`);
+    ? t(`Gaadi ki ${Math.max(0, MIN_PHOTOS - afterN)} aur andar ki ${need.missing.length} photo baaki hain, phir wash band hogi`)
+    : t(`Gaadi ki ${Math.min(afterN, MIN_PHOTOS)}/${MIN_PHOTOS} photo lo, phir wash band hogi`);
 
   return (
     <View style={{ flex: 1, backgroundColor: th.bg }}>
       <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-        <ScreenBar title={car.house} back onBack={goRound} />
+        <ScreenBar title={car.society ? `${car.society} · ${car.house}` : car.house} back onBack={goRound} />
         <View style={{ paddingHorizontal: 16, gap: 12 }}>
           <CarHeader reg={reg} st={st} />
           <Stepper steps={steps} />
@@ -339,11 +339,11 @@ export default function JobScreen() {
               <Group>
                 <View style={{ padding: 14, gap: 12 }}>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    {(['before', 'after', 'issue'] as const).map(k => (
+                    {(['after', 'issue'] as const).map(k => (
                       <Shot key={k} kind={k} list={photosOf(k)} enabled={!!wd} onTake={() => { void shoot(k) }} onView={() => viewShot(k)} />
                     ))}
                   </View>
-                  <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 17, color: th.grey }}>{t(`Pehle ki 1 aur baad ki kam se kam ${MIN_PHOTOS} photo zaroori`)}</Text>
+                  <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 17, color: th.grey }}>{t(`Wash khatam hone par gaadi ki ${MIN_PHOTOS} photo zaroori. Shuru mein koi photo nahi.`)}</Text>
                 </View>
               </Group>
             </>

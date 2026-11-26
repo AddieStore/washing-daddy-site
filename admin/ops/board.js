@@ -28,6 +28,13 @@ B.start = day => {
   listen('rat', db.collection('ratings').where('date', '>=', add(OPS.today(), -45)));
   listen('comp', db.collection('complaints'));
 };
+/* demo: nothing is read from Firestore; the rounds screens show today's sample washes from OPS and empty lists elsewhere */
+B.demo = () => {
+  B.day = OPS.today(); B.month = B.day.slice(0, 7);
+  S.washes = {}; Object.entries(OPS.S.washes || {}).forEach(([id, w]) => { S.washes[id] = { date: B.day, ...w } });
+  ['washes', 'att', 'earn', 'pay', 'rat', 'comp'].forEach(k => { S.loaded[k] = true });
+  emit();
+};
 B.stop = () => { Object.values(unsubs).forEach(u => { try { u() } catch (e) {} }); unsubs = {} };
 B.setDay = day => { if (!db) { B.day = day; return emit() } B.day = day; watchWashes(); listen('att', db.collection('attendance').where('date', '==', day)); if (day.slice(0, 7) !== B.month) B.setMonth(day.slice(0, 7)); emit() };
 B.setMonth = m => { B.month = m; if (db) listen('earn', db.collection('earnings').where('date', '>=', m + '-01')); emit() };

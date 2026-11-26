@@ -57,7 +57,7 @@ export default function Money({ tab }: { tab?: boolean }) {
               <Txt size={14} color="rgba(255,255,255,0.8)">{WALLET.name} balance</Txt>
               <Tap label="About your balance" onPress={openWalletInfo} hitSlop={10} style={{ padding: 2 }}><Info size={16} color="rgba(255,255,255,0.85)" strokeWidth={1.5} /></Tap>
             </View>
-            <CountUp to={rs(w.balance)} style={[TNUM, { marginTop: 4, fontFamily: 'Poppins_700Bold', fontSize: 38, lineHeight: 46, letterSpacing: -0.5, color: '#fff' }]} />
+            <CountUp to={rs(w.balance)} style={[TNUM, { marginTop: 4, fontFamily: 'PlusJakartaSans_700Bold', fontSize: 38, lineHeight: 46, letterSpacing: -0.5, color: '#fff' }]} />
             <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
               <Txt size={13} color="rgba(255,255,255,0.8)">Cash {rs(w.cash)}</Txt>
               <Txt size={13} color="rgba(255,255,255,0.8)">Rewards {rs(w.promo)}</Txt>

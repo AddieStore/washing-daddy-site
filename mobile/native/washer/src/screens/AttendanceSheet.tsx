@@ -2,6 +2,7 @@
 // WD T-shirt. The T-shirt colour is checked on the phone (lib/shirt.ts); the cap cannot be, so he ticks it himself
 // and the manager reviews the photo in the admin panel. After 2 misses he can still send it: nobody is locked out.
 import React, { useRef, useState } from 'react';
+import { router } from 'expo-router';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -15,7 +16,7 @@ import { SheetTitle } from './sheets';
 const MAX_PHOTO = 40000;   // chars of the data URL the checkins doc may carry
 
 /** Run the colour check on a ~48px JPEG of the photo. null when it cannot be read (the washer is not blocked). */
-async function readShirt(uri: string): Promise<ShirtResult | null> {
+export async function readShirt(uri: string): Promise<ShirtResult | null> {
   try {
     const r = await manipulateAsync(uri, [{ resize: { width: 48 } }], { compress: 0.8, format: SaveFormat.JPEG, base64: true });
     return r.base64 ? checkShirtJpeg(r.base64) : null;
@@ -136,5 +137,6 @@ function AttendanceBody({ close }: { close: () => void }) {
 
 /** Check-in entry point: the sheet first, act.checkIn() only once the photo is accepted. */
 export function openAttendance() {
-  sheet.open(close => <AttendanceBody close={close} />);
+  router.navigate('/attendance' as any);   // attendance is its own tab now; the old sheet below is kept for reference only
 }
+export const OldAttendanceSheet = () => sheet.open(close => <AttendanceBody close={close} />);

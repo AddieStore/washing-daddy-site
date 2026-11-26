@@ -11,7 +11,7 @@ import { backend, type Data, type DbError, type Unsub } from '../backend';
 import { isoIST, dateIST, addDaysStr, daysInMonth } from '../lib/time';
 import { PLAN, TASK, tasksFor, normReg, isPlan, type TaskKey } from '../lib/schedule';
 import {
-  WASHERS, ensureRound, PHONE_TO_WASHER, DEMO_ROSTER, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
+  WASHERS, ensureRound, PHONE_TO_WASHER, setShare, DEMO_ROSTER, DEMO_ROUND_META, type RoundInfo, ROUNDS_URL, BOOK_URL, PIN_URL, SHARE, REQ_KIND, cleanWash, cleanReq, shapeBookCar,
   type Car, type Wash, type Req, type Job, type WasherDoc, type KitItem, type KitKind, type WasherInfo, type Photo,
 } from '../lib/data';
 import { setLang, t } from '../lib/i18n';
@@ -24,12 +24,11 @@ import { ui } from '../ui/bus';
 import { registerPushToken, clearPushToken } from '../lib/pushToken';
 import { mirrorCheckIn, mirrorFirstCar, writeCheckOut, startHeartbeat, loadAttendance } from '../backend/attendance';
 import { buildLedger, ledgerWriter } from '../backend/earnings';
-import { demoSample } from '../lib/demoSample';
 import { requestPinToken, PIN_MSG, isPin } from '../lib/pinLogin';
 
 const { db, auth } = backend;
 // a wash can only be closed once these photos are taken: 1 before, 2 after of the car (Sunday and a carried interior: also the 5 inside spots)
-export const MIN_BEFORE = 1
+export const MIN_BEFORE = 0   // photos are asked only when the wash is closed: 2 of the finished car, none at the start
 export const MIN_PHOTOS = 2
 /** What the photo gate needs. `sunday` means the inside spots are needed too: a Sunday wash, or a Sunday interior carried to today. */
 export function photoNeeds(w: { started_at?: string | null; sunday?: boolean; carried_task?: string; photos: { kind: string; spot?: string }[] }) {
@@ -52,7 +51,7 @@ type Session = { washerId: string | null; real?: boolean; name?: string; phone?:
 // slots/order/locked: the round as a timeline (lib/slots.ts): which slot each car sits in, the order, and whether the washer locked it
 type Day = { date: string; washer: string; started: boolean; startedAt: string | null; washes: Record<string, Wash>; slots?: Record<string, number>; order?: string[]; locked?: boolean; locked_at?: string | null; checkin_at?: string | null; checkin_photo?: string | null; checkin_uniform?: Uniform | null; checkout_at?: string | null };
 // the check-in selfie: shirt_match/shirt_share come from lib/shirt.ts; the cap is ticked by the washer and reviewed by the manager
-export type Uniform = { shirt_match: boolean; shirt_share: number; self_confirmed: true };
+export type Uniform = { shirt_match: boolean; shirt_share: number; self_confirmed?: true; shirt_color?: string };
 type Selfie = { date: string; washer: string; url?: string; asset_id?: string };
 // the app language the washer picked in onboarding; only 'hinglish' and 'hi' are translated today, the rest fall back (see act.setLangPref)
 export type LangPref = Lang;
@@ -60,6 +59,8 @@ type State = {
   session: Session | null; online: boolean; theme: 'light' | 'dark' | 'auto'; lang: Lang;
   lang_pref?: LangPref; onboarded?: Record<string, string>;   // onboarded: 10-digit phone -> when the first-run onboarding was finished
   day: Day | null; outbox: Record<string, Wash>; rejected?: Record<string, Wash>; current: string | null;
+  round?: string;      // demo: the round (roster id) this washer took; real rounds come from the book
+  passed?: string[];   // extra-job offers this washer denied (an assigned job can never be denied)
   wins?: Record<string, string>;   // outbox key -> updated_at of a doc that must beat the server's copy (unskip, carry-over)
   selfie: Selfie | null; hist: Record<string, number>; attend?: Attend; carPhotos?: Record<string, { url: string; at: string; cut?: boolean }>; rounds: Record<string, { at: string; cars: Data[] }>;
 };
@@ -170,11 +171,35 @@ export const me = (): WasherInfo => {
     : { ...b, name: S.session.name || b.name, phone: S.session.phone || b.phone, img: null, lifetime: 0, rating: '–', since: S.session.since || '2026' };
 };
 const ROSTER: Record<string, Car[]> = REAL ? {} : JSON.parse(JSON.stringify(DEMO_ROSTER));
+const rosterKey = () => (!REAL && S.round && ROSTER[S.round] ? S.round : me().id);
 export const route = (): Car[] => {
-  const r = ROSTER[me().id] || [], o = S.day?.order;
+  const r = ROSTER[rosterKey()] || [], o = S.day?.order;
   if (!o || !o.length) return r;
   const at = (reg: string) => { const i = o.indexOf(reg); return i < 0 ? 1e6 : i };
   return r.map((c, i) => ({ c, i })).sort((a, b) => at(a.c.reg) - at(b.c.reg) || a.i - b.i).map(x => x.c);
+};
+/** the round this washer is on, and the others he can take (demo list; the live list needs the rounds endpoint, see README) */
+let liveRounds: { list: RoundInfo[]; mine: string } | null = null;
+export const Rounds = {
+  mine(): RoundInfo {
+    if (REAL) { const m = liveRounds?.list.find(r => r.id === liveRounds!.mine); return m ? { ...m, count: route().length || m.count } : { id: '', name: 'Mera round', areas: me().areas, count: route().length } }
+    const id = rosterKey(), m = DEMO_ROUND_META.find(x => x.id === id); return { id, name: m ? m.name : 'Mera round', areas: m ? m.areas : me().areas, count: route().length };
+  },
+  all(): RoundInfo[] { return REAL ? (liveRounds?.list.length ? liveRounds.list : [Rounds.mine()]) : DEMO_ROUND_META.map(m => ({ ...m, count: (ROSTER[m.id] || []).length })) },
+  /** live: ask the rounds endpoint (n8n workflow 16) which rounds exist and which one is mine */
+  async call(body: Data): Promise<any | null> {
+    try {
+      const tok = await backend.auth.idToken(); if (!tok) return null;
+      const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 20000);
+      const r = await fetch(ROUNDS_URL + '?washer=' + encodeURIComponent(me().id), { method: 'POST', cache: 'no-store', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal });
+      clearTimeout(to); const j = await r.json(); return r.ok ? j : null;
+    } catch { return null }
+  },
+  async load() {
+    if (!REAL) return;
+    const j = await Rounds.call({ action: 'list' });
+    if (j && j.ok && Array.isArray(j.rounds)) { liveRounds = { list: j.rounds, mine: String(j.mine || '') }; emit() }
+  },
 };
 export const carBy = (reg: string | null | undefined) => route().find(c => c.reg === reg);
 export const W = (reg: string | null | undefined): Wash | null => (reg && S.day?.washes?.[reg]) || null;
@@ -184,6 +209,22 @@ export function ensureDay() {
     S.day = { date: DAY, washer: me().id, started: false, startedAt: null, washes: {} };
     S.current = null; save();
   }
+  autoPlan();
+}
+// The order and the time slots belong to operations, not to the washer: the round arrives already planned (book order,
+// spread evenly over the morning slots) and locked. A car that turns up later joins the last slot.
+function autoPlan() {
+  const day = S.day; if (!day) return;
+  // before the round starts the plan follows the book exactly (ops may reorder cars any time); once it has started it only grows
+  const raw = (ROSTER[rosterKey()] || []).map(c => c.reg), regs = day.started ? route().map(c => c.reg) : raw;
+  if (!regs.length) return;
+  const slots = day.started ? { ...(day.slots || {}) } : {};
+  const placed = regs.filter(r => typeof slots[r] === 'number');
+  if (!placed.length) { regs.forEach((r, i) => { slots[r] = Math.min(SLOT_COUNT - 1, Math.floor(i * SLOT_COUNT / regs.length)) }) }
+  else if (placed.length < regs.length) { const lastSlot = Math.max(...placed.map(r => slots[r])); regs.forEach(r => { if (typeof slots[r] !== 'number') slots[r] = lastSlot }) }
+  else if (day.locked) return;
+  if (!day.started && day.locked && JSON.stringify(day.slots) === JSON.stringify(slots) && JSON.stringify(day.order) === JSON.stringify(regs)) return;   // nothing changed: no write
+  day.slots = slots; if (!day.started || !(day.order && day.order.length)) day.order = regs; day.locked = true; if (!day.locked_at) day.locked_at = isoIST(); save();
 }
 export const myPhoto = () => (S.selfie && S.selfie.washer === me().id ? S.selfie : null);
 export const photoSrc = (p: { asset_id?: string; url?: string }) => p.url || '';
@@ -249,7 +290,8 @@ export const Extra = {
   set(docs: Job[]) { this.jobs = docs.filter(Boolean).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created_at || '').localeCompare(a.created_at || '')) },
   setPending(docs: Job[]) { this.pending = docs.filter(Boolean).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')) },
   open() { return this.jobs.filter(j => j.status !== 'done' && j.status !== 'declined') },
-  allOpen() { return [...this.open(), ...this.pending] },
+  // newest offers first (what the washer can accept or deny), then the jobs he already has to do; offers he denied stay hidden
+  allOpen() { const gone = new Set(S.passed || []); return [...this.pending, ...this.open()].filter(j => !(gone.has(j.id) && !j.washer_id)).sort((a, b) => (a.washer_id ? 1 : 0) - (b.washer_id ? 1 : 0)) },
   // offline washers do not see (or get alerted about) unassigned customer bookings
   shown() { return isOnline() ? this.allOpen() : this.open() },
   doneOn(day: string) { return this.jobs.filter(j => j.status === 'done' && (j.finished_at || j.date || '').slice(0, 10) === day) },
@@ -582,16 +624,16 @@ export const act = {
     return true;
   },
   // "Hub pahunch gaya": the morning check-in, seen live on the dashboard
-  async checkIn(o?: { photo?: string; shirt?: { shirt_match: boolean; shirt_share: number } }) {
+  async checkIn(o?: { photo?: string; at?: string; shirt?: { shirt_match: boolean; shirt_share: number; shirt_color?: string } }) {
     ensureDay(); const day = S.day!; if (day.checkin_at) return true;
-    const uniform: Uniform | null = o?.shirt ? { shirt_match: o.shirt.shirt_match, shirt_share: o.shirt.shirt_share, self_confirmed: true } : null;
+    const uniform: Uniform | null = o?.shirt ? { shirt_match: o.shirt.shirt_match, shirt_share: o.shirt.shirt_share, ...(o.shirt.shirt_color ? { shirt_color: o.shirt.shirt_color } : {}) } : null;
     const photo = o?.photo && o.photo.length <= 40000 ? o.photo : null;
-    day.checkin_at = isoIST(); if (photo) day.checkin_photo = photo; if (uniform) day.checkin_uniform = uniform;
+    day.checkin_at = o?.at || isoIST(); if (photo) day.checkin_photo = photo; if (uniform) day.checkin_uniform = uniform;
     noteAttend({ in: day.checkin_at }); save(); emit(); ui.haptic([20, 40, 20]);
     try {
       const id = myDocId();
       if (id && id !== '+91') await db.doc('checkins/' + DAY + '_' + id).set({ phone: id, name: me().name, date: DAY, at: day.checkin_at, ...(photo ? { photo } : {}), ...(uniform ? { uniform } : {}) });
-      if (id && id !== '+91') await mirrorCheckIn(db, { date: DAY, phone: id, name: me().name, at: day.checkin_at });
+      if (id && id !== '+91') await mirrorCheckIn(db, { date: DAY, phone: id, name: me().name, at: day.checkin_at, photo, uniform: uniform ? { shirt_match: uniform.shirt_match, shirt_share: uniform.shirt_share, ...(uniform.shirt_color ? { shirt_color: uniform.shirt_color } : {}) } : null });
     } catch (e) { console.warn('checkin', e) }
     return true;
   },
@@ -613,7 +655,8 @@ export const act = {
   startRound() {
     if (REAL && view.bookState === 'loading') { ui.toast(t('Gaadiyon ki list aa rahi hai, ek minute ruko')); return false }
     ensureDay(); const etas = Route.etaList();
-    route().forEach((c, i) => { if (!W(c.reg)) { const d = newWash(c, i + 1, etas[i]); if (MODE === 'demo') demoSample(d, i); S.day!.washes[c.reg] = d; S.outbox[DAY + '_' + c.reg] = d } });
+    route().forEach((c, i) => { if (!W(c.reg)) { const d = newWash(c, i + 1, etas[i]); S.day!.washes[c.reg] = d; S.outbox[DAY + '_' + c.reg] = d } });
+    syncSlots(); lateAlerts();
     S.day!.started = true; S.day!.startedAt = isoIST(); S.current = S.current || Route.nextReg(); save(); emit(); Sync.flush();
     ui.haptic([20, 50, 20]); ui.confetti(.6); ui.toast(t(`Round shuru! ${route().length} customers ko time chala gaya`));
     Sync.listen(); return true;
@@ -757,10 +800,30 @@ export const act = {
     await db.doc('newcars/' + doc.reg).set(doc);
     ui.haptic([20, 50, 20]); ui.confetti(.5); ui.toast(t('Gaadi round pe aa gayi. Manager ko bhej diya'));
   },
+  // take another round: all its cars come to this washer (only while no car of today's round is running or done)
+  pickRound(id: string) {
+    if (REAL) {
+      if (!id || id === Rounds.mine().id) return false;
+      const busy = Object.values(S.day?.washes || {}).some(w => w && w.status !== 'scheduled');
+      if (busy) { ui.toast(t('Pehle is round ki chal rahi aur ho chuki gaadi poori karo')); ui.haptic(14); return false }
+      void (async () => {
+        const j = await Rounds.call({ action: 'pick', round: id });
+        if (j && j.ok) { S.day = null; S.current = null; await Book.load(); await Rounds.load(); ui.haptic([20, 40, 20]); ui.toast(t(`${Rounds.mine().name}: ${route().length} gaadi ab aapki`)) }
+        else ui.toast(t('Round nahi mila. Internet check karo ya manager se poochho'));
+      })();
+      return true;
+    }
+    if (!ROSTER[id] || id === rosterKey()) return false;
+    const busy = Object.values(S.day?.washes || {}).some(w => w && w.status !== 'scheduled');
+    if (busy) { ui.toast(t('Pehle is round ki chal rahi aur ho chuki gaadi poori karo')); ui.haptic(14); return false }
+    S.round = id; S.day = null; S.current = null; ensureDay(); save(); ui.haptic([20, 40, 20]);
+    ui.toast(t(`${Rounds.mine().name}: ${route().length} gaadi ab aapki`)); emit(); return true;
+  },
   toggleOnline() {
     S.online = !isOnline(); save(); ui.haptic(S.online ? [10, 30, 10] : 12);
     ui.toast(t(S.online ? 'Aap online ho. Naye kaam aayenge' : 'Aap offline ho. Naye kaam nahi aayenge')); emit();
   },
+  exPass(id: string) { const j = Extra.byId(id); if (!j || j.washer_id) return; S.passed = Array.from(new Set([...(S.passed || []), id])).slice(-80); save(); ui.haptic(8); ui.toast(t('Theek hai, yeh kaam hata diya')); emit() },
   exClaim(id: string) { Sync.extraSet(id, { washer_id: me().id, ...washerIdent() }); ui.haptic([20, 40, 20]); ui.toast(t('Kaam mila! Shuru karo.')) },
   exOnWay(id: string) { Sync.extraSet(id, { status: 'on_the_way', on_the_way_at: isoIST(), ...washerIdent() }); ui.haptic([20, 40, 20]); ui.toast(t('Customer ko bata diya: aap raaste mein ho')) },
   // the customer's 4-digit start code is checked by the Firestore rules (the washer cannot read it): no optimistic update
@@ -794,7 +857,7 @@ export const act = {
   },
   alertAccept() { const j = view.jobAlert; if (j && !j.washer_id) Sync.extraSet(j.id, { washer_id: me().id, ...washerIdent() }); view.jobAlert = null; emit() },
   // only decline an already-assigned job; an unassigned booking is just dismissed
-  alertPass() { const j = view.jobAlert; if (j && j.washer_id) Sync.extraSet(j.id, { status: 'declined', declined_at: isoIST() }); view.jobAlert = null; emit() },
+  alertPass() { const j = view.jobAlert; if (j && !j.washer_id) act.exPass(j.id); view.jobAlert = null; emit() },
   // the washer's own reminder photo of a car on his round (kept on this phone only, one per car, replaced on retake)
   setCarPhoto(reg: string, url: string | null, cut = false) {
     S.carPhotos = S.carPhotos || {};
@@ -1105,6 +1168,19 @@ function demoExtras() {
 
 /* ---------------- boot ---------------- */
 let started = false;
+/* Settings that WD HQ changes for this app (appcfg/customer): the washer's share of a wash, and the on/off switches of the app's functions
+   (features.washer.*). Read at start and whenever the app comes back. Anything not mentioned stays on. */
+let FLAGS: Record<string, boolean> = {};
+export const wFeature = (k: string) => FLAGS[k] !== false;
+async function loadShare() {
+  try {
+    const g: any = await (db as any).doc('appcfg/customer').get(), d: any = g && (typeof g.data === 'function' ? g.data() : g.data);
+    if (!d) return;
+    const v = Number(d.washerSharePct); if (v >= 10 && v <= 90) setShare(v / 100);
+    const f = d.features && d.features.washer; FLAGS = f && typeof f === 'object' ? Object.fromEntries(Object.entries(f).filter(([, x]) => typeof x === 'boolean')) as Record<string, boolean> : {};
+    emit();
+  } catch (e) { /* offline or demo: keep what we have */ }
+}
 export async function boot() {
   if (started) return; started = true;
   try { const x = JSON.parse((await AsyncStorage.getItem(KEY)) || 'null'); if (x && typeof x === 'object') S = Object.assign(S, x) } catch (e) { }
@@ -1114,6 +1190,7 @@ export async function boot() {
   view.syncMode = MODE;
   booted = true;
   if (REAL) {
+    void loadShare();
     // a saved test login (OTP 1234) is not a real sign-in
     if (S.session && !S.session.real) { S.session = null; save() }
     const phone = await auth.ready();
@@ -1133,7 +1210,7 @@ export async function boot() {
     if (d !== DAY && view.authStep === 'in') { DAY = d; RT = {}; ensureDay(); Book.load(); Sync.listen(); emit() }
   }, 60000);
 }
-export const onForeground = () => { Sync.flush(); Photos.retry() };
+export const onForeground = () => { Sync.flush(); Photos.retry(); if (REAL) void loadShare() };
 
 /* ---------------- sync status, as the chip shows it ---------------- */
 export function syncState(): ['connecting' | 'demo' | 'wait' | 'offline' | 'live', string, string] {

@@ -27,6 +27,10 @@ export type Auth = {
   uid(): string | null;
   send(phone10: string): Promise<{ ok: true }>;
   confirm(code: string): Promise<{ uid: string }>;
+  /** the code on WhatsApp instead of SMS (n8n workflow 15). Errors carry code 'not_ready' (workflow not live), 'use_sms' or
+   *  'not_on_whatsapp' when SMS is the way to go instead. Absent on builds without Firebase. */
+  sendWhatsApp?(phone10: string): Promise<{ ok: true }>;
+  confirmWhatsApp?(phone10: string, code: string): Promise<{ uid: string }>;
   signOut(): Promise<void>;
   idToken(): Promise<string | null>;   // Firebase ID token for n8n calls (Authorization: Bearer); n8n verifies it and takes the phone from it
   onChange(f: (signedIn: boolean) => void): Unsub;

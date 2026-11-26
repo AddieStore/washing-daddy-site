@@ -12,6 +12,11 @@ on:
       - 'mobile/native/washer/**'
       - '.github/workflows/native-washer.yml'
   workflow_dispatch:
+    inputs:
+      demo:
+        description: 'Build a demo APK (sample 10-car route, OTP 1234, no Firebase sign-in) for looking at the screens on a phone. Not for release.'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -82,7 +87,7 @@ jobs:
         env:
           EXPO_OFFLINE: '1'
           CI: '1'
-          WD_RELEASE: '1'   # app.config.ts refuses to build a demo app
+          WD_RELEASE: ${{ inputs.demo && '0' || '1' }}   # app.config.ts refuses to build a demo app
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}   # the "Where he works" map; empty = drawn fallback map
 
       # The release APK is signed with Expo's default debug keystore; we re-sign it with the
@@ -91,6 +96,7 @@ jobs:
         working-directory: mobile/native/washer/android
         env:
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          EXPO_PUBLIC_DEMO: ${{ inputs.demo && '1' || '' }}   # demo build: the JS bundle is made here
         run: |
           set -o pipefail
           ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee ../gradle-build.log
@@ -112,6 +118,7 @@ jobs:
       # Play Store upload file. Like the APK it carries Expo's debug signature: strip META-INF/ANDROIDD.* and
       # sign it with jarsigner and the release key before uploading (see mobile/store/play-release-customer.md).
       - name: Build Play bundle
+        if: ${{ !inputs.demo }}
         working-directory: mobile/native/washer/android
         env:
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
@@ -121,20 +128,20 @@ jobs:
         run: |
           mkdir -p out
           cp android/app/build/outputs/apk/release/app-release.apk out/wd-partner-unsigned.apk
-          cp android/app/build/outputs/bundle/release/app-release.aab out/wd-partner-unsigned.aab
+          [ -f android/app/build/outputs/bundle/release/app-release.aab ] && cp android/app/build/outputs/bundle/release/app-release.aab out/wd-partner-unsigned.aab || true
           ls -l out
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: wd-partner-android-unsigned
+          name: wd-partner-android-unsigned${{ inputs.demo && '-demo' || '' }}
           path: |
             mobile/native/washer/out/wd-partner-unsigned.apk
             mobile/native/washer/out/wd-partner-unsigned.aab
           if-no-files-found: error
 
       - name: Commit APK back to the branch
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        if: ${{ !inputs.demo && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') }}
         working-directory: .
         run: |
           git config user.name "github-actions[bot]"

@@ -14,6 +14,7 @@ All are `POST https://n8n.washingdaddy.com/webhook/<name>` with `Authorization: 
 | Webhook | What it does |
 |---|---|
 | `wd-booking-create` | Prices the cart from Firestore (`catalog/{id}` price × size, packs fixed), checks the slot (`slots_cfg/default`, `slots/{date}`), instant hours (`appcfg/customer.instant`), coupon (`coupons/{CODE}` + `couponredemptions`), WD Pass (`passes` + `passes_cfg`), peak charge (`fees.slotSurcharge` + `fees.surcharge.<part>`), convenience fee and GST (`appcfg/customer.fees`). Writes `payorders/{id}` and opens a Cashfree order for what is left after WD Money. If nothing is left, the booking is made at once. |
+| `wd-waitlist` | "Notify me" from the Home banner when the customer is outside every service area: `waitlist/{+91number}` = `{ lat, lng, area, name, asks, status:'waiting' }`. Ravi gets a Telegram line the first time. |
 | `wd-coupon-validate` | Read-only check: `{ valid, off, message }`. |
 | `wd-booking-cancel` | Own booking, still new/scheduled, no washer yet (or ≥ 2 h before a scheduled slot). Refunds the Cashfree part through Cashfree's refund API and the WD Money part to the wallet, returns the pass visit and frees the slot. |
 | `wd-booking-reschedule` | Own booking, not on the way. Checks the new slot. A dearer peak slot is charged to WD Money (refused if the wallet is short); a cheaper one is credited back. |
@@ -23,6 +24,10 @@ All are `POST https://n8n.washingdaddy.com/webhook/<name>` with `Authorization: 
 | `wd-pronto-paid` | Not for the app. Workflow 8 forwards Cashfree's signed webhook here for orders of kind `booking`, `wallet_topup`, `pass`. Signature is checked again, then the order is fulfilled in one atomic Firestore commit. |
 
 ### Money safety
+
+- **Service areas.** `wd-booking-create` refuses (409, nothing charged) an address that is not inside one of the circles in
+  `appcfg/customer.areas` (`[{id, name, lat, lng, r}]`, r in metres, drawn in the admin dashboard → Settings → Service areas;
+  nothing saved = the built-in Paschim Vihar circle). An address without map coordinates is refused too.
 
 - The caller is the phone number in the verified ID token (RS256 against Google's certs, `aud`/`iss` =
   `FIREBASE_PROJECT_ID`, `exp`). Never a number from the body.

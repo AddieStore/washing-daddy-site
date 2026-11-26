@@ -4,6 +4,7 @@
 // translated (call t() at the usage site). Preview of everything: the hidden /_kit route.
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Image, ScrollView, StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
+import { LinearGradient as ExpoGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Pattern, Rect, Stop } from 'react-native-svg';
 import { Icon, IconName } from './Icons';
 import { Pressy } from './kit';
@@ -124,7 +125,17 @@ const GRAD_DARK = ['#4A12B8', '#3A06A0', '#24065F'] as const;
 /** Absolute-fill flat brand fill (no gradient, no decoration). Put it first inside an overflow-hidden View. `circle` is kept for old callers and ignored. */
 export function VioletBg(_: { circle?: boolean } = {}) {
   const { dark } = useTheme();
-  return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: dark ? GRAD_DARK[1] : '#5409DA' }]} />;
+  // same block as the customer Profile / Money headers: soft three-stop violet gradient + one faint circle top right
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <LinearGradientFill colors={dark ? GRAD_DARK : GRAD_LIGHT} />
+      <View style={{ position: 'absolute', right: -50, top: -30, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.07)' }} />
+      <View style={{ position: 'absolute', left: -70, bottom: -90, width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(255,255,255,0.04)' }} />
+    </View>
+  );
+}
+function LinearGradientFill({ colors }: { colors: readonly [string, string, string] }) {
+  return <ExpoGradient colors={colors as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -159,7 +170,7 @@ export type VioletHeaderProps = {
 export function VioletHeader({ title, onBack, backLabel = 'Back', right, name, sub, subNode, avatarUri, onAvatarPress, safeTop = 0, bottomPad = 56, children, style }: VioletHeaderProps) {
   const initial = ((name ?? '').trim()[0] || '?').toUpperCase();
   return (
-    <View style={[{ paddingTop: safeTop + 8, paddingHorizontal: 16, paddingBottom: bottomPad, overflow: 'hidden' }, style]}>
+    <View style={[{ paddingTop: safeTop + 8, paddingHorizontal: 16, paddingBottom: bottomPad, overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }, style]}>
       <VioletBg />
       <OnViolet>
         {title || onBack || right ? (
