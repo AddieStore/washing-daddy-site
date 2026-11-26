@@ -6,7 +6,7 @@ import Svg, { Rect, Path, Circle as SCircle } from 'react-native-svg';
 import { C } from '../theme';
 import { Txt, useInsets } from '../ui/kit';
 import { Footer } from '../ui/Footer';
-import { Back, Help as HelpIc, Pin } from '../ui/icons';
+import { Back, Camera, Help as HelpIc, Pin } from '../ui/icons';
 import { FadeUp, Shimmer } from '../ui/motion';
 import { JobRider, showsRider, showsCode, StartCode } from '../ui/JobRider';
 import { carryNote, washNotices, A, car, doc, history7, liveHead, activeStage, feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
@@ -59,6 +59,16 @@ function EmptyArt() {
   );
 }
 
+/** the photos of a booking: instant = the ondemand doc's photos[] (before/after/...) or its closing photo; monthly/recurring = that morning's wash-day photos */
+function jobPhotos(j: Job): { src: any; label: string }[] {
+  if (j.status === 'cancelled') return [];
+  const out = (j.photos || []).map((p, i, a) => ({ src: imgSrc(p.src), label: p.label || (a.length > 1 ? ['Before', 'After', 'Photo'][i] || 'Photo' : 'After') })).filter(p => p.src);
+  if (out.length) return out.slice(0, 3);
+  if (j.photo && imgSrc(j.photo)) return [{ src: imgSrc(j.photo), label: 'After' }];
+  if (j.recur && j.date && j.status !== 'upcoming' && j.status !== 'assigned') return dayPhotos(j.date).slice(0, 3);
+  return [];
+}
+
 /* ---------- one booking card ---------- */
 export function JobCard({ j, onPress }: { j: Job; onPress: () => void }) {
   const prev = !['upcoming', 'assigned', 'on_the_way', 'in_progress'].includes(j.status), done = j.status === 'done', gone = j.status === 'cancelled';
@@ -75,7 +85,7 @@ export function JobCard({ j, onPress }: { j: Job; onPress: () => void }) {
         {j.saved > 0 && !gone ? <Txt size={13} color={G.pos} style={TNUM}>{`  •  ${inr(j.saved)} saved`}</Txt> : null}
         <Txt size={13} color={G.sub} style={TNUM}>{`  •  ${durText(j.mins)}`}</Txt>
       </View>
-      {done && j.photo && imgSrc(j.photo) ? <PhotoStrip items={[{ src: imgSrc(j.photo), label: 'After' }]} /> : null}
+      {!gone ? <PhotoFan items={jobPhotos(j)} placeholder={!jobPhotos(j).length} done={done} /> : null}
       {j.washer || !gone ? (
         <View style={{ marginTop: 12, backgroundColor: G.raised, borderRadius: 10, padding: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -162,10 +172,11 @@ function WashNotices() {
     </View>))}</View>;
 }
 /** the photos of a wash, fanned on the card in the bottom-right corner: up to 3 portrait cards, After on top (straight), Before back-left, others back-right */
-function PhotoStrip({ items, total }: { items: { src: any; label: string }[]; total?: number }) {
-  if (!items.length) return null;
-  const n = total ?? items.length, extra = n > 3 ? n : 0;
-  const [before, after, other] = items.length === 1 ? [undefined, items[0], undefined] : [items[0], items[1], items[2]];
+export function PhotoFan({ items, total, placeholder, done }: { items: { src: any; label: string }[]; total?: number; placeholder?: boolean; done?: boolean }) {
+  if (!items.length && !placeholder) return null;
+  const n = placeholder ? 0 : total ?? items.length, extra = n > 3 ? n : 0;
+  const ph = { src: null, label: '' };
+  const [before, after, other] = placeholder ? [ph, ph, ph] : items.length === 1 ? [undefined, items[0], undefined] : [items[0], items[1], items[2]];
   const W = 148, H = 134, FW = 88, FH = 117, BW = 78, BH = 104;
   const cards = [
     other && { p: other, w: BW, h: BH, left: W - BW - 2, bottom: 22, rot: 10, z: 1 },
@@ -175,15 +186,16 @@ function PhotoStrip({ items, total }: { items: { src: any; label: string }[]; to
   return (
     <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', minHeight: H + 8 }}>
       <View style={{ flexShrink: 1, paddingBottom: 6, paddingRight: 8 }}>
+        {placeholder ? <><Txt weight={600} size={13} numberOfLines={1}>📷 Photos</Txt><Txt size={12} color={G.mute} style={{ marginTop: 2 }}>{done ? 'none added' : 'after your wash'}</Txt></> : <>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Txt size={13}>📷</Txt><Txt weight={600} size={13} numberOfLines={1}>{`${n} photo${n > 1 ? 's' : ''}`}</Txt></View>
-        <Txt size={12} color={G.mute} style={{ marginTop: 2 }}>tap to view</Txt>
+        <Txt size={12} color={G.mute} style={{ marginTop: 2 }}>tap to view</Txt></>}
       </View>
-      <View accessibilityLabel={`${n} photos`} style={{ width: W, height: H }}>
+      <View accessibilityLabel={placeholder ? 'Photos after your wash' : `${n} photos`} style={{ width: W, height: H }}>
         {cards.map(({ p, w, h, left, bottom, rot, z }) => (
-          <View key={p.label + z} style={{ position: 'absolute', left, bottom, width: w, height: h, borderRadius: 14, overflow: 'hidden', borderWidth: 3, borderColor: '#fff', backgroundColor: G.raised, zIndex: z,
+          <View key={p.label + z} style={{ position: 'absolute', left, bottom, width: w, height: h, borderRadius: 14, overflow: 'hidden', borderWidth: 3, borderColor: '#fff', backgroundColor: placeholder ? '#F1EAFE' : G.raised, zIndex: z, alignItems: 'center', justifyContent: 'center',
             transform: [{ rotate: rot + 'deg' }], shadowColor: '#1A1033', shadowOpacity: 0.22, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 + z }}>
-            <Image source={p.src} resizeMode="cover" accessibilityLabel={p.label + ' photo'} style={{ width: '100%', height: '100%' }} />
-            {z === 3 ? <View style={{ position: 'absolute', left: 5, bottom: 5, borderRadius: 7, paddingHorizontal: 6, height: 18, backgroundColor: 'rgba(20,20,20,0.6)', justifyContent: 'center' }}><Txt weight={600} size={10} color="#fff" style={{ lineHeight: 13 }}>{p.label}</Txt></View> : null}
+            {placeholder ? (z === 3 ? <Camera size={26} color={C.violet} strokeWidth={1.5} /> : null) : <Image source={p.src} resizeMode="cover" accessibilityLabel={p.label + ' photo'} style={{ width: '100%', height: '100%' }} />}
+            {z === 3 && !placeholder ? <View style={{ position: 'absolute', left: 5, bottom: 5, borderRadius: 7, paddingHorizontal: 6, height: 18, backgroundColor: 'rgba(20,20,20,0.6)', justifyContent: 'center' }}><Txt weight={600} size={10} color="#fff" style={{ lineHeight: 13 }}>{p.label}</Txt></View> : null}
           </View>))}
         {extra ? <View style={{ position: 'absolute', right: 0, top: 0, zIndex: 10, minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: C.violet, borderWidth: 2, borderColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 12 }}><Txt weight={700} size={11} color="#fff" style={{ lineHeight: 14 }}>{extra}</Txt></View> : null}
       </View>
@@ -206,7 +218,7 @@ function DailyCard({ r }: { r: DailyRow }) {
       <Txt size={13} color={G.sub} style={{ marginTop: 4 }}>{r.note || r.label}</Txt>
       {facts.length ? <Txt size={12} color={G.mute} style={{ marginTop: 8, ...TNUM }}>{facts.join('  •  ')}</Txt> : null}
       {r.tasks ? <Txt size={12} color={G.mute} style={{ marginTop: 4 }} numberOfLines={2}>{r.tasks}</Txt> : null}
-      <PhotoStrip items={thumbs} />
+      <PhotoFan items={thumbs} />
     </Tap>
   );
 }
