@@ -16,11 +16,11 @@ import { CAR_SERVICES, PACKS, TRUST, SHOW_RATINGS, REFERRAL, packInfo, fromPrice
 import { GenericArt } from '../art/generic';
 import { ampm } from '../data/dates';
 import {
-  useApp, A, car, doc, act, go, openPage, openSheet, toast, svcQty, svcLines, liveHead, activeStage, chipText,
+  useApp, A, car, doc, act, go, openPage, openSheet, toast, svcQty, svcLines, liveHead, activeStage, chipText, STAGES, carryNote,
   homeConfig, instantStatus, selectedAddress, addrName, wallet, activePass, REAL,
-  appCfg, feature, section, uiButtons, serviceCats, unavailable, configLoading, UiButton, isGuest } from '../state';
+  appCfg, feature, section, uiButtons, serviceCats, unavailable, configLoading, UiButton, isGuest, coverage } from '../state';
 import { Pressable3 as P3, FadeUp, AddButton, CartBar, Shimmer, useSkeleton, loaderPending, primerGate, setOrigin, SPRING, TAB_BAR_H } from '../ui/motion';
-import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, withRepeat, withSequence, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
+import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, withRepeat, withSequence, cancelAnimation, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient as SvgLG, Stop } from 'react-native-svg';
 import { SvcArt, PausedVeil } from '../pages/parts';
@@ -31,8 +31,11 @@ import { SheetTitle, closeSheet } from '../ui/hosts';
 import { openAddressPicker } from '../sheets/address';
 import { openPassPromo } from '../sheets/money';
 import { MiniMap, EtaChip, OfferCarousel, Offer } from '../ui/home';
-import { HeroRide } from '../ui/heroRide';
+import { HeroRide, SkyClouds } from '../ui/heroRide';
+import { HeroHeadline } from '../ui/heroHeadline';
+import { CoverageBanner } from '../ui/coverageBanner';
 import { VettedSection } from '../ui/trust';
+import { useActive, TabActive } from '../ui/active';
 
 // label -> accessibilityLabel, press scale 0.98
 const Pressable3 = ({ label, ...p }: React.ComponentProps<typeof P3> & { label?: string }) => <P3 scaleTo={0.96} accessibilityRole="button" accessibilityLabel={label} {...p} />;
@@ -65,7 +68,7 @@ export const tsh = (_T: Theme, _c: string, _d: number) => ({});
 export const edgeOf = (T: Theme) => (T.day ? L.line : 'rgba(255,246,233,.22)');
 // a dot with a ring that grows and fades; use only for a genuinely live status
 export function Pulse({ color, size = 8, still }: { color: string; size?: number; still?: boolean }) {
-  const rm = useReduceMotion(), v = useRef(new Animated.Value(0)).current, on = !rm && !still;
+  const rm = useReduceMotion(), v = useRef(new Animated.Value(0)).current, active = useActive(), on = !rm && !still && active;
   useEffect(() => {
     if (!on) return;
     const l = Animated.loop(Animated.timing(v, { toValue: 1, duration: 1800, easing: EASE, useNativeDriver: ND }));
@@ -145,41 +148,17 @@ function Header({ y }: { y: Animated.Value }) {
   const light = y.interpolate({ inputRange: [30, 90], outputRange: [1, 0], extrapolate: 'clamp' });
   return (
     <View style={{ position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30, paddingTop: top }}>
-      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#F6F2FF', opacity: bg, borderBottomWidth: 1, borderBottomColor: L.line }} />
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#FFFFFF', opacity: bg, borderBottomWidth: 1, borderBottomColor: L.line }} />
       <Animated.View pointerEvents={scrolled ? 'none' : 'auto'} style={{ opacity: light }}><HeaderContent dark /></Animated.View>
       <Animated.View pointerEvents={scrolled ? 'auto' : 'none'} style={{ position: 'absolute', left: 0, right: 0, top: top, opacity: bg }}><HeaderContent dark /></Animated.View>
     </View>
   );
 }
 
-/* ---------- hero: seasonal banner, word-by-word spring reveal (loops every ~6s), floating art, scalloped bottom edge ---------- */
-function Word({ w, i, on, color }: { w: string; i: number; on: boolean; color: string }) {
-  const rm = useReducedMotion(), v = useSharedValue(rm ? 1 : 0);
-  useEffect(() => { v.value = rm ? 1 : on ? withDelay(i * 90, withSpring(1, { damping: 14, stiffness: 140 })) : withDelay(i * 40, withTiming(0, { duration: 260 })) }, [on, rm]);
-  const st = useAnimatedStyle(() => ({ opacity: Math.min(1, v.value * 1.4), transform: [{ translateY: (1 - v.value) * 22 }, { rotate: `${(1 - v.value) * 4}deg` }] }));
-  return <Reanimated.Text style={[{ fontFamily: 'Poppins_700Bold', fontSize: 28, lineHeight: 34, letterSpacing: -0.9, marginRight: 7, color }, st]}>{w}</Reanimated.Text>;
-}
-function HeroText({ title, sub, accent }: { title: string; sub: string; accent: string }) {
-  const rm = useReducedMotion(), words = title.split(' ').filter(Boolean), [on, setOn] = useState(true);
-  useEffect(() => {
-    if (rm) return;
-    let t: any; const cycle = (show: boolean) => { t = setTimeout(() => { setOn(show); cycle(!show) }, show ? 500 : 6200) };
-    cycle(false); return () => clearTimeout(t);
-  }, [rm, title]);
-  const sv = useSharedValue(rm ? 1 : 0);
-  useEffect(() => { sv.value = rm ? 1 : on ? withDelay(words.length * 90 + 120, withTiming(1, { duration: 420, easing: REasing.bezier(0.22, 1, 0.36, 1) })) : withTiming(0, { duration: 220 }) }, [on, rm]);
-  const subSt = useAnimatedStyle(() => ({ opacity: sv.value, transform: [{ translateY: (1 - sv.value) * 8 }] }));
-  const last = words.length - 1;
-  return (
-    <View accessible accessibilityRole="header" accessibilityLabel={title + '. ' + sub}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{words.map((w, i) => <Word key={i + w} w={w} i={i} on={on} color={i === last ? accent : L.ink} />)}</View>
-      {sub ? <Reanimated.Text style={[{ fontFamily: 'Poppins_500Medium', fontSize: 14, lineHeight: 20, color: L.mut, marginTop: 4 }, subSt]}>{sub}</Reanimated.Text> : null}
-    </View>
-  );
-}
+/* ---------- hero: rotating two-line headline (ui/heroHeadline.tsx), floating art, the rider ---------- */
 function Float({ children, style }: { children: ReactNode; style?: any }) {
-  const rm = useReducedMotion(), v = useSharedValue(0), e = useSharedValue(rm ? 1 : 0);
-  useEffect(() => { if (rm) return; e.value = withDelay(250, withSpring(1, { damping: 12, stiffness: 90 })); v.value = withRepeat(withTiming(1, { duration: 2600, easing: REasing.inOut(REasing.sin) }), -1, true) }, [rm]);
+  const rm = !!useReducedMotion() || !useActive(), v = useSharedValue(0), e = useSharedValue(rm ? 1 : 0);
+  useEffect(() => { if (rm) return; if (e.value < 1) e.value = withDelay(250, withSpring(1, { damping: 12, stiffness: 90 })); v.value = withRepeat(withTiming(1, { duration: 2600, easing: REasing.inOut(REasing.sin) }), -1, true); return () => cancelAnimation(v) }, [rm]);
   const st = useAnimatedStyle(() => ({ opacity: e.value, transform: [{ translateY: -8 * v.value + (1 - e.value) * 40 }, { rotate: `${-2 + 4 * v.value}deg` }, { scale: 0.8 + 0.2 * e.value }] }));
   return <Reanimated.View pointerEvents="none" style={[style, st]}>{children}</Reanimated.View>;
 }
@@ -189,14 +168,15 @@ function Scallop({ W, color = '#fff' }: { W: number; color?: string }) {
   return <Svg width={W} height={20} style={{ position: 'absolute', left: 0, bottom: -1 }}><Path d={d} fill={color} /></Svg>;
 }
 function Live() {
-  const rm = useReducedMotion(), p = useSharedValue(0);
-  useEffect(() => { if (!rm) p.value = withRepeat(withTiming(1, { duration: 1400, easing: REasing.out(REasing.quad) }), -1, false) }, [rm]);
+  const rm = !!useReducedMotion() || !useActive(), p = useSharedValue(0), bl = useSharedValue(1);
+  useEffect(() => { if (!rm) { p.value = withRepeat(withTiming(1, { duration: 1400, easing: REasing.out(REasing.quad) }), -1, false); bl.value = withRepeat(withSequence(withTiming(0.15, { duration: 520, easing: REasing.inOut(REasing.quad) }), withTiming(1, { duration: 520, easing: REasing.inOut(REasing.quad) })), -1, false) } return () => { cancelAnimation(p); cancelAnimation(bl) } }, [rm]);
+  const blink = useAnimatedStyle(() => ({ opacity: bl.value }));
   const ring = useAnimatedStyle(() => ({ opacity: 0.7 * (1 - p.value), transform: [{ scale: 1 + 1.6 * p.value }] }));
   return (
     <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, height: 30, paddingLeft: 10, paddingRight: 12, borderRadius: 15, backgroundColor: '#17112A', marginTop: 12 }}>
       <View style={{ width: 8, height: 8 }}>
         <Reanimated.View style={[{ position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' }, ring]} />
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' }} />
+        <Reanimated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' }, blink]} />
       </View>
       <Txt weight={600} size={12} color="#fff" style={{ lineHeight: 16 }}>Washers riding near you</Txt>
     </View>
@@ -205,19 +185,21 @@ function Live() {
 function Hero({ W, y }: { W: number; y: Animated.Value }) {
   const ins = useInsets(), cfg = homeConfig(), on = section('hero'), st = Math.max(ins.top, 24), aw = Math.min(W, 520);
   return (
-    <View style={{ backgroundColor: '#F3EDFF', overflow: 'hidden', paddingTop: st + 56 }}>
+    <View style={{ backgroundColor: L.bg, overflow: 'hidden', paddingTop: st + 74 }}>
       {/* light lavender field; pulling down stretches it so no gap shows */}
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
-        <LinearGradient colors={['#EDE4FF', '#F4EEFF', L.bg]} locations={[0, 0.6, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <LinearGradient colors={['#DCCBFF', '#E6DAFF', '#EDE4FF']} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
       {on ? <>
+        <SkyClouds width={W} height={380} />
         <View style={{ paddingHorizontal: SIDE, paddingTop: 4 }}>
-          <HeroText title={cfg.heroTitle} sub={cfg.heroSub} accent={L.accent} />
+          <CoverageBanner />
+          <HeroHeadline first={cfg.heroTitle} sub={cfg.heroSub} ink={L.ink} accent={L.accent} subColor={L.mut} />
           <Live />
         </View>
-        <View style={{ marginTop: 4, marginBottom: 34 }}><HeroRide width={aw} /></View>
+        <View style={{ marginTop: 4, marginBottom: 36 }}><HeroRide width={aw} /></View>
         {/* the road and city melt into white, so there is no edge above "Book a wash" */}
-        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.9)', '#FFFFFF', '#FFFFFF']} locations={[0, 0.5, 0.75, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 60 }} />
+        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.92)', '#FFFFFF']} locations={[0, 0.4, 0.8, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 36 }} />
       </> : <View style={{ height: 24 }} />}
     </View>
   );
@@ -288,7 +270,7 @@ function Entry({ onInstant }: { onInstant: () => void }) {
     </View>
   );
   return (
-    <View style={{ marginTop: -6 }}>
+    <View style={{ marginTop: -14 }}>
       <Title title="Book a wash" />
       <View style={{ flexDirection: 'row', gap: GAP, paddingHorizontal: SIDE, marginTop: 12 }}>
         {showI || showS ? <FadeUp index={0} style={{ flex: 1 }}>
@@ -357,7 +339,7 @@ function Offers() {
   const offers: Offer[] = [];
   const first = PACKS[0];
   if (section('packs') && first) offers.push({ key: 'packs', tag: 'WASH PACKS', countdown: false, title: 'Wash packs at your parking spot', sub: `${first.name} from ${inr(first.price || 0)}`, cta: 'See packs', colors: ['#6A1BF2', '#3A06A0'], art: <SvcArt id={first.id} size={96} />, onPress: () => openPage({ k: 'svc', id: first.id }) });
-  try { if (homeConfig().passPromo && !activePass()) offers.push({ key: 'pass', tag: 'WD PASS', title: 'Get more washes for less', sub: 'A pass of visits, valid for days, saves on every wash', cta: 'View pass', colors: ['#2A0577', '#5409DA'], onPress: () => openPassPromo() }) } catch (e) {}
+  try { if (homeConfig().passPromo && !activePass() && coverage().ok) offers.push({ key: 'pass', tag: 'WD PASS', title: 'Get more washes for less', sub: 'A pass of visits, valid for days, saves on every wash', cta: 'View pass', colors: ['#2A0577', '#5409DA'], onPress: () => openPassPromo() }) } catch (e) {}
   if (feature('plans')) offers.push({ key: 'plan', tag: 'MONTHLY', title: 'A clean car every morning', sub: `Daily wash from ${inr(fromPrice())}/month`, cta: 'See plans', colors: ['#4B2BC4', '#24106E'], art: <View style={{ transform: [{ scale: 1.4 }], marginRight: 14 }}><Glyph kind="plan" /></View>, onPress: () => go('plan') });
   return <OfferCarousel offers={offers} />;
 }
@@ -407,8 +389,8 @@ function SvcTile({ s: sv, w }: { s: (typeof CAR_SERVICES)[number]; w: number }) 
   return (
     <View style={{ width: w, height: tileH(w) }}>
       <Pressable3 label={`${sv.name}, ${inr(sv.price)}`} onPress={() => setOrigin(sv.id, ref, () => openPage({ k: 'svc', id: sv.id }))}>
-        <View ref={ref} style={{ width: w, height: w, borderRadius: 16, overflow: 'hidden', backgroundColor: sv.tint || L.raised, alignItems: 'center', justifyContent: 'center' }}>
-          <SvcArt id={sv.id} size={Math.round(w * 0.9)} />
+        <View ref={ref} style={{ width: w, height: w, borderRadius: 18, overflow: 'hidden', backgroundColor: '#F8F6FD', borderWidth: 1, borderColor: 'rgba(84,9,218,0.07)', alignItems: 'center', justifyContent: 'center' }}>
+          <SvcArt id={sv.id} size={Math.round(w * 0.8)} />
           {sv.badge && !paused ? <View style={{ position: 'absolute', top: 6, left: 6, backgroundColor: String(sv.badge).toUpperCase() === 'NEW' ? '#E5484D' : L.accent, borderRadius: 6, paddingHorizontal: 5, height: 16, justifyContent: 'center' }}><Txt weight={600} size={9} color="#fff" style={{ lineHeight: 12, letterSpacing: 0.5 }}>{String(sv.badge).toUpperCase()}</Txt></View> : null}
           {paused ? <PausedVeil note={paused} compact /> : null}
           {SHOW_RATINGS && !sv.badge ? (
@@ -485,6 +467,26 @@ function Trust({ W }: { W: number }) {
   </>);
 }
 
+/* ---------- live status chain: on the way > reached > washing > done (or skipped, with the reason) ---------- */
+const CHAIN: [string, string][] = [['on_the_way', 'On the way'], ['arrived', 'Reached'], ['washing', 'Washing'], ['done', 'Done']];
+function StatusChain({ status, note }: { status: string; note?: string | null }) {
+  const at = STAGES.indexOf(status as any), skipped = status === 'skipped';
+  return (
+    <View style={{ marginTop: 6 }}>
+      {skipped ? <Txt weight={600} size={12} color={L.sec}>Skipped today</Txt> : (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          {CHAIN.map(([k, label], i) => { const on = STAGES.indexOf(k as any) <= at, cur = STAGES.indexOf(k as any) === at; return (
+            <View key={k} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: on ? L.pos : '#D4D4D8' }} />
+              <Txt weight={cur ? 600 : 400} size={11} color={on ? L.ink : L.mut}>{label}</Txt>
+              {i < CHAIN.length - 1 ? <View style={{ width: 8, height: 1, backgroundColor: '#D4D4D8' }} /> : null}
+            </View>); })}
+        </View>)}
+      {note ? <Txt size={12} color={L.sec} style={{ marginTop: 2, lineHeight: 16 }}>{note}</Txt> : null}
+    </View>
+  );
+}
+
 /* ---------- floating "washer assigned" mini card (only when the cart is empty) ---------- */
 function Assigned() {
   if (isGuest()) return null;
@@ -508,6 +510,7 @@ function Assigned() {
           {live ? <Pulse color={L.pos} size={8} /> : null}
           <Txt size={13} color={L.sec} numberOfLines={1} style={{ flexShrink: 1, lineHeight: 18 }}>{subTxt}</Txt>
         </View>
+        {d.remote && (d.status !== 'scheduled' || d.skip_reason) ? <StatusChain status={d.status} note={d.status === 'skipped' ? [d.skip_reason, carryNote(c, d)].filter(Boolean).join('. ') : carryNote(c, d)} /> : null}
         <Pressable3 label="View profile" onPress={openProfile} style={{ alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center' }}><Txt weight={600} size={12} color={L.accent}>View profile</Txt></Pressable3>
       </View>
       <Chev size={18} color={L.mut} strokeWidth={1.5} />
@@ -556,7 +559,7 @@ export default function Home() {
   // WD Pass launch popup, once per app start, after the location loader has gone
   useEffect(() => {
     if (promoShown) return; promoShown = true;
-    let on = true, t: any; const fire = () => { if (!on) return; if (primerGate.on) { t = setTimeout(fire, 1000); return } try { if (homeConfig().passPromo && !activePass()) openPassPromo() } catch (e) {} };
+    let on = true, t: any; const fire = () => { if (!on) return; if (primerGate.on) { t = setTimeout(fire, 1000); return } try { if (homeConfig().passPromo && !activePass() && coverage().ok) openPassPromo() } catch (e) {} };   // no pass offer where we do not wash yet
     t = setTimeout(fire, loaderPending() ? 3400 : 1200);   // held while the welcome primer is open, then 1s after it closes
     return () => { on = false; clearTimeout(t) };
   }, []);
@@ -565,7 +568,7 @@ export default function Home() {
   useEffect(() => { onGridJump(() => ref.current?.scrollTo({ y: Math.max(0, gridY.current - 90), animated: true })); return () => onGridJump(null) }, []);
   const refresh = async () => { setRefreshing(true); try { await act.refresh() } catch (e: any) { toast(e?.message || 'Could not refresh') } setRefreshing(false) };
   return (
-    <View style={{ flex: 1, backgroundColor: L.bg, alignItems: 'center' }}>
+    <TabActive tab="home"><View style={{ flex: 1, backgroundColor: L.bg, alignItems: 'center' }}>
       <Animated.ScrollView style={{ width: '100%', maxWidth: 520 }} ref={ref} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={onScroll} bounces
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={L.accent} colors={[L.accent]} progressViewOffset={Math.max(ins.top, 24) + 56} />}
         contentContainerStyle={{ paddingBottom: cart ? 64 : 0 }}>
@@ -585,6 +588,6 @@ export default function Home() {
       </Animated.ScrollView>
       <Header y={y} />
       {cart ? <CartBar aboveTabs /> : null}
-    </View>
+    </View></TabActive>
   );
 }

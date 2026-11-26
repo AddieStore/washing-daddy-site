@@ -42,3 +42,6 @@ yarn-error.*
 
 # preview output
 preview.html
+
+# built Android bundles (CI makes these; never commit a build)
+/out/

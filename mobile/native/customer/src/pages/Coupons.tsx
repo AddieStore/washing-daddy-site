@@ -21,13 +21,13 @@ export default function Coupons() {
     setBusy('');
   };
   return (
-    <View style={{ flex: 1, backgroundColor: G.raised }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <PageBar title="Coupons" />
       {load ? <View style={{ padding: 16, gap: 12 }}><Skel h={56} r={12} />{[0, 1, 2].map(i => <Skel key={i} h={110} r={16} />)}</View> : (
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: ins.bottom + 32 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TextInput value={code} onChangeText={t => { setCode(t.toUpperCase().replace(/\s/g, '')); setErr('') }} placeholder="Enter coupon code" placeholderTextColor={G.mute} autoCapitalize="characters" autoCorrect={false}
-              style={{ flex: 1, height: 52, borderRadius: 12, backgroundColor: '#fff', paddingHorizontal: 14, fontSize: 15, color: G.ink, borderWidth: 1.5, borderColor: err ? C.red : G.line, outlineStyle: 'none', minWidth: 0, includeFontPadding: false, textAlignVertical: 'center', paddingVertical: 0 } as any} />
+              style={{ flex: 1, height: 52, borderRadius: 12, backgroundColor: '#fff', paddingHorizontal: 14, fontSize: 16, color: G.ink, borderWidth: 1.5, borderColor: err ? C.red : G.line, outlineStyle: 'none', minWidth: 0, includeFontPadding: false, textAlignVertical: 'center', paddingVertical: 0 } as any} />
             <PrimaryBtn label="Apply" disabled={!code} busy={busy === code && !!code} onPress={() => apply(code)} style={{ height: 52, width: 92 }} />
           </View>
           {err ? <Txt size={13} color={C.red}>{err}</Txt> : null}

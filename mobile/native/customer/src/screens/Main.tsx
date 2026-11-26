@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 // The signed-in shell: the current tab's screen above the tab bar, plus full-screen pages pushed over it.
 // r5 transitions (reanimated layout animations): the service page fades in while its hero art flies up from the tapped card
 // (shared-element feel, see Service), the cart rises from the bottom like a sheet, every other page slides in from the right.
@@ -103,11 +104,18 @@ function useCover(cover: Cover) {
   return { st, dim };
 }
 
+/** one soft violet tint at the top of every page that fades into the canvas, so all screens share the same background */
+function PageFade({ day = true }: { day?: boolean }) {
+  if (!day) return null;
+  return <LinearGradient pointerEvents="none" colors={['rgba(84,9,218,0.13)', 'rgba(84,9,218,0.05)', 'rgba(84,9,218,0)']} locations={[0, 0.45, 1]} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 340 }} />;
+}
+
 function Pushed({ p, depth, cover }: { p: NonNullable<Page>; depth: number; cover: Cover }) {
   const rm = useReduceMotion(), c = useCover(cover);
   return (
     <Reanimated.View entering={rm ? undefined : enterOf(p.k)} exiting={rm ? undefined : exitOf(p.k)} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 10 + depth, backgroundColor: '#000' }}>
-      <Reanimated.View style={[{ flex: 1, backgroundColor: '#F6F2FF' }, c.st]}>
+      <Reanimated.View style={[{ flex: 1, backgroundColor: '#FFFFFF' }, c.st]}>
+        <PageFade />
         <PageView p={p} />
       </Reanimated.View>
       <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#0B0614' }, c.dim]} />
@@ -151,6 +159,7 @@ export default function Main() {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <Reanimated.View style={[{ flex: 1, backgroundColor: T.bg }, tabCover.st]}>
+        <PageFade day={T.day} />
         {(['home', 'live'] as Tab[]).filter(k => kept.current.has(k)).map(k => { const S2 = SCREEN[k], on = k === tab;
           return <Animated.View key={k} style={on ? { flex: 1, opacity: fade } : { display: 'none' }}><S2 /></Animated.View> })}
         {tab !== 'home' && tab !== 'live' ? <Animated.View key={key} style={{ flex: 1, opacity: fade }}><Screen /></Animated.View> : null}

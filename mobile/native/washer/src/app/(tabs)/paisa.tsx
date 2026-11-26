@@ -1,70 +1,18 @@
-// Paisa tab: month total with target, the week, small tiles, what each car pays and the day's history.
+// Paisa tab, reference look: month number + target progress, the week, then receipt-style groups (today, per car, extras) and the day's timeline.
 import React, { useCallback, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient as SvgGradient, Rect, Stop } from 'react-native-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { DutyToggle, F, Footer, PullToRefresh, Ring, brand, cardShadow, useTheme } from '../../ui';
-import { BarChart, Tile } from '../../ui';
-import { DAY, Extra, Hist, MODE, Money, RT, Route, S, Sync, W, act, carBy, ensureDay, route, useStore } from '../../state/store';
+import { F, HeaderBar, Icon, Lift, PCard, PageHeader, PTitle, PullToRefresh, StatTile, WeekBars, useTheme } from '../../ui';
+import { router } from 'expo-router';
+import { BarChart } from '../../ui';
+import { wFeature, DAY, Extra, Hist, MODE, Money, RT, Route, S, Sync, W, act, carBy, ensureDay, route, useStore } from '../../state/store';
 import { addDaysStr, dayLong, dayNarrow, rupee, t12 } from '../../lib/time';
 import { isHindi, t } from '../../lib/i18n';
-import type { Car } from '../../lib/data';
-import { LiveSyncChip } from '../../screens/JobParts';
-import { CountUp, FadeUp, PEmpty, PRow, PSection, RowsCard, TNUM, WCard } from '../../screens/ProntoBits';
+import { CountUp, FadeUp, TNUM } from '../../screens/ProntoBits';
+import { EmptyBlock } from '../../screens/EmptyBlock';
 import { RewardsCard } from '../../screens/RewardsCards';
 
-/** Right-hand amount column of a list row: big figure (own earning only) and a small grey line. */
-function Amt({ main, sub, stars }: { main: string; sub?: string; stars?: number }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
-      <Text style={[TNUM, { fontFamily: F.bold, fontSize: 16, lineHeight: 22, color: c.fg }]}>{main}</Text>
-      {sub ? <Text style={{ fontFamily: F.body, fontSize: 11, lineHeight: 16, color: c.fg3 }}>{sub}</Text> : null}
-      {stars ? <Text style={{ fontSize: 12, color: brand.gold }}>{'★'.repeat(stars)}<Text style={{ color: c.line }}>{'★'.repeat(5 - stars)}</Text></Text> : null}
-    </View>
-  );
-}
-
-function PayRow({ car, last }: { car: Car; last?: boolean }) {
-  const { c } = useTheme();
-  const w = W(car.reg), dn = !!w && w.status === 'done';
-  const sub = car.plate + (car.pending ? t(' · Manager ki manzoori baaki') : '') + (car.mine ? ' · ' + t('meri sale') : '');
-  return (
-    <PRow
-      tile
-      icon="car"
-      last={last}
-      title={car.model}
-      sub={sub}
-      chevron={false}
-      right={<Amt main={car.pending ? '—' : rupee(Money.earns(car))} sub={car.pending ? t('manzoori ke baad') : t(`${rupee(Money.perDay(car))} roz${dn ? ' · aaj mila' : ''}`)} />}
-    />
-  );
-}
-
-/** Violet gradient balance card (customer WD Money hero): diagonal gradient drawn with Svg, faint circle top-right. */
-function GradCard({ children }: { children?: React.ReactNode }) {
-  const [box, setBox] = useState({ w: 358, h: 180 });
-  return (
-    <View onLayout={e => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
-      style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#5409DA', padding: 20, shadowColor: '#5409DA', shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 6 }}>
-      <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Defs>
-          <SvgGradient id="gc" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor="#6A1BF2" /><Stop offset="0.5" stopColor="#5409DA" /><Stop offset="1" stopColor="#36058F" />
-          </SvgGradient>
-        </Defs>
-        <Rect x={0} y={0} width={box.w} height={box.h} fill="url(#gc)" />
-        <Circle cx={box.w - 6} cy={10} r={96} fill="#fff" fillOpacity={0.07} />
-      </Svg>
-      {children}
-    </View>
-  );
-}
-
 export default function Paisa() {
-  const insets = useSafeAreaInsets();
   useStore();
   const { c } = useTheme();
   ensureDay();
@@ -80,6 +28,7 @@ export default function Paisa() {
   const exMonth = Extra.doneIn(DAY.slice(0, 7));
 
   // week bars: today is live, the other days come from the db over what this phone remembers
+  const [showAll, setShowAll] = useState(false);
   const [week, setWeek] = useState<Record<string, number>>({});
   const lastKey = useRef('');
   useFocusEffect(useCallback(() => {
@@ -99,115 +48,161 @@ export default function Paisa() {
 
   const tl = ws.filter(w => w.status === 'done' || w.status === 'skipped').sort((a, b) => ((a.finished_at || a.updated_at) < (b.finished_at || b.updated_at) ? -1 : 1));
 
-  const month = Money.month(), target = Money.monthly();
-  const hrs = done.reduce((a, w) => a + (w.minutes || 0), 0) / 60;
-  const sparkVals = vals.length > 1 && vals.some(v => v > 0) ? vals : undefined;
-  const bonus = Money.monthExtra();
-
   const allPay = paid.concat(pend);
   const doneRows = tl;
+  const month = Money.month(), target = Money.monthly();
+  const hrs = done.reduce((a, w) => a + (w.minutes || 0), 0) / 60;
+  const bonus = Money.monthExtra();
+  const frac = target ? Math.max(0, Math.min(1, month / target)) : 0;
+  const paidSum = paid.reduce((a, car) => a + Money.earns(car), 0);
+  const extraSum = exMonth.reduce((a, j) => a + Money.share(j.price), 0);
+  // pace: what the month looks like at today's speed, and what each remaining day has to bring to reach the target
+  const dayN = parseInt(DAY.slice(8, 10), 10) || 1, dim = new Date(parseInt(DAY.slice(0, 4), 10), parseInt(DAY.slice(5, 7), 10), 0).getDate();
+  const daysLeft = Math.max(0, dim - dayN), togo = Math.max(0, target - month);
+  const projected = dayN > 2 ? Math.round(month / dayN * dim) : 0;
+  const perDay = daysLeft ? Math.ceil(togo / daysLeft) : togo;
+  const weekCars = vals.reduce((a, b) => a + b, 0), bestIdx = vals.indexOf(Math.max(...vals));
+  const monthWash = Money.monthWashes();
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
-        <View style={{ paddingTop: insets.top + 16, paddingHorizontal: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44 }}>
-            <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 28, lineHeight: 36, color: c.fg }}>{t('Hisaab')}</Text>
-            <LiveSyncChip />
-          </View>
-          <View style={[{ alignSelf: 'flex-start', backgroundColor: c.card, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 2, marginTop: 8 }, cardShadow(c)]}><DutyToggle /></View>
-          <FadeUp index={0} style={{ marginTop: 16 }}>
-            <GradCard>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)' }}>{dayLong(DAY, hi)}</Text>
-                  <CountUp to={Math.round(month)} fmt={rupee} style={{ fontFamily: F.bold, fontSize: 38, lineHeight: 46, letterSpacing: -0.5, color: '#fff', marginTop: 2 }} />
-                  <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)' }}>
-                    {target ? `${t('Poora mahina chale to')} ${rupee(target)}` : t('Is mahine ab tak')}
-                  </Text>
+      <PullToRefresh contentContainerStyle={{ flexGrow: 1, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
+        <PageHeader title={t('Hisaab')} sub={dayLong(DAY, hi)} bottomPad={74}>
+          <View style={{ marginTop: 14 }}>
+            <Text style={{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.8)' }}>{t('Is mahine ab tak')}</Text>
+            <CountUp to={Math.round(month)} fmt={rupee} style={{ fontFamily: F.displayBlack, fontSize: 48, lineHeight: 56, letterSpacing: -1.6, color: '#fff', marginTop: 0 }} />
+            {target ? (
+              <View style={{ marginTop: 12, gap: 8 }}>
+                <HeaderBar fraction={frac} />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={[TNUM, { fontFamily: F.semi, fontSize: 12.5, color: '#FFD166' }]}>{Math.round(frac * 100)}%</Text>
+                  <Text style={[TNUM, { fontFamily: F.medium, fontSize: 12.5, color: 'rgba(255,255,255,0.8)' }]}>{t('Poora mahina chale to')} {rupee(target)}</Text>
                 </View>
-                <Ring size={84} stroke={9} fraction={target ? month / target : 0} value={cn.done} label={`/${cn.total} ${t('gaadi')}`} color="#FFD166" track="rgba(255,255,255,0.22)" ink="#fff" labelColor="rgba(255,255,255,0.75)" />
               </View>
-              <View style={{ alignSelf: 'flex-start', marginTop: 14, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 }}>
-                <Text style={[{ fontFamily: F.medium, fontSize: 13, lineHeight: 18, color: '#fff' }, { fontVariant: ['tabular-nums'] }]}>
-                  {t('Aaj')} {rupee(Money.today())}{exToday ? t(` · ${exToday} extra kaam`) : ''}{S.day?.startedAt ? t(` · shuru ${t12(S.day.startedAt)}`) : ''}
-                </Text>
+            ) : null}
+          </View>
+        </PageHeader>
+        <Lift>
+          <FadeUp index={0}>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <StatTile icon="gift" tone="violet" value={rupee(Money.today())} label={t('Aaj')} />
+              <StatTile icon="car" tone="blue" value={`${cn.done}/${cn.total}`} label={t('gaadi')} onPress={() => router.push('/today')} />
+              <StatTile icon="star" tone="amber" value={ravg ? ravg.toFixed(1) : '–'} label={t('Rating')} />
+            </View>
+          </FadeUp>
+
+          {target ? (
+            <FadeUp index={1} style={{ marginTop: 12 }}>
+              <PCard style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: togo ? 'rgba(84,9,218,0.08)' : 'rgba(22,163,74,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name={togo ? 'flag' : 'check'} size={22} color={togo ? c.primary : c.ok} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  {togo ? (
+                    <>
+                      <Text style={{ fontFamily: F.semi, fontSize: 15, lineHeight: 21, color: c.fg }}>{t('Target ke liye')} {rupee(togo)} {t('baaki')}</Text>
+                      <Text style={{ fontFamily: F.body, fontSize: 12.5, lineHeight: 18, color: c.grey, marginTop: 1 }}>
+                        {daysLeft ? `${daysLeft} ${t('din bache')} · ${t('roz ~')}${rupee(perDay)}` : t('Aaj aakhri din hai')}{projected ? ` · ${t('is raftaar se')} ~${rupee(projected)}` : ''}
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={{ fontFamily: F.semi, fontSize: 15, lineHeight: 21, color: c.fg }}>{t('Mahine ka target poora')}</Text>
+                      <Text style={{ fontFamily: F.body, fontSize: 12.5, lineHeight: 18, color: c.grey, marginTop: 1 }}>{t('Ab jo bhi aayega woh extra hai.')}</Text>
+                    </>
+                  )}
+                </View>
+              </PCard>
+            </FadeUp>
+          ) : null}
+
+          <FadeUp index={2} style={{ marginTop: 12 }}>
+            <PCard style={{ padding: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: F.medium, fontSize: 12, color: c.grey }}>{t('Monthly gaadi (subah)')}</Text>
+                  <Text style={[TNUM, { fontFamily: F.bold, fontSize: 22, letterSpacing: -0.5, color: c.fg }]}>{rupee(monthWash)}</Text>
+                </View>
+                <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: c.line, marginHorizontal: 14 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: F.medium, fontSize: 12, color: c.grey }}>{t('Extra kaam (dopahar)')}</Text>
+                  <Text style={[TNUM, { fontFamily: F.bold, fontSize: 22, letterSpacing: -0.5, color: c.fg }]}>{rupee(bonus)}</Text>
+                </View>
               </View>
-            </GradCard>
-          </FadeUp>
-        </View>
-
-        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-          <FadeUp index={1}><RewardsCard /></FadeUp>
-
-          <PSection title={t('Is hafte')} note={MODE === 'demo' ? t('Demo data') : t('Gaadi roz')} />
-          <FadeUp index={2}>
-            <WCard style={{ padding: 16 }}>
-              <BarChart
-                height={120}
-                highlight={days.length - 1}
-                data={days.map((d, i) => ({ label: d === DAY ? t('Aaj') : dayNarrow(d, hi), value: vals[i], target: cars.length || undefined }))}
-              />
-            </WCard>
+              <View style={{ height: 8, borderRadius: 4, backgroundColor: c.soft, flexDirection: 'row', overflow: 'hidden' }}>
+                <View style={{ flex: Math.max(0.0001, monthWash), backgroundColor: c.primary }} />
+                <View style={{ flex: Math.max(0.0001, bonus), backgroundColor: '#FFBA08' }} />
+              </View>
+            </PCard>
           </FadeUp>
 
-          <FadeUp index={3} style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12, marginTop: 12 }}>
-            <Tile style={{ width: '48%' }} icon="car" label={t('Gaadi')} value={`${cn.done}/${cn.total}`} spark={sparkVals} />
-            <Tile style={{ width: '48%' }} icon="star" tone={brand.gold} label={t('Customer rating')} value={ravg ? ravg.toFixed(1) : '–'} unit={rated.length ? `/5 · ${rated.length}` : undefined} />
-            <Tile style={{ width: '48%' }} icon="clock" tone={brand.mint} label={t('Ghante')} value={hrs ? hrs.toFixed(1) : '–'} unit={hrs ? 'h' : undefined} />
-            <Tile style={{ width: '48%' }} icon="plus" tone={brand.gold} label={t('Extra kaam se')} value={bonus ? rupee(bonus) : '–'} />
-          </FadeUp>
-
-          <PSection title={t('Gaadi se kamai')} note={`${paid.length} ${t('gaadi')}`} />
-          {cars.length
-            ? <RowsCard>{allPay.map((car, i) => <PayRow key={car.reg} car={car} last={i === allPay.length - 1} />)}</RowsCard>
-            : <PEmpty icon="car" title={t('Koi gaadi nahi')} text={t('Round aayega to kamai yahan dikhegi.')} />}
-
-          <PSection title={t('Extra kaam se')} note={exMonth.length ? t(`${exMonth.length} kaam is mahine`) : undefined} />
-          {exMonth.length
-            ? (
-              <RowsCard>
-                {exMonth.map((j, i) => (
-                  <PRow
-                    key={j.id}
-                    tile
-                    tone={brand.gold}
-                    icon="plus"
-                    last={i === exMonth.length - 1}
-                    title={j.service || t('Extra kaam')}
-                    sub={`${j.car || j.reg || ''} · ${(j.finished_at || j.date || '').slice(0, 10)}`}
-                    chevron={false}
-                    right={<Amt main={rupee(Money.share(j.price))} />}
-                  />
+          <PTitle title={t('Is hafte')} note={MODE === 'demo' ? t('Demo data') : undefined} />
+          <FadeUp index={3}>
+            <PCard style={{ paddingVertical: 16, paddingHorizontal: 12 }}>
+              <WeekBars data={days.map((d, i) => ({ label: d === DAY ? t('Aaj') : dayNarrow(d, hi), value: vals[i], today: d === DAY }))} />
+              <View style={{ flexDirection: 'row', marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: c.line }}>
+                {[[String(weekCars), t('gaadi is hafte')], [(weekCars / 7).toFixed(1), t('roz ka average')], [vals[bestIdx] ? `${vals[bestIdx]}` : '–', t('sabse zyada')]].map(([v, l]) => (
+                  <View key={l} style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={[TNUM, { fontFamily: F.bold, fontSize: 18, color: c.fg }]}>{v}</Text>
+                    <Text style={{ fontFamily: F.medium, fontSize: 11.5, color: c.grey }}>{l}</Text>
+                  </View>
                 ))}
-              </RowsCard>
-            )
-            : <PEmpty icon="plus" title={t('Abhi koi extra kaam nahi')} text={t('Manager jo extra kaam denge woh yahan aayega.')} />}
+              </View>
+            </PCard>
+          </FadeUp>
 
-          <PSection title={t('Aaj ki timeline')} />
-          {doneRows.length
-            ? (
-              <RowsCard>
-                {doneRows.map((w, i) => {
-                  const car = carBy(w.reg), s = RT[w.reg] || 0, ok = w.status === 'done';
-                  return (
-                    <PRow
-                      key={w.reg}
-                      tile
-                      tone={ok ? c.ok : brand.orange}
-                      icon={ok ? 'check' : 'warn'}
-                      last={i === doneRows.length - 1}
-                      title={car ? car.model : w.reg}
-                      sub={ok ? t(`${w.minutes} min · ${w.tasks.filter(x => x.done).length}/${w.tasks.length} kaam · ${w.photos.length} photo`) : t('Skip') + ' · ' + (w.skip_reason || '')}
-                      chevron={false}
-                      right={<Amt main={ok ? t12(w.finished_at).replace(/ (AM|PM)/, '') : '—'} stars={s || undefined} />}
-                    />
-                  );
-                })}
-              </RowsCard>
-            )
-            : <PEmpty icon="clock" title={t('Abhi kuch nahi')} text={t('Har khatam gaadi yahan time ke saath aayegi.')} />}
-        </View>
-        <View style={{ marginTop: 'auto' }}><Footer bottomPad={120} /></View>
+          {wFeature('rewards') ? <><PTitle title={t('Bonus')} />
+          <FadeUp index={4}><RewardsCard /></FadeUp></> : null}
+
+          <PTitle title={t('Monthly gaadi se kamai')} note={cars.length ? `${paid.length} ${t('gaadi')}` : undefined} />
+          {cars.length ? (
+            <PCard style={{ padding: 6 }}>
+              {(showAll ? allPay : allPay.slice(0, 5)).map((car, i) => {
+                const w = W(car.reg), dn = !!w && w.status === 'done';
+                return (
+                  <View key={car.reg} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 12, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+                    <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: dn ? '#22C58B' : c.soft, alignItems: 'center', justifyContent: 'center' }}>
+                      {dn ? <Icon name="check" size={15} color="#fff" /> : <Text style={[TNUM, { fontFamily: F.bold, fontSize: 11.5, color: c.grey }]}>{i + 1}</Text>}
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 14.5, color: c.fg }}>{car.model}</Text>
+                      <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12, color: c.grey }}>{car.pending ? t('Manager ki manzoori baaki') : `${rupee(Money.perDay(car))} ${t('roz')}`}{car.mine ? ` · ${t('meri sale')}` : ''}</Text>
+                    </View>
+                    <Text style={[TNUM, { fontFamily: F.bold, fontSize: 15, color: c.fg }]}>{car.pending ? '—' : rupee(Money.earns(car))}</Text>
+                  </View>
+                );
+              })}
+              {allPay.length > 5 ? (
+                <Pressable onPress={() => setShowAll(v => !v)} accessibilityRole="button" style={{ minHeight: 46, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: c.line }}>
+                  <Text style={{ fontFamily: F.semi, fontSize: 13.5, color: c.primary }}>{showAll ? t('Kam dikhao') : t(`Saari ${allPay.length} gaadi dekho`)}</Text>
+                </Pressable>
+              ) : null}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 54, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: c.line }}>
+                <Text style={{ fontFamily: F.bold, fontSize: 15, color: c.fg }}>{t('Kul')}</Text>
+                <Text style={[TNUM, { fontFamily: F.displayBlack, fontSize: 20, color: c.fg }]}>{rupee(paidSum)}</Text>
+              </View>
+            </PCard>
+          ) : <EmptyBlock icon="car" title={t('Koi gaadi nahi')} text={t('Round aayega to kamai yahan dikhegi.')} />}
+
+          <PTitle title={t('Extra kaam se kamai')} note={exMonth.length ? t(`${exMonth.length} kaam is mahine`) : undefined} />
+          {exMonth.length ? (
+            <PCard style={{ padding: 6 }}>
+              {exMonth.map((j, i) => (
+                <View key={j.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 12, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+                  <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,186,8,0.22)', alignItems: 'center', justifyContent: 'center' }}><Icon name="tabExtra" size={14} color="#C77700" /></View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 14.5, color: c.fg }}>{j.service || t('Extra kaam')}</Text>
+                    <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12, color: c.grey }}>{j.car || j.reg || ''} · {(j.finished_at || j.date || '').slice(0, 10)}</Text>
+                  </View>
+                  <Text style={[TNUM, { fontFamily: F.bold, fontSize: 15, color: c.fg }]}>{rupee(Money.share(j.price))}</Text>
+                </View>
+              ))}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 54, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: c.line }}>
+                <Text style={{ fontFamily: F.bold, fontSize: 15, color: c.fg }}>{t('Kul')}</Text>
+                <Text style={[TNUM, { fontFamily: F.displayBlack, fontSize: 20, color: c.fg }]}>{rupee(extraSum)}</Text>
+              </View>
+            </PCard>
+          ) : <EmptyBlock icon="plus" title={t('Abhi koi extra kaam nahi')} text={t('Dopahar mein jo extra kaam accept karoge woh yahan aayega.')} />}
+        </Lift>
       </PullToRefresh>
     </View>
   );

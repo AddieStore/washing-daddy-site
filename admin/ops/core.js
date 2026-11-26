@@ -444,7 +444,7 @@ function demo() {
   demoT.push(setInterval(() => { if (k >= NEW.length) return; const [svc, car, reg, area, p] = NEW[k++]; const id = 'B7Q3' + k + 'X'; J(id, { service: svc, car, reg, area, flat: 'H-' + (10 + k), ...p, phone: '+91981100' + (4000 + k), customer_id: '+91981100' + (4000 + k), created_at: isoIST() }); S.payorders['WDB' + id] = { kind: 'booking', phone: '+91981100' + (4000 + k), status: 'paid', amount: 399, paid_amount: 399, total: 399, created_at: isoIST(), paid_at: isoIST(), booking_id: id, gateway: 'razorpay', paid_gateway: 'razorpay', pay_via: 'UPI', lines: [{ name: svc, q: 1 }] }; emit() }, 40000));
 }
 
-window.OPS = { S, on, start, stop, demo, job: jobView, jobs, washer: washerView, washers, suggest, monthly, dues, payments, kpis, byRound: washerByRound,
+window.OPS = { db: () => db, S, on, start, stop, demo, job: jobView, jobs, washer: washerView, washers, suggest, monthly, dues, payments, kpis, byRound: washerByRound,
   assign, unassign, savePublic, recountApp, pubTotals, OWNER_PHONE, ensureCode, stage, cancel, setEta, addWasher, updateWasher, setPhoto, setWasherStatus, setRound, customerStatus, saveCatalog,
   photoFromFile, km, ago, fmtTime, rs, nice, today, isoIST, ms, travelMin, STAGE_LABEL, FRESH_MS };
 })();

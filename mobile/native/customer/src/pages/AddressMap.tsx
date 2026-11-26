@@ -16,9 +16,9 @@ import { PageBar } from './Stub';
 import { G, PrimaryBtn } from './parts';
 import { SearchBox, Shimmer } from '../sheets/address';
 import { PickMap, type PickMapRef } from '../ui/PickMap';
-import { hasKey, reverseGeocode, autocomplete, placeLocation, newSession, type Suggestion, type Place } from '../geo';
+import { hasMap, reverseGeocode, autocomplete, placeLocation, newSession, type Suggestion, type Place } from '../geo';
 
-const UNAVAILABLE = Platform.OS !== 'web' && !hasKey;
+const UNAVAILABLE = Platform.OS !== 'web' && !hasMap;
 
 /** Pages talk to each other here: AddressForm's "Change location" sets onPick; the map then hands the pin back instead of opening the form. */
 export const mapFlow: { onPick: null | ((lat: number, lng: number, area: string) => void); seed: null | { lat: number; lng: number }; viaMap: boolean } = { onPick: null, seed: null, viaMap: false };
@@ -127,7 +127,7 @@ export default function AddressMap({ id }: { id?: string }) {
       <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, marginTop: -20, padding: 16, paddingBottom: Math.max(ins.bottom, 12) + 8, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: -4 }, elevation: 8 }}>
         {UNAVAILABLE ? <>
           <Txt size={12} color={G.mute} style={{ marginBottom: 8 }}>Your address</Txt>
-          <TextInput value={typed} onChangeText={setTyped} placeholder="Area, street or landmark" placeholderTextColor={G.mute} multiline maxLength={160} style={{ fontFamily: 'Poppins_400Regular', fontSize: 14, color: G.ink, minHeight: 44, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#F4F4F5' }} />
+          <TextInput value={typed} onChangeText={setTyped} placeholder="Area, street or landmark" placeholderTextColor={G.mute} multiline maxLength={160} style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 15, color: G.ink, minHeight: 44, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#F4F4F5' }} />
         </> : <>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Pin size={14} color={C.violet} strokeWidth={2} /><Txt weight={600} size={12} color={C.violet}>Confirm location</Txt>

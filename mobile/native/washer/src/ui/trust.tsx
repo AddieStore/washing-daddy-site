@@ -24,11 +24,11 @@ export function VerifiedBadge({ label, verified = true, small, style }: { label:
       style={[{
         flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', borderRadius: 99,
         paddingVertical: small ? 4 : 6, paddingLeft: small ? 7 : 9, paddingRight: small ? 9 : 12,
-        backgroundColor: verified ? alpha(c.ok, 0.14) : c.soft,
+        backgroundColor: c.soft,
       }, style]}
     >
       <Icon name="shield" size={small ? 14 : 17} color={tint} />
-      <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: small ? 11.5 : 13, color: verified ? c.ok : c.softInk, flexShrink: 1 }}>{label}</Text>
+      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: small ? 11.5 : 13, color: verified ? c.fg : c.fg3, flexShrink: 1 }}>{label}</Text>
     </View>
   );
 }
@@ -42,10 +42,10 @@ export function TrustChip({ icon, label, earned, pendingLabel }: { icon: IconNam
       accessible accessibilityLabel={earned ? label : `${label}, ${pendingLabel ?? ''}`}
       style={[{
         flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 99,
-      }, earned ? { backgroundColor: alpha(c.ok, 0.13) } : { borderWidth: 1, borderStyle: 'dashed', borderColor: c.dash }]}
+      }, { backgroundColor: c.soft }]}
     >
       <Icon name={earned ? 'check' : icon} size={earned ? 13 : 15} color={tint} />
-      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12.5, color: earned ? c.ok : c.fg3, flexShrink: 1 }}>
+      <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12.5, color: earned ? c.fg : c.fg3, flexShrink: 1 }}>
         {label}{!earned && pendingLabel ? ` · ${pendingLabel}` : ''}
       </Text>
     </View>

@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Db, Unsub } from '../backend/types';
 import * as R from './reference';
 import { builtinDocs, BuiltinDocs } from './builtin';
+import { setAreas } from './areas';
 
 type Doc = Record<string, any>;
 type Docs = Record<string, Doc>;
@@ -42,7 +43,8 @@ const notify = () => subs.forEach(f => { try { f() } catch (e) {} });
 
 /* ---------------- normalised views ---------------- */
 export type Features = { wallet: boolean; topup: boolean; giftcard: boolean; pass: boolean; coupons: boolean; refer: boolean; recurring: boolean; scheduled: boolean;
-  reschedule: boolean; cancel: boolean; ratings: boolean; store: boolean; plans: boolean; instant: boolean };
+  reschedule: boolean; cancel: boolean; ratings: boolean; store: boolean; plans: boolean; instant: boolean;
+  notify: boolean; whatsappLogin: boolean; guest: boolean };
 export type Sections = { hero: boolean; instantCards: boolean; packs: boolean; referBanner: boolean; services: boolean; trust: boolean; passPromo: boolean; more: boolean };
 export type AppCfg = {
   maintenance: { on: boolean; message: string };
@@ -92,7 +94,7 @@ function normAppcfg(raw: Doc): AppCfg {
   const B = BUILTIN.appcfg.customer, g = (o: any, k: string) => (o && typeof o === 'object' ? o[k] : undefined);
   const flags = <K extends string>(keys: K[], o: any, d: any): Record<K, boolean> => Object.fromEntries(keys.map(k => [k, bool(g(o, k), bool(g(d, k), true))])) as Record<K, boolean>;
   const inst = raw.instant || {}, home = raw.home || {}, sup = raw.support || {};
-  const features = flags(['wallet', 'topup', 'giftcard', 'pass', 'coupons', 'refer', 'recurring', 'scheduled', 'reschedule', 'cancel', 'ratings', 'store', 'plans', 'instant'], raw.features, B.features);
+  const features = flags(['wallet', 'topup', 'giftcard', 'pass', 'coupons', 'refer', 'recurring', 'scheduled', 'reschedule', 'cancel', 'ratings', 'store', 'plans', 'instant', 'notify', 'whatsappLogin', 'guest'], raw.features, B.features);
   const instOn = bool(inst.on, true) && features.instant;
   const phone10 = (v: any, d: string) => { const s = str(v).replace(/\D/g, '').slice(-10); return s.length === 10 ? s : d };
   return {
@@ -127,6 +129,7 @@ const list = (s: Slice) => Object.entries(slice(s)).map(([id, d]) => ({ id, ...(
 
 function apply() {
   APP = normAppcfg(docOf('appcfg'));
+  setAreas(docOf('appcfg').areas);   // service circles drawn in the dashboard (data/areas.ts)
   const raw = docOf('appcfg'), fees = raw.fees || {}, B = BUILTIN.appcfg.customer.fees;
   fillObj(R.FEES, { gstPct: num(fees.gstPct, B.gstPct), visitFee: num(fees.visit, B.visit), convenienceFee: num(fees.convenience, B.convenience), convenienceFreeAbove: num(fees.convenienceBelow, B.convenienceBelow), instantFee: 0 });
   const sur = fees.surcharge || {}, slotSur = fees.slotSurcharge && typeof fees.slotSurcharge === 'object' ? fees.slotSurcharge : B.slotSurcharge;

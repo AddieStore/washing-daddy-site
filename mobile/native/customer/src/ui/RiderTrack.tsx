@@ -7,6 +7,7 @@ import Reanimated, { type SharedValue, useSharedValue, useAnimatedStyle, withTim
 import { C } from '../theme';
 import { Txt } from './kit';
 import { RiderArt } from './heroRide';
+import { useActive } from './active';
 
 type Status = 'upcoming' | 'assigned' | 'on_the_way' | 'in_progress' | 'done' | 'cancelled' | string;
 export type RiderTrackProps = {
@@ -130,7 +131,7 @@ function Pin({ t }: { t: SharedValue<number> }) {
 }
 
 function Scene({ W, progress, status }: { W: number; progress: number; status?: Status }) {
-  const rm = useReducedMotion();
+  const rm = !!useReducedMotion() || !useActive();
   const inProg = status === 'in_progress' || status === 'done';
   const t = useClock(1000, !rm), slow = useClock(14000, !rm), far = useClock(40000, !rm), cl = useClock(55000, !rm);
   const mv = useSharedValue(inProg ? 0 : 1), pg = useSharedValue(Math.min(1, Math.max(0, progress)));
@@ -199,7 +200,8 @@ function Scene({ W, progress, status }: { W: number; progress: number; status?: 
 
 export function RiderTrack({ progress, eta, status = 'on_the_way', compact, title, subtitle }: RiderTrackProps) {
   const [W, setW] = useState(360), [now, setNow] = useState(Date.now());
-  useEffect(() => { const i = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(i); }, []);
+  const active = useActive();
+  useEffect(() => { if (!active) return; setNow(Date.now()); const i = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(i); }, [active]);
   const s = compact ? 120 / DH : 1, DW = Math.max(240, W / s), H = DH * s;
   const m = minsLeft(eta, now), arrived = status === 'in_progress' || status === 'done';
   const headline = title ? title : arrived ? 'Your washer is here' : m == null ? STAGE[status] || 'On the way' : m <= 0 ? 'Arriving now' : `Arriving in ${m} min`;

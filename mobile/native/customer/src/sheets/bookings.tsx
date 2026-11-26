@@ -77,7 +77,7 @@ export function RateForm({ id, initial = 0, onDone, big }: { id: string; initial
         </View>
       ) : null}
       <TextInput value={note} onChangeText={setNote} maxLength={300} multiline placeholder="Anything else for your washer or us? (optional)" placeholderTextColor="#A3A3A3"
-        style={[{ marginTop: 16, minHeight: 84, borderRadius: 10, borderWidth: 1, borderColor: G.line, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 12, fontSize: 15, lineHeight: 22, includeFontPadding: false, color: G.ink, textAlignVertical: 'top', backgroundColor: '#fff' }, { outlineStyle: 'none' } as any]} />
+        style={[{ marginTop: 16, minHeight: 84, borderRadius: 10, borderWidth: 1, borderColor: G.line, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 12, fontSize: 16, lineHeight: 22, includeFontPadding: false, color: G.ink, textAlignVertical: 'top', backgroundColor: '#fff' }, { outlineStyle: 'none' } as any]} />
       <PrimaryBtn label={j.stars ? 'Update rating' : 'Submit'} disabled={!n} busy={busy} onPress={submit} style={{ marginTop: 16 }} />
     </View>
   );

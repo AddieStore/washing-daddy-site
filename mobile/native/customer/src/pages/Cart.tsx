@@ -176,8 +176,8 @@ export default function Cart() {
             <View style={card({ overflow: 'hidden' })}>
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(o => !o)} style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}><Txt weight={600} size={16}>{b.perMonth ? 'To pay now' : 'To pay'}</Txt><CountUp to={rp(b.toPay)} duration={500} style={[TNUM, { fontFamily: 'Poppins_700Bold', fontSize: 17, color: G.ink }]} /></View>
-                  {b.saved > 0 ? <View style={{ alignSelf: 'flex-start', marginTop: 6, backgroundColor: 'rgba(22,163,74,0.10)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, flexDirection: 'row' }}><CountUp to={inr(b.saved)} duration={500} style={[TNUM, { fontFamily: 'Poppins_600SemiBold', fontSize: 13, color: G.pos }]} /><Txt weight={600} size={13} color={G.pos}> saved on the total!</Txt></View> : null}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}><Txt weight={600} size={16}>{b.perMonth ? 'To pay now' : 'To pay'}</Txt><CountUp to={rp(b.toPay)} duration={500} style={[TNUM, { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: G.ink }]} /></View>
+                  {b.saved > 0 ? <View style={{ alignSelf: 'flex-start', marginTop: 6, backgroundColor: 'rgba(22,163,74,0.10)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, flexDirection: 'row' }}><CountUp to={inr(b.saved)} duration={500} style={[TNUM, { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 14, color: G.pos }]} /><Txt weight={600} size={13} color={G.pos}> saved on the total!</Txt></View> : null}
                 </View>
                 <View style={{ transform: [{ rotate: open ? '-90deg' : '90deg' }] }}><Chev size={16} color={G.mute} strokeWidth={1.5} /></View>
               </Pressable>
@@ -230,7 +230,7 @@ export default function Cart() {
             {payMode ? (
               <FadeUp distance={0} duration={200} style={{ flex: 1 }}><Tap label="Bill details" onPress={openBillSheet}>
                 <Txt size={12} color={G.mute}>{b.perMonth ? `First month · ${b.perMonth.visits} visits` : 'To pay'}</Txt>
-                <CountUp to={rp(b.toPay)} duration={450} style={[TNUM, { fontFamily: 'Poppins_700Bold', fontSize: 20, color: G.ink }]} />
+                <CountUp to={rp(b.toPay)} duration={450} style={[TNUM, { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 20, color: G.ink }]} />
                 {b.saved > 0 ? <Txt weight={500} size={11} color={G.pos}>{inr(b.saved)} saved</Txt> : null}
               </Tap></FadeUp>
             ) : null}

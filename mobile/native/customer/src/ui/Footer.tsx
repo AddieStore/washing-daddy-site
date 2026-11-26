@@ -347,8 +347,8 @@ export function Footer({ bg = '#FFFFFF', bleed = 0, tabs = true, extraBottom = 0
           </Svg>
         </View>
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', paddingBottom: 9, paddingHorizontal: 12 }}>
-          <Text style={{ fontFamily: F.b700, fontSize: 14, color: '#FFFFFF', letterSpacing: 0.2, textAlign: 'center' }}>Washing Daddy Private Limited</Text>
-          <Text style={{ fontFamily: F.body, fontSize: 11, color: '#C9CEDA', marginTop: 1, textAlign: 'center' }}>© 2026 All rights reserved · Made in India</Text>
+          <Text style={{ fontFamily: F.b700, fontSize: 15, color: '#FFFFFF', letterSpacing: 0.2, textAlign: 'center' }}>Washing Daddy Private Limited</Text>
+          <Text style={{ fontFamily: F.body, fontSize: 12, color: '#C9CEDA', marginTop: 1, textAlign: 'center' }}>© 2026 All rights reserved · Made in India</Text>
         </View>
       </View>
       </View>

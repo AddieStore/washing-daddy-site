@@ -16,7 +16,7 @@ export default function Refer() {
   const run = (f: () => Promise<void>) => async () => { setBusy(true); try { await f() } catch (e: any) { toast(e.message) } setBusy(false) };
   const reach = v.tier.id;
   return (
-    <View style={{ flex: 1, backgroundColor: G.raised }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <PageBar title="Refer & earn" />
       {load ? <View style={{ padding: 16, gap: 12 }}><Skel h={250} r={20} /><Skel h={130} r={16} /><Skel h={180} r={16} /></View> : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 150 + ins.bottom }}>

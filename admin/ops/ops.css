@@ -295,3 +295,9 @@ main{padding:14px 16px calc(84px + env(safe-area-inset-bottom,0px));max-width:15
 .ln-row.one{grid-template-columns:minmax(0,1fr) 44px}
 .ln-row .x{margin-bottom:0}
 @media (max-width:420px){.ln-row{grid-template-columns:minmax(0,1fr) 44px}.ln-row>div:nth-child(2){grid-column:1;grid-row:2}.ln-row .x{grid-column:2;grid-row:1}}
+
+/* embedded in WD HQ (?embed=1): HQ draws the header and the navigation, this page only shows its work area */
+html.embed .hdr,html.embed .bar,html.embed .demo-bar{display:none!important}
+html.embed .app{padding-left:0!important;padding-top:0!important}
+html.embed body{background:transparent}
+html.embed main{padding-bottom:32px!important}

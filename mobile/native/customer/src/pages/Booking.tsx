@@ -69,7 +69,7 @@ const PAY_BANNER: Record<string, { t: string; s: string; bg: string; fg: string 
 const Row = ({ k, v, tone, strike, bold }: { k: string; v: string; tone?: 'pos'; strike?: boolean; bold?: boolean }) => (
   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 28 }}>
     <Txt weight={bold ? 500 : 400} size={bold ? 15 : 14} color={bold ? G.ink : G.sub}>{k}</Txt>
-    {bold ? <CountUp to={v} duration={600} style={[TNUM, { fontFamily: 'Poppins_500Medium', fontSize: 15, color: G.ink }]} /> : <Txt weight={400} size={14} color={tone === 'pos' ? G.pos : strike ? G.mute : G.ink} style={[TNUM, strike ? { textDecorationLine: 'line-through' } : null]}>{v}</Txt>}
+    {bold ? <CountUp to={v} duration={600} style={[TNUM, { fontFamily: 'PlusJakartaSans_500Medium', fontSize: 16, color: G.ink }]} /> : <Txt weight={400} size={14} color={tone === 'pos' ? G.pos : strike ? G.mute : G.ink} style={[TNUM, strike ? { textDecorationLine: 'line-through' } : null]}>{v}</Txt>}
   </View>
 );
 
@@ -91,7 +91,7 @@ export default function Booking({ id }: { id: string }) {
   const payText = j.pay === 'paid' ? `Paid${j.payVia ? ' via ' + j.payVia : ''}` : j.pay === 'pass' ? 'Paid with WD Pass' : j.pay === 'refunded' ? 'Refunded to WD Money' : j.pay === 'pending' ? 'Payment pending' : j.pay === 'failed' ? 'Payment failed' : j.pay === 'cancelled' ? 'Payment cancelled' : 'Pay on arrival';
   const ref = j.orderId || j.id.toUpperCase();
   return (
-    <View style={{ flex: 1, backgroundColor: '#F7F7F8' }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <PageBar title="Booking details" right={help} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 48 }}>
         <FadeUp>

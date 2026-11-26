@@ -11,17 +11,17 @@ import { SERVICE_AREAS } from '../data/areas';
 import { Back, Check, Locate, Pin, Search } from './icons';
 import { PickMap, type PickMapRef } from './PickMap';
 import { act, here, distance } from '../state';
-import { hasKey, reverseGeocode, autocomplete, placeLocation, newSession, type Suggestion, type Place } from '../geo';
+import { hasMap, reverseGeocode, autocomplete, placeLocation, newSession, type Suggestion, type Place } from '../geo';
 
 export type AddrDraft = { flat: string; street: string; area: string; lat: number; lng: number };
 export const emptyAddr = (): AddrDraft => ({ flat: '', street: '', area: '', lat: NaN, lng: NaN });
 export const addrLocated = (a: AddrDraft | null | undefined) => !!a && Number.isFinite(a.lat) && Number.isFinite(a.lng);
 
 const K = { ink: '#1A1033', grey: '#4F4766', muted: '#6B6483', line: 'rgba(84,9,218,0.16)', raised: C.canvas, violet: C.violet, ok: '#16a34a' };
-const UNAVAILABLE = Platform.OS !== 'web' && !hasKey;
+const UNAVAILABLE = Platform.OS !== 'web' && !hasMap;
 const DEFAULT_START = { lat: 28.668, lng: 77.0989 };
 const inputBox = { borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(84,9,218,0.14)', backgroundColor: K.raised, paddingHorizontal: SP.l } as const;
-const inputText = { fontFamily: F.b500, fontSize: 15, lineHeight: 22, color: K.ink, paddingTop: 13, paddingBottom: 13, includeFontPadding: false, textAlignVertical: 'center', outlineStyle: 'none' } as any;
+const inputText = { fontFamily: F.b500, fontSize: 16, lineHeight: 22, color: K.ink, paddingTop: 13, paddingBottom: 13, includeFontPadding: false, textAlignVertical: 'center', outlineStyle: 'none' } as any;
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return <View style={{ marginBottom: SP.m }}><Txt weight={500} size={13} color={K.grey} style={{ marginBottom: SP.s }}>{label}</Txt>{children}</View>;
@@ -73,7 +73,7 @@ function MapModal({ visible, start, onClose, onConfirm }: { visible: boolean; st
           <View style={{ flexDirection: 'row', gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(84,9,218,0.25)', backgroundColor: 'rgba(84,9,218,0.04)' }}>
             <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(84,9,218,0.1)', alignItems: 'center', justifyContent: 'center' }}><Locate size={20} color={K.violet} /></View>
             <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
-              {UNAVAILABLE ? <TextInput value={typed} onChangeText={setTyped} placeholder="Area, street or landmark" placeholderTextColor={K.muted} multiline maxLength={160} style={{ fontFamily: F.body, fontSize: 14, color: K.ink, minHeight: 40, paddingVertical: 4 }} />
+              {UNAVAILABLE ? <TextInput value={typed} onChangeText={setTyped} placeholder="Area, street or landmark" placeholderTextColor={K.muted} multiline maxLength={160} style={{ fontFamily: F.body, fontSize: 15, color: K.ink, minHeight: 40, paddingVertical: 4 }} />
                 : moving ? <Txt size={13} color={K.muted}>Locating…</Txt>
                 : <><Txt weight={500} size={15} color={K.ink} numberOfLines={1}>{pl.title}</Txt><Txt size={13} color={K.grey} numberOfLines={2} style={{ marginTop: 2 }}>{pl.sub}</Txt></>}
             </View>

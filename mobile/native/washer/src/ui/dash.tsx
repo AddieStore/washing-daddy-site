@@ -4,6 +4,7 @@
 // translated (call t() at the usage site). Preview of everything: the hidden /_kit route.
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Image, ScrollView, StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
+import { LinearGradient as ExpoGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Pattern, Rect, Stop } from 'react-native-svg';
 import { Icon, IconName } from './Icons';
 import { Pressy } from './kit';
@@ -40,8 +41,8 @@ export function DashCard({ children, style, onPress, accessibilityLabel }: {
 export function SectionTitle({ title, action, onAction, style }: { title: string; action?: string; onAction?: () => void; style?: S<ViewStyle> }) {
   const { c } = useTheme();
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 12 }, style]}>
-      <Text accessibilityRole="header" style={{ fontFamily: F.semi, fontSize: 18, lineHeight: 26, color: c.fg }}>{title}</Text>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 12 }, style]}>
+      <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 20, lineHeight: 26, letterSpacing: -0.5, color: c.fg }}>{title}</Text>
       {action ? <Text onPress={onAction} style={{ fontFamily: onAction ? F.semi : F.body, fontSize: 13, color: onAction ? c.primary : c.fg3 }}>{action}</Text> : null}
     </View>
   );
@@ -121,26 +122,20 @@ export function Ring({ fraction, size = 86, stroke = 11.5, color, track, value, 
 const GRAD_LIGHT = ['#6A1BF2', '#5409DA', '#36058F'] as const;
 const GRAD_DARK = ['#4A12B8', '#3A06A0', '#24065F'] as const;
 
-/** Absolute-fill violet gradient (top-left to bottom-right) with a faint white circle top right. Put it first inside an overflow-hidden View. */
-export function VioletBg({ circle = true }: { circle?: boolean }) {
+/** Absolute-fill flat brand fill (no gradient, no decoration). Put it first inside an overflow-hidden View. `circle` is kept for old callers and ignored. */
+export function VioletBg(_: { circle?: boolean } = {}) {
   const { dark } = useTheme();
-  const id = 'vg' + useId().replace(/[^a-zA-Z0-9]/g, '');
-  const g = dark ? GRAD_DARK : GRAD_LIGHT;
+  // same block as the customer Profile / Money headers: soft three-stop violet gradient + one faint circle top right
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <Svg width="100%" height="100%" preserveAspectRatio="none">
-        <Defs>
-          <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={g[0]} />
-            <Stop offset="0.5" stopColor={g[1]} />
-            <Stop offset="1" stopColor={g[2]} />
-          </LinearGradient>
-        </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
-      </Svg>
-      {circle ? <View style={{ position: 'absolute', right: -50, top: -30, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.07)' }} /> : null}
+      <LinearGradientFill colors={dark ? GRAD_DARK : GRAD_LIGHT} />
+      <View style={{ position: 'absolute', right: -50, top: -30, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.07)' }} />
+      <View style={{ position: 'absolute', left: -70, bottom: -90, width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(255,255,255,0.04)' }} />
     </View>
   );
+}
+function LinearGradientFill({ colors }: { colors: readonly [string, string, string] }) {
+  return <ExpoGradient colors={colors as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -175,7 +170,7 @@ export type VioletHeaderProps = {
 export function VioletHeader({ title, onBack, backLabel = 'Back', right, name, sub, subNode, avatarUri, onAvatarPress, safeTop = 0, bottomPad = 56, children, style }: VioletHeaderProps) {
   const initial = ((name ?? '').trim()[0] || '?').toUpperCase();
   return (
-    <View style={[{ paddingTop: safeTop + 8, paddingHorizontal: 16, paddingBottom: bottomPad, overflow: 'hidden' }, style]}>
+    <View style={[{ paddingTop: safeTop + 8, paddingHorizontal: 16, paddingBottom: bottomPad, overflow: 'hidden', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }, style]}>
       <VioletBg />
       <OnViolet>
         {title || onBack || right ? (
@@ -235,7 +230,7 @@ export function HeroCard({ eyebrow, eyebrowIcon = 'flag', title, subtitle, ring,
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
           {heroEyebrow(eyebrow, eyebrowIcon, 'rgba(255,255,255,0.8)')}
-          <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={{ fontFamily: F.black, fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: '#fff', marginTop: eyebrow ? 4 : 0 }}>{title}</Text>
+          <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={{ fontFamily: F.bold, fontSize: 28, lineHeight: 34, letterSpacing: -0.8, color: '#fff', marginTop: eyebrow ? 4 : 0 }}>{title}</Text>
           {subtitle ? <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.82)', marginTop: 4 }}>{subtitle}</Text> : null}
         </View>
         {ring ? <Ring size={86} color="#FFD166" track={c.heroTrack} ink="#fff" labelColor="rgba(255,255,255,0.8)" {...ring} /> : null}
@@ -243,7 +238,7 @@ export function HeroCard({ eyebrow, eyebrowIcon = 'flag', title, subtitle, ring,
       {children ? <OnViolet><View style={{ marginTop: 12 }}>{children}</View></OnViolet> : null}
     </>
   );
-  const st: S<ViewStyle> = [{ borderRadius: 20, padding: 20, overflow: 'hidden', backgroundColor: c.hero }, style];
+  const st: S<ViewStyle> = [{ borderRadius: 16, padding: 20, overflow: 'hidden', backgroundColor: c.hero }, style];
   if (onPress) return <Pressy onPress={onPress} accessibilityLabel={title} style={st}>{body}</Pressy>;
   return <View style={st}>{body}</View>;
 }

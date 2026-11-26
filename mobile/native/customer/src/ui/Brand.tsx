@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { C } from '../theme';
 import { FadeUp, useRM } from './motion';
 import { src } from '../img';
+import { useActive } from './active';
 
 /** full-bleed violet gradient with two soft glows; put it first inside a flex:1 View */
 export function BrandBg() {
@@ -68,7 +69,7 @@ function RingCard({ i, pos, cw, h, spacing, onPick }: { i: number; pos: SharedVa
     centre photo biggest, neighbours smaller/tilted/dimmed, tap a side photo to bring it front, gentle auto-rotate
     (off with reduced motion). Only horizontal drags are claimed, so page scroll and the keyboard are untouched. */
 export function PhotoStrip({ width, h = 132, autoMs = 3000 }: { width: number; h?: number; autoMs?: number }) {
-  const rm = useRM();
+  const rm = useRM(), active = useActive();
   const cw = Math.round(h * 1.05), spacing = Math.min(cw * 0.78, (width - cw) / 2 - 6);
   const pos = useSharedValue(0);
   const last = useRef(0), start = useRef(0), dragging = useRef(false);
@@ -89,13 +90,13 @@ export function PhotoStrip({ width, h = 132, autoMs = 3000 }: { width: number; h
     onPanResponderTerminate: () => { dragging.current = false; touch(); snapTo(Math.round(pos.value)); },
   }), [spacing]);
   useEffect(() => {
-    if (rm) return;
+    if (rm || !active) return;
     const t = setInterval(() => {
       if (dragging.current || Date.now() - last.current < 4500) return;
       snapTo(Math.round(pos.value) + 1, 700);
     }, autoMs);
     return () => clearInterval(t);
-  }, [rm, autoMs]);
+  }, [rm, autoMs, active]);
   return (
     <FadeUp delay={120} style={{ width, height: h + 8 }}>
       <View {...pan.panHandlers} onTouchStart={touch} style={{ width, height: h + 8, alignItems: 'center', paddingTop: 4 }}>
