@@ -43,7 +43,8 @@ const notify = () => subs.forEach(f => { try { f() } catch (e) {} });
 
 /* ---------------- normalised views ---------------- */
 export type Features = { wallet: boolean; topup: boolean; giftcard: boolean; pass: boolean; coupons: boolean; refer: boolean; recurring: boolean; scheduled: boolean;
-  reschedule: boolean; cancel: boolean; ratings: boolean; store: boolean; plans: boolean; instant: boolean };
+  reschedule: boolean; cancel: boolean; ratings: boolean; store: boolean; plans: boolean; instant: boolean;
+  notify: boolean; whatsappLogin: boolean; guest: boolean };
 export type Sections = { hero: boolean; instantCards: boolean; packs: boolean; referBanner: boolean; services: boolean; trust: boolean; passPromo: boolean; more: boolean };
 export type AppCfg = {
   maintenance: { on: boolean; message: string };
@@ -93,7 +94,7 @@ function normAppcfg(raw: Doc): AppCfg {
   const B = BUILTIN.appcfg.customer, g = (o: any, k: string) => (o && typeof o === 'object' ? o[k] : undefined);
   const flags = <K extends string>(keys: K[], o: any, d: any): Record<K, boolean> => Object.fromEntries(keys.map(k => [k, bool(g(o, k), bool(g(d, k), true))])) as Record<K, boolean>;
   const inst = raw.instant || {}, home = raw.home || {}, sup = raw.support || {};
-  const features = flags(['wallet', 'topup', 'giftcard', 'pass', 'coupons', 'refer', 'recurring', 'scheduled', 'reschedule', 'cancel', 'ratings', 'store', 'plans', 'instant'], raw.features, B.features);
+  const features = flags(['wallet', 'topup', 'giftcard', 'pass', 'coupons', 'refer', 'recurring', 'scheduled', 'reschedule', 'cancel', 'ratings', 'store', 'plans', 'instant', 'notify', 'whatsappLogin', 'guest'], raw.features, B.features);
   const instOn = bool(inst.on, true) && features.instant;
   const phone10 = (v: any, d: string) => { const s = str(v).replace(/\D/g, '').slice(-10); return s.length === 10 ? s : d };
   return {

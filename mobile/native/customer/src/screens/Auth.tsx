@@ -11,7 +11,7 @@ import { BrandBg, BrandLogo, Sheet } from '../ui/Brand';
 import { LoginStory } from '../ui/loginStory';
 import { Cta, PhoneField, OtpBox } from '../ui/welcome';
 import { Back, Check, Zap, Calendar, WhatsApp } from '../ui/icons';
-import { OTP_N, REAL, type OtpVia, act, fmtPhone, pendingRef, setPendingRef, validInvite, useApp, legalPages, onAutoSignIn } from '../state';
+import { OTP_N, REAL, type OtpVia, act, feature, fmtPhone, pendingRef, setPendingRef, validInvite, useApp, legalPages, onAutoSignIn } from '../state';
 import { openLegalSheet } from '../pages/LegalDoc';
 import { Plate } from '../ui/Plate';
 import { sellablePlans, DEFAULT_PLAN, PlanId, fromPrice } from '../data/reference';
@@ -346,10 +346,10 @@ export default function Auth() {
       <FadeUp style={{ paddingHorizontal: PAD + 4 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <AppMark size={44} />
-          <Pressable onPress={() => act.continueAsGuest()} accessibilityRole="button" accessibilityLabel="Skip login and look around" hitSlop={10}
+          {feature('guest') ? <Pressable onPress={() => act.continueAsGuest()} accessibilityRole="button" accessibilityLabel="Skip login and look around" hitSlop={10}
             style={({ pressed }) => ({ paddingHorizontal: 16, height: 36, borderRadius: 18, justifyContent: 'center', backgroundColor: pressed ? 'rgba(84,9,218,0.16)' : 'rgba(84,9,218,0.09)', borderWidth: 1, borderColor: 'rgba(84,9,218,0.18)' })}>
             <Txt weight={600} size={14} color={C.brandTop}>Skip</Txt>
-          </Pressable>
+          </Pressable> : <View />}
         </View>
       </FadeUp>
       <View style={{ marginTop: 0 }}><LoginStory W={W} H={storyH + 24} /></View>

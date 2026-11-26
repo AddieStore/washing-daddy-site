@@ -8,7 +8,7 @@ import Reanimated, { FadeIn, FadeInDown, useSharedValue, useAnimatedStyle, withS
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Txt } from './kit';
 import { Pressable3 } from './motion';
-import { act, coverage, notifyState, interest, loadInterest, isGuest, toast, NOT_SERVED_TITLE } from '../state';
+import { act, coverage, notifyState, interest, loadInterest, isGuest, toast, NOT_SERVED_TITLE, feature } from '../state';
 import { openAddressPicker } from '../sheets/address';
 
 const V = '#5409DA', INK = '#141414', SUB = '#55555C', OK = '#16a34a', GOLD = '#FFBA08';
@@ -65,7 +65,7 @@ export function CoverageBanner() {
   const was = useRef(listed);
   useEffect(() => { if (c.known && !c.ok) void loadInterest() }, [c.known, c.known ? c.lat : 0, c.known ? c.lng : 0]);
   useEffect(() => { if (listed && !was.current) setBurst(b => b + 1); was.current = listed }, [listed]);
-  if (!c.known || c.ok) return null;
+  if (!c.known || c.ok || !feature('notify')) return null;   // HQ switch: the 'not in your area yet' card and Count me in
   const notify = async () => {
     if (isGuest()) { act.askLogin(); return }
     setBusy(true);

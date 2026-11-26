@@ -10,7 +10,7 @@ import {
 } from '../../ui';
 import { RoundHeroArt, DoneArt, EmptyArt } from '../../ui/art';
 import { cardShadow } from '../../ui/theme';
-import { DAY, Extra, Money, Rounds, Route, S, W, act, carBy, isOnline, me, openReqs, planName, route, useStore, view } from '../../state/store';
+import { DAY, Extra, Money, Rounds, wFeature, Route, S, W, act, carBy, isOnline, me, openReqs, planName, route, useStore, view } from '../../state/store';
 import { STATUS, navOf, telOf } from '../../lib/data';
 import { TASK, tasksFor } from '../../lib/schedule';
 import { dayShort, hm12, hourIST, rupee, short12, t12 } from '../../lib/time';
@@ -40,11 +40,11 @@ function PlaceChip() {
   useStore();
   const r = Rounds.mine();
   return (
-    <Pressy onPress={openRoundSheet} accessibilityLabel={`${t('Round badlo')}: ${r.name}`} scaleTo={0.97} hitSlop={8}>
+    <Pressy onPress={wFeature('round_picker') ? openRoundSheet : undefined} accessibilityLabel={`${t('Round badlo')}: ${r.name}`} scaleTo={0.97} hitSlop={8}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minWidth: 0, height: 30, paddingLeft: 10, paddingRight: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.85)', maxWidth: 200 }}>
         <Icon name="pin" size={13} color="#5409DA" />
         <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 16, color: '#141414', flexShrink: 1 }}>{r.areas.split(' · ')[0]}{r.areas.includes(' · ') ? ' +' : ''}</Text>
-        <View style={{ transform: [{ rotate: '90deg' }] }}><Icon name="chevron" size={13} color="#5409DA" /></View>
+        {wFeature('round_picker') ? <View style={{ transform: [{ rotate: '90deg' }] }}><Icon name="chevron" size={13} color="#5409DA" /></View> : null}
       </View>
     </Pressy>
   );
@@ -79,8 +79,8 @@ function HeroBand({ top, width, greeting, name }: { top: number; width: number; 
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <DutyToggle />
-              <HeaderIconButton icon="bell" label={t('Madad / SOS')} onPress={openHelpSheet} />
-              <HeaderIconButton icon="plus" label={t('Nayi gaadi add karo')} onPress={openAddCar} />
+              {wFeature('help_sos') ? <HeaderIconButton icon="bell" label={t('Madad / SOS')} onPress={openHelpSheet} /> : null}
+              {wFeature('add_car') ? <HeaderIconButton icon="plus" label={t('Nayi gaadi add karo')} onPress={openAddCar} /> : null}
             </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
@@ -193,8 +193,8 @@ export default function RoundScreen() {
           {started ? <FadeUp index={2}><CheckOutCard /></FadeUp> : null}
           {cn.total ? <FadeUp index={3}><RouteTrack /></FadeUp> : null}
           {cn.total ? <FadeUp index={4}><RouteList nowReg={started && !finished ? nowReg : null} /></FadeUp> : null}
-          <FadeUp index={5}><RewardsRow /></FadeUp>
-          <FadeUp index={6}><Group><Row icon="plus" label={t('Nayi gaadi add karo')} sub={t('Naya customer mila? Manager manzoori denge.')} onPress={openAddCar} /></Group></FadeUp>
+          {wFeature('rewards') ? <FadeUp index={5}><RewardsRow /></FadeUp> : null}
+          {wFeature('add_car') ? <FadeUp index={6}><Group><Row icon="plus" label={t('Nayi gaadi add karo')} sub={t('Naya customer mila? Manager manzoori denge.')} onPress={openAddCar} /></Group></FadeUp> : null}
         </View>
       </PullToRefresh>
       {showSlide ? (

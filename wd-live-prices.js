@@ -19,4 +19,16 @@
       if (p && typeof p.price === 'number') { o.textContent = m[1] + ' — ' + rs(p.price) + ' a month'; if (p.status === 'hidden') o.remove() }
     });
   }).catch(function () {});
+  /* On/off switches for parts of this page, set in WD HQ (appcfg/customer.features.web.*). Anything not set stays on. */
+  var SECTIONS = { plans: '#plans', street: '#street', beforeAfter: '#before-after', map: '#map', join: '#join', enquire: '#enquire' };
+  var fv = function (f) { if (!f) return undefined; if ('booleanValue' in f) return f.booleanValue; if ('mapValue' in f) { var o = {}, m = f.mapValue.fields || {}; for (var k in m) o[k] = fv(m[k]); return o } return val(f) };
+  fetch('https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents/appcfg/customer?key=' + KEY).then(function (r) { return r.ok ? r.json() : null }).then(function (d) {
+    var web = d && d.fields && d.fields.features && fv(d.fields.features) && fv(d.fields.features).web; if (!web) return;
+    Object.keys(SECTIONS).forEach(function (k) {
+      if (web[k] !== false) return;
+      document.querySelectorAll(SECTIONS[k]).forEach(function (el) { el.style.display = 'none' });
+      document.querySelectorAll('a[href="' + SECTIONS[k] + '"]').forEach(function (a) { a.style.display = 'none' });
+    });
+    if (web.buyOnline === false) document.querySelectorAll('button[data-buy]').forEach(function (b) { b.disabled = true; b.textContent = 'Message us to join'; });
+  }).catch(function () {});
 })();

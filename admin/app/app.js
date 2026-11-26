@@ -328,6 +328,8 @@ const FEATURES = [
   ['reschedule', 'undo', 'Reschedule', 'Customers moving a booking'], ['cancel', 'x', 'Cancel booking', 'Customers cancelling a booking'],
   ['ratings', 'star', 'Ratings', 'Ratings on cards and rating after a wash'], ['store', 'bag', 'Car store', 'The Store tab and its entry on Home'],
   ['plans', 'plan', 'Monthly plans', 'Daily wash plans and sign-up'],
+  ['notify', 'bell', 'Notify me (not in your area yet)', 'The card with the neighbours bar and Count me in'], ['whatsappLogin', 'whatsapp', 'WhatsApp sign-in code', 'Off sends the code by SMS only'],
+  ['guest', 'user', 'Skip login (guest)', 'The Skip button on the sign-in screen'],
 ];
 const SECTIONS = [['hero', 'Hero banner', 'The big violet header on Home'], ['instantCards', 'Instant and Schedule cards', 'The two entry cards'], ['packs', 'Wash packs', 'The packs carousel'], ['referBanner', 'Refer banner', 'Refer a friend strip'], ['services', 'All services grid', 'The a la carte grid'], ['trust', 'Trust footer', 'Your car is in professional hands'], ['passPromo', 'WD Pass promo', 'The pass sheet on Home'], ['more', 'Plans and Store row', 'Monthly plans / Car store shortcuts']];
 const TABS_CFG = [['washes', 'Washes tab', 'Bookings and wash history'], ['money', 'Money tab', 'Also needs the wallet switch'], ['profile', 'Profile tab', 'Account, addresses, help']];

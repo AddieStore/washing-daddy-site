@@ -1299,6 +1299,7 @@ export const act = {
    *  number is not on WhatsApp, or it is an admin number. Resolves to the channel the code actually went out on. */
   async sendOtp(phone10: string, via: OtpVia = 'whatsapp'): Promise<OtpVia> {
     if (!/^[6-9]\d{9}$/.test(phone10)) throw new Error('Enter a 10-digit mobile number.');
+    if (via === 'whatsapp' && !feature('whatsappLogin')) via = 'sms';   // HQ switch
     if (!AUTH) { await wait(700); otpVia = via; return via }
     if (via === 'whatsapp' && AUTH.sendWhatsApp) {
       try { await AUTH.sendWhatsApp(phone10); otpVia = 'whatsapp'; return 'whatsapp' }

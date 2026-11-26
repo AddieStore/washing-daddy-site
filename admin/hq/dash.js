@@ -130,11 +130,11 @@
 
   /* ---------- data + sign-in ---------- */
   function start() {
-    ready = true; OPS.on(render); try { OPSB.start && OPSB.start(); OPSB.on && OPSB.on(render) } catch (e) {}
+    ready = true; OPS.on(render); try { DEMO ? OPSB.demo() : OPSB.start(); OPSB.on(render) } catch (e) {}
     if (DEMO) { catalog = JSON.parse(JSON.stringify((window.WD_SEED && window.WD_SEED.catalog) || {})) } else {
       try { unsubCat && unsubCat(); unsubCat = OPS.db().collection('catalog').onSnapshot(sn => { const o = {}; sn.docs.forEach(d => { o[d.id] = d.data() }); catalog = o; render() }, e => console.warn('catalog', e)) } catch (e) { console.warn(e) }
     }
-    $('#gateD').hidden = true; render();
+    $('#gateD').hidden = true; render(); if (window.HQFuncs) HQFuncs.start();
   }
   function gate(msg) {
     $('#dashBody').innerHTML = ''; const g = $('#gateD'); g.hidden = false;

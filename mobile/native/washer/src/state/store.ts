@@ -1168,9 +1168,18 @@ function demoExtras() {
 
 /* ---------------- boot ---------------- */
 let started = false;
-/** the washer's share of a wash is set in WD HQ (appcfg/customer.washerSharePct); read at start and whenever the app comes back */
+/* Settings that WD HQ changes for this app (appcfg/customer): the washer's share of a wash, and the on/off switches of the app's functions
+   (features.washer.*). Read at start and whenever the app comes back. Anything not mentioned stays on. */
+let FLAGS: Record<string, boolean> = {};
+export const wFeature = (k: string) => FLAGS[k] !== false;
 async function loadShare() {
-  try { const g: any = await (db as any).doc('appcfg/customer').get(); const v = Number(g && g.data && (typeof g.data === 'function' ? g.data() : g.data)?.washerSharePct); if (v >= 10 && v <= 90) { setShare(v / 100); emit() } } catch (e) { /* offline or demo: keep what we have */ }
+  try {
+    const g: any = await (db as any).doc('appcfg/customer').get(), d: any = g && (typeof g.data === 'function' ? g.data() : g.data);
+    if (!d) return;
+    const v = Number(d.washerSharePct); if (v >= 10 && v <= 90) setShare(v / 100);
+    const f = d.features && d.features.washer; FLAGS = f && typeof f === 'object' ? Object.fromEntries(Object.entries(f).filter(([, x]) => typeof x === 'boolean')) as Record<string, boolean> : {};
+    emit();
+  } catch (e) { /* offline or demo: keep what we have */ }
 }
 export async function boot() {
   if (started) return; started = true;

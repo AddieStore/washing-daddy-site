@@ -741,7 +741,7 @@ async function boot() {
   $('#hLogo').innerHTML = ic('drop', 22);
   if (DEMO) $('#bBack').href = '../app/?demo=1';
   window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (SECS[h] && h !== UI.sec && !$('#app').hidden) goto(h, true) });
-  if (DEMO) { OPS.demo(); return show() }
+  if (DEMO) { OPS.demo(); try { OPSB.demo() } catch (e) { console.warn(e) } return show() }
   try { await loadScript('../wd-sync.js') } catch (e) { return showGate("Couldn't load. Check the internet.") }
   WDAuth.ready().then(signedIn);
 }

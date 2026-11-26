@@ -16,6 +16,7 @@
   const CTL = h => '../app/?embed=1' + (DEMO ? '&demo=1' : '') + '#' + h, OPS = h => '../ops/?embed=1' + (DEMO ? '&demo=1' : '') + '#' + h;
   /* tags: c = customer app, w = website, p = WD Partner (washer) app */
   const SECS = [
+    { id: 'functions', g: 'Prices and what customers get', t: 'All functions', s: 'Every function of the apps and website, with its switch.', i: 'toggle', native: 'funcs', tags: 'cpw', d: '' },
     { id: 'catalog', g: 'Prices and what customers get', t: 'Services & prices', s: 'Wash prices, plans, packs, store items. Pause or go live.', i: 'shop', src: CTL('catalog'), tags: 'cw', d: 'Change a price or what a service includes and it changes in the customer app and, for the monthly plans, on the website. Set any item to Live, Paused or Hidden.' },
     { id: 'offers', g: 'Prices and what customers get', t: 'Offers & WD Pass', s: 'Coupons, passes and discounts.', i: 'tag', src: CTL('offers'), tags: 'c', d: 'Create coupons and the WD Pass, and switch them on or off.' },
     { id: 'switch', g: 'Prices and what customers get', t: 'Live switches', s: 'What the app shows right now.', i: 'toggle', src: CTL('switch'), tags: 'c', d: 'Turn whole parts of the customer app on or off: instant washes, scheduled washes, tabs, banners.' },
@@ -125,8 +126,10 @@
     const sec = BY[id] || null; cur = sec ? sec.id : null;
     document.querySelectorAll('.ri').forEach(b => b.classList.toggle('on', b.dataset.go === (cur || '')));
     $('#jump').value = cur || '';
-    $('#depot').hidden = !!sec || view !== 'depot'; $('#dash').hidden = !!sec || view !== 'dash'; $('#panel').hidden = !sec;
+    const nat = sec && sec.native;
+    $('#depot').hidden = !!sec || view !== 'depot'; $('#dash').hidden = !!sec || view !== 'dash'; $('#panel').hidden = !sec || !!nat; $('#funcs').hidden = !nat;
     document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === view));
+    if (nat) { document.title = sec.t + ' · WD HQ'; $('#stand').hidden = true; $('#crumbs').innerHTML = `<span>HQ</span><span>/</span><b>${sec.t}</b>`; if (window.HQFuncs) HQFuncs.render(); return }
     $('#crumbs').innerHTML = sec ? `<span>HQ</span><span>/</span><b>${sec.t}</b>` : '';
     $('#stand').hidden = !sec; if (sec) $('#stand').href = sec.src.replace('embed=1&', '').replace('?embed=1', '');
     if (!sec) { document.title = 'WD HQ'; return }

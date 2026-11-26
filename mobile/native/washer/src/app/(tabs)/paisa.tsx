@@ -5,7 +5,7 @@ import { useFocusEffect } from 'expo-router';
 import { F, HeaderBar, Icon, Lift, PCard, PageHeader, PTitle, PullToRefresh, StatTile, WeekBars, useTheme } from '../../ui';
 import { router } from 'expo-router';
 import { BarChart } from '../../ui';
-import { DAY, Extra, Hist, MODE, Money, RT, Route, S, Sync, W, act, carBy, ensureDay, route, useStore } from '../../state/store';
+import { wFeature, DAY, Extra, Hist, MODE, Money, RT, Route, S, Sync, W, act, carBy, ensureDay, route, useStore } from '../../state/store';
 import { addDaysStr, dayLong, dayNarrow, rupee, t12 } from '../../lib/time';
 import { isHindi, t } from '../../lib/i18n';
 import { CountUp, FadeUp, TNUM } from '../../screens/ProntoBits';
@@ -150,8 +150,8 @@ export default function Paisa() {
             </PCard>
           </FadeUp>
 
-          <PTitle title={t('Bonus')} />
-          <FadeUp index={4}><RewardsCard /></FadeUp>
+          {wFeature('rewards') ? <><PTitle title={t('Bonus')} />
+          <FadeUp index={4}><RewardsCard /></FadeUp></> : null}
 
           <PTitle title={t('Monthly gaadi se kamai')} note={cars.length ? `${paid.length} ${t('gaadi')}` : undefined} />
           {cars.length ? (

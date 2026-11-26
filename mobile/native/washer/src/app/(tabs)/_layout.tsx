@@ -2,9 +2,10 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { FloatingTabBar, type IconName } from '../../ui';
-import { Extra, S, openReqs, route, useStore } from '../../state/store';
+import { Extra, S, openReqs, route, useStore, wFeature } from '../../state/store';
 import { t } from '../../lib/i18n';
 
+const FLAG: Record<string, string> = { extra: 'tab_extra', attendance: 'tab_hazri', paisa: 'tab_money' };   // WD HQ switches
 const TABS: { name: string; label: string; icon: IconName }[] = [
   { name: 'index', label: 'Round', icon: 'tabRound' },
   { name: 'extra', label: 'Extra', icon: 'tabExtra' },
@@ -25,7 +26,7 @@ function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
     const ev = emitter.emit({ type: 'tabPress', target: rt.key, canPreventDefault: true });
     if (name !== active && !ev.defaultPrevented) navigateToTab(rt.key);
   };
-  return <FloatingTabBar active={active} onSelect={select} tabs={TABS.map((tb) => ({ key: tb.name, label: t(tb.label), icon: tb.icon, badge: badge[tb.name] || 0 }))} />;
+  return <FloatingTabBar active={active} onSelect={select} tabs={TABS.filter((tb) => !FLAG[tb.name] || wFeature(FLAG[tb.name])).map((tb) => ({ key: tb.name, label: t(tb.label), icon: tb.icon, badge: badge[tb.name] || 0 }))} />;
 }
 
 export default function TabsLayout() {

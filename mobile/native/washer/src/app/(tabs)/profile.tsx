@@ -7,7 +7,7 @@ import {
   DemoNote, F, Group, Icon, Lift, PCard, PageHeader, PTitle, PullToRefresh, Row, StatTile, SyncDot, useTheme,
 } from '../../ui';
 import { FadeUp, TNUM } from '../../screens/ProntoBits';
-import { DOC_KINDS, REAL, Route, S, me, myPhoto, syncState, useStore } from '../../state/store';
+import { DOC_KINDS, REAL, Route, S, me, wFeature, myPhoto, syncState, useStore } from '../../state/store';
 import { openPhotoChooser } from '../../screens/PortraitPhoto';
 import { fmtPhone } from '../../lib/data';
 import { t } from '../../lib/i18n';
@@ -145,8 +145,8 @@ export default function Profile() {
           <PTitle title={t('Others')} />
           <FadeUp index={4}>
             <Group>
-              <Row icon="user" label={t('Refer & earn')} sub={t('Apna code share karo, bonus pao')} onPress={openReferSheet} />
-              <Row icon="help" label={t('Madad / SOS')} sub={t('Paisa, customer ya accident ki problem')} onPress={openHelpSheet} />
+              {wFeature('refer') ? <Row icon="user" label={t('Refer & earn')} sub={t('Apna code share karo, bonus pao')} onPress={openReferSheet} /> : null}
+              {wFeature('help_sos') ? <Row icon="help" label={t('Madad / SOS')} sub={t('Paisa, customer ya accident ki problem')} onPress={openHelpSheet} /> : null}
               <Row icon="doc" label={t('Account delete karwao')}
                 onPress={() => { Linking.openURL('mailto:Business@washingdaddy.com?subject=' + encodeURIComponent('WD Partner: delete my account +91 ' + w.phone) + '&body=' + encodeURIComponent('Please delete my WD Partner account and data. Phone: +91 ' + w.phone)).catch(() => Linking.openURL('https://washingdaddy.com/privacy.html#deletion-of-account-and-personal-data').catch(() => {})) }} />
               <Row icon="logout" label={t('Log out')} destructive onPress={openLogoutSheet} />
