@@ -42,6 +42,7 @@ import Rate from '../pages/Rate';
 import Txn from '../pages/Txn';
 import Washer from '../pages/Washer';
 import PayResult from '../pages/PayResult';
+import ParkAlerts from '../pages/ParkAlerts';
 import Permissions, { needsPrimer } from './Permissions';
 
 const CURVE = Easing.bezier(0.22, 1, 0.36, 1);
@@ -83,6 +84,7 @@ function PageView({ p }: { p: NonNullable<Page> }): React.ReactElement {
     case 'txn': return <Txn id={p.id} />;
     case 'washer': return <Washer id={p.id} name={p.name} />;
     case 'payResult': return <PayResult />;
+    case 'parkAlerts': return <ParkAlerts />;
     default: { const never: never = p; return never }
   }
 }

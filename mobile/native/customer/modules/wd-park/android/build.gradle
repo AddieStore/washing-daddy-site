@@ -1,0 +1,24 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.washingdaddy.wdpark'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.wdpark"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+dependencies {
+  implementation 'com.google.android.gms:play-services-location:21.3.0'
+  implementation 'androidx.core:core-ktx:1.13.1'
+  // Used only to end "until I'm back" spots without opening the app. The app ships these through
+  // @react-native-firebase; compileOnly so a demo build without Firebase still builds (calls are wrapped in try/catch).
+  compileOnly 'com.google.firebase:firebase-firestore:25.1.1'
+  compileOnly 'com.google.firebase:firebase-auth:23.1.0'
+}

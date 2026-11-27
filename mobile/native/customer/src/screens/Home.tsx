@@ -34,6 +34,7 @@ import { MiniMap, EtaChip, OfferCarousel, Offer } from '../ui/home';
 import { SkyClouds } from '../ui/heroRide';
 import { LoginStory, HOME_ORDER } from '../ui/loginStory';
 import { HeroHeadline } from '../ui/heroHeadline';
+import { ParkCard } from '../ui/ParkCard';
 import { CoverageBanner } from '../ui/coverageBanner';
 import { VettedSection } from '../ui/trust';
 import { useActive, TabActive } from '../ui/active';
@@ -576,6 +577,7 @@ export default function Home() {
         <Hero W={W} y={y} />
         <Entry onInstant={() => { try { act.setCartMode('instant') } catch (e) {} ref.current?.scrollTo({ y: Math.max(0, gridY.current - 90), animated: true }) }} />
         <Assigned />
+        <ParkCard />
         <Buttons placement="home_top" />
         <Packs skel={skel} />
         <Offers />

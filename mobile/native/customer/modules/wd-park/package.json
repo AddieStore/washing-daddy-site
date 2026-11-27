@@ -1,0 +1,1 @@
+{ "name": "wd-park", "version": "1.0.0", "private": true, "description": "Parking alerts: car Bluetooth disconnect -> one location fix -> 'parked somewhere new?' notification (Android)", "main": "src/index.ts" }
