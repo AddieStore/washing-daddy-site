@@ -1,4 +1,4 @@
-// F1: only a signed-in washer may read a round. The app sends  Authorization: Bearer <Firebase ID token>.
+// F1: only a signed-in washer may read a round (or, for ops_* actions, only the owner/admin phone). The app sends  Authorization: Bearer <Firebase ID token>.
 // We verify the RS256 signature against Google's published securetoken certificates, check the
 // claims, and require the token's phone number to belong to the washer being asked for.
 // Needs n8n env NODE_FUNCTION_ALLOW_BUILTIN=crypto (Code nodes must be allowed to require('crypto')),
@@ -7,6 +7,15 @@ const crypto = require('crypto');
 const PROJECT = String($env.FIREBASE_PROJECT_ID || '').trim();
 if (!PROJECT) throw new Error('FIREBASE_PROJECT_ID env var is not set');
 const CERT_URL = 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
+
+// Owner/admin phones (E.164): the only ones allowed to call the ops_* actions (see/move cars, hand over a round).
+// Same owner number as the ops page. Override with env ADMIN_PHONES = ["+917701808924"] (JSON array or comma list).
+let ADMIN_PHONES = ['+917701808924'];
+if ($env.ADMIN_PHONES) {
+  const raw = String($env.ADMIN_PHONES).trim();
+  try { ADMIN_PHONES = JSON.parse(raw) } catch (e) { ADMIN_PHONES = raw.split(',') }
+  ADMIN_PHONES = ADMIN_PHONES.map(x => String(x).trim()).filter(Boolean);
+}
 
 // phone (E.164) -> washer id: the same two washers as WASHERS / PHONE_TO_WASHER in the washer apps.
 // Override with env WASHER_PHONES = {"+91XXXXXXXXXX":"chotte","+91YYYYYYYYYY":"shahrukh"}
@@ -63,6 +72,13 @@ if (typeof claims.exp !== 'number' || claims.exp <= nowS) return deny('expired')
 if (typeof claims.iat !== 'number' || claims.iat > nowS + SKEW) return deny('iat in future');
 if (typeof claims.auth_time !== 'number' || claims.auth_time > nowS + SKEW) return deny('auth_time in future');
 if (typeof claims.sub !== 'string' || !claims.sub || claims.sub.length > 128) return deny('bad sub');
+
+// ops_* actions: only an admin phone passes, and a washer token never does. Everything else stays washer-only.
+const act = String((($('Round maango (webhook)').first().json.body) || {}).action || '');
+if (/^ops_/.test(act)) {
+  if (!ADMIN_PHONES.includes(claims.phone_number)) return deny('not an admin');
+  return [{ json: { ok: true, admin: true, washer: '' } }];
+}
 
 const washer = Object.prototype.hasOwnProperty.call(WASHER_BY_PHONE, claims.phone_number) ? WASHER_BY_PHONE[claims.phone_number] : null;
 if (!washer) return deny('phone is not a washer');

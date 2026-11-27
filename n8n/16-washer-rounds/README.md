@@ -26,7 +26,7 @@ app (Round tab → the place chip under his name); every car of that round then 
 
 ## Notes
 
-- Only washers listed in `ROUND_WASHERS` (lib.js, same two as workflow 9) can take a round. Add new washers in both places.
+- Only washers in the one list (`WASHER_IDS` env, default chotte and shahrukh; read by lib.js and workflow 9) can take a round. Owner actions (`ops_*`): see OPS-MOVE.md.
 - A round that another washer already has cannot be taken (`error: taken`): ops changes **Washer** in Notion to hand it
   over. Only a round nobody has, or one the caller already has, can be picked. The app also only lets a washer switch
   before any car of his own round has started.

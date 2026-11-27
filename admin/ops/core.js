@@ -400,6 +400,10 @@ function demo() {
     [d + '_DL8CMM4040']: { washer_id: 'shahrukh', reg: 'DL8CMM4040', car_label: 'Ertiga', status: 'done', date: d },
     [d + '_DL9CNX1414']: { washer_id: 'shahrukh', reg: 'DL9CNX1414', car_label: 'Nexon', status: 'skipped', date: d },
   };
+  NOTION.data = null;
+  const NC = (id, plate, name, area, round, washer, order) => ({ id, reg: plate.replace(/ /g, ''), plate, name, area, round, roundId: round.toLowerCase().replace(/[^a-z0-9]+/g, '-'), washer, order, missingReg: false });
+  demoCars = [NC('n1', 'DL 4C AB 2731', 'Scorpio N', 'GH-9', 'Paschim Vihar A', 'chotte', 1), NC('n2', 'DL 3C BK 0419', 'Civic', 'GH-6', 'Paschim Vihar A', 'chotte', 2), NC('n3', 'DL 3C BK 7711', 'Seltos', 'GH-6', 'Paschim Vihar A', 'chotte', 3),
+    NC('n4', 'DL 8C MM 4040', 'Ertiga', 'Meera Bagh', 'Paschim Vihar B', 'shahrukh', 1), NC('n5', 'DL 9C NX 1414', 'Nexon', 'GH-14', 'Paschim Vihar B', 'shahrukh', 2), NC('n6', 'DL 6C VV 2626', 'Venue', 'Sundar Vihar', 'Sundar Vihar', 'aman', 1)];
   S.payorders = {};
   Object.entries(S.jobs).forEach(([id, j]) => { if (j.paid && j.price > 0) S.payorders['WDB' + id] = { kind: 'booking', phone: j.customer_id, status: j.status === 'cancelled' ? 'refunded' : 'paid', amount: j.price, paid_amount: j.price, total: j.total, created_at: j.created_at, paid_at: j.created_at, booking_id: id, gateway: 'razorpay', paid_gateway: 'razorpay', pay_via: 'UPI', lines: [{ name: j.service, q: 1 }] } });
   S.payorders.WDW1 = { kind: 'wallet_topup', phone: '+919811440002', name: 'Neha Kapoor', status: 'paid', amount: 500, paid_amount: 500, created_at: T(400), paid_at: T(399), gateway: 'razorpay', paid_gateway: 'razorpay', pay_via: 'UPI' };
@@ -422,7 +426,60 @@ function demo() {
   demoT.push(setInterval(() => { if (k >= NEW.length) return; const [svc, car, reg, area, p] = NEW[k++]; const id = 'B7Q3' + k + 'X'; J(id, { service: svc, car, reg, area, flat: 'H-' + (10 + k), ...p, phone: '+91981100' + (4000 + k), customer_id: '+91981100' + (4000 + k), created_at: isoIST() }); S.payorders['WDB' + id] = { kind: 'booking', phone: '+91981100' + (4000 + k), status: 'paid', amount: 399, paid_amount: 399, total: 399, created_at: isoIST(), paid_at: isoIST(), booking_id: id, gateway: 'razorpay', paid_gateway: 'razorpay', pay_via: 'UPI', lines: [{ name: svc, q: 1 }] }; emit() }, 40000));
 }
 
+/* ---------------- Notion monthly cars (n8n 16 owner actions: ops_list, ops_move, ops_handover) ---------------- */
+// The Notion "Monthly Customers" book is where a monthly car's washer and round live. These calls go through n8n,
+// signed with the owner's Firebase ID token; n8n lets only the owner phone through.
+const NOTION_URL = 'https://n8n.washingdaddy.com/webhook/wd-washer-rounds?washer=ops';
+const NERR = { forbidden: 'Only the owner number can change this.', unauthorized: 'Sign in again (session ended).', 'unknown washer': 'That washer is not in the washer list yet. Add his id to WASHER_IDS in n8n (see OPS-MOVE.md).',
+  'unknown round': 'That round is not in Notion. Pick one from the list.', 'unknown car': 'That car was not found in Notion (is it Active?).', 'more than one car with this number': 'More than one car has this number. Fix it in Notion.',
+  'notion write failed': 'Notion did not accept the change. Nothing was moved. Try again.', 'rounds unavailable': 'Notion is not answering. Try again in a minute.' };
+const NOTION = { data: null, loading: false, error: '' };
+async function notionCall(body) {
+  if (S.demo) return demoNotion(body);
+  let tok = '';
+  try { const u = window.WDAuth && WDAuth.user && WDAuth.user(); tok = u ? await u.getIdToken() : '' } catch (e) { tok = '' }
+  if (!tok) throw new Error('Sign in again (session ended).');
+  let r, j = null;
+  try { r = await fetch(NOTION_URL, { method: 'POST', cache: 'no-store', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined }); j = await r.json() }
+  catch (e) { throw new Error("Couldn't reach the server. Check the internet and try again.") }
+  if (!j || j.ok === false || !r.ok) throw new Error(NERR[j && j.error] || (r && r.status === 404 ? 'Notion server (n8n workflow 16) is not set up yet. See OPS-MOVE.md.' : 'Something went wrong. Nothing was changed.'));
+  return j;
+}
+async function notionLoad() {
+  if (NOTION.loading) return; NOTION.loading = true; NOTION.error = ''; emit();
+  try { NOTION.data = await notionCall({ action: 'ops_list' }) } catch (e) { NOTION.error = e.message || 'Could not load.' }
+  NOTION.loading = false; emit();
+}
+// washer: the washer's id (his round id). name only helps n8n spell the Notion option the same way.
+async function notionMove({ carPageId, reg, washer, name, round }) {
+  const j = await notionCall({ action: 'ops_move', carPageId, reg, washer, washerName: name, round: round || undefined });
+  await notionLoad(); return j;
+}
+async function notionHandover({ round, toWasher, name }) {
+  const j = await notionCall({ action: 'ops_handover', round, toWasher, washerName: name });
+  await notionLoad(); return j;
+}
+// demo: the same answers from sample data kept in memory
+let demoCars = [];
+function demoNotion(b) {
+  const ids = ['chotte', 'shahrukh', 'aman'], sl = x => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const rounds = () => { const o = {}; demoCars.forEach(c => { if (c.round) o[c.roundId] = c.round }); return Object.entries(o).map(([id, name]) => ({ id, name })) };
+  const bucket = l => { const o = {}; l.forEach(c => { (o[c.roundId] = o[c.roundId] || { id: c.roundId, name: c.round || 'No round', cars: [] }).cars.push(c) }); return Object.values(o).map(r => ({ ...r, count: r.cars.length })) };
+  if (b.action === 'ops_list') return { ok: true, washerIds: ids, rounds: rounds(), total: demoCars.length, truncated: false,
+    washers: ids.map(id => { const m = demoCars.filter(c => c.washer === id); return { id, count: m.length, rounds: bucket(m) } }), unassigned: { count: 0, rounds: [] } };
+  if (b.action === 'ops_move') {
+    const c = demoCars.find(x => x.id === b.carPageId); if (!c) throw new Error(NERR['unknown car']); if (ids.indexOf(b.washer) < 0) throw new Error(NERR['unknown washer']);
+    c.washer = b.washer; if (b.round) { const r = rounds().find(x => x.id === sl(b.round)); if (!r) throw new Error(NERR['unknown round']); c.round = r.name; c.roundId = r.id }
+    emit(); return { ok: true, moved: 1, car: c.plate, washer: c.washer, round: c.round };
+  }
+  if (b.action === 'ops_handover') {
+    if (ids.indexOf(b.toWasher) < 0) throw new Error(NERR['unknown washer']); const m = demoCars.filter(c => c.roundId === sl(b.round)); if (!m.length) throw new Error(NERR['unknown round']);
+    m.forEach(c => { c.washer = b.toWasher }); emit(); return { ok: true, moved: m.length, total: m.length, round: sl(b.round), washer: b.toWasher };
+  }
+  throw new Error('Something went wrong.');
+}
+
 window.OPS = { db: () => db, S, on, start, stop, demo, job: jobView, jobs, washer: washerView, washers, suggest, monthly, dues, payments, kpis, byRound: washerByRound,
   assign, unassign, savePublic, recountApp, pubTotals, OWNER_PHONE, ensureCode, stage, cancel, setEta, addWasher, updateWasher, setPhoto, setWasherStatus, setRound, customerStatus,
-  photoFromFile, km, ago, fmtTime, rs, nice, today, isoIST, ms, travelMin, STAGE_LABEL, FRESH_MS };
+  photoFromFile, notion: NOTION, notionLoad, notionMove, notionHandover, km, ago, fmtTime, rs, nice, today, isoIST, ms, travelMin, STAGE_LABEL, FRESH_MS };
 })();
