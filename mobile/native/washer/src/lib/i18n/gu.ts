@@ -803,3 +803,17 @@ Object.assign(T, {
   "Alag jagah": "બીજી જગ્યા",
   "aapse door": "તમારાથી દૂર",
 });
+
+Object.assign(T, {
+  "Round shuru, kamai chalu": "રાઉન્ડ શરૂ, કમાણી ચાલુ",
+  "Aaj ke saare cars ek list mein. Scooter nikalo, seedha gate pe.": "આજની બધી કાર એક લિસ્ટમાં. સ્કૂટર કાઢો, સીધા ગેટ પર.",
+  "Foam lagao, shine karo": "ફોમ લગાવો, શાઇન કરો",
+  "Pressure wash, no pocha. Paani aur power saath mein.": "પ્રેશર વૉશ, નો પોચા. પાણી અને પાવર સાથે.",
+  "Photo bhejo, paisa pao": "ફોટો મોકલો, પૈસા મેળવો",
+  "Har wash ka photo proof. Roz ka payout app mein dekho.": "દરેક વૉશનો ફોટો પ્રૂફ. રોજનો પેઆઉટ એપમાં જુઓ.",
+  "Roz ka payout dikhta hai": "રોજનો પેઆઉટ દેખાય છે",
+  "Photo proof se pakka paisa": "ફોટો પ્રૂફથી પાક્કા પૈસા",
+  "Manager support, WhatsApp pe": "મેનેજર સપોર્ટ, WhatsApp પર",
+  "Aaj ka round shuru karo": "આજનો રાઉન્ડ શરૂ કરો",
+  "Phone number daalo, SMS pe OTP aayega.": "ફોન નંબર નાખો, SMS પર OTP આવશે.",
+});
