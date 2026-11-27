@@ -796,3 +796,30 @@ Object.assign(T, {
   "Pahunch ke customer se start code lo": "Get the start code from the customer when you arrive",
   "Start code": "Start code",
 });
+
+Object.assign(T, {
+  "Aaj gaadi alag jagah khadi hai": "Car is parked somewhere else today",
+  "Map mein kholo": "Open in Maps",
+  "Alag jagah": "Parked elsewhere",
+  "aapse door": "away from you",
+});
+
+Object.assign(T, {
+  "Photo reject hui": "Photo rejected",
+  "Number plate dikh rahi hai": "Number plate is visible",
+  "Ek photo mein number plate dikhni chahiye (aage ya peeche)": "One photo must show the number plate (front or back)",
+  "Ek photo mein number plate dikhni chahiye. \"Number plate dikh rahi hai\" tick karo": "One photo must show the number plate. Tick \"Number plate is visible\"",
+  "Number plate tick karo": "Tick the number plate",
+  "Gaadi ki 2 photo ho gayi hain": "Both car photos are taken",
+  "Round shuru, kamai chalu": "Start the round, start earning",
+  "Aaj ke saare cars ek list mein. Scooter nikalo, seedha gate pe.": "All of today's cars in one list. Take the scooter, go straight to the gate.",
+  "Foam lagao, shine karo": "Foam it, shine it",
+  "Pressure wash, no pocha. Paani aur power saath mein.": "Pressure wash, no mop. Water and power come along.",
+  "Photo bhejo, paisa pao": "Send the photo, get paid",
+  "Har wash ka photo proof. Roz ka payout app mein dekho.": "Photo proof for every wash. See your daily payout in the app.",
+  "Roz ka payout dikhta hai": "See your payout every day",
+  "Photo proof se pakka paisa": "Photo proof, sure pay",
+  "Manager support, WhatsApp pe": "Manager support on WhatsApp",
+  "Aaj ka round shuru karo": "Start today's round",
+  "Phone number daalo, SMS pe OTP aayega.": "Enter your phone number, the OTP comes by SMS.",
+});

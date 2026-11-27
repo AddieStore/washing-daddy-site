@@ -1,6 +1,6 @@
 // Pieces of the car screen and the money screen: the top bar, plate, tasks, photo tiles, request notes and the sheets.
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, Linking, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { F, Icon, Chip, Group, Row, SheetHeader, TaskIcon, sheet, ui, useTheme } from '../ui';
@@ -8,8 +8,9 @@ import { Button, Field, LinkButton, Pressy, SyncChip } from '../ui';
 import { act, photoSrc, syncState } from '../state/store';
 import { t } from '../lib/i18n';
 import { t12 } from '../lib/time';
+import { rejectLine } from '../lib/photoRules';
 import { TASK, type TaskKey } from '../lib/schedule';
-import { NOTE_CHIPS, SKIPS, REQ_KIND, type Photo, type Req, type Wash } from '../lib/data';
+import { NOTE_CHIPS, SKIPS, REQ_KIND, distText, spotMapsUrl, type Photo, type Req, type Wash } from '../lib/data';
 import { ChipPick } from './JobReport';
 
 /* ---------- top bar with a sync chip ---------- */
@@ -145,9 +146,9 @@ export function TaskRow({ k, done, doneAt, can, onPress }: { k: TaskKey; done: b
 
 /* ---------- photo tile: square picture, caption underneath ---------- */
 export type ShotItem = Photo & { pending?: boolean; display?: string };
-export function Shot({ kind, list, enabled, onTake, onView }: { kind: 'before' | 'after' | 'issue'; list: ShotItem[]; enabled: boolean; onTake: () => void; onView: () => void }) {
+export function Shot({ kind, list, enabled, onTake, onView }: { kind: 'after' | 'issue'; list: ShotItem[]; enabled: boolean; onTake: () => void; onView: () => void }) {
   const { c } = useTheme();
-  const lab = kind === 'before' ? t('Pehle') : kind === 'after' ? t('Baad mein') : t('Problem');
+  const lab = kind === 'after' ? t('Baad mein') : t('Problem');
   const last = list[list.length - 1];
   const fly = useRef(new Animated.Value(1)).current;
   const n = list.length;
@@ -185,6 +186,66 @@ export function Shot({ kind, list, enabled, onTake, onView }: { kind: 'before' |
   );
 }
 
+/* ---------- the 2 car photos (photo rule v3): two tiles, each with the "number plate is visible" tick; a rejected one is red and retaken ---------- */
+/** red banner: "Photo reject hui: <reason>. Dobara lo" */
+export function RejectBanner({ info, onPress, compact }: { info: { reason: string; count: number }; onPress?: () => void; compact?: boolean }) {
+  const line = rejectLine(info, t);
+  const body = (
+    <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: compact ? 10 : 14, paddingVertical: compact ? 6 : 12, borderRadius: compact ? 10 : 14, backgroundColor: '#FDECEE', borderWidth: 1, borderColor: 'rgba(232,56,79,0.35)' }}>
+      <Icon name="warn" size={compact ? 14 : 18} color="#C62639" />
+      <Text numberOfLines={compact ? 2 : 4} style={{ flex: 1, minWidth: 0, fontFamily: compact ? F.semi : F.bold, fontSize: compact ? 12 : 14, lineHeight: compact ? 16 : 20, color: '#9B1C2C' }}>{line}</Text>
+    </View>
+  );
+  return onPress ? <Pressy onPress={onPress} accessibilityLabel={line} scaleTo={0.98}>{body}</Pressy> : body;
+}
+export function PlateToggle({ on, onToggle, disabled }: { on: boolean; onToggle: () => void; disabled?: boolean }) {
+  const { c } = useTheme();
+  return (
+    <Pressy onPress={onToggle} disabled={disabled} accessibilityRole="switch" accessibilityState={{ checked: on, disabled }} accessibilityLabel={t('Number plate dikh rahi hai')} scaleTo={0.97}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, marginTop: 6, paddingHorizontal: 8, borderRadius: 12, backgroundColor: on ? 'rgba(34,197,139,0.14)' : c.tile2, borderWidth: 1, borderColor: on ? '#22C58B' : 'transparent', opacity: disabled ? 0.5 : 1 }}>
+      <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: on ? '#22C58B' : c.grey, backgroundColor: on ? '#22C58B' : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+        {on ? <Icon name="check" size={14} color="#fff" /> : null}
+      </View>
+      <Text style={{ flex: 1, minWidth: 0, fontFamily: F.semi, fontSize: 12.5, lineHeight: 16, color: c.fg }}>{t('Number plate dikh rahi hai')}</Text>
+    </Pressy>
+  );
+}
+export function AfterShots({ list, can, onTake, onView, onPlate }: { list: ShotItem[]; can: boolean; onTake: () => void; onView: () => void; onPlate: (n: number, on: boolean) => void }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', gap: 10 }}>
+      {[0, 1].map(i => {
+        const p = list[i];
+        if (!p) {
+          return (
+            <View key={i} style={{ flex: 1, minWidth: 0 }}>
+              <Pressy onPress={onTake} disabled={!can} accessibilityLabel={`${t('Baad mein')} ${i + 1}`} scaleTo={0.95}
+                style={{ width: '100%', aspectRatio: 1, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.dash, alignItems: 'center', justifyContent: 'center', opacity: can ? 1 : 0.5 }}>
+                <Icon name="cam" size={22} color={c.grey} />
+              </Pressy>
+              <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: c.grey, textAlign: 'center', marginTop: 6 }}>{t('Baad mein')} {i + 1}</Text>
+            </View>
+          );
+        }
+        const src = p.pending ? p.display : photoSrc(p), bad = !!p.rejected;
+        return (
+          <View key={i} style={{ flex: 1, minWidth: 0 }}>
+            <Pressy onPress={p.pending ? undefined : bad ? onTake : onView} accessibilityLabel={`${t('Baad mein')} ${i + 1}`} scaleTo={0.95} style={{ width: '100%', aspectRatio: 1 }}>
+              <View style={{ flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: c.tile2, borderWidth: bad ? 3 : 0, borderColor: '#E8384F' }}>
+                {src ? <Image source={{ uri: src }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+                {p.pending ? <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(17,17,20,0.45)', alignItems: 'center', justifyContent: 'center' }]}><ActivityIndicator color="#fff" size="large" /></View> : null}
+                {bad ? <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(232,56,79,0.28)', alignItems: 'center', justifyContent: 'center' }]}><Icon name="cam" size={26} color="#fff" /></View> : null}
+              </View>
+            </Pressy>
+            {p.pending || bad ? <Text numberOfLines={2} style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 16, color: bad ? '#C62639' : c.grey, textAlign: 'center', marginTop: 6 }}>{bad ? t('Dobara lo') : ''}</Text>
+              : <PlateToggle on={!!p.plate} disabled={p.n == null} onToggle={() => { if (p.n != null) onPlate(p.n, !p.plate) }} />}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 /* ---------- customer request: a tinted note row ---------- */
 export function ReqCard({ q, customer }: { q: Req; customer: string }) {
   const { c, dark } = useTheme();
@@ -208,6 +269,24 @@ export function ReqCard({ q, customer }: { q: Req; customer: string }) {
         <View style={{ flex: 1 }}><Button variant="secondary" size="md" disabled={seen} label={seen ? t('Dekh liya ✓') : t('Dekh liya')} onPress={() => act.reqSeen(q.id)} /></View>
         <View style={{ flex: 1 }}><Button variant="primary" size="md" label={t('Kar diya')} onPress={() => act.reqDone(q.id)} /></View>
       </View>
+    </View>
+  );
+}
+
+/* ---------- customer parked the car somewhere else today (park alerts): one clear card, one big button ---------- */
+export function SpotCard({ q, meters }: { q: Req; meters: number | null }) {
+  const { c, dark } = useTheme();
+  return (
+    <View accessibilityRole="alert" style={{ gap: 10, padding: 14, borderRadius: 16, backgroundColor: dark ? 'rgba(245,158,11,0.16)' : '#FFF6E0', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(217,119,6,0.4)' }}>
+      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+        <Icon name="pin" size={22} color="#D97706" />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontFamily: F.bold, fontSize: 16, lineHeight: 22, color: c.fg }}>{t('Aaj gaadi alag jagah khadi hai')}</Text>
+          {meters != null ? <Text style={{ fontFamily: F.medium, fontSize: 12.5, lineHeight: 17, color: c.grey }}>{distText(meters)} {t('aapse door')}</Text> : null}
+        </View>
+      </View>
+      {q.text ? <Text style={{ fontFamily: F.medium, fontSize: 14, lineHeight: 20, color: c.fg }}>{'“'}{q.text}{'”'}</Text> : null}
+      <Button variant="primary" size="md" icon="pin" label={t('Map mein kholo')} onPress={() => { void Linking.openURL(spotMapsUrl(q)) }} />
     </View>
   );
 }
@@ -256,13 +335,13 @@ export function openSkipSheet(reg: string, customer: string) {
   sheet.open(close => <SkipSheet reg={reg} customer={customer} close={close} />);
 }
 
-export function openPhotoSheet(reg: string, kind: 'before' | 'after' | 'issue', list: Wash['photos'], can: boolean, retake: () => void) {
-  const title = kind === 'before' ? t('Pehle ki photo') : kind === 'after' ? t('Baad ki photo') : t('Problem ki photo');
+export function openPhotoSheet(reg: string, kind: 'after' | 'issue', list: Wash['photos'], can: boolean, retake: () => void) {
+  const title = kind === 'after' ? t('Baad ki photo') : t('Problem ki photo');
   sheet.open(close => (
     <PhotoSheet title={title} reg={reg} kind={kind} list={list} can={can} retake={retake} close={close} />
   ));
 }
-function PhotoSheet({ title, reg, kind, list, can, retake, close }: { title: string; reg: string; kind: 'before' | 'after' | 'issue'; list: Wash['photos']; can: boolean; retake: () => void; close: () => void }) {
+function PhotoSheet({ title, reg, kind, list, can, retake, close }: { title: string; reg: string; kind: 'after' | 'issue'; list: Wash['photos']; can: boolean; retake: () => void; close: () => void }) {
   const { c } = useTheme();
   return (
     <View>
@@ -286,26 +365,3 @@ function PhotoSheet({ title, reg, kind, list, can, retake, close }: { title: str
   );
 }
 
-export function openSuccessSheet(customer: string, next: { reg: string; model: string } | null, goPaisa: () => void) {
-  sheet.open(close => <SuccessSheet customer={customer} next={next} goPaisa={goPaisa} close={close} />);
-}
-function SuccessSheet({ customer, next, goPaisa, close }: { customer: string; next: { reg: string; model: string } | null; goPaisa: () => void; close: () => void }) {
-  const { c } = useTheme();
-  const pop = useRef(new Animated.Value(0)).current;
-  useEffect(() => { Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 10, bounciness: 12 }).start() }, [pop]);
-  return (
-    <View style={{ alignItems: 'center', paddingTop: 6 }}>
-      <Animated.View style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 14, backgroundColor: c.ok, alignItems: 'center', justifyContent: 'center', transform: [{ scale: pop }] }}>
-        <Icon name="check" size={34} color="#fff" />
-      </Animated.View>
-      <Text style={{ fontFamily: F.bold, fontSize: 24, lineHeight: 30, letterSpacing: -0.5, color: c.fg }}>{t('Chamak gayi!')}</Text>
-      <Text style={{ fontFamily: F.body, fontSize: 14, color: c.grey, marginTop: 4, marginBottom: 18, textAlign: 'center' }}>{t(`${customer} ke phone pe pahunch gaya`)}</Text>
-      <View style={{ alignSelf: 'stretch' }}>
-        {next
-          ? <Button variant="primary" iconRight="arrow" label={t(`Agli gaadi: ${next.model}`)} onPress={() => { act.setCurrent(next.reg); close() }} />
-          : <Button variant="primary" label={t('Round poora · hisaab dekho')} onPress={() => { close(); goPaisa() }} />}
-      </View>
-      <LinkButton label={t('Yahin raho')} onPress={close} style={{ marginTop: 6 }} />
-    </View>
-  );
-}

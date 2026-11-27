@@ -807,4 +807,34 @@ Object.assign(HI, {
   "Start code": "स्टार्ट कोड",
 });
 
+Object.assign(HI, {
+  "Aaj gaadi alag jagah khadi hai": "आज गाड़ी अलग जगह खड़ी है",
+  "Map mein kholo": "मैप में खोलो",
+  "Alag jagah": "अलग जगह",
+  "aapse door": "आपसे दूर",
+});
+
+Object.assign(HI, {
+  "Photo reject hui": "फोटो रिजेक्ट हुई",
+  "Number plate dikh rahi hai": "नंबर प्लेट दिख रही है",
+  "Ek photo mein number plate dikhni chahiye (aage ya peeche)": "एक फोटो में नंबर प्लेट दिखनी चाहिए (आगे या पीछे)",
+  "Ek photo mein number plate dikhni chahiye. \"Number plate dikh rahi hai\" tick karo": "एक फोटो में नंबर प्लेट दिखनी चाहिए. \"नंबर प्लेट दिख रही है\" टिक करो",
+  "Number plate tick karo": "नंबर प्लेट टिक करो",
+  "Gaadi ki 2 photo ho gayi hain": "गाड़ी की 2 फोटो हो गई हैं",
+});
+
 export { HI as T, HI_PATTERNS as P };
+
+Object.assign(HI, {
+  "Round shuru, kamai chalu": "राउंड शुरू, कमाई चालू",
+  "Aaj ke saare cars ek list mein. Scooter nikalo, seedha gate pe.": "आज के सारे कार एक लिस्ट में. स्कूटर निकालो, सीधे गेट पर.",
+  "Foam lagao, shine karo": "फोम लगाओ, शाइन करो",
+  "Pressure wash, no pocha. Paani aur power saath mein.": "प्रेशर वॉश, नो पोछा. पानी और पावर साथ में.",
+  "Photo bhejo, paisa pao": "फोटो भेजो, पैसे पाओ",
+  "Har wash ka photo proof. Roz ka payout app mein dekho.": "हर वॉश का फोटो प्रूफ. रोज़ का पेआउट ऐप में देखो.",
+  "Roz ka payout dikhta hai": "रोज़ का पेआउट दिखता है",
+  "Photo proof se pakka paisa": "फोटो प्रूफ से पक्का पैसा",
+  "Manager support, WhatsApp pe": "मैनेजर सपोर्ट, WhatsApp पर",
+  "Aaj ka round shuru karo": "आज का राउंड शुरू करो",
+  "Phone number daalo, SMS pe OTP aayega.": "फ़ोन नंबर डालो, SMS पर OTP आएगा.",
+});

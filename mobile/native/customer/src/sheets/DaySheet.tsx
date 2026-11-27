@@ -32,18 +32,18 @@ type Ack = { icon: string; title: string; sub: string };
 type Model = {
   date: string; title: string; status: 'done' | 'skipped' | 'live' | 'upcoming' | 'none' | 'paused'; badge: string;
   washer: string; photo: any; car: string; plate: string; minutes: number | null; rating: { stars: number; tag?: string } | null;
-  before: Ph | null; after: Ph | null; spots: { key: string; ph: Ph | null }[]; flagged: Ph[]; showSpots: boolean; photoCount: number;
+  afters: Ph[]; spots: { key: string; ph: Ph | null }[]; flagged: Ph[]; showSpots: boolean; photoCount: number;
   on: string | null; arr: string | null; st: string | null; fin: string | null; tasks: Task[]; water: number | null; note: string | null; skip: string | null; carry: string | null; acks: Ack[]; live: boolean;
   cond: string | null; issues: string[]; damage: string | null; stopped: { reason: string; minutes: number; tasks: string[]; note: string | null } | null;
 };
 
 const m2 = (m: number) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(Math.round(m % 60)).padStart(2, '0');
 
-/** the photos of a day (before, after, inside spots, flagged) for the thumbnail strip on the Daily cards; [] when there are none */
+/** the photos of a day (after, inside spots, flagged) for the thumbnail strip on the Daily cards; [] when there are none */
 export function dayPhotos(date: string): { src: any; label: string }[] {
   try {
     const m = buildModel(date);
-    return [m.before, m.after, ...m.spots.map(x => x.ph), ...m.flagged].filter(Boolean).map(p => ({ src: p!.src, label: p!.label }));
+    return [...m.afters, ...m.spots.map(x => x.ph), ...m.flagged].filter(Boolean).map(p => ({ src: p!.src, label: p!.label }));
   } catch { return [] }
 }
 function buildModel(date: string): Model { return { cond: null, issues: [], damage: null, stopped: null, ...build0(date) } as Model }
@@ -52,7 +52,7 @@ type Part = Omit<Model, 'cond' | 'issues' | 'damage' | 'stopped'> & Partial<Pick
 function build0(date: string): Part {
   const c = car(), real = realAcct(), dt = parse(date), ti = iso(TODAY), isToday = date === ti, dd = dayDetail(date, c);
   const base = { date, title: dd.title, washer: dd.washer || c.washer, car: c.name, plate: c.plate || '' };
-  const empty = { before: null, after: null, spots: [] as Model['spots'], flagged: [] as Ph[], showSpots: false, photoCount: 0, on: null, arr: null, st: null, fin: null, tasks: [] as Task[], water: null, note: null, skip: null, carry: null, acks: [] as Ack[], live: false, minutes: null, rating: null, photo: null };
+  const empty = { afters: [] as Ph[], spots: [] as Model['spots'], flagged: [] as Ph[], showSpots: false, photoCount: 0, on: null, arr: null, st: null, fin: null, tasks: [] as Task[], water: null, note: null, skip: null, carry: null, acks: [] as Ack[], live: false, minutes: null, rating: null, photo: null };
   const acks = ((): Ack[] => requestsFor(c).filter((r: any) => {
     const f = String(r.from || ''), t = String(r.to || r.from || '');
     return (f && date >= f && date <= t) || String(r.created_at || '').slice(0, 10) === date || String(r.done_at || '').slice(0, 10) === date;
@@ -70,15 +70,14 @@ function build0(date: string): Part {
 
   if (d) {
     const remotePh = photosOf(d), demoToday = !real;
-    const pick = (k: string) => remotePh.find(p => p.kind === k);
     const mk = (p: Photo | undefined, label: string): Ph | null => (p ? { src: typeof p.src === 'string' ? { uri: p.src } : p.src, label, at: p.at || null } : null);
     const spots = SPOT_ORDER.map(k => ({ key: k, ph: mk(remotePh.find(p => p.spot === k), SPOT_LABEL[k]) }));
     const carry = carryNote(c, d), hasSpot = spots.some(s => s.ph);
-    let before = mk(pick('before'), 'Before'), after = mk(pick('after'), 'After'), flagged = remotePh.filter(p => p.kind === 'issue').map(p => mk(p, 'Flagged')!);
+    let afters = remotePh.filter(p => p.kind === 'after' && !p.rejected).slice(0, 2).map((p, i, a) => mk(p, a.length > 1 ? `After ${i + 1}` : 'After')!), flagged = remotePh.filter(p => p.kind === 'issue').map(p => mk(p, 'Flagged')!);
     let sp = spots;
-    if (demoToday) { // demo: the static before / after plus the Sunday inside spots
+    if (demoToday) { // demo: the static after photo plus the Sunday inside spots
       const f = d.finished_at ? t2m(d.finished_at) : 400;
-      before = { src: IMG.before, label: 'Before', at: m2(f - 12) }; after = { src: IMG.after, label: 'After', at: m2(f) };
+      afters = [{ src: IMG.after, label: 'After', at: m2(f) }];
       const imgs = ['svc-floor-mat', 'svc-vacuum-rear', 'svc-seat-shampoo', 'svc-boot-vacuum', 'svc-dashboard'] as const;
       sp = SPOT_ORDER.map((k, i) => ({ key: k, ph: { src: IMG[imgs[i]], label: SPOT_LABEL[k], at: m2(f - 6 + i) } }));
     }
@@ -86,12 +85,12 @@ function build0(date: string): Part {
     const tasks = d.tasks.map(t => ({ key: t.key, label: t.label, done: t.done, at: t.done_at || null }));
     const skipped = d.status === 'skipped';
     const live = !!activeStage(d);
-    const photoCount = (before ? 1 : 0) + (after ? 1 : 0) + sp.filter(s => s.ph).length + flagged.length;
+    const photoCount = afters.length + sp.filter(s => s.ph).length + flagged.length;
     const ab = d.abandoned ? { reason: reasonOf(d.abandoned.reason), minutes: d.abandoned.minutes || 0, tasks: (d.abandoned.tasks_done || []).map(k => TASK_LABEL[k] || k), note: d.abandoned.note || null } : null;
     const x = { cond: d.condition ? COND_LABEL[d.condition] : null, issues: (d.issues || []).map(k => ISSUE_LABEL[k]).filter(Boolean), damage: d.damage_note || null, stopped: ab };
     return { ...base, ...x, status: skipped ? 'skipped' : live ? 'live' : d.status === 'done' ? 'done' : 'upcoming', badge: ab ? 'Wash could not be completed' : skipped ? 'Skipped' : live ? 'Live now' : d.status === 'done' ? 'Done' : 'Scheduled',
       washer: d.washer?.name || base.washer, photo: d.washer?.photo_url ? { uri: d.washer.photo_url } : real ? null : IMG.washerCut, minutes: ab ? ab.minutes || null : d.minutes || null, rating: ratingFor(),
-      before, after, spots: sp, flagged, showSpots: sunday || hasSpot || (demoToday && sunday), photoCount, on: d.on_the_way_at || null, arr: d.arrived_at || null, st: d.started_at || null, fin: d.finished_at || null,
+      afters, spots: sp, flagged, showSpots: sunday || hasSpot || (demoToday && sunday), photoCount, on: d.on_the_way_at || null, arr: d.arrived_at || null, st: d.started_at || null, fin: d.finished_at || null,
       tasks: ab ? tasks.filter(t => t.done) : tasks, water: d.water_litres || null, note: d.washer_note || null, skip: ab ? null : skipped ? d.skip_reason || 'Your washer marked this day as skipped.' : null, carry, acks, live };
   }
 
@@ -117,8 +116,8 @@ function build0(date: string): Part {
   const tasks = dd.steps.map((s, i) => ({ key: stepKeys[i], label: s.label, done: true, at: taskT(i) }));
   const sunday = dt.getDay() === 0, imgs = ['svc-floor-mat', 'svc-vacuum-rear', 'svc-seat-shampoo', 'svc-boot-vacuum', 'svc-dashboard'] as const;
   const sp = SPOT_ORDER.map((k, i) => ({ key: k, ph: sunday ? { src: IMG[imgs[i]], label: SPOT_LABEL[k], at: m2(start + 2 + i) } as Ph : null }));
-  const before: Ph = { src: IMG.before, label: 'Before', at: m2(start - 1) }, after: Ph = { src: IMG.after, label: 'After', at: m2(fin) };
-  return { ...base, status: 'done', badge: 'Done', photo: IMG.washerCut, minutes: mins, rating: ratingFor(), before, after, spots: sp, flagged: [], showSpots: sunday, photoCount: 2 + (sunday ? 5 : 0),
+  const after: Ph = { src: IMG.after, label: 'After', at: m2(fin) };
+  return { ...base, status: 'done', badge: 'Done', photo: IMG.washerCut, minutes: mins, rating: ratingFor(), afters: [after], spots: sp, flagged: [], showSpots: sunday, photoCount: 1 + (sunday ? 5 : 0),
     on: m2(start - 9), arr: m2(start - 1), st: m2(start), fin: m2(fin), tasks, water: 7, note: h5(date) % 3 === 0 ? 'All good today. Gate was open, parked in the usual spot.' : null, skip: null,
     carry: dt.getDay() === 1 ? `Sunday interior done ${fmt(dt, { weekday: 'long' })}` : null, acks, live: false, cond: COND_LABEL.normal, issues: [], damage: null, stopped: null };
   }
@@ -165,7 +164,7 @@ function Hero({ m }: { m: Model }) {
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
         <Stat v={m.minutes ? `${m.minutes} min` : '-'} l="Total time" />
         <Stat v={m.rating ? '★ ' + m.rating.stars + '.0' : 'Not rated'} l="Rating" />
-        <Stat v={m.photoCount ? String(m.photoCount) : '0'} l="Photos" />
+        <Stat v={m.photoCount ? String(m.photoCount) : '0'} l={m.photoCount === 1 ? 'Photo' : 'Photos'} />
       </View>
     </View>);
 }
@@ -199,13 +198,13 @@ function Tile({ ph, label, onZoom, tone, small }: { ph: Ph | null; label: string
 }
 
 function PhotosCard({ m, onZoom }: { m: Model; onZoom: (p: Ph) => void }) {
-  const has = m.photoCount > 0, times = [m.before, m.after, ...m.spots.map(s => s.ph), ...m.flagged].filter(Boolean).map(p => p!.at).filter(Boolean) as string[];
+  const has = m.photoCount > 0, times = [...m.afters, ...m.spots.map(s => s.ph), ...m.flagged].filter(Boolean).map(p => p!.at).filter(Boolean) as string[];
   const range = times.length ? [...times].sort()[0] : null;
   return (
     <Card style={{ marginTop: 12, borderColor: 'rgba(84,9,218,0.25)', borderWidth: 1.5 }}>
       <Head icon="📷" title="Photos" right={has ? `${m.photoCount} photo${m.photoCount > 1 ? 's' : ''}${range ? ' · from ' + ampm(range) : ''}` : undefined} />
       {has ? <>
-        {m.before || m.after ? <View style={{ flexDirection: 'row', gap: 12 }}><Tile ph={m.before} label="Before" onZoom={onZoom} tone="#EA580C" /><Tile ph={m.after} label="After" onZoom={onZoom} tone="#16a34a" /></View> : null}
+        {m.afters.length ? <View style={{ flexDirection: 'row', gap: 12 }}>{m.afters.map((p, i) => <Tile key={i} ph={p} label={p.label} onZoom={onZoom} tone="#16a34a" />)}{m.afters.length === 1 ? <View style={{ flex: 1 }} /> : null}</View> : null}
         {m.showSpots ? <View style={{ marginTop: 16 }}>
           <Txt weight={600} size={13} color={SAFFRON_D} style={{ marginBottom: 8 }}>Sunday inside spots</Txt>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>{m.spots.map(s => <Tile key={s.key} small ph={s.ph} label={SPOT_LABEL[s.key]} onZoom={onZoom} tone={SAFFRON} />)}</View>
@@ -219,7 +218,7 @@ function PhotosCard({ m, onZoom }: { m: Model; onZoom: (p: Ph) => void }) {
         <View style={{ alignItems: 'center', paddingVertical: 18 }}>
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(84,9,218,0.08)', alignItems: 'center', justifyContent: 'center' }}><Txt size={26}>📷</Txt></View>
           <Txt weight={600} size={15} style={{ marginTop: 10 }}>No photos for this day</Txt>
-          <Txt size={13} color={P.grey} style={{ marginTop: 4, textAlign: 'center', lineHeight: 19 }}>{m.status === 'live' || m.status === 'upcoming' ? 'Your washer adds before and after photos here during the wash.' : 'Your washer did not upload photos for this wash.'}</Txt>
+          <Txt size={13} color={P.grey} style={{ marginTop: 4, textAlign: 'center', lineHeight: 19 }}>{m.status === 'live' || m.status === 'upcoming' ? 'Your washer adds photos here during the wash.' : 'Your washer did not upload photos for this wash.'}</Txt>
         </View>)}
     </Card>);
 }

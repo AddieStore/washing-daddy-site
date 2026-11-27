@@ -436,6 +436,8 @@ document.addEventListener('click', async e => {
     case 'rday': return OPSB.setDay(OPSB.add(OPSB.day, num(t.dataset.d)));
     case 'rtab': UI.rd.tab = t.dataset.v; return SECS.rounds.update();
     case 'wash': return openSheet('wash', id, `${shHead('Wash')}<div data-r="sum"></div>`);
+    case 'photook': return run(OPSB.reviewPhoto(id, num(t.dataset.i), 'ok'), 'Plate sahi marked.');
+    case 'photorej': { const v = await ask({ title: 'Reject this photo?', body: 'The washer will see the reason and retake it.', fields: [{ id: 'reason', label: 'Reason (e.g. Plate nahi dikh rahi, blur, wrong car)', required: true, ph: 'Plate nahi dikh rahi' }], ok: 'Reject', danger: true }); if (!v) return; return run(OPSB.reviewPhoto(id, num(t.dataset.i), 'rejected', v.reason), 'Photo rejected.') }
     case 'zoom': { const d = $('#dlg'), prev = document.activeElement; d.innerHTML = `<div class="dlg-box" style="max-width:640px;padding:8px"><img src="${esc(t.dataset.src)}" alt="Photo" style="width:100%;border-radius:12px"><div class="dlg-a"><button type="button" class="btn ghost" id="dNo">Close</button></div></div>`; d.hidden = false; dlgCancel = () => { d.hidden = true; d.innerHTML = ''; dlgCancel = null; try { prev && prev.focus() } catch (x) {} }; $('#dNo').onclick = dlgCancel; return }
     case 'markpaid': { const w = OPS.S.washers[ph]; const v = await ask({ title: 'Mark ' + (w ? w.name : ph) + ' paid', body: `${esc(OPSB.month)} earnings: ${OPS.rs(num(t.dataset.total))}`, fields: [{ id: 'ref', label: 'Payment reference (UPI id or note)', ph: 'optional' }], ok: 'Mark paid' }); return v && run(OPSB.markPaid(ph, num(t.dataset.total), v.ref), 'Marked paid.') }
     case 'close': return closeSheet();
@@ -515,6 +517,10 @@ function skipView() {
   const k = OPSB.skips(); if (!k.length) return rsl(OPSB.S.loaded.washes) || empty('No skipped cars on ' + dShort(OPSB.day) + '.');
   return `<div class="cardlist">${k.map(w => `<button type="button" class="rowc" data-act="wash" data-id="${esc(w.id)}"><div class="gr"><b>${esc(w.car_label || w.reg)} <small>${esc(w.reg || '')}</small></b><span class="s">${esc(w.washer)}</span><span class="s">${w.skip_reason ? esc(w.skip_reason) : '<b style="color:var(--red)">No reason given</b>'}</span></div><span class="pill amber">Skipped</span></button>`).join('')}</div>`;
 }
+function revView() {
+  const k = OPSB.toReview(); if (!k.length) return rsl(OPSB.S.loaded.washes) || empty('No photos waiting for a plate check.');
+  return `<div class="cardlist">${k.map(w => `<button type="button" class="rowc" data-act="wash" data-id="${esc(w.id)}"><div class="gr"><b>${esc(w.car_label || w.reg)} <small>${esc(w.reg || '')}</small></b><span class="s">${esc(w.washer)} · ${esc(dShort(w.date || ''))}</span></div><span class="pill amber">To review</span></button>`).join('')}</div>`;
+}
 function intView() {
   const l = OPSB.interiors(); if (!l.length) return rsl(OPSB.S.loaded.washes) || empty('No Sunday interiors carried over in the last 14 days.');
   return `<div class="cardlist">${l.map(x => `<div class="rowc plain"><div class="gr"><b>${esc(x.car || x.reg)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)} · Sunday ${esc(dShort(x.from || ''))} to ${esc(dShort(x.to))}</span></div><span class="pill ${x.done ? 'green' : 'amber'}">${x.done ? 'Done' : 'Pending'}</span></div>`).join('')}</div>`;
@@ -540,14 +546,14 @@ function mgrView() {
   + `<div class="sec"><h3>Delay reasons</h3></div>` + (dl.length ? `<div class="cardlist">${dl.map(x => `<div class="rowc plain"><div class="gr"><b>${esc(x.car)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)}</span><span class="s">${esc(x.reason)}</span></div></div>`).join('')}</div>` : none('No delay reasons.'))
   + `<div class="sec"><h3>Damage notes</h3></div>` + (dm.length ? `<div class="cardlist">${dm.map(x => `<div class="rowc plain" style="align-items:flex-start"><div class="gr"><b>${esc(x.car)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)}</span><span class="s">${esc(x.note)}</span><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${x.photos.filter(p => safeSrc(p.src)).map(p => `<img src="${esc(p.src)}" alt="Issue photo" data-act="zoom" data-src="${esc(p.src)}" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:10px;cursor:pointer">`).join('')}</div></div></div>`).join('')}</div>` : none('No damage notes.'));
 }
-const ROUNDS = { mgr: mgrView, board: boardView, att: attView, skips: skipView, int: intView, earn: earnView, fb: fbView };
+const ROUNDS = { mgr: mgrView, board: boardView, att: attView, skips: skipView, rev: revView, int: intView, earn: earnView, fb: fbView };
 function washSheet(el) {
   const w = OPSB.S.washes[UI.sheet.id]; if (!w) return setHTML(R('sum', el), empty('This wash is gone.'));
-  const ph = OPSB.photos(w).filter(p => safeSrc(p.src)), grp = (title, list) => list.length ? `<div class="sh-sec">${title}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${list.map(p => `<figure style="margin:0;width:104px"><img src="${esc(p.src)}" alt="${esc(title)}" data-act="zoom" data-src="${esc(p.src)}" loading="lazy" style="width:104px;height:104px;object-fit:cover;border-radius:12px;cursor:pointer"><figcaption style="font-size:11px;color:var(--grey)">${p.spot ? esc(SPOTS[p.spot] || lbl(p.spot)) + ' · ' : ''}${esc(OPS.fmtTime(p.at))}${p.pending_upload ? ' · uploading' : ''}</figcaption></figure>`).join('')}</div>` : '';
+  const ph = OPSB.photos(w).filter(p => safeSrc(p.src)), grp = (title, list) => list.length ? `<div class="sh-sec">${title}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${list.map(p => `<figure style="margin:0;width:104px"><img src="${esc(p.src)}" alt="${esc(title)}" data-act="zoom" data-src="${esc(p.src)}" loading="lazy" style="width:104px;height:104px;object-fit:cover;border-radius:12px;cursor:pointer"><figcaption style="font-size:11px;color:var(--grey)">${p.spot ? esc(SPOTS[p.spot] || lbl(p.spot)) + ' · ' : ''}${esc(OPS.fmtTime(p.at))}${p.pending_upload ? ' · uploading' : ''}${p.kind === 'after' ? (p.plate ? ' · washer: plate yes' : ' · washer: plate no') : ''}</figcaption>${p.kind === 'after' ? (p.rejected ? `<span class="pill red">Rejected: ${esc(p.rejected.reason || '')}</span>` : p.plate_ok ? '<span class="pill green">Plate sahi</span>' : '') + `<div style="display:flex;gap:4px;margin-top:4px"><button type="button" class="btn sm go" data-act="photook" data-id="${esc(UI.sheet.id)}" data-i="${p._i}">Plate sahi</button><button type="button" class="btn sm danger" data-act="photorej" data-id="${esc(UI.sheet.id)}" data-i="${p._i}">Reject</button></div>` : ''}</figure>`).join('')}</div>` : '';
   const t = (k, l) => w[k] ? `<dt>${l}</dt><dd>${esc(OPS.fmtTime(w[k]))}</dd>` : '';
   setHTML(R('sum', el), `<div class="card"><b>${esc(w.car_label || w.reg)}</b> <small>${esc(w.reg || '')}</small> <span class="pill ${WCLS[w.status] || ''}">${WSTATUS[w.status] || esc(w.status || '')}</span>${OPSB.isLate(w) ? ' <span class="pill red">Late</span>' : ''}
     <dl class="kv">${t('on_the_way_at', 'On the way')}${t('arrived_at', 'Arrived')}${t('started_at', 'Started')}${t('finished_at', 'Finished')}${w.skip_reason ? `<dt>Skipped because</dt><dd>${esc(w.skip_reason)}</dd>` : ''}${w.washer_note ? `<dt>Washer note</dt><dd>${esc(w.washer_note)}</dd>` : ''}${w.interior_carried_to ? `<dt>Interior</dt><dd>Carried to ${esc(dShort(w.interior_carried_to))}</dd>` : ''}${w.carried_from ? `<dt>Carried from</dt><dd>Sunday ${esc(dShort(w.carried_from))}</dd>` : ''}</dl></div>`
-    + (ph.length ? grp('Before', ph.filter(p => p.kind === 'before')) + grp('After', ph.filter(p => p.kind === 'after')) + grp('Inside (Sunday spots)', ph.filter(p => p.kind === 'inside')) + grp('Issue', ph.filter(p => p.kind === 'issue')) : empty('No photos on this wash.')));
+    + (ph.length ? grp('After', ph.filter(p => p.kind === 'after')) + grp('Inside (Sunday spots)', ph.filter(p => p.kind === 'inside')) + grp('Issue', ph.filter(p => p.kind === 'issue')) : empty('No photos on this wash.')));
 }
 
 /* ---------------- sections ---------------- */
@@ -655,7 +661,7 @@ const SECS = {
       <div class="seg" role="tablist" data-r="rtabs"></div><div data-r="rbody"></div>`,
     init() { const d = $('#rDay'); d.value = OPSB.day; d.onchange = () => d.value && OPSB.setDay(d.value) },
     update(m = $('#main')) {
-      const T = [['board', 'Board'], ['mgr', 'Issues'], ['att', 'Attendance'], ['skips', 'Skips'], ['int', 'Interiors'], ['earn', 'Earnings'], ['fb', 'Low ratings']];
+      const T = [['board', 'Board'], ['mgr', 'Issues'], ['att', 'Attendance'], ['skips', 'Skips'], ['rev', 'Photos to review' + (OPSB.toReview().length ? ' (' + OPSB.toReview().length + ')' : '')], ['int', 'Interiors'], ['earn', 'Earnings'], ['fb', 'Low ratings']];
       setHTML(R('rtabs', m), T.map(([v, l]) => `<button type="button" role="tab" aria-selected="${UI.rd.tab === v}" class="${UI.rd.tab === v ? 'on' : ''}" data-act="rtab" data-v="${v}">${l}</button>`).join(''));
       const d = $('#rDay', m); if (d && document.activeElement !== d && d.value !== OPSB.day) d.value = OPSB.day;
       setHTML(R('rbody', m), ROUNDS[UI.rd.tab]());

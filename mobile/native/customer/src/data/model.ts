@@ -113,7 +113,7 @@ export function daysLeftOf(c: Car, real: boolean) {
    ===================================================================== */
 export type TaskKey = 'pressure' | 'foam' | 'interior' | 'tyre' | 'detailing' | 'dry';
 export type Status = 'scheduled' | 'on_the_way' | 'arrived' | 'washing' | 'done' | 'skipped';
-export type Photo = { kind: string; src: any; local?: 'before'; cut?: boolean; spot?: string; at?: string | null };
+export type Photo = { kind: string; src: any; rejected?: boolean; cut?: boolean; spot?: string; at?: string | null };
 export const SPOT_LABEL: Record<string, string> = { driver_mat: 'Driver mat', passenger_mat: 'Passenger mat', back_seat: 'Back seat', boot: 'Boot', dashboard: 'Dashboard' };
 export type WashDoc = {
   date: string; reg: string; car_label: string; washer: { id?: string; name: string; photo_url?: string };
@@ -146,7 +146,7 @@ export function fromContract(r: any): WashDoc {
     eta: hm(r.eta), on_the_way_at: hm(r.on_the_way_at), arrived_at: hm(r.arrived_at), started_at: hm(r.started_at), finished_at: hm(r.finished_at),
     minutes: numOrNull(r.minutes ?? (r.started_at && r.finished_at ? t2m(hm(r.finished_at)!) - t2m(hm(r.started_at)!) : null)),
     tasks: (Array.isArray(r.tasks) ? r.tasks : []).map((t: any) => ({ key: String(t.key), label: TASK_LABEL[t.key] || String(t.label || t.key), done: !!t.done, done_at: hm(t.done_at) })),
-    photos: (Array.isArray(r.photos) ? r.photos : []).map((p: any) => ({ kind: String(p.kind || ''), src: safeImg(p.url), spot: p.spot ? String(p.spot) : undefined, at: hm(p.at) })).filter((p: Photo) => p.src),
+    photos: (Array.isArray(r.photos) ? r.photos : []).map((p: any) => ({ kind: String(p.kind || ''), src: safeImg(p.url), spot: p.spot ? String(p.spot) : undefined, at: hm(p.at), rejected: !!p.rejected })).filter((p: Photo) => p.src && p.kind !== 'before' && !p.rejected).filter((p: Photo, _i: number, all: Photo[]) => p.kind !== 'after' || all.filter(q => q.kind === 'after').indexOf(p) < 2),
     slot_from: hm(r.slot_from), slot_to: hm(r.slot_to), sunday: !!r.sunday, overdue_at: hm(r.overdue_at),
     carried_from: r.carried_from ? String(r.carried_from) : null, carried_task: r.carried_task ? String(r.carried_task) : null, interior_carried_to: r.interior_carried_to ? String(r.interior_carried_to) : null,
     water_litres: numOrNull(r.water_litres), washer_note: r.washer_note || '', skip_reason: r.skip_reason || '', customer_note_seen: !!r.customer_note_seen,
@@ -171,9 +171,9 @@ export function makeDoc(c: Car): WashDoc {
     // demo only: Sunday's interior was carried over, so the Monday wash does it and says so
     ...(sun ? { remote: true, carried_from: iso(addDays(TODAY, -((TODAY.getDay() + 7) % 7 || 7))), carried_task: 'interior' } : {}) };
 }
-// demo only: the washer's photos for the sample Scorpio (before, after, and the Sunday interior spots)
+// demo only: the washer's photos for the sample Scorpio (after, and the Sunday interior spots)
 const DEMO_PHOTOS = (m2: (m: number) => string, fin: number): Photo[] => [
-  { kind: 'before', src: IMG.before, at: m2(fin - 12) }, { kind: 'after', src: IMG.after, at: m2(fin) },
+  { kind: 'after', src: IMG.after, at: m2(fin) },
   { kind: 'inside', src: IMG['svc-floor-mat'], spot: 'driver_mat', at: m2(fin - 5) }, { kind: 'inside', src: IMG['svc-seat-shampoo'], spot: 'back_seat', at: m2(fin - 4) },
   { kind: 'inside', src: IMG['svc-boot-vacuum'], spot: 'boot', at: m2(fin - 3) }, { kind: 'inside', src: IMG['svc-dashboard'], spot: 'dashboard', at: m2(fin - 2) }];
 export const activeStage = (d: WashDoc) => ['on_the_way', 'arrived', 'washing'].includes(d.status);

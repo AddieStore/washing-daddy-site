@@ -796,3 +796,30 @@ Object.assign(T, {
   "Pahunch ke customer se start code lo": "পৌঁছে কাস্টমারের কাছ থেকে স্টার্ট কোড নাও",
   "Start code": "স্টার্ট কোড",
 });
+
+Object.assign(T, {
+  "Aaj gaadi alag jagah khadi hai": "আজ গাড়ি অন্য জায়গায় পার্ক করা আছে",
+  "Map mein kholo": "ম্যাপে খোলো",
+  "Alag jagah": "অন্য জায়গা",
+  "aapse door": "তোমার থেকে দূরে",
+});
+
+Object.assign(T, {
+  "Photo reject hui": "ছবি বাতিল হয়েছে",
+  "Number plate dikh rahi hai": "নম্বর প্লেট দেখা যাচ্ছে",
+  "Ek photo mein number plate dikhni chahiye (aage ya peeche)": "একটা ছবিতে নম্বর প্লেট দেখা যেতে হবে (সামনে বা পেছনে)",
+  "Ek photo mein number plate dikhni chahiye. \"Number plate dikh rahi hai\" tick karo": "একটা ছবিতে নম্বর প্লেট দেখা যেতে হবে। \"নম্বর প্লেট দেখা যাচ্ছে\" টিক দাও",
+  "Number plate tick karo": "নম্বর প্লেট টিক দাও",
+  "Gaadi ki 2 photo ho gayi hain": "গাড়ির 2টি ছবি তোলা হয়ে গেছে",
+  "Round shuru, kamai chalu": "রাউন্ড শুরু, আয় চালু",
+  "Aaj ke saare cars ek list mein. Scooter nikalo, seedha gate pe.": "আজকের সব গাড়ি এক লিস্টে। স্কুটার বের করো, সোজা গেটে।",
+  "Foam lagao, shine karo": "ফোম লাগাও, শাইন করো",
+  "Pressure wash, no pocha. Paani aur power saath mein.": "প্রেশার ওয়াশ, নো পোছা। জল আর পাওয়ার সঙ্গেই।",
+  "Photo bhejo, paisa pao": "ছবি পাঠাও, টাকা পাও",
+  "Har wash ka photo proof. Roz ka payout app mein dekho.": "প্রতিটি ওয়াশের ফটো প্রুফ। রোজের পেআউট অ্যাপে দেখো।",
+  "Roz ka payout dikhta hai": "রোজের পেআউট দেখা যায়",
+  "Photo proof se pakka paisa": "ফটো প্রুফে পাকা টাকা",
+  "Manager support, WhatsApp pe": "ম্যানেজার সাপোর্ট, WhatsApp-এ",
+  "Aaj ka round shuru karo": "আজকের রাউন্ড শুরু করো",
+  "Phone number daalo, SMS pe OTP aayega.": "ফোন নম্বর দাও, SMS-এ OTP আসবে।",
+});

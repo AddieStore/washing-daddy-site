@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Platform, StyleProp, Text, View, ViewStyle } from 'react-native';
 import { CarPic } from './CarPhoto';
-import { carBy } from '../state/store';
+import { carBy, spotFor } from '../state/store';
 import { CarArt, Chip, F, Group, Icon, Plate, Pressy, Row, brand, useReducedMotion, useTheme } from '../ui';
 import { STATUS } from '../lib/data';
 import { SLOTS } from '../lib/slots';
@@ -54,7 +54,7 @@ export function TimeChip({ text }: { text: string }) {
 }
 
 /** One car row: plate, model, status chip, chevron when it opens the job. Second line: customer / slot / times, earning for done cars. */
-export function DayCarRow({ r, onPress }: { r: DayRow; onPress?: () => void }) {
+export function DayCarRow({ r, onPress, spotDate }: { r: DayRow; onPress?: () => void; spotDate?: string }) {
   const { c } = useTheme();
   const slot = r.slot != null && SLOTS[r.slot] ? `${short12(hm12(SLOTS[r.slot].from))} – ${short12(hm12(SLOTS[r.slot].to))}` : '';
   const skip = r.status === 'skipped', car = carBy(r.reg);
@@ -66,6 +66,7 @@ export function DayCarRow({ r, onPress }: { r: DayRow; onPress?: () => void }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Plate reg={r.plate} style={{ paddingVertical: 1, paddingHorizontal: 6 }} />
           {r.status === 'done' ? <Text style={{ fontFamily: F.bold, fontSize: 13, color: c.ok, ...TNUM }}>{rupee(r.earn)}</Text> : null}
+          {spotDate && spotFor(r.reg, spotDate) ? <Chip tone="amber" icon="pin">{t('Alag jagah')}</Chip> : null}
         </View>
         <Text numberOfLines={1} style={{ fontFamily: F.medium, fontSize: 15, lineHeight: 20, color: c.fg }}>{r.model}{r.customer ? <Text style={{ fontFamily: F.body, color: c.grey }}> · {r.customer}</Text> : null}</Text>
         {times || slot ? <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12, lineHeight: 16, color: skip ? brand.red : c.grey, ...TNUM }}>{times || slot}</Text> : null}
@@ -83,11 +84,11 @@ export function DayCarRow({ r, onPress }: { r: DayRow; onPress?: () => void }) {
 }
 
 /** The cars of a day as ONE Group of rows. */
-export function DayCarGroup({ rows, onPress }: { rows: DayRow[]; onPress?: (r: DayRow) => void }) {
+export function DayCarGroup({ rows, onPress, spotDate }: { rows: DayRow[]; onPress?: (r: DayRow) => void; spotDate?: string }) {
   if (!rows.length) return null;
   return (
     <FadeUp index={2}>
-      <Group>{rows.map((r) => <DayCarRow key={r.reg} r={r} onPress={onPress ? () => onPress(r) : undefined} />)}</Group>
+      <Group>{rows.map((r) => <DayCarRow key={r.reg} r={r} spotDate={spotDate} onPress={onPress ? () => onPress(r) : undefined} />)}</Group>
     </FadeUp>
   );
 }

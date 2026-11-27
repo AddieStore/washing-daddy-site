@@ -6,12 +6,12 @@ import { Extra, S, openReqs, route, useStore, wFeature } from '../../state/store
 import { t } from '../../lib/i18n';
 
 const FLAG: Record<string, string> = { extra: 'tab_extra', attendance: 'tab_hazri', paisa: 'tab_money' };   // WD HQ switches
-const TABS: { name: string; label: string; icon: IconName }[] = [
-  { name: 'index', label: 'Round', icon: 'tabRound' },
-  { name: 'extra', label: 'Extra', icon: 'tabExtra' },
-  { name: 'attendance', label: 'Hazri', icon: 'id' },
-  { name: 'paisa', label: 'Paisa', icon: 'tabPaisa' },
-  { name: 'profile', label: 'Profile', icon: 'tabMe' },
+const TABS: { name: string; label: string; icon: IconName; tone: string }[] = [
+  { name: 'index', tone: '#5409DA', label: 'Round', icon: 'tabRound' },
+  { name: 'extra', tone: '#F07A00', label: 'Extra', icon: 'tabExtra' },
+  { name: 'attendance', tone: '#E11D74', label: 'Hazri', icon: 'id' },
+  { name: 'paisa', tone: '#0E9F6E', label: 'Paisa', icon: 'tabPaisa' },
+  { name: 'profile', tone: '#2563EB', label: 'Profile', icon: 'tabMe' },
 ];
 type BottomTabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>['tabBar']>>[0];
 
@@ -26,7 +26,7 @@ function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
     const ev = emitter.emit({ type: 'tabPress', target: rt.key, canPreventDefault: true });
     if (name !== active && !ev.defaultPrevented) navigateToTab(rt.key);
   };
-  return <FloatingTabBar active={active} onSelect={select} tabs={TABS.filter((tb) => !FLAG[tb.name] || wFeature(FLAG[tb.name])).map((tb) => ({ key: tb.name, label: t(tb.label), icon: tb.icon, badge: badge[tb.name] || 0 }))} />;
+  return <FloatingTabBar active={active} onSelect={select} tabs={TABS.filter((tb) => !FLAG[tb.name] || wFeature(FLAG[tb.name])).map((tb) => ({ key: tb.name, label: t(tb.label), icon: tb.icon, tone: tb.tone, badge: badge[tb.name] || 0 }))} />;
 }
 
 export default function TabsLayout() {

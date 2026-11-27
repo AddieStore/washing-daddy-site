@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, PanResponder, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Chip, F, Group, Icon, cardShadow, Pressy, Row, StickyBar, StatusPill, brand, sheet, ui, useReducedMotion, useTheme } from '../ui';
-import { Route, S, W, act, carBy, planName, route, useStore } from '../state/store';
+import { Route, S, W, act, carBy, planName, route, spotFor, useStore } from '../state/store';
 import { STATUS } from '../lib/data';
 import { SLOTS, SLOT_COUNT, lists, place, slotRange } from '../lib/slots';
 import { hm12, short12, t12 } from '../lib/time';
@@ -190,6 +190,7 @@ function CarCard({ reg, target, zone, idx, count, locked, dragging, ctl }: {
       <View style={{ flex: 1, minWidth: 0, gap: 3 }} pointerEvents="none">
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={st.plate}><Text numberOfLines={1} style={st.plateTxt}>{car.plate}</Text></View>
+          {spotFor(reg) ? <Chip tone="amber" icon="pin">{t('Alag jagah')}</Chip> : null}
           {late ? <View style={st.late}><Text style={st.lateTxt}>{t('Late')}</Text></View> : null}
         </View>
         <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 15, color: c.fg }}>{car.model}</Text>

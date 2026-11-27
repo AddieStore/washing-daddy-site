@@ -141,11 +141,11 @@ function HeaderContent({ dark }: { dark: boolean }) {
 function Header({ y }: { y: Animated.Value }) {
   const ins = useInsets(), top = Math.max(ins.top, 24), [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const id = y.addListener(({ value }) => setScrolled(s => (s !== value > 70 ? value > 70 : s)));
+    const id = y.addListener(({ value }) => setScrolled(s => (s !== value > 30 ? value > 30 : s)));
     return () => y.removeListener(id);
   }, []);
-  const bg = y.interpolate({ inputRange: [20, 110], outputRange: [0, 1], extrapolate: 'clamp' });
-  const light = y.interpolate({ inputRange: [30, 90], outputRange: [1, 0], extrapolate: 'clamp' });
+  const bg = y.interpolate({ inputRange: [8, 40], outputRange: [0, 1], extrapolate: 'clamp' });
+  const light = y.interpolate({ inputRange: [8, 40], outputRange: [1, 0], extrapolate: 'clamp' });
   return (
     <View style={{ position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30, paddingTop: top }}>
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#FFFFFF', opacity: bg, borderBottomWidth: 1, borderBottomColor: L.line }} />
@@ -474,11 +474,11 @@ function StatusChain({ status, note }: { status: string; note?: string | null })
   return (
     <View style={{ marginTop: 6 }}>
       {skipped ? <Txt weight={600} size={12} color={L.sec}>Skipped today</Txt> : (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 4, rowGap: 2 }}>
           {CHAIN.map(([k, label], i) => { const on = STAGES.indexOf(k as any) <= at, cur = STAGES.indexOf(k as any) === at; return (
             <View key={k} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: on ? L.pos : '#D4D4D8' }} />
-              <Txt weight={cur ? 600 : 400} size={11} color={on ? L.ink : L.mut}>{label}</Txt>
+              <Txt weight={cur ? 600 : 400} size={11} color={on ? L.ink : L.mut} numberOfLines={1}>{label}</Txt>
               {i < CHAIN.length - 1 ? <View style={{ width: 8, height: 1, backgroundColor: '#D4D4D8' }} /> : null}
             </View>); })}
         </View>)}
@@ -508,7 +508,7 @@ function Assigned() {
         <Txt weight={600} size={14} color={L.ink} numberOfLines={1} style={{ lineHeight: 20 }}>{title}</Txt>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {live ? <Pulse color={L.pos} size={8} /> : null}
-          <Txt size={13} color={L.sec} numberOfLines={1} style={{ flexShrink: 1, lineHeight: 18 }}>{subTxt}</Txt>
+          <Txt size={13} color={L.sec} numberOfLines={2} style={{ flexShrink: 1, lineHeight: 18 }}>{subTxt}</Txt>
         </View>
         {d.remote && (d.status !== 'scheduled' || d.skip_reason) ? <StatusChain status={d.status} note={d.status === 'skipped' ? [d.skip_reason, carryNote(c, d)].filter(Boolean).join('. ') : carryNote(c, d)} /> : null}
         <Pressable3 label="View profile" onPress={openProfile} style={{ alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center' }}><Txt weight={600} size={12} color={L.accent}>View profile</Txt></Pressable3>
