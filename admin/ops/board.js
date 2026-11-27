@@ -87,7 +87,24 @@ B.issueCounts = () => {
 };
 B.delays = () => dayWashes(B.day).filter(w => w.delay_reason).map(w => ({ ...carOf(w), reason: w.delay_reason }));
 B.damage = () => dayWashes(B.day).filter(w => w.damage_note).map(w => ({ ...carOf(w), note: w.damage_note, photos: B.photos(w).filter(p => p.kind === 'issue') }));
-B.photos = w => (Array.isArray(w.photos) ? w.photos : []).filter(p => p && (p.url || p.asset_id)).map(p => ({ ...p, src: p.url || ('/_blob/' + p.asset_id) }));
+B.photos = w => (Array.isArray(w.photos) ? w.photos : []).map((p, i) => p && (p.url || p.asset_id) ? { ...p, _i: i, src: p.url || ('/_blob/' + p.asset_id) } : null).filter(p => p && p.kind !== 'before');
+// photo rule v3: a manager checks the number plate on the after photos
+const afterOf = w => (Array.isArray(w.photos) ? w.photos : []).filter(p => p && p.kind === 'after' && (p.url || p.asset_id));
+B.toReview = () => Object.entries(S.washes).map(([id, w]) => ({ id, ...w })).filter(w => { const a = afterOf(w); return a.length && !a.some(p => p.plate_ok || p.rejected) && w.photo_review !== 'ok' }).sort((a, b) => String(b.date).localeCompare(String(a.date))).map(w => ({ ...w, washer: washerOf(w.washer_id).name }));
+// read the wash doc, change the one photo, write the whole photos array back
+B.reviewPhoto = async (id, idx, action, reason) => {
+  const at = OPS.isoIST();
+  let w = S.washes[id];
+  if (db) { const sn = await db.doc('washes/' + id).get(); if (!sn.exists) throw new Error('That wash is gone.'); w = sn.data() }
+  if (!w) throw new Error('That wash is gone.');
+  const photos = (Array.isArray(w.photos) ? w.photos : []).map(p => p && typeof p === 'object' ? { ...p } : p), p = photos[idx];
+  if (!p || p.kind !== 'after') throw new Error('Photo not found. Refresh and try again.');
+  if (action === 'ok') { p.plate_ok = { at, by: 'manager' }; delete p.rejected }
+  else { p.rejected = { at, by: 'manager', reason: String(reason || '').slice(0, 120) }; delete p.plate_ok }
+  const review = action === 'ok' ? 'ok' : 'rejected';
+  if (!db) { S.washes[id] = { ...w, photos, photo_review: review, photo_review_at: at }; return emit() }
+  return db.doc('washes/' + id).update({ photos, photo_review: review, photo_review_at: at });
+};
 B.ledger = () => {
   const m = {};
   Object.values(S.earn).forEach(e => {

@@ -160,7 +160,7 @@ const demoReqs = (c: Car) => (REAL || c.img !== 'scorpio' ? [] : [{ id: 'demo-sk
 export const requestsFor = (c: Car) => REQS[c.id] || demoReqs(c);
 const byNewest = (a: any, b: any) => String(b.created_at).localeCompare(String(a.created_at));
 const reqTime = (v: any) => { const t = ampm(hm(v)); return t ? ' ' + t : '' };
-/** real wash photos of a doc (before / after / issue / inside + spot); empty for a demo doc, which keeps its static images */
+/** real wash photos of a doc (after / issue / inside + spot); empty for a demo doc, which keeps its static images */
 export const photosOf = (d: WashDoc) => (d.remote ? d.photos : []);
 /** Sunday interior carry-over line for the selected car: "Sunday interior done Monday" (carried_from / interior_carried_to) */
 export function carryNote(c: Car = car(), d: WashDoc = doc(c)): string | null {
@@ -1612,7 +1612,7 @@ export const act = {
     const d: WashDoc = { ...full, status: 'scheduled', on_the_way_at: null, arrived_at: null, started_at: null, finished_at: null, photos: [], customer_note_seen: false, tasks: full.tasks.map(t => ({ ...t, done: false, done_at: null })) };
     SIM = { carId: c.id, doc: d }; ui = { ...ui, sim: true }; emit();
     const steps = [() => { d.status = 'on_the_way'; d.on_the_way_at = full.on_the_way_at }, () => { d.status = 'arrived'; d.arrived_at = full.arrived_at; d.customer_note_seen = true },
-      () => { d.status = 'washing'; d.started_at = full.started_at; d.photos = full.photos.filter(p => p.kind === 'before') },
+      () => { d.status = 'washing'; d.started_at = full.started_at; d.photos = [] },
       ...full.tasks.map((t, i) => () => { d.tasks[i] = { ...d.tasks[i], done: true, done_at: t.done_at } }), () => { d.status = 'done'; d.finished_at = full.finished_at; d.photos = full.photos }];
     let i = 0;
     const tick = () => { steps[i](); SIM!.doc = { ...d }; emit(); if (ui.tab !== 'live' || i === 0) toast(chipText(c, d)); i++;
