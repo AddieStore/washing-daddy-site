@@ -8,7 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   PullToRefresh, Button, CallButton, CarArt, Chip, F, Group, HeaderIconButton, Icon, PCard, Plate, Pressy, PTitle, Row, SectionLabel, SlideToConfirm, StatTile, ui, useTheme, WeekStrip,
 } from '../../ui';
-import { RoundHeroArt, DoneArt, EmptyArt } from '../../ui/art';
+import { LoginStoryArt, DoneArt, EmptyArt } from '../../ui/art';
+import { useStill } from '../../ui/art/kit';
 import { cardShadow } from '../../ui/theme';
 import { DAY, Extra, Money, Rounds, wFeature, Route, S, W, act, carBy, isOnline, me, openReqs, planName, route, useStore, view } from '../../state/store';
 import { STATUS, navOf, telOf } from '../../lib/data';
@@ -34,6 +35,8 @@ const ART = 168;                  // the art sits at the bottom of the band, gre
 const BAND = 230;                 // visible hero height under the status bar
 const OVERLAP = 24;               // the white sheet covers the bottom of the band by this much
 const SKY = '#E3D8FF';            // top colour of the art's sky (so the status-bar strip is seamless)
+const HOME_SCENES = [1, 2, 0];     // Home order: wash, proof, then ride (login keeps 0, 1, 2)
+const SCENE_MS = 4500;
 const WASH: Record<string, 'violet' | 'green' | 'grey' | 'amber'> = { scheduled: 'grey', on_the_way: 'violet', arrived: 'violet', washing: 'violet', done: 'green', skipped: 'amber' };
 
 /* ---------- hero band ---------- */
@@ -64,14 +67,19 @@ function HeroBand({ top, width, greeting, name }: { top: number; width: number; 
   useStore();
   const { c, dark } = useTheme();
   const cn = Route.counts(), started = !!S.day?.started;
-  const finished = started && cn.total > 0 && cn.done + cn.skipped >= cn.total;
-  const progress = cn.total ? (cn.done + cn.skipped) / cn.total : 0;
+  const rm = useStill();
+  const [si, setSi] = useState(0);
+  useEffect(() => {
+    if (rm) return;
+    const id = setInterval(() => setSi((n) => (n + 1) % HOME_SCENES.length), SCENE_MS);
+    return () => clearInterval(id);
+  }, [rm]);
   return (
     <View style={{ backgroundColor: c.card }}>
      <View style={{ backgroundColor: dark ? '#1E1633' : SKY }}>
       <View style={{ height: top }} />
       <View style={{ height: BAND }}>
-        <View style={{ position: 'absolute', left: 0, bottom: 0 }}><RoundHeroArt width={width} height={ART} progress={progress} done={finished} /></View>
+        <View style={{ position: 'absolute', left: 0, bottom: 0 }}><LoginStoryArt width={width} height={ART} scene={HOME_SCENES[rm ? 0 : si]} dark={dark} still={rm} /></View>
         <View style={{ position: 'absolute', left: 16, right: 16, top: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <View accessibilityRole="header" style={{ flex: 1, minWidth: 0 }}>
