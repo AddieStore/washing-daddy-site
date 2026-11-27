@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, useColorScheme, View } from 'react-native';
+import { Alert, AppState, useColorScheme, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
@@ -11,6 +11,7 @@ import { BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold } from '@ex
 import { Poppins_700Bold } from '@expo-google-fonts/poppins';   // only for the "WD" letters on the rider's flag and kit box (heroRide.tsx), kept as they were
 import { DAY, NIGHT, ThemeContext, InkContext } from './src/theme';
 import { boot, useApp, S } from './src/state';
+import { startPark } from './src/park';
 import { ToastHost, SheetHost, ConfettiHost } from './src/ui/hosts';
 import Main from './src/screens/Main';
 import { PayWebHost } from './src/backend/payweb';
@@ -36,6 +37,13 @@ export default function App() {
   const [booted, setBooted] = useState(false);
   useEffect(() => { boot().finally(() => setBooted(true)) }, []);
   const ready = fonts && booted && ui.ready;
+  // parking alerts: start once the account is loaded, and look again whenever the app comes back to the front
+  useEffect(() => {
+    if (!ready || !ui.signedIn) return;
+    startPark().catch(() => {});
+    const sub = AppState.addEventListener('change', s => { if (s === 'active') startPark().catch(() => {}) });
+    return () => sub.remove();
+  }, [ready, ui.signedIn]);
   useEffect(() => { if (ready) SplashScreen.hideAsync().catch(() => {}) }, [ready]);
   if (!ready) return <Splash />;
   const dark = S.theme === 'dark' || (S.theme === 'system' && scheme === 'dark');

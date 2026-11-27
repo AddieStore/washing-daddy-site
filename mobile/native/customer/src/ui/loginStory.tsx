@@ -404,25 +404,28 @@ function SceneProof({ W, H }: { W: number; H: number }) {
 
 /* ------------------------------------------------------------------ the story */
 const SCENES = [SceneBook, SceneHub, SceneRide, SceneKeys, SceneWash, SceneProof];
-export function LoginStory({ W, H = 220, ms = 4600 }: { W: number; H?: number; ms?: number }) {
-  const [i, setI] = useState(0), rm = useReducedMotion();
-  useEffect(() => { if (rm) return; const t = setInterval(() => setI(n => (n + 1) % SLIDES.length), ms); return () => clearInterval(t) }, [rm, ms]);
-  const Scene = SCENES[i];
+/* Home plays the same six scenes, wash and proof first, then book, hub, ride, keys */
+export const HOME_ORDER = [4, 5, 0, 1, 2, 3];
+export function LoginStory({ W, H = 220, ms = 4600, order, home }: { W: number; H?: number; ms?: number; order?: number[]; home?: boolean }) {
+  const ord = order && order.length ? order : SLIDES.map((_, k) => k), N = ord.length;
+  const [pos, setI] = useState(0), rm = useReducedMotion();
+  useEffect(() => { if (rm) return; const t = setInterval(() => setI(n => (n + 1) % N), ms); return () => clearInterval(t) }, [rm, ms, N]);
+  const i = ord[pos % N], Scene = SCENES[i];
   // light lavender sky -> the caption block fades to pure white, which is the colour of the login sheet below
   return (
     <LightCtx.Provider value>
       <View style={{ width: W }}>
         <View style={{ width: W, height: H, overflow: 'hidden' }}>
-          <Animated.View key={i} entering={FadeIn.duration(420)} exiting={FadeOut.duration(280)} style={abs(0, 0)}><Scene W={W} H={H} /></Animated.View>
+          <Animated.View key={pos} entering={FadeIn.duration(420)} exiting={FadeOut.duration(280)} style={abs(0, 0)}><Scene W={W} H={H} /></Animated.View>
           
         </View>
-        <LinearGradient colors={['#FFFFFF', '#FFFFFF']} style={{ paddingHorizontal: SP.l + 4, paddingTop: SP.m, minHeight: 104 }}>
-          <Animated.View key={'t' + i} entering={FadeIn.duration(420).delay(140)} exiting={FadeOut.duration(200)}>
-            <Txt weight={700} size={26} color="#1A1033" style={{ lineHeight: 33 }}>{SLIDES[i].t}</Txt>
-            <Txt size={14} color="#5B5275" style={{ lineHeight: 20, marginTop: 4 }}>{SLIDES[i].s}</Txt>
+        <LinearGradient colors={home ? ['rgba(255,255,255,0)', 'rgba(255,255,255,0)'] : ['#FFFFFF', '#FFFFFF']} style={{ paddingHorizontal: home ? 20 : SP.l + 4, paddingTop: home ? 10 : SP.m, minHeight: home ? 136 : 104, height: home ? 136 : undefined }}>
+          <Animated.View key={'t' + pos} entering={FadeIn.duration(420).delay(140)} exiting={FadeOut.duration(200)}>
+            <Txt weight={700} size={26} color="#1A1033" numberOfLines={home ? 1 : undefined} adjustsFontSizeToFit={!!home} style={{ lineHeight: 33 }}>{SLIDES[i].t}</Txt>
+            <Txt size={14} color="#5B5275" numberOfLines={home ? 2 : undefined} style={{ lineHeight: 20, marginTop: 4 }}>{SLIDES[i].s}</Txt>
           </Animated.View>
           <View style={{ flexDirection: 'row', gap: 6, marginTop: 12, paddingBottom: 14 }}>
-            {SLIDES.map((_, k) => <View key={k} style={{ height: 6, width: k === i ? 22 : 6, borderRadius: 3, backgroundColor: k === i ? '#5409DA' : 'rgba(84,9,218,0.22)' }} />)}
+            {ord.map((_, k) => <View key={k} style={{ height: 6, width: k === pos % N ? 22 : 6, borderRadius: 3, backgroundColor: k === pos % N ? '#5409DA' : 'rgba(84,9,218,0.22)' }} />)}
           </View>
         </LinearGradient>
       </View>

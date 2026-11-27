@@ -1,4 +1,4 @@
-// Builds 16-washer-rounds.json: one signed-in POST webhook (wd-washer-rounds?washer=ID) that lists rounds or takes one. Run: node build.mjs
+// Builds 16-washer-rounds.json: one signed-in POST webhook (wd-washer-rounds?washer=ID) that lists rounds or takes one; ops_* actions are owner-only. Run: node build.mjs
 import fs from 'node:fs';
 const lib = fs.readFileSync(new URL('./lib.js', import.meta.url), 'utf8');
 const token = fs.readFileSync(new URL('./token.js', import.meta.url), 'utf8');
@@ -12,8 +12,11 @@ const http = async o => {
   } catch (e) { return { status: 0, body: null } }
 };
 const hook = $('Round maango (webhook)').first().json;
+setWashers($env.WASHER_IDS);   // one washer list for workflows 9 and 16 (default chotte, shahrukh)
 const washer = String((hook.query || {}).washer || '').toLowerCase();
 try {
+  const body = hook.body || {};
+  if (/^ops_/.test(String(body.action || ''))) return [{ json: await handleOps({ body, http, token: $env.NOTION_TOKEN, dbId: $env.NOTION_CARS_DB || 'ca0440e9f6ab4e15bf35b9d720e2952b', admin: $('Token check').first().json.admin === true }) }];
   return [{ json: await handleRounds({ washer, body: hook.body || {}, http, token: $env.NOTION_TOKEN, dbId: $env.NOTION_CARS_DB || 'ca0440e9f6ab4e15bf35b9d720e2952b' }) }];
 } catch (e) { return [{ json: { ok: false, error: 'rounds unavailable' } }]; }`;
 const cors = [{ name: 'Access-Control-Allow-Origin', value: 'https://washingdaddy.com' }, { name: 'Cache-Control', value: 'no-store' }];

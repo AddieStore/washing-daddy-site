@@ -31,7 +31,7 @@ const config: ExpoConfig = {
   name: 'WD Partner',
   slug: 'wd-partner',
   scheme: 'wdpartner',
-  version: '2.2.0',
+  version: '2.3.0',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
   primaryColor: '#5409DA',
@@ -39,7 +39,7 @@ const config: ExpoConfig = {
   icon: './assets/icon.png',
   android: {
     package: PACKAGE,
-    versionCode: 23,
+    versionCode: 24,
     adaptiveIcon: {
       backgroundColor: '#FFBA08',
       foregroundImage: './assets/android-icon-foreground.png',

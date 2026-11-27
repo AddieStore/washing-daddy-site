@@ -78,7 +78,7 @@ function ask({ title, body = '', fields = [], ok = 'OK', danger = false, cancel 
   return new Promise(res => {
     const d = $('#dlg'), prev = document.activeElement;
     d.innerHTML = `<form class="dlg-box" role="alertdialog" aria-modal="true" aria-labelledby="dT"><h3 id="dT">${esc(title)}</h3><div class="dlg-b">${body}</div>
-      ${fields.map(f => `<label class="lbl" for="df_${f.id}">${esc(f.label)}</label><input class="field" id="df_${f.id}" name="${f.id}" type="${f.type || 'text'}" ${f.min != null ? `min="${f.min}"` : ''} ${f.max != null ? `max="${f.max}"` : ''} ${f.type === 'number' ? 'inputmode="numeric"' : ''} value="${esc(f.value ?? '')}" placeholder="${esc(f.ph || '')}" ${f.required ? 'required' : ''}>`).join('')}
+      ${fields.map(f => `<label class="lbl" for="df_${f.id}">${esc(f.label)}</label>${f.options ? `<select class="field" id="df_${f.id}" name="${f.id}">${f.options.map(([v, l]) => `<option value="${esc(v)}" ${v === f.value ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>` : `<input class="field" id="df_${f.id}" name="${f.id}" type="${f.type || 'text'}" ${f.min != null ? `min="${f.min}"` : ''} ${f.max != null ? `max="${f.max}"` : ''} ${f.type === 'number' ? 'inputmode="numeric"' : ''} value="${esc(f.value ?? '')}" placeholder="${esc(f.ph || '')}" ${f.required ? 'required' : ''}>`}`).join('')}
       <div class="err" id="dErr"></div><div class="dlg-a"><button type="button" class="btn ghost" id="dNo">${esc(cancel)}</button><button type="submit" class="btn ${danger ? 'danger' : 'go'}">${esc(ok)}</button></div></form>`;
     d.hidden = false;
     const done = v => { d.hidden = true; d.innerHTML = ''; dlgCancel = null; try { prev && prev.focus && prev.focus() } catch (e) {} res(v) };
@@ -90,7 +90,7 @@ function ask({ title, body = '', fields = [], ok = 'OK', danger = false, cancel 
       for (const f of fields) { const v = form.elements[f.id].value.trim(); if (f.required && !v) { $('#dErr').textContent = f.label + ' is needed.'; form.elements[f.id].focus(); return } out[f.id] = v }
       done(out);
     };
-    (form.querySelector('input') || $('#dNo')).focus();
+    (form.querySelector('input,select') || $('#dNo')).focus();
   });
 }
 
@@ -287,7 +287,7 @@ const SH = {
         <div class="act" style="margin-top:12px;display:flex;gap:8px"><span class="dot ${w.activity.kind === 'free' || w.activity.kind === 'job' || w.activity.kind === 'round' ? 'live' : ''}" style="margin-top:6px"></span><span>${esc(w.activity.text)}</span></div>
         <div class="btns">${contactBtns(w.phone, '', w.name)}</div></div>`);
       const A = (a, l, c) => `<button class="btn sm ${c}" type="button" data-act="${a}" data-phone="${esc(w.phone)}">${l}</button>`;
-      setHTML(R('wacts', el), `<div class="btns">${w.status !== 'approved' ? A('approve', 'Approve', 'go') : ''}${w.status !== 'blocked' ? A('block', 'Block', 'dsoft') : ''}</div>`);
+      setHTML(R('wacts', el), `<div class="btns">${w.status !== 'approved' ? A('approve', 'Approve', 'go') : ''}${w.status !== 'blocked' ? A('block', 'Block', 'dsoft') : ''}${w.status === 'approved' && w.round ? `<button class="btn sm soft" type="button" data-act="handover" data-phone="${esc(w.phone)}">Hand over round</button>` : ''}</div>`);
       const mapEl = R('map', el);
       if (UI.sheetMap) updateMap(UI.sheetMap, w.phone);
       setHTML(R('maptxt', el), w.loc ? '' : empty('No location yet. It shows once the washer opens WD Partner.'));
@@ -308,7 +308,7 @@ const SH = {
         <div class="btns">${dig(c.phone) ? `<a class="btn sm soft" href="${tel(c.phone)}">${ic('phone', 16)}Call</a><a class="btn sm wa" href="${wa(c.phone, due ? msg(c.next) : '')}" target="_blank" rel="noopener">${ic('chat', 16)}${due ? 'WhatsApp reminder' : 'WhatsApp'}</a>` : ''}
         <button class="btn sm ${c.status === 'active' ? 'dsoft' : 'go'}" type="button" data-act="custstatus" data-phone="${esc(c.phone)}" data-st="${c.status === 'active' ? 'new' : 'active'}">${c.status === 'active' ? 'Pause' : 'Activate'}</button></div></div>`);
       setHTML(R('cars', el), c.cars.length ? `<div class="cardlist">${c.cars.map(x => `<div class="card"><b>${esc(x.name || x.plate)}</b> ${x.left != null ? leftPill(x.left) : ''}<dl class="kv" style="margin-top:8px"><dt>Plate</dt><dd>${esc(x.plate) || '-'}</dd><dt>Plan</dt><dd>${esc(x.planName)} · ${OPS.rs(x.price)}/month</dd><dt>Start</dt><dd>${x.start ? esc(dMed(x.start)) : '-'}</dd><dt>Paid till</dt><dd>${x.till ? esc(dMed(x.till)) : '-'}</dd><dt>Washer</dt><dd>${esc(x.washer) || '-'}</dd></dl>
-        ${x.left != null && x.left <= 7 && dig(c.phone) ? `<div class="btns"><a class="btn sm wa" href="${wa(c.phone, msg(x))}" target="_blank" rel="noopener">${ic('chat', 16)}WhatsApp reminder</a></div>` : ''}</div>`).join('')}</div>` : empty('No cars on this customer yet.'));
+        <div class="btns">${x.left != null && x.left <= 7 && dig(c.phone) ? `<a class="btn sm wa" href="${wa(c.phone, msg(x))}" target="_blank" rel="noopener">${ic('chat', 16)}WhatsApp reminder</a>` : ''}${x.plate ? `<button class="btn sm soft" type="button" data-act="movecar" data-plate="${esc(x.plate)}" data-name="${esc(x.name || x.plate)}">Move car</button>` : ''}</div></div>`).join('')}</div>` : empty('No cars on this customer yet.'));
     },
   },
 };
@@ -415,6 +415,53 @@ async function doEta(id) {
   const v = await ask({ title: 'Change ETA', fields: [{ id: 'm', label: 'Arrives in (minutes from now)', type: 'number', value: isFinite(cur) && cur > 0 ? cur : 10, min: 1, max: 240, required: true }], ok: 'Save ETA' });
   if (v) run(OPS.setEta(id, num(v.m, 10)), 'ETA updated.');
 }
+/* ---- Notion monthly cars: move a car, hand over a round (owner only, through n8n workflow 16) ---- */
+const nWashers = () => { const ids = (OPS.notion.data && OPS.notion.data.washerIds) || [], by = {}; OPS.washers().forEach(w => { if (w.round) by[w.round] = w.name }); return ids.map(id => [id, by[id] || id]) };
+const nName = id => (nWashers().find(x => x[0] === id) || [id, id])[1];
+async function needNotion() {
+  if (!OPS.notion.data) { toast('Loading the Notion car list…'); await OPS.notionLoad() }
+  if (!OPS.notion.data) { toast(OPS.notion.error || "Couldn't load the Notion list. Try again.", { cls: 'err' }); return false }
+  return true;
+}
+async function doMoveCar(plate, label) {
+  if (!await needNotion()) return;
+  const reg = String(plate).toUpperCase().replace(/[^A-Z0-9]/g, ''), D = OPS.notion.data;
+  let car = null; (D.washers.concat([D.unassigned])).forEach(w => w.rounds.forEach(r => r.cars.forEach(c => { if (c.reg === reg) car = c })));
+  if (!car) return toast(`${label} (${plate}) is not in the Notion book, or is not Active there. Nothing to move.`, { cls: 'err' });
+  const ws = nWashers(); if (!ws.length) return toast('No washers in the list yet.', { cls: 'err' });
+  const v = await ask({ title: 'Move ' + label, body: `${esc(car.plate)} is now with <b>${esc(car.washer ? nName(car.washer) : 'nobody')}</b>, round <b>${esc(car.round || 'none')}</b> (Notion).`, ok: 'Next', fields: [
+    { id: 'w', label: 'New washer', options: ws, value: car.washer || ws[0][0] },
+    { id: 'r', label: 'Round', options: [['', 'Keep the same round'], ...D.rounds.map(r => [r.id, r.name])], value: '' }] });
+  if (!v) return;
+  const rn = v.r ? (D.rounds.find(r => r.id === v.r) || {}).name : car.round, wn = nName(v.w);
+  if (v.w === car.washer && (!v.r || v.r === car.roundId)) return toast('Nothing to change: same washer and round.');
+  const ok = await ask({ title: 'Confirm: write to Notion?', body: `Move <b>${esc(car.plate)}</b> to <b>${esc(wn)}</b>${rn ? `, round <b>${esc(rn)}</b>` : ''}.<div class="warn">This changes the Notion book now. The washer's list updates on his next refresh.</div>`, ok: 'Yes, move it', cancel: 'Cancel' });
+  if (ok) await run(OPS.notionMove({ carPageId: car.id, reg, washer: v.w, name: wn, round: v.r }), `${car.plate} moved to ${wn}.`);
+}
+async function doHandover(phone) {
+  const w = OPS.washer(phone); if (!w || !w.round) return;
+  if (!await needNotion()) return;
+  const D = OPS.notion.data, mine = (D.washers.find(x => x.id === w.round) || { rounds: [] }).rounds.filter(r => r.id), others = nWashers().filter(x => x[0] !== w.round);
+  if (!mine.length) return toast(`${w.name} has no round with cars in Notion. Nothing to hand over.`, { cls: 'err' });
+  if (!others.length) return toast('There is no other washer to hand over to.', { cls: 'err' });
+  const v = await ask({ title: 'Hand over a round', body: `${esc(w.name)}'s Notion rounds. All active cars of the round go to the other washer.`, ok: 'Next', fields: [
+    { id: 'r', label: 'Round', options: mine.map(r => [r.id, `${r.name} (${r.count} cars)`]) }, { id: 'to', label: 'Hand over to', options: others }] });
+  if (!v) return;
+  const r = mine.find(x => x.id === v.r), tn = nName(v.to);
+  const ok = await ask({ title: 'Confirm: write to Notion?', body: `Hand over <b>${esc(r.name)}</b> (${r.count} cars) from <b>${esc(w.name)}</b> to <b>${esc(tn)}</b>.<div class="warn">This changes every car of the round in Notion now. If it stops half way, run it again.</div>`, ok: 'Yes, hand over', cancel: 'Cancel' });
+  if (ok) await run(OPS.notionHandover({ round: v.r, toWasher: v.to, name: tn }), x => `${r.name}: ${x.moved} of ${x.total} cars handed to ${tn}.`);
+}
+function notionView() {
+  const N = OPS.notion;
+  if (!N.data && !N.loading && !N.error) setTimeout(() => OPS.notionLoad(), 0);
+  const bar = `<div class="btns" style="margin:0 0 12px"><button class="btn sm soft" type="button" data-act="nrefresh"${N.loading ? ' disabled' : ''}>${N.loading ? 'Loading…' : 'Refresh from Notion'}</button></div>`;
+  if (N.error && !N.data) return bar + empty(N.error);
+  if (!N.data) return bar + empty('Loading the Notion car list…');
+  const D = N.data, blk = (title, g) => `<div class="wc"><div class="wc-h"><div class="gr"><b>${esc(title)}</b><small>${g.count} car${g.count === 1 ? '' : 's'}</small></div></div>${g.rounds.length ? g.rounds.map(r => `<div class="sh-sec">${esc(r.name)} <small style="font-weight:400;color:var(--grey)">${r.count}</small></div>${r.cars.map(c => `<div class="rowc" style="margin-top:6px"><div class="gr"><b>${esc(c.name || c.plate)}</b><span class="s">${esc(c.plate)}${c.area ? ' · ' + esc(c.area) : ''}</span></div></div>`).join('')}`).join('') : '<div class="hint">No cars.</div>'}</div>`;
+  return bar + (N.error ? `<div class="warn">${esc(N.error)} Showing the last list.</div>` : '') + (D.truncated ? '<div class="warn">The Notion book is bigger than the list can show. Some cars are missing.</div>' : '') +
+    `<div class="note">Read only. Change washer or round from Monthly (Move car) or Washers (Hand over round).</div><div class="grid2 g3">${D.washers.map(w => blk(nName(w.id), w)).join('')}${D.unassigned.count ? blk('No washer', D.unassigned) : ''}</div>`;
+}
+
 async function pickWasher(phone, etaFromRow) {
   const id = UI.sheet && UI.sheet.id, f = $('#aEta'), j = OPS.job(id);
   const etaMin = f && UI.etaEdited ? Math.max(1, num(f.value, etaFromRow)) : etaFromRow;
@@ -433,6 +480,9 @@ document.addEventListener('click', async e => {
     case 'reassign': return openAssign(id);
     case 'washer': return openWasher(ph);
     case 'monthly': return openMonthly(ph);
+    case 'movecar': return doMoveCar(t.dataset.plate, t.dataset.name);
+    case 'handover': return doHandover(ph);
+    case 'nrefresh': return OPS.notionLoad();
     case 'rday': return OPSB.setDay(OPSB.add(OPSB.day, num(t.dataset.d)));
     case 'rtab': UI.rd.tab = t.dataset.v; return SECS.rounds.update();
     case 'wash': return openSheet('wash', id, `${shHead('Wash')}<div data-r="sum"></div>`);
@@ -546,7 +596,7 @@ function mgrView() {
   + `<div class="sec"><h3>Delay reasons</h3></div>` + (dl.length ? `<div class="cardlist">${dl.map(x => `<div class="rowc plain"><div class="gr"><b>${esc(x.car)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)}</span><span class="s">${esc(x.reason)}</span></div></div>`).join('')}</div>` : none('No delay reasons.'))
   + `<div class="sec"><h3>Damage notes</h3></div>` + (dm.length ? `<div class="cardlist">${dm.map(x => `<div class="rowc plain" style="align-items:flex-start"><div class="gr"><b>${esc(x.car)} <small>${esc(x.reg || '')}</small></b><span class="s">${esc(x.washer)}</span><span class="s">${esc(x.note)}</span><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${x.photos.filter(p => safeSrc(p.src)).map(p => `<img src="${esc(p.src)}" alt="Issue photo" data-act="zoom" data-src="${esc(p.src)}" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:10px;cursor:pointer">`).join('')}</div></div></div>`).join('')}</div>` : none('No damage notes.'));
 }
-const ROUNDS = { mgr: mgrView, board: boardView, att: attView, skips: skipView, rev: revView, int: intView, earn: earnView, fb: fbView };
+const ROUNDS = { mgr: mgrView, board: boardView, att: attView, skips: skipView, rev: revView, int: intView, earn: earnView, fb: fbView, notion: notionView };
 function washSheet(el) {
   const w = OPSB.S.washes[UI.sheet.id]; if (!w) return setHTML(R('sum', el), empty('This wash is gone.'));
   const ph = OPSB.photos(w).filter(p => safeSrc(p.src)), grp = (title, list) => list.length ? `<div class="sh-sec">${title}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${list.map(p => `<figure style="margin:0;width:104px"><img src="${esc(p.src)}" alt="${esc(title)}" data-act="zoom" data-src="${esc(p.src)}" loading="lazy" style="width:104px;height:104px;object-fit:cover;border-radius:12px;cursor:pointer"><figcaption style="font-size:11px;color:var(--grey)">${p.spot ? esc(SPOTS[p.spot] || lbl(p.spot)) + ' · ' : ''}${esc(OPS.fmtTime(p.at))}${p.pending_upload ? ' · uploading' : ''}${p.kind === 'after' ? (p.plate ? ' · washer: plate yes' : ' · washer: plate no') : ''}</figcaption>${p.kind === 'after' ? (p.rejected ? `<span class="pill red">Rejected: ${esc(p.rejected.reason || '')}</span>` : p.plate_ok ? '<span class="pill green">Plate sahi</span>' : '') + `<div style="display:flex;gap:4px;margin-top:4px"><button type="button" class="btn sm go" data-act="photook" data-id="${esc(UI.sheet.id)}" data-i="${p._i}">Plate sahi</button><button type="button" class="btn sm danger" data-act="photorej" data-id="${esc(UI.sheet.id)}" data-i="${p._i}">Reject</button></div>` : ''}</figure>`).join('')}</div>` : '';
@@ -661,7 +711,7 @@ const SECS = {
       <div class="seg" role="tablist" data-r="rtabs"></div><div data-r="rbody"></div>`,
     init() { const d = $('#rDay'); d.value = OPSB.day; d.onchange = () => d.value && OPSB.setDay(d.value) },
     update(m = $('#main')) {
-      const T = [['board', 'Board'], ['mgr', 'Issues'], ['att', 'Attendance'], ['skips', 'Skips'], ['rev', 'Photos to review' + (OPSB.toReview().length ? ' (' + OPSB.toReview().length + ')' : '')], ['int', 'Interiors'], ['earn', 'Earnings'], ['fb', 'Low ratings']];
+      const T = [['board', 'Board'], ['mgr', 'Issues'], ['att', 'Attendance'], ['skips', 'Skips'], ['rev', 'Photos to review' + (OPSB.toReview().length ? ' (' + OPSB.toReview().length + ')' : '')], ['int', 'Interiors'], ['earn', 'Earnings'], ['fb', 'Low ratings'], ['notion', 'Notion cars']];
       setHTML(R('rtabs', m), T.map(([v, l]) => `<button type="button" role="tab" aria-selected="${UI.rd.tab === v}" class="${UI.rd.tab === v ? 'on' : ''}" data-act="rtab" data-v="${v}">${l}</button>`).join(''));
       const d = $('#rDay', m); if (d && document.activeElement !== d && d.value !== OPSB.day) d.value = OPSB.day;
       setHTML(R('rbody', m), ROUNDS[UI.rd.tab]());
