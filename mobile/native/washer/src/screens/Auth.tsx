@@ -1,10 +1,10 @@
-// Sign-in: violet brand top (logo, PARTNER pill, headline, washer photo ring) with a white sheet rising from the bottom (phone + PIN or phone + SMS OTP; OTP; join; waiting).
-// Port of renderAuth + #auth in the web washer app. Redesign 2026-11-21: copy of the customer Auth look (violet gradient top, white radius-24 sheet,
-// 56px Cta, 4 big OTP boxes). Gradients are drawn with react-native-svg (no expo-linear-gradient), motion is RN Animated.
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+// Sign-in (v24): the customer app's login language with washer content. App tile + PARTNER pill, a lavender-sky story band (scooter ride, foam wash,
+// photo proof + rupee coin; turns by itself, dots to jump) with a Hinglish caption, then a white sheet that rises over it (phone + PIN or phone + SMS OTP; OTP; join; waiting).
+// Port of renderAuth + #auth in the web washer app. Art is react-native-svg + RN Animated only (src/ui/art/LoginStoryArt.tsx). Auth logic is untouched.
+import React, { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  Animated, Easing, Image, Keyboard, KeyboardAvoidingView, Linking, NativeSyntheticEvent, PanResponder, Platform,
+  Animated, Easing, Image, Keyboard, KeyboardAvoidingView, Linking, NativeSyntheticEvent, Platform,
   Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, View, useWindowDimensions,
 } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Rect, Stop } from 'react-native-svg';
@@ -15,138 +15,113 @@ import { backend } from '../backend';
 import { t } from '../lib/i18n';
 import { JOIN_AREAS, OWNER_WA, WASHERS, fmtPhone } from '../lib/data';
 import { referralKey } from './Onboarding';
-import { RoundHeroArt } from '../ui/art';
+import { LoginStoryArt } from '../ui/art';
 
 const PADX = 24;
 const VIOLET = '#5409DA';   // brand violet
-const SAFFRON = '#FFBA08';
 const LINE = 'rgba(84,9,218,0.18)';
 const OFF = '#E6E0F5';
 const OFF_INK = '#6B6483';
 const native = Platform.OS !== 'web';
 const IMG = {
-  logo: require('../../assets/img/logo.webp'),
+  icon: require('../../assets/icon.png'),
   washer: require('../../assets/img/login-man.webp'),
   photo: require('../../assets/img/auth-photo.webp'),
 };
-const SLIDES: { src: number; title: string; sub: string }[] = [
-  { src: require('../../assets/img/slide1.webp'), title: 'Foam first', sub: 'Loosens the dust before anything touches the paint' },
-  { src: require('../../assets/img/slide2.webp'), title: 'Right at your gate', sub: 'Washed where it sleeps' },
-  { src: require('../../assets/img/slide3.webp'), title: 'Two on one Thar', sub: 'Big cars get both hands' },
-  { src: require('../../assets/img/slide4.webp'), title: 'Even the i8', sub: 'Covered parking is no problem' },
-  { src: require('../../assets/img/slide5.webp'), title: 'GH-9 every morning', sub: 'Our busiest round' },
-  { src: require('../../assets/img/slide6.webp'), title: 'Wheels too', sub: 'Pressure inside the rims' },
-  { src: require('../../assets/img/slide7.webp'), title: 'Same car, one wash', sub: 'It never left its spot' },
-];
 const NUM = { fontVariant: ['tabular-nums'] } as const;
-const LOGO_W = 104, LOGO_H = Math.round(LOGO_W * 157 / 260);
+const BAND = 440;   // height of the lavender sky behind the story
 
-/* ---------------- brand top: gradient + glows, logo, pill, back ---------------- */
+/* ---------------- the lavender top: sky gradient that melts into the white sheet ---------------- */
 function BrandBg() {
   const { dark } = useTheme();
-  const [box, setBox] = useState({ w: 390, h: 844 });
+  const [w, setW] = useState(390);
   return (
-    <View pointerEvents="none" onLayout={e => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })} style={StyleSheet.absoluteFill}>
-      <Svg width={box.w} height={Math.min(box.h, 460)} style={StyleSheet.absoluteFill}>
+    <View pointerEvents="none" onLayout={e => setW(e.nativeEvent.layout.width)} style={StyleSheet.absoluteFill}>
+      <Svg width={w} height={BAND} style={StyleSheet.absoluteFill}>
         <Defs>
           <SvgGradient id="wab" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={dark ? '#241A40' : '#E3D8FF'} /><Stop offset="1" stopColor={dark ? '#1A1330' : '#F7F3FF'} />
+            <Stop offset="0" stopColor={dark ? '#2A1E4D' : '#E3D8FF'} /><Stop offset="1" stopColor={dark ? '#1C1534' : '#F7F3FF'} />
           </SvgGradient>
         </Defs>
-        <Rect x={0} y={0} width={box.w} height={460} fill="url(#wab)" />
+        <Rect x={0} y={0} width={w} height={BAND} fill="url(#wab)" />
       </Svg>
     </View>
   );
 }
 
-function Logo() {
-  return <Image source={IMG.logo} accessibilityRole="header" accessibilityLabel="Washing Daddy" resizeMode="contain" style={{ width: LOGO_W, height: LOGO_H }} />;
+/** the Washing Daddy app tile (same mark the customer app puts top-left) */
+function AppMark({ size }: { size: number }) {
+  return <Image source={IMG.icon} accessibilityRole="header" accessibilityLabel="Washing Daddy" style={{ width: size, height: size, borderRadius: size * 0.26 }} />;
 }
 function PartnerPill() {
   return (
-    <View style={{ paddingVertical: 6, paddingHorizontal: 14, borderRadius: 999, backgroundColor: 'rgba(84,9,218,0.10)' }}>
-      <Text style={{ fontFamily: F.semi, fontSize: 11, lineHeight: 16, letterSpacing: 0.8, color: VIOLET, textTransform: 'uppercase' }}>{t('Partner app')}</Text>
+    <View style={{ paddingVertical: 7, paddingHorizontal: 16, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.72)', borderWidth: 1, borderColor: 'rgba(84,9,218,0.18)' }}>
+      <Text style={{ fontFamily: F.semi, fontSize: 12, lineHeight: 16, letterSpacing: 0.8, color: VIOLET, textTransform: 'uppercase' }}>{t('Partner app')}</Text>
     </View>
   );
 }
 function BackBtn({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={onPress} hitSlop={8}
-      style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(84,9,218,0.10)', alignItems: 'center', justifyContent: 'center' }}>
+    <Pressy accessibilityLabel="Back" accessibilityRole="button" onPress={onPress} hitSlop={8} scaleTo={0.92}
+      style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.72)', borderWidth: 1, borderColor: 'rgba(84,9,218,0.18)', alignItems: 'center', justifyContent: 'center' }}>
       <Icon name="back" size={22} color={VIOLET} />
-    </Pressable>
+    </Pressy>
   );
 }
 
-/* ---------------- the washer photo ring (customer PhotoStrip, RN Animated) ---------------- */
-const N = SLIDES.length;
-const wrapD = (d: number) => { let x = d % N; if (x > N / 2) x -= N; else if (x < -N / 2) x += N; return x };
-const clamp01 = (x: number) => Math.min(Math.max(x, 0), 1);
-const POS_IN = Array.from({ length: N * 4 + 1 }, (_, k) => k / 4);
-
-function RingCard({ i, mod, front, cw, h, spacing, onPick }: { i: number; mod: ReturnType<typeof Animated.modulo>; front: number; cw: number; h: number; spacing: number; onPick: (i: number) => void }) {
-  const f = (pick: (d: number) => number) => mod.interpolate({ inputRange: POS_IN, outputRange: POS_IN.map(p => pick(wrapD(i - p))) });
-  const sc = (d: number) => { const a = Math.abs(d); return 1 - 0.25 * Math.min(a, 1) - 0.06 * clamp01(a - 1) };
-  const tx = (d: number) => { const a = Math.abs(d); return (d < 0 ? -1 : 1) * spacing * (Math.min(a, 1) + 0.55 * Math.min(Math.max(a - 1, 0), 2)) };
-  const op = (d: number) => { const a = Math.abs(d); return a >= 2.6 ? 0 : 1 - 0.55 * Math.min(a, 1) - 0.3 * Math.min(Math.max(a - 1, 0), 1.6) };
-  const rot = mod.interpolate({ inputRange: POS_IN, outputRange: POS_IN.map(p => { const d = wrapD(i - p); return (d < 0 ? -1 : 1) * Math.min(Math.abs(d), 1.2) * 32 + 'deg' }) });
-  const z = Math.round(100 - Math.abs(wrapD(i - front)) * 10);
-  return (
-    <Animated.View style={{ position: 'absolute', top: 0, width: cw, height: h, zIndex: z, opacity: f(op), transform: [{ perspective: 700 }, { translateX: f(tx) }, { scale: f(sc) }, { rotateY: rot }] }}>
-      <Pressable onPress={() => onPick(i)} accessibilityRole="image" accessibilityLabel={SLIDES[i].title + '. ' + SLIDES[i].sub}
-        style={{ flex: 1, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.12)' }}>
-        <Image source={SLIDES[i].src} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#1A0650', opacity: f(d => Math.min(Math.abs(d), 1) * 0.35) }]} />
-      </Pressable>
-    </Animated.View>
-  );
+/* ---------------- story caption: what the washer gets, one line per scene, with progress dots ---------------- */
+const STORY: { t: string; s: string }[] = [
+  { t: 'Round shuru, kamai chalu', s: 'Aaj ke saare cars ek list mein. Scooter nikalo, seedha gate pe.' },
+  { t: 'Foam lagao, shine karo', s: 'Pressure wash, no pocha. Paani aur power saath mein.' },
+  { t: 'Photo bhejo, paisa pao', s: 'Har wash ka photo proof. Roz ka payout app mein dekho.' },
+];
+function Dot({ on }: { on: boolean }) {
+  const { dark } = useTheme();
+  const w = useRef(new Animated.Value(on ? 20 : 6)).current;
+  useEffect(() => { Animated.timing(w, { toValue: on ? 20 : 6, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start() }, [on, w]);
+  return <Animated.View style={{ width: w, height: 6, borderRadius: 3, backgroundColor: on ? VIOLET : dark ? 'rgba(255,255,255,0.22)' : 'rgba(84,9,218,0.16)' }} />;
 }
-/** Drag or fling to turn the ring (infinite, snaps to one centred photo), tap a side photo to bring it front, slow auto-turn. Horizontal drags only. */
-function PhotoStrip({ width, h = 132, autoMs = 3000 }: { width: number; h?: number; autoMs?: number }) {
-  const rm = useReducedMotion();
-  const cw = Math.round(h * 1.05), spacing = Math.min(cw * 0.78, (width - cw) / 2 - 6);
-  const pos = useRef(new Animated.Value(0)).current;
-  const mod = useMemo(() => Animated.modulo(pos, N), [pos]);
-  const cur = useRef(0), start = useRef(0), last = useRef(0), dragging = useRef(false);
-  const [front, setFront] = useState(0);
-  useEffect(() => {
-    const id = pos.addListener(({ value }) => { cur.current = value; setFront(((Math.round(value) % N) + N) % N) });
-    return () => pos.removeListener(id);
-  }, [pos]);
-  const snapTo = (to: number, ms = 420) => { Animated.timing(pos, { toValue: to, duration: ms, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start() };
-  const touch = () => { last.current = Date.now() };
-  const pick = (i: number) => {
-    touch();
-    const d = wrapD(i - cur.current);
-    if (Math.abs(d) > 0.01) snapTo(Math.round(cur.current + d));
-  };
-  const pan = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => false,
-    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy) * 1.4,
-    onPanResponderTerminationRequest: () => false,
-    onPanResponderGrant: () => { touch(); dragging.current = true; pos.stopAnimation(); start.current = cur.current },
-    onPanResponderMove: (_, g) => { pos.setValue(start.current - g.dx / spacing) },
-    onPanResponderRelease: (_, g) => { dragging.current = false; touch(); snapTo(Math.round(start.current - (g.dx + g.vx * 180) / spacing), 480) },
-    onPanResponderTerminate: () => { dragging.current = false; touch(); snapTo(Math.round(cur.current)) },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [spacing]);
-  useEffect(() => {
-    if (rm) return;
-    const id = setInterval(() => {
-      if (dragging.current || Date.now() - last.current < 4500) return;
-      snapTo(Math.round(cur.current) + 1, 700);
-    }, autoMs);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rm, autoMs]);
+function StoryCaption({ scene, onPick }: { scene: number; onPick: (i: number) => void }) {
+  const { c } = useTheme();
+  const narrow = useWindowDimensions().width < 375;
   return (
-    <Rise delay={120} style={{ width, height: h + 8 }}>
-      <View {...pan.panHandlers} onTouchStart={touch} style={{ width, height: h + 8, alignItems: 'center', paddingTop: 4 }}>
-        <View style={{ width: cw, height: h }}>
-          {SLIDES.map((_, i) => <RingCard key={i} i={i} mod={mod} front={front} cw={cw} h={h} spacing={spacing} onPick={pick} />)}
-        </View>
+    <View>
+      <Rise key={scene} distance={8} duration={320} style={{ minHeight: 86 }}>
+        <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={{ fontFamily: F.bold, fontSize: narrow ? 23 : 26, lineHeight: narrow ? 30 : 33, color: c.fg }}>{t(STORY[scene].t)}</Text>
+        <Text style={{ fontFamily: F.body, fontSize: 14, lineHeight: 20, color: c.fg2, marginTop: 4 }}>{t(STORY[scene].s)}</Text>
+      </Rise>
+      <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
+        {STORY.map((_, i) => (
+          <Pressable key={i} onPress={() => onPick(i)} hitSlop={{ top: 12, bottom: 12, left: 4, right: 4 }} accessibilityRole="button" accessibilityLabel={`Scene ${i + 1}`} style={{ justifyContent: 'center' }}><Dot on={i === scene} /></Pressable>
+        ))}
       </View>
-    </Rise>
+    </View>
+  );
+}
+
+/** three small trust points under the button */
+function TrustRow() {
+  const { c, dark } = useTheme();
+  const items: { icon: 'rupee' | 'cam' | 'phone'; t: string }[] = [
+    { icon: 'rupee', t: 'Roz ka payout dikhta hai' },
+    { icon: 'cam', t: 'Photo proof se pakka paisa' },
+    { icon: 'phone', t: 'Manager support, WhatsApp pe' },
+  ];
+  return (
+    <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
+      {items.map((it, i) => (
+        <Rise key={it.t} delay={420 + i * 70} distance={10} style={{ flex: 1 }}>
+          <View style={{ flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, borderRadius: 14, backgroundColor: dark ? 'rgba(255,255,255,0.05)' : '#F7F3FF' }}>
+            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: dark ? 'rgba(122,66,240,0.25)' : 'rgba(84,9,218,0.10)', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
+              {it.icon === 'rupee'
+                ? <Text style={{ fontFamily: F.bold, fontSize: 18, lineHeight: 22, color: dark ? '#B79BFF' : VIOLET }}>₹</Text>
+                : <Icon name={it.icon} size={18} color={dark ? '#B79BFF' : VIOLET} />}
+            </View>
+            <Text style={{ fontFamily: F.medium, fontSize: 12, lineHeight: 16, color: c.fg2, textAlign: 'center' }}>{t(it.t)}</Text>
+          </View>
+        </Rise>
+      ))}
+    </View>
   );
 }
 
@@ -208,17 +183,28 @@ function Input({ label, style, onFocus, onBlur, ...rest }: React.ComponentProps<
   );
 }
 /** The big +91 / PIN box: 60 high, radius 16, 1.5px border that turns violet once something is typed. */
+// the light fields lean lavender (like the customer app's); dark mode keeps its own fill
+const tintBg = (bg: string) => (bg === '#F4F4F6' ? '#F7F3FF' : bg);
 const bigBox = (c: { inputBg: string }, filled: boolean) => ({
   flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12, minHeight: 60, borderRadius: 16, paddingHorizontal: 16,
-  backgroundColor: c.inputBg, borderWidth: 1.5, borderColor: filled ? VIOLET : LINE, marginBottom: 12,
+  backgroundColor: tintBg(c.inputBg), borderWidth: 1.5, borderColor: filled ? VIOLET : LINE, marginBottom: 12,
 });
 
 /* ---------------- phone ---------------- */
+const Flag = () => (
+  <View style={{ width: 26, height: 18, borderRadius: 4, overflow: 'hidden' }}>
+    <Svg width={26} height={18} viewBox="0 0 26 18">
+      <Rect width={26} height={6} fill="#FF9933" /><Rect y={6} width={26} height={6} fill="#fff" /><Rect y={12} width={26} height={6} fill="#138808" />
+      <Circle cx={13} cy={9} r={2.4} fill="none" stroke="#000080" strokeWidth={0.9} />
+    </Svg>
+  </View>
+);
 // the +91 phone box (PIN and OTP sign-in both start with it)
 function PhoneField({ value, onChange, onSubmit }: { value: string; onChange: (v: string) => void; onSubmit: () => void }) {
   const { c } = useTheme();
   return (
     <View style={bigBox(c, !!value)}>
+      <Flag />
       <Text style={[{ fontFamily: F.semi, fontSize: 18, color: c.fg }, NUM]}>+91</Text>
       <View style={{ width: 1, height: 24, backgroundColor: LINE }} />
       <TextInput
@@ -369,12 +355,13 @@ function PhoneStep() {
   };
   return (
     <View>
-      <CardTitle>{t('Namaste! 👋')}</CardTitle>
-      <CardText>{t('Apna phone number daalo. OTP aayega.')}</CardText>
+      <CardTitle>{t('Aaj ka round shuru karo')}</CardTitle>
+      <CardText>{t('Phone number daalo, SMS pe OTP aayega.')}</CardText>
       <PhoneField value={ph} onChange={setPh} onSubmit={() => go(ph)} />
       {busy ? <Hint style={{ marginTop: 0, marginBottom: 8 }}>{t("Google ek check khol sakta hai. 'I'm not a robot' par tap karo aur app mein wapas aao.")}</Hint> : null}
       <Err msg={err} />
       <Cta label={busy ? t('Bhej raha hoon…') : t('OTP bhejo')} arrow busy={busy} ready={ph.length === 10} onPress={() => go(ph)} />
+      <TrustRow />
       {REAL ? (
         <Hint>{t('Naye washer ho? Apna number daalo. OTP ke baad naam bharo, manager approve karenge.')}</Hint>
       ) : (
@@ -396,7 +383,7 @@ function OtpBox({ on, big, inputRef, ...rest }: React.ComponentProps<typeof Text
         {...rest}
         style={[{
           height: '100%', width: '100%', textAlign: 'center', textAlignVertical: 'center', includeFontPadding: false, fontFamily: F.semi, fontSize: big ? 30 : 26, color: c.fg, padding: 0, paddingVertical: 0,
-          borderRadius: 16, borderWidth: 1.5, borderColor: on || digitOn ? VIOLET : LINE, backgroundColor: c.inputBg, fontVariant: ['tabular-nums'],
+          borderRadius: 16, borderWidth: 1.5, borderColor: on || digitOn ? VIOLET : LINE, backgroundColor: tintBg(c.inputBg), fontVariant: ['tabular-nums'],
         }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null]}
       />
     </View>
@@ -568,14 +555,22 @@ export default function Auth() {
   const insets = useSafeAreaInsets();
   // Android edge-to-edge: the inset can come back 0 early, so fall back to the status bar height
   const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0);
-  const { c } = useTheme();
-  const { width: ww } = useWindowDimensions();
+  const { c, dark } = useTheme();
+  const { width: ww, height: wh } = useWindowDimensions();
   const width = Math.min(440, ww);
   const rmAuth = useReducedMotion();
   const step = view.authStep;
   const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const content = useRef<React.ComponentRef<typeof View>>(null);
   const offset = useRef(0);
+  // the story: three scenes that turn by themselves (tap a dot to jump)
+  const [scene, setScene] = useState(0);
+  const lastPick = useRef(0);
+  useEffect(() => {
+    if (rmAuth || step !== 'phone') return;
+    const id = setInterval(() => { if (Date.now() - lastPick.current > 5000) setScene(s => (s + 1) % STORY.length) }, 3800);
+    return () => clearInterval(id);
+  }, [rmAuth, step]);
   // keyboard up: bring the focused box into view (a little below the top, so the sheet title stays readable)
   useEffect(() => {
     const reveal = () => {
@@ -592,13 +587,16 @@ export default function Auth() {
     return () => sub.remove();
   }, []);
 
-  // what the violet top says for each step
+  // what the top says for each step (the phone step uses the story captions instead)
   const [wTi, wTx] = WAIT_TEXT[step] || WAIT_TEXT.wait;
   const top: { title?: string; sub?: React.ReactNode; back?: boolean } =
     step === 'otp' ? { back: true, title: t('OTP daalo'), sub: t(`+91 ${fmtPhone(view.otpPhone)} pe SMS bheja.`) }
     : step === 'join' ? { title: t('Swagat hai! 🙌'), sub: t('Naya number hai. Apna naam aur area batao, manager approve karenge.') }
     : step === 'phone' ? {}
     : { title: t(wTi), sub: t(wTx) };
+  const phoneStep = step === 'phone';
+  // story height scales with the screen: 360x640 phones get a shorter band, tall phones a taller one
+  const storyH = phoneStep ? Math.round(Math.max(150, Math.min(210, wh * 0.235))) : 118;
 
   const form = (
     <Rise key={step + view.otpPhone + (step === 'phone' ? view.loginMode : '')} distance={12} duration={380}>
@@ -623,37 +621,31 @@ export default function Auth() {
           contentContainerStyle={{ flexGrow: 1 }}
         >
           <View ref={content} collapsable={false} style={{ flexGrow: 1 }}>
-            {/* violet top */}
-            <View style={{ paddingHorizontal: PADX - 4, paddingTop: topInset + 16 }}>
-              <Rise delay={0}>
+            {/* lavender top */}
+            <View>
+              <Rise delay={0} style={{ paddingHorizontal: PADX - 4, paddingTop: topInset + 12, paddingBottom: 12, zIndex: 3 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  {top.back ? <BackBtn onPress={() => act.backToPhone()} /> : <Logo />}
-                  {top.back ? <Logo /> : <PartnerPill />}
+                  {top.back ? <BackBtn onPress={() => act.backToPhone()} /> : <AppMark size={44} />}
+                  {top.back ? <AppMark size={36} /> : <PartnerPill />}
                 </View>
               </Rise>
-              {step === 'phone' ? (
-                <Rise delay={60} style={{ marginTop: 20 }}>
-                  <View accessibilityRole="header" style={{ paddingHorizontal: 4 }}>
-                    <View style={{ alignSelf: 'flex-start' }}>
-                      <Text style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, color: c.fg3 }}>Pocha?</Text>
-                      <View pointerEvents="none" style={{ position: 'absolute', left: '-2%', right: '-2%', top: '54%', height: 3, borderRadius: 2, backgroundColor: SAFFRON, transform: [{ rotate: '-3deg' }] }} />
-                    </View>
-                    <Text style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, color: c.fg }}>Pressure wash <Text style={{ color: c.primary }}>everyday!</Text></Text>
-                    <Text style={{ fontFamily: F.body, fontSize: 15, lineHeight: 22, color: c.fg3, marginTop: 6, maxWidth: 340 }}>{t('Washer app. Round, photo, customer, sab ek jagah.')}</Text>
-                  </View>
-                </Rise>
-              ) : (
-                <Rise delay={60} style={{ marginTop: 20, paddingHorizontal: 4 }}>
-                  <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 30, lineHeight: 38, color: c.fg }}>{top.title}</Text>
-                  <Text style={[{ fontFamily: F.body, fontSize: 15, lineHeight: 22, color: c.fg3, marginTop: 6 }, step === 'otp' ? NUM : null]}>{top.sub}</Text>
-                  {step === 'otp' ? <View style={{ alignSelf: 'flex-start', marginTop: 4, marginLeft: -8 }}><TextLink label={t('Number badlo')} color={VIOLET} onPress={() => act.backToPhone()} /></View> : null}
-                </Rise>
-              )}
-              <View style={{ marginTop: step === 'phone' ? 8 : 0, marginHorizontal: -(PADX - 4) }}><RoundHeroArt width={width} height={step === 'phone' ? 170 : 120} progress={0.35} still={rmAuth} /></View>
+              <View style={{ marginTop: phoneStep ? -6 : 0 }}><LoginStoryArt width={width} height={storyH} scene={phoneStep ? scene : 0} dark={dark} still={rmAuth} /></View>
+              <View style={{ paddingHorizontal: PADX, paddingTop: phoneStep ? 14 : 12, paddingBottom: 40 }}>
+                {phoneStep ? (
+                  <Rise delay={140}><StoryCaption scene={scene} onPick={i => { lastPick.current = Date.now(); setScene(i) }} /></Rise>
+                ) : (
+                  <Rise delay={60}>
+                    <Text accessibilityRole="header" style={{ fontFamily: F.bold, fontSize: 28, lineHeight: 36, color: c.fg }}>{top.title}</Text>
+                    <Text style={[{ fontFamily: F.body, fontSize: 15, lineHeight: 22, color: c.fg2, marginTop: 4 }, step === 'otp' ? NUM : null]}>{top.sub}</Text>
+                    {step === 'otp' ? <View style={{ alignSelf: 'flex-start', marginTop: 2, marginLeft: -8 }}><TextLink label={t('Number badlo')} color={dark ? '#B79BFF' : VIOLET} onPress={() => act.backToPhone()} /></View> : null}
+                  </Rise>
+                )}
+              </View>
             </View>
             {/* white sheet */}
-            <Rise delay={140} distance={48} duration={380} style={{ flexGrow: 1, marginTop: -24 }}>
-              <View style={{ flexGrow: 1, backgroundColor: c.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: PADX, paddingTop: 28, paddingBottom: 24 + insets.bottom, ...(Platform.OS === 'web' ? ({ boxShadow: '0px -6px 20px rgba(84,9,218,0.10)' } as any) : { shadowColor: '#1A0650', shadowOpacity: 0.28, shadowRadius: 24, shadowOffset: { width: 0, height: -8 }, elevation: 12 }) }}>
+            <Rise delay={220} distance={56} duration={420} style={{ flexGrow: 1, marginTop: -28 }}>
+              <View style={{ flexGrow: 1, backgroundColor: c.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: PADX, paddingTop: 28, paddingBottom: 24 + insets.bottom,
+                ...(Platform.OS === 'web' ? ({ boxShadow: dark ? '0px -8px 24px rgba(0,0,0,0.5)' : '0px -8px 24px rgba(84,9,218,0.10)' } as object) : { shadowColor: '#1A0650', shadowOpacity: dark ? 0.5 : 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: -8 }, elevation: 10 }) }}>
                 {form}
               </View>
             </Rise>
