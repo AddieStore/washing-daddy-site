@@ -20,6 +20,7 @@ import {
 import { TrackMap } from './TrackMap';
 import { Stars, STAR_WORDS } from './bookings';
 import { DaySheet } from './DaySheet';
+import './ParkSpot';
 
 /* ---------- small local helpers (white sheet, hairline cards, one accent for actions) ---------- */
 // sheets are always light: text defaults to ink, and the ink set below replaces the theme's per-surface one

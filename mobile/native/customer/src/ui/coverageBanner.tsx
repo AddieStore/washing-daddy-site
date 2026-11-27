@@ -60,7 +60,7 @@ function Dot({ p, rm }: { p: { a: number; d: number; c: string }; rm: boolean })
 }
 
 export function CoverageBanner() {
-  const c = coverage(), n = notifyState(), [busy, setBusy] = useState(false), [burst, setBurst] = useState(0);
+  const c = coverage(), n = notifyState(), [pillW, setPillW] = useState(0), [busy, setBusy] = useState(false), [burst, setBurst] = useState(0);
   const it = interest(), left = Math.max(0, it.goal - it.near), listed = it.joined;
   const was = useRef(listed);
   useEffect(() => { if (c.known && !c.ok) void loadInterest() }, [c.known, c.known ? c.lat : 0, c.known ? c.lng : 0]);
@@ -98,11 +98,11 @@ export function CoverageBanner() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 }}>
         {listed ? (
           <>
-            <Reanimated.View entering={FadeIn.duration(260)} style={{ flex: 1, height: 44, borderRadius: 14, backgroundColor: '#EAF7EE', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <Svg width={18} height={18} viewBox="0 0 24 24"><Path d="M5 12.5l4.5 4.5L19 7.5" stroke={OK} strokeWidth={2.4} fill="none" strokeLinecap="round" strokeLinejoin="round" /></Svg>
-              <Txt weight={600} size={14} color={OK}>{`You're neighbour #${Math.max(1, it.near)}`}</Txt>
+            <Reanimated.View entering={FadeIn.duration(260)} onLayout={e => setPillW(e.nativeEvent.layout.width)} style={{ flex: 1, minWidth: 0, height: 44, paddingHorizontal: 8, borderRadius: 14, backgroundColor: '#EAF7EE', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+              <Svg width={16} height={16} viewBox="0 0 24 24" style={{ flexShrink: 0 }}><Path d="M5 12.5l4.5 4.5L19 7.5" stroke={OK} strokeWidth={2.4} fill="none" strokeLinecap="round" strokeLinejoin="round" /></Svg>
+              <Txt weight={600} size={13} color={OK} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={{ lineHeight: 18, textAlign: 'center', flexShrink: 1, includeFontPadding: false }}>{`${pillW && pillW < 180 ? 'Neighbour' : "You're neighbour"} #${Math.max(1, it.near)}`}</Txt>
             </Reanimated.View>
-            <Pressable3 onPress={invite} accessibilityRole="button" accessibilityLabel="Tell your neighbours" scaleTo={0.97} style={{ height: 44, paddingHorizontal: 16, borderRadius: 14, backgroundColor: V, justifyContent: 'center' }}>
+            <Pressable3 onPress={invite} accessibilityRole="button" accessibilityLabel="Tell your neighbours" scaleTo={0.97} style={{ height: 44, paddingHorizontal: 14, flexShrink: 0, alignItems: 'center', borderRadius: 14, backgroundColor: V, justifyContent: 'center' }}>
               <Txt weight={600} size={14} color="#fff">Tell neighbours</Txt>
             </Pressable3>
           </>

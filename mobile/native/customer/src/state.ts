@@ -82,7 +82,7 @@ export type Page =
   | { k: 'money' } | { k: 'refunds' } | { k: 'pass'; id?: string } | { k: 'coupons' } | { k: 'refer' }
   | { k: 'profile' } | { k: 'profileEdit' } | { k: 'addresses'; pick?: boolean } | { k: 'addressMap'; id?: string } | { k: 'addressForm'; id?: string; lat?: number; lng?: number; area?: string }
   | { k: 'help' } | { k: 'helpTopic'; id: string } | { k: 'legal' } | { k: 'legalDoc'; id: string } | { k: 'deleteAccount' } | { k: 'about' }
-  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string } | { k: 'payResult' } | { k: 'txn'; id: string } | { k: 'washer'; id?: string; name?: string }
+  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string } | { k: 'payResult' } | { k: 'parkAlerts' } | { k: 'txn'; id: string } | { k: 'washer'; id?: string; name?: string }
   | null;
 export type PageKind = NonNullable<Page>['k'];
 type UI = { tab: Tab; tabNonce: number; ready: boolean; signedIn: boolean; carNonce: number; sim: boolean; v: number; page: Page; pages: Page[] };
@@ -361,6 +361,28 @@ async function sendRequest(body: object) {
   const w = DB.collection('requests').doc().set({ ...body, created_at: nowIST(), status: 'open' });
   // an offline write is kept by Firestore and goes out later: say it's sent after 5 s either way
   try { await Promise.race([w, wait(5000)]) } catch (e) { console.warn('request', e); throw new Error(`That didn't go through. Call or WhatsApp us on 77018 08924.`) }
+}
+
+/* ---------- parked-elsewhere spots: requests/{id} kind 'spot' (src/park, .notes contract park-alerts-2026-11-26) ---------- */
+export type SpotDoc = { id: string; reg: string; kind: 'spot'; text?: string; lat: number; lng: number; acc?: number; parked_at?: string; from: string; to: string; created_at?: string; status: 'open' | 'seen' | 'done' | 'cancelled'; until_back?: boolean };
+let DEMO_SPOTS: Record<string, SpotDoc[]> = {};
+/** spot requests for a car (live from Firestore in a real account, kept on the phone in the demo) */
+export const spotDocs = (c: Car): SpotDoc[] => (realAcct() ? (REQS[c.id] || []) : (DEMO_SPOTS[c.id] || [])).filter((r: any) => r && r.kind === 'spot') as SpotDoc[];
+/** writes one spot request for a car; returns its id */
+export async function sendSpot(c: Car, b: { lat: number; lng: number; acc?: number; text?: string; parked_at: string; from: string; to: string; until_back: boolean }): Promise<string> {
+  const body = { reg: regOf(c), kind: 'spot' as const, lat: Math.round(b.lat * 1e6) / 1e6, lng: Math.round(b.lng * 1e6) / 1e6, acc: Math.round(b.acc || 0),
+    text: (b.text || '').trim().slice(0, 300), parked_at: b.parked_at, from: b.from, to: b.to, until_back: b.until_back };
+  if (!DB || !realAcct()) { await wait(400); const id = newId('spot'); (DEMO_SPOTS[c.id] = DEMO_SPOTS[c.id] || []).unshift({ id, ...body, created_at: nowIST(), status: 'open' }); emit(); return id }
+  const ref = DB.collection('requests').doc();
+  const w = ref.set({ ...body, created_at: nowIST(), status: 'open' });
+  try { await Promise.race([w, wait(5000)]) } catch (e) { console.warn('spot', e); throw new Error(`That didn't go through. Call or WhatsApp us on 77018 08924.`) }
+  return ref.id;
+}
+/** the customer ends a spot (car back at the usual place, or a mistake); the washer app stops showing it */
+export async function endSpots(c: Car, ids: string[]) {
+  if (!ids.length) return;
+  if (!DB || !realAcct()) { (DEMO_SPOTS[c.id] || []).forEach(r => { if (ids.includes(r.id)) r.status = 'cancelled' }); emit(); return }
+  await Promise.all(ids.map(id => DB!.doc('requests/' + id).update({ status: 'cancelled', ended_at: nowIST() }).catch((e: any) => console.warn('endSpot', e))));
 }
 
 /* ---------- payments ---------- */
@@ -908,7 +930,7 @@ function fromOndemand(id: string, d: any): Job {
   return { id, mode: d.mode || (d.slot ? 'scheduled' : 'instant'), status: jobStatus(d), date: d.date || '', slot: d.slot || '', lines, total: +(d.total ?? d.price) || 0, saved: +d.saved || 0,
     mins: lines.reduce((a, l) => a + l.mins * l.q, 0), addressId: d.address_id || undefined, pay: d.refunded ? 'refunded' : d.pass_id ? 'pass' : d.paid ? 'paid' : 'pay_on_arrival', payVia: d.pay_via || undefined,
     coupon: d.coupon || null, washer: d.washer_id ? { id: String(d.washer_id), name: d.washer_name || d.washer_id, rating: +d.washer_rating || 0, jobs: +d.washer_jobs || 0, photo: d.washer_photo || null, phone: d.washer_phone || null } : null,
-    stars: r ? r.stars : undefined, review: r ? r.review : undefined, createdAt: d.created_at || '', photo: typeof d.photo === 'string' && /^(https:|data:image\/(jpeg|webp|png);base64,)/.test(d.photo) ? d.photo : null,
+    stars: r ? r.stars : undefined, review: r ? r.review : undefined, createdAt: d.created_at || '', photos: (Array.isArray(d.photos) ? d.photos : []).map((p: any) => ({ src: typeof p === 'string' ? p : String(p && (p.url || p.src) || ''), label: p && p.kind ? String(p.kind).replace(/^./, (c: string) => c.toUpperCase()) : undefined })).filter((p: any) => /^(https:|data:image\/(jpeg|webp|png);base64,)/.test(p.src)), photo: typeof d.photo === 'string' && /^(https:|data:image\/(jpeg|webp|png);base64,)/.test(d.photo) ? d.photo : null,
     payRef: d.gateway_ref || d.pay_ref || undefined, orderId: d.pay_ref || undefined, eta: d.eta || etaFrom(d.mode, d.created_at),
     // order_paid: what the gateway took for the whole order (bookings since Nov 2026); older paid docs: price was that amount
     recur: d.recur || undefined, paidOnline: +d.order_paid > 0 ? +d.order_paid : d.paid === true && d.pay_ref && !d.series_id && +d.price > 0 ? +d.price : undefined,

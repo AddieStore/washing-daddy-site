@@ -86,6 +86,7 @@ export default function Profile() {
             {feature('plans') ? <ListRow icon={ic(Car)} title="Monthly plan" sub={autopayView().label || undefined} onPress={() => { closePage(); go('plan') }} /> : null}
             {autopayView().on || autopayView().status === 'halted' ? <ListRow icon={ic(Car)} title="Cancel autopay" sub="Stops future charges. Your plan runs till the paid-up date." danger onPress={() => sheets.cancelAutopay()} /> : null}
             {feature('store') ? <ListRow icon={ic(Cart)} title="Store" onPress={() => { closePage(); go('store') }} /> : null}
+            <ListRow icon={ic(Car)} title="Parking alerts" sub="Tell your washer when your car is parked somewhere new" onPress={() => openPage({ k: 'parkAlerts' })} />
             <ListRow icon={ic(Info)} title="About us" onPress={() => openPage({ k: 'about' })} />
             <ListRow icon={ic(Shield)} title="Legal & Privacy" onPress={() => openPage({ k: 'legal' })} />
             <ListRow icon={ic(Logout)} title="Log out" onPress={() => sheets.logout()} last />
