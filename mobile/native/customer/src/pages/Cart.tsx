@@ -54,22 +54,21 @@ function LineRow({ l, i }: { l: ReturnType<typeof svcLines>['lines'][number]; i:
   const rcx = cartMode() === 'recurring' ? RECURRING.find(x => x.id === (recur()?.freq || 'weekly')) : null, rOff = rcx ? rcx.off : 0;
   const shown = rOff ? Math.round(l.total * (100 - rOff) / 100) : l.total, was = rOff ? l.total : (l.mrp > l.price ? l.mrp * l.q : 0);
   return (
-    <FadeUp index={i} distance={10} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <Tap label={`${l.name}${l.variantLabel ? ', ' + l.variantLabel : ''}. See what you get`} scaleTo={0.97} onPress={() => openPage({ k: 'svc', id: l.id })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0 }}>
+    <FadeUp index={i} distance={10} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+      <Tap label={`${l.name}${l.variantLabel ? ', ' + l.variantLabel : ''}. See what you get`} scaleTo={0.97} onPress={() => openPage({ k: 'svc', id: l.id })} style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 12, minWidth: 0 }}>
         <Photo id={l.id} radius={10} pad={4} style={{ width: 52, height: 52 }} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Txt weight={500} size={14} numberOfLines={2} style={{ lineHeight: 20 }}>{l.name}</Txt>
           {l.variantLabel ? <Txt size={12} color={G.mute} style={{ lineHeight: 16 }}>{l.variantLabel}</Txt> : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 2, marginTop: 2 }}>
             <Price v={shown} size={14} />
             {was ? <Price v={was} size={12} weight={400} strike /> : null}
             {rOff ? <Txt size={11} weight={500} color={G.pos}>{rOff}% off · per visit</Txt> : null}
-            <Txt size={12} weight={500} color={G.violet}>What you get</Txt>
           </View>
+          <Txt size={12} color={G.mute} style={{ marginTop: 2, lineHeight: 16 }}>{l.mins * l.q} mins · <Txt size={12} weight={500} color={G.violet}>What you get ›</Txt></Txt>
         </View>
-        <Chev size={16} color={G.mute} strokeWidth={1.5} />
       </Tap>
-      <AddBtn size="lg" qty={l.q} onAdd={() => act.addSvc(l.key)} onSub={() => act.subSvc(l.key)} unit={l.mins * l.q + ' mins'} />
+      <View style={{ width: 104, alignItems: 'flex-end' }}><AddBtn size="lg" qty={l.q} onAdd={() => act.addSvc(l.key)} onSub={() => act.subSvc(l.key)} /></View>
     </FadeUp>
   );
 }
