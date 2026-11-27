@@ -15,6 +15,7 @@ import { langLabel } from '../../lib/langs';
 import { docsApproved, kitCount, openDocsSheet, openKitSheet } from '../../screens/KitSections';
 import { myTrust } from '../../screens/TrustData';
 import { openComplaints, openRewards, useOutlook } from '../../screens/RewardsCards';
+import { openAttendanceMonth } from '../../screens/DayCards';
 import { rupee } from '../../lib/time';
 import { monthComplaints } from '../../state/store';
 import { openHelpSheet, openLangSheet, openLogoutSheet, openReferSheet, openResetSheet, openSyncSheet, openThemeSheet } from '../../screens/sheets';
@@ -118,7 +119,7 @@ export default function Profile() {
           <PTitle title={t('Mera kaam')} />
           <FadeUp index={2}>
             <Group>
-              <Row icon="calendar" label={t('Attendance')} value={`${m.came}/${m.total} ${t('din')}`} onPress={openRewards} />
+              <Row icon="calendar" label={t('Attendance')} sub={t('Check-in, check-out aur mahine ka hisaab')} value={`${m.came}/${m.total} ${t('din')}`} onPress={openAttendanceMonth} />
               <Row icon="gift" label={t('Bonus aur rewards')} value={`${rupee(o.possible)} ${t('tak')}`} onPress={openRewards} />
               <Row icon="note" label={t('Customer feedback')} value={nComp ? String(nComp) : undefined} onPress={openComplaints} />
               <Row icon="kit" label={t('Mera saaman')} value={String(kitCount())} onPress={openKitSheet} />

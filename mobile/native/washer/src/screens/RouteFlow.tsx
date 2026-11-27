@@ -4,11 +4,12 @@
 import React from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { F, Icon, Pressy as BasePressy, sheet, ui, useTheme } from '../ui';
+import { Chip, F, Icon, Pressy as BasePressy, sheet, ui, useTheme } from '../ui';
 import { CarArt } from '../ui';
 import { CarPic } from './CarPhoto';
-import { HsrpPlate, WashTimer, openSkipSheet } from './JobParts';
-import { DAY, MIN_PHOTOS, Rounds, me, Route, W, act, carBy, openReqs, photoNeeds, planName, route, useStore, view } from '../state/store';
+import { HsrpPlate, PlateToggle, RejectBanner, WashTimer, openSkipSheet } from './JobParts';
+import { rejectInfo } from '../lib/photoRules';
+import { DAY, MIN_PHOTOS, Rounds, me, Route, W, act, carBy, openReqs, spotFor, photoNeeds, planName, route, useStore, view } from '../state/store';
 import { STATUS, navOf, telOf } from '../lib/data';
 import type { Car } from '../lib/data';
 import { PLAN, TASK, tasksFor, type PlanId } from '../lib/schedule';
@@ -43,7 +44,7 @@ const shooting = new Set<string>();
 async function shootAfter(reg: string) {
   if (!W(reg)) { ui.toast(t('Pehle round shuru karo')); return }
   if (shooting.has(reg)) return;   // the camera is already opening for this car
-  shooting.add(reg); ui.flash();
+  shooting.add(reg); act.platePrompt(); ui.flash();
   try {
     const r = await takePhoto();
     if (!r) return;
@@ -112,21 +113,23 @@ function Steps({ stage }: { stage: number }) {
   );
 }
 
-function ShotBox({ url, pending, onPress, n }: { url?: string; pending?: boolean; onPress: () => void; n: number }) {
+function ShotBox({ url, pending, onPress, n, bad, plate, pn, reg }: { url?: string; pending?: boolean; onPress: () => void; n: number; bad?: boolean; plate?: boolean; pn?: number; reg: string }) {
   const { c } = useTheme();
   return (
     <View style={{ flex: 1 }}>
-      <Pressy onPress={url ? undefined : onPress} accessibilityLabel={`Photo ${n}`} scaleTo={0.96}
-        style={{ width: '100%', height: 92, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: url ? c.soft : 'rgba(84,9,218,0.05)', borderWidth: url ? 0 : 1.5, borderStyle: 'dashed', borderColor: 'rgba(84,9,218,0.35)' }}>
+      <Pressy onPress={url && !bad ? undefined : onPress} accessibilityLabel={`Photo ${n}`} scaleTo={0.96}
+        style={{ width: '100%', height: 92, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: url ? c.soft : 'rgba(84,9,218,0.05)', borderWidth: bad ? 3 : url ? 0 : 1.5, borderStyle: bad ? 'solid' : 'dashed', borderColor: bad ? '#E8384F' : 'rgba(84,9,218,0.35)' }}>
         {url ? <Image source={{ uri: url }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : (
           <View style={{ alignItems: 'center', gap: 4 }}>
             <Icon name="cam" size={24} color={c.primary} />
             <Text style={{ fontFamily: F.semi, fontSize: 12, color: c.primary }}>{t('Photo')} {n}</Text>
           </View>
         )}
-        {url ? <View style={{ position: 'absolute', right: 6, top: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center' }}><Icon name="check" size={13} color="#fff" /></View> : null}
+        {url && !bad ? <View style={{ position: 'absolute', right: 6, top: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center' }}><Icon name="check" size={13} color="#fff" /></View> : null}
         {pending ? <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' }]}><Text style={{ fontFamily: F.semi, fontSize: 11, color: '#fff' }}>{t('Bhej raha hai…')}</Text></View> : null}
       </Pressy>
+      {url && !pending && !bad && pn != null ? <PlateToggle on={!!plate} onToggle={() => act.setPlate(reg, pn, !plate)} /> : null}
+      {bad ? <Text style={{ fontFamily: F.semi, fontSize: 12, color: '#C62639', textAlign: 'center', marginTop: 6 }}>{t('Dobara lo')}</Text> : null}
     </View>
   );
 }
@@ -149,8 +152,9 @@ export function NowCard({ reg }: { reg: string }) {
   const tasks = wd ? wd.tasks : tasksFor(reg, car.plan, DAY).map(k => ({ key: k, label: '', done: false, done_at: null as string | null }));
   const need = wd ? photoNeeds(wd) : null;
   const pend = (view.pendingPhotos[reg] || []).filter(p => p.kind === 'after');
-  const shots = ((wd ? wd.photos : []).filter(p => p.kind === 'after' && !p.spot).map(p => ({ url: p.url, pending: false })) as { url?: string; pending: boolean }[])
+  const shots = ((wd ? wd.photos : []).filter(p => p.kind === 'after' && !p.spot).map(p => ({ url: p.url, pending: false, n: p.n, plate: !!p.plate, bad: !!p.rejected })) as { url?: string; pending: boolean; n?: number; plate?: boolean; bad?: boolean }[])
     .concat(pend.map(p => ({ url: p.display, pending: true })));
+  const rej = wd ? rejectInfo(wd.photos) : null;
   const have = need ? need.car : 0;
   const late = Route.isLate(reg);
   const slot = slotText(reg), flat = flatOf(car);
@@ -159,7 +163,8 @@ export function NowCard({ reg }: { reg: string }) {
   if (st === 'on_the_way' || st === 'arrived') { label = t('Pahunch gaya · Wash shuru'); onPress = () => act.startWash(reg); hint = t('Timer chalu ho jayega'); }
   let ready = false;
   if (st === 'washing') {
-    if (have < MIN_PHOTOS) { label = `${t('Photo lo')} ${Math.min(have, MIN_PHOTOS)}/${MIN_PHOTOS}`; onPress = () => { void shootAfter(reg) }; hint = t('Wash khatam hone ke baad gaadi ki 2 photo'); }
+    if (have < MIN_PHOTOS) { label = `${t('Photo lo')} ${Math.min(have, MIN_PHOTOS)}/${MIN_PHOTOS}`; onPress = () => { void shootAfter(reg) }; hint = t('Ek photo mein number plate dikhni chahiye (aage ya peeche)'); }
+    else if (need && need.car >= MIN_PHOTOS && !need.plate) { label = t('Number plate tick karo'); onPress = () => { ui.toast(t('Ek photo mein number plate dikhni chahiye. "Number plate dikh rahi hai" tick karo')) }; hint = t('Ek photo mein number plate dikhni chahiye (aage ya peeche)'); }
     else if (need && !need.ok) { label = t('Andar ki photo lo'); onPress = () => { act.setCurrent(reg); router.push('/job') }; hint = t('Sunday: andar ki photo bhi chahiye'); }
     else { label = t('Wash khatam · Ho gaya'); onPress = () => { act.finish(reg) }; hint = t('Customer ko photo aur report chali jayegi'); ready = true }
   }
@@ -219,6 +224,7 @@ export function NowCard({ reg }: { reg: string }) {
         </Pressable>
       ) : null}
 
+      {rej ? <View style={{ marginTop: 14 }}><RejectBanner info={rej} onPress={() => { void shootAfter(reg) }} /></View> : null}
       <View style={{ height: 1, backgroundColor: c.line, marginVertical: 18 }} />
       <Steps stage={stage} />
 
@@ -229,7 +235,7 @@ export function NowCard({ reg }: { reg: string }) {
             {wd?.started_at ? <WashTimer startedAt={wd.started_at} interiorFrom={wd.interior_from} extraMinutes={wd.extra_minutes || 0} /> : null}
           </View>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            {[0, 1].map(i => <ShotBox key={i} n={i + 1} url={shots[i]?.url} pending={shots[i]?.pending} onPress={() => { void shootAfter(reg) }} />)}
+            {[0, 1].map(i => <ShotBox key={i} n={i + 1} url={shots[i]?.url} pending={shots[i]?.pending} bad={shots[i]?.bad} plate={shots[i]?.plate} pn={shots[i]?.n} reg={reg} onPress={() => { void shootAfter(reg) }} />)}
           </View>
         </View>
       ) : null}
@@ -417,8 +423,12 @@ export function RouteList({ nowReg }: { nowReg: string | null }) {
               </View>
               <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                 <Text numberOfLines={1} style={{ fontFamily: F.bold, fontSize: 15.5, letterSpacing: -0.2, color: c.fg }}>{car.model}</Text>
-                <Text numberOfLines={1} style={[TNUM, { fontFamily: F.medium, fontSize: 12, color: c.grey }]}>{car.plate}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text numberOfLines={1} style={[TNUM, { fontFamily: F.medium, fontSize: 12, color: c.grey }]}>{car.plate}</Text>
+                  {spotFor(car.reg) ? <Chip tone="amber" icon="pin">{t('Alag jagah')}</Chip> : null}
+                </View>
                 <Text numberOfLines={1} style={{ fontFamily: F.body, fontSize: 12, color: c.grey }}>{[car.society ? car.house : car.spot, car.customer].filter(Boolean).join(' · ')}</Text>
+                {w && rejectInfo(w.photos) ? <View style={{ marginTop: 4 }}><RejectBanner compact info={rejectInfo(w.photos)!} /></View> : null}
               </View>
               <View style={{ alignItems: 'flex-end', gap: 3 }}>
                 {done ? <Text style={[TNUM, { fontFamily: F.semi, fontSize: 13, color: '#0E9F6E' }]}>{w?.finished_at ? short12(t12(w.finished_at)) : ''}</Text>

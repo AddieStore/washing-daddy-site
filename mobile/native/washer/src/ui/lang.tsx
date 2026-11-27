@@ -205,7 +205,7 @@ export function ReceiptRow({ label, value, strike, hint, onHint, total, tone, st
 
 /* ------------------------------ Floating tab bar ------------------------------ */
 
-export type FloatingTab = { key: string; label: string; icon: IconName; badge?: number };
+export type FloatingTab = { key: string; label: string; icon: IconName; badge?: number; tone?: string };
 
 /** White pill, soft shadow, 16 from edges + bottom. Selected tab = dark pill with white icon + label; others icon only (grey). No centre FAB. */
 export function FloatingTabBar({ tabs, active, onSelect }: { tabs: FloatingTab[]; active: string; onSelect: (key: string) => void }) {
@@ -232,12 +232,12 @@ function FloatingTabCell({ tb, on, rm, onPress }: { tb: FloatingTab; on: boolean
   return (
     <Pressable onPress={onPress} onPressIn={() => to(0.95)} onPressOut={() => to(1)} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={tb.label}
       style={{ flex: on ? 1.7 : 1 }} hitSlop={{ top: 6, bottom: 6 }}>
-      <Animated.View style={{ transform: [{ scale: press }], minHeight: 48, borderRadius: 999, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: on ? c.navOn : 'transparent' }}>
+      <Animated.View style={{ transform: [{ scale: press }], minHeight: 48, borderRadius: 999, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: on ? (tb.tone || c.navOn) : 'transparent' }}>
         <View>
-          <Icon name={tb.icon} size={22} color={on ? c.navOnInk : c.grey} active={on} />
+          <Icon name={tb.icon} size={22} color={on ? (tb.tone ? '#FFFFFF' : c.navOnInk) : c.grey} active={on} />
           {tb.badge && !on ? <View style={{ position: 'absolute', top: -5, right: -8, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, backgroundColor: c.primary, borderWidth: 2, borderColor: c.tabBg, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: F.bold, fontSize: 9, color: '#fff' }}>{tb.badge}</Text></View> : null}
         </View>
-        {on ? <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 13, color: c.navOnInk }}>{tb.label}</Text> : null}
+        {on ? <Text numberOfLines={1} style={{ fontFamily: F.semi, fontSize: 13, color: tb.tone ? '#FFFFFF' : c.navOnInk }}>{tb.label}</Text> : null}
       </Animated.View>
     </Pressable>
   );

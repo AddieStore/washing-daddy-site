@@ -26,7 +26,7 @@ export default function TodayScreen() {
         <DaySummary d={d} earnLabel={t('Aaj ki kamai')} />
         <SectionLabel>{t('Gaadiyon ki list')} · {d.rows.length}</SectionLabel>
         {d.rows.length
-          ? <DayCarGroup rows={d.rows} onPress={(r) => { act.setCurrent(r.reg); router.push('/job'); }} />
+          ? <DayCarGroup rows={d.rows} spotDate={DAY} onPress={(r) => { act.setCurrent(r.reg); router.push('/job'); }} />
           : <Group><Row icon="car" label={t('Koi gaadi nahi')} sub={t('Book mein aaj aapke naam koi active gaadi nahi hai.')} /></Group>}
         {places.length ? (
           <>

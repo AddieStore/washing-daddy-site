@@ -88,12 +88,14 @@ jobs:
           EXPO_OFFLINE: '1'
           CI: '1'
           WD_RELEASE: ${{ inputs.demo && '0' || '1' }}   # app.config.ts refuses to build a demo app
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}   # the "Where he works" map; empty = drawn fallback map
 
       # The release APK is signed with Expo's default debug keystore; we re-sign it with the
       # Washing Daddy release key outside CI (tools/sign-apk.sh).
       - name: Build release APK
         working-directory: mobile/native/washer/android
         env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
           EXPO_PUBLIC_DEMO: ${{ inputs.demo && '1' || '' }}   # demo build: the JS bundle is made here
         run: |
           set -o pipefail
@@ -118,6 +120,8 @@ jobs:
       - name: Build Play bundle
         if: ${{ !inputs.demo }}
         working-directory: mobile/native/washer/android
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
         run: ./gradlew bundleRelease --no-daemon
 
       - name: Collect APK

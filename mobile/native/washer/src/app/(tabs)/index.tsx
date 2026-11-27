@@ -22,6 +22,7 @@ import { openAddCar } from '../../screens/AddCar';
 import { openHelpSheet } from '../../screens/sheets';
 import { CheckInCard } from '../../screens/RoundTimeline';
 import { CheckOutCard } from '../../screens/CheckOutCard';
+import { DayCard } from '../../screens/DayCards';
 import { openRewards, useOutlook } from '../../screens/RewardsCards';
 import { EARLY_DAYS } from '../../lib/rewards';
 import { useDayMarks } from '../../lib/history';
@@ -178,7 +179,7 @@ export default function RoundScreen() {
   const cn = Route.counts();
   const finished = started && cn.total > 0 && cn.done + cn.skipped >= cn.total;
   const [slideKey, setSlideKey] = useState(0);
-  const showSlide = !started && cn.total > 0;
+  const showSlide = false;   // the goal card (DayCard) carries the start slide now
   const nowReg = Route.liveReg() || Route.nextReg();
   const width = Math.min(ww, 440);
   return (
@@ -187,6 +188,7 @@ export default function RoundScreen() {
         <HeroBand top={insets.top} width={width} greeting={hi} name={w.name.split(' ')[0]} />
         <View style={{ backgroundColor: c.card, paddingHorizontal: 16, marginTop: 0, paddingTop: 4, flexGrow: 1, gap: 16 }}>
           {!started ? <FadeUp index={0}><CheckInCard /></FadeUp> : null}
+          {cn.total ? <FadeUp index={0}><DayCard /></FadeUp> : null}
           {!cn.total ? <FadeUp index={1}><NoCars width={width} /></FadeUp> : null}
           {started && nowReg && !finished ? <FadeUp key={nowReg} index={1}><NowCard reg={nowReg} /></FadeUp> : null}
           {finished ? <FadeUp index={1}><DoneCard width={width} done={cn.done} /></FadeUp> : null}
