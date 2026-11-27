@@ -83,7 +83,7 @@ function Done() {
       <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: '#EAF7EE', alignItems: 'center', justifyContent: 'center' }}><SuccessTick size={40} color={OK} /></View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Txt weight={600} size={16} color={INK} numberOfLines={1}>Washed, with photo proof</Txt>
-        <Txt size={12} color={SUB} numberOfLines={1} style={{ marginTop: 2 }}>Before and after photos in the app</Txt>
+        <Txt size={12} color={SUB} numberOfLines={1} style={{ marginTop: 2 }}>After photos in the app</Txt>
         <View style={{ marginTop: 8, alignSelf: 'flex-start' }}><Plate reg="DL3CAB1234" width={112} /></View>
       </View>
     </View>

@@ -143,8 +143,8 @@ function Day({ date }: { date: string }) {
   );
 }
 
-/* ---------- proof: before/after compare ---------- */
-// two photos at a time, side by side and small (Ravi's fix): before on the left, after on the right
+/* ---------- proof: after photos ---------- */
+// two photos at a time, side by side and small (Ravi's fix)
 const photoTile = (img: any, label: string, key?: string) => (
   <View key={key} style={{ flex: 1, maxWidth: 150 }}>
     <View style={{ aspectRatio: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: P.line, backgroundColor: P.raised }}>
@@ -154,16 +154,16 @@ const photoTile = (img: any, label: string, key?: string) => (
   </View>);
 const asSrc = (p: any) => (typeof p === 'string' ? { uri: p } : p);
 function PhotoPair() {
-  return <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>{photoTile(IMG.before, 'Before')}{photoTile(IMG.after, 'After')}</View>;
+  return <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}>{photoTile(IMG.after, 'After')}</View>;
 }
-// real wash: the washer's photos grouped by kind (before, after, Sunday interior by spot, anything flagged)
+// real wash: the washer's photos grouped by kind (after, Sunday interior by spot, anything flagged)
 function RealPhotos({ photos }: { photos: ReturnType<typeof photosOf> }) {
   const grid = (list: typeof photos, label: (p: (typeof photos)[number], i: number) => string) => (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>{list.map((p, i) => <View key={i} style={{ width: '46%', maxWidth: 150 }}>{photoTile(asSrc(p.src), label(p, i))}</View>)}</View>);
-  const before = photos.filter(p => p.kind === 'before'), after = photos.filter(p => p.kind === 'after'), inside = photos.filter(p => p.kind === 'inside' || (p.spot && p.kind !== 'before' && p.kind !== 'after')), issue = photos.filter(p => p.kind === 'issue');
+  const after = photos.filter(p => p.kind === 'after' && !(p as any).rejected).slice(0, 2), inside = photos.filter(p => p.kind === 'inside' || (p.spot && p.kind !== 'before' && p.kind !== 'after')), issue = photos.filter(p => p.kind === 'issue');
   return (
     <View style={{ gap: 14 }}>
-      {before.length || after.length ? grid([...before, ...after], (p, i) => p.kind === 'before' ? 'Before' : after.length > 1 ? `After ${i - before.length + 1}` : 'After') : null}
+      {after.length ? grid(after, (p, i) => after.length > 1 ? `After ${i + 1}` : 'After') : null}
       {inside.length ? <View><Txt weight={500} size={13} color={P.muted} style={{ marginBottom: 8 }}>Inside</Txt>{grid(inside, p => (p.spot && SPOT_LABEL[p.spot]) || 'Inside')}</View> : null}
       {issue.length ? <View><Txt weight={500} size={13} color={P.muted} style={{ marginBottom: 8 }}>Flagged by your washer</Txt>{grid(issue, () => 'Flagged')}</View> : null}
     </View>);
@@ -174,7 +174,7 @@ function Proof() {
   return (
     <ScrollView style={{ maxHeight: 560 }} showsVerticalScrollIndicator={false}>
       <SheetTitle>{real ? 'This morning' + (d.finished_at ? ', ' + ampm(d.finished_at) : '') : 'This morning, ' + (ampm(d.finished_at) || '6:40 AM')}</SheetTitle>
-      <SheetSub>{real ? (photos.length ? stamp || 'Photos from your washer.' : 'Photos show here once your washer uploads them.') : 'How it looked before and after the wash.'}</SheetSub>
+      <SheetSub>{real ? (photos.length ? stamp || 'Photos from your washer.' : 'Photos show here once your washer uploads them.') : 'How your car looked after the wash.'}</SheetSub>
       {real ? (photos.length ? <RealPhotos photos={photos} /> : null) : <PhotoPair />}
       <Gap h={SP.l} />
       <Rows>

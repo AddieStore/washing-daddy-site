@@ -6,16 +6,19 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { Button, CarArt, Chip, Empty, F, Group, Icon, PullToRefresh, Row, SectionLabel, StickyBar, Pressy, ui, useTheme } from '../ui';
 import { WorkingArt } from '../ui/art';
 import { CarPic } from '../screens/CarPhoto';
-import { Route, RT, W, act, route, photoSrc, carBy, ensureDay, openReqs, planName, skipAsk, S, useStore, DAY, view, MIN_PHOTOS, photoNeeds } from '../state/store';
-import { STATUS, navOf, telOf } from '../lib/data';
+import { Route, RT, W, act, route, photoSrc, carBy, ensureDay, openReqs, planName, skipAsk, spotFor, S, useStore, DAY, view, MIN_PHOTOS, photoNeeds } from '../state/store';
+import { STATUS, distM, navOf, telOf } from '../lib/data';
+import { useMyPos } from '../lib/places';
 import type { Photo } from '../lib/data';
 import { SPOTS, isSundayIST } from '../lib/washGuide';
 import { tasksFor } from '../lib/schedule';
 import { t } from '../lib/i18n';
 import { hm12, t12 } from '../lib/time';
 import { takePhoto } from '../lib/photo';
+import { rejectInfo } from '../lib/photoRules';
 import { WashGuide } from '../screens/WashGuide';
-import { HsrpPlate, InteriorButton, ExtrasRow, ReqCard, RoundIcon, ScreenBar, Shot, TaskRow, WashTimer, openNoteSheet, openPhotoSheet, openSkipSheet, openSuccessSheet, type ShotItem } from '../screens/JobParts';
+import { AfterShots, RejectBanner, HsrpPlate, InteriorButton, ExtrasRow, ReqCard, SpotCard, RoundIcon, ScreenBar, Shot, TaskRow, WashTimer, openNoteSheet, openPhotoSheet, openSkipSheet, type ShotItem } from '../screens/JobParts';
+import { openCarDone } from '../screens/DayCards';
 import { ReportSection, ReportSummary, StartCapture, newStartInfo, openLeaveSheet, saveStartInfo } from '../screens/JobReport';
 
 const ORDER = ['scheduled', 'on_the_way', 'arrived', 'washing', 'done'];
@@ -124,13 +127,17 @@ export default function JobScreen() {
   const wd = reg ? W(reg) : null;
   const st = wd ? wd.status : 'scheduled';
   const unseen = reg ? openReqs(reg).filter(q => q.status === 'open').length : 0;
+  const spot = reg ? spotFor(reg) : null;
+  const { pos } = useMyPos();   // only if the phone already allows location: never asks here
+  const spotM = spot && pos ? distM(pos, { lat: Number(spot.lat), lng: Number(spot.lng) }) : null;
+  const spotOpen = !!spot && spot.status === 'open';
   const lastReg = useRef<string | null>(null);
   const [spotPend, setSpotPend] = useState<Record<string, string>>({});
 
   // keep S.current in step with what is shown
   useEffect(() => { if (reg && S.current !== reg) act.setCurrent(reg) }, [reg]);
   // opening a car with an open request counts as "seen"
-  useFocusEffect(useCallback(() => { if (reg && unseen) act.markSeen(reg) }, [reg, unseen]));
+  useFocusEffect(useCallback(() => { if (reg && (unseen || spotOpen)) act.markSeen(reg) }, [reg, unseen, spotOpen]));
   useEffect(() => { lastReg.current = reg || null }, [reg]);
 
   const goPaisa = () => router.navigate('/paisa' as any);
@@ -190,17 +197,19 @@ export default function JobScreen() {
   const reqs = openReqs(reg).filter(q => q.kind !== 'skip_tomorrow');
   const sk = skipAsk(reg);
   const pend = view.pendingPhotos[reg] || [];
-  const photosOf = (kind: 'before' | 'after' | 'issue'): ShotItem[] =>
+  const photosOf = (kind: 'after' | 'issue'): ShotItem[] =>
     ((wd ? wd.photos : []) as ShotItem[]).filter(p => p.kind === kind && !p.spot).concat(pend.filter(p => p.kind === kind).map(p => ({ kind: p.kind, at: '', display: p.display, pending: true } as ShotItem)));
   const need = wd ? photoNeeds(wd) : null;
   const afterN = need ? need.car : 0;
   const photosOk = !!need && need.ok;
+  const rej = wd ? rejectInfo(wd.photos) : null;
   const late = !!wd && Route.isLate(reg);
   const sunday = !!wd && !!need && need.sunday && (st === 'washing' || st === 'done');
   const pre = !!wd && ['scheduled', 'on_the_way', 'arrived'].includes(st);
 
   const shoot = async (kind: Photo['kind'], spot?: string) => {
     if (!W(reg)) { ui.toast(t('Pehle round shuru karo')); return }
+    if (kind === 'after' && !spot) act.platePrompt();
     ui.flash();
     try {
       const r = await takePhoto();
@@ -213,7 +222,7 @@ export default function JobScreen() {
       }
     } catch (e: any) { ui.toast(t(e?.hi || 'Photo nahi gayi. Dobara try karo')) }
   };
-  const viewShot = (kind: 'before' | 'after' | 'issue') => {
+  const viewShot = (kind: 'after' | 'issue') => {
     const w = W(reg); if (!w) return;
     openPhotoSheet(reg, kind, w.photos.filter(p => p.kind === kind), !['done', 'skipped'].includes(w.status), () => { void shoot(kind) });
   };
@@ -221,7 +230,7 @@ export default function JobScreen() {
     if (act.finish(reg)) {
       const nx = Route.nextReg();
       const n = nx ? carBy(nx) : null;
-      openSuccessSheet(car.customer, nx && n ? { reg: nx, model: n.model } : null, goPaisa);
+      openCarDone(reg, nx && n ? { reg: nx, model: n.model } : null, goPaisa);
     }
   };
   const startWash = () => { if (!wd) return; act.startWash(reg); saveStartInfo(reg, startInfo.current, wd.issues) };
@@ -242,8 +251,8 @@ export default function JobScreen() {
   else if (st === 'done') bar = { ...nextBar, summary: `${wd.minutes ?? '–'} min`, summaryLabel: t('Ho gaya') };
   else bar = nxReg && nxCar ? { ...nextBar, summary: t('Skip kiya'), summaryLabel: t('Aaj ke liye') } : { label: t('Round par wapas'), onPress: leave, summary: t('Skip kiya'), summaryLabel: t('Aaj ke liye') };
 
-  const photoHint = need && need.sunday
-    ? t(`Gaadi ki ${Math.max(0, MIN_PHOTOS - afterN)} aur andar ki ${need.missing.length} photo baaki hain, phir wash band hogi`)
+  const photoHint = need && need.car >= MIN_PHOTOS && !need.plate ? t('Ek photo mein number plate dikhni chahiye. "Number plate dikh rahi hai" tick karo')
+    : need && need.sunday ? t(`Gaadi ki ${Math.max(0, MIN_PHOTOS - afterN)} aur andar ki ${need.missing.length} photo baaki hain, phir wash band hogi`)
     : t(`Gaadi ki ${Math.min(afterN, MIN_PHOTOS)}/${MIN_PHOTOS} photo lo, phir wash band hogi`);
 
   return (
@@ -252,6 +261,8 @@ export default function JobScreen() {
         <ScreenBar title={car.society ? `${car.society} · ${car.house}` : car.house} back onBack={goRound} />
         <View style={{ paddingHorizontal: 16, gap: 12 }}>
           <CarHeader reg={reg} st={st} />
+          {rej ? <RejectBanner info={rej} onPress={() => { void shoot('after') }} /> : null}
+          {spot ? <SpotCard q={spot} meters={spotM} /> : null}
           <Stepper steps={steps} />
 
           {st === 'washing' ? <View style={{ alignItems: 'center' }}><WorkingArt width={220} /></View> : null}
@@ -337,12 +348,12 @@ export default function JobScreen() {
               <SectionLabel>{t('Photo')}</SectionLabel>
               <Group>
                 <View style={{ padding: 14, gap: 12 }}>
+                  <Text style={{ fontFamily: F.semi, fontSize: 12, color: th.grey }}>{t('Baad ki photo')} · {Math.min(afterN, MIN_PHOTOS)}/{MIN_PHOTOS}</Text>
+                  <AfterShots list={photosOf('after')} can={!!wd && (afterN < MIN_PHOTOS || !!rej) && (st !== 'done' || !!rej)} onTake={() => { void shoot('after') }} onView={() => viewShot('after')} onPlate={(n, on) => act.setPlate(reg, n, on)} />
+                  <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 17, color: th.grey }}>{t('Ek photo mein number plate dikhni chahiye (aage ya peeche)')}</Text>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    {(['after', 'issue'] as const).map(k => (
-                      <Shot key={k} kind={k} list={photosOf(k)} enabled={!!wd} onTake={() => { void shoot(k) }} onView={() => viewShot(k)} />
-                    ))}
+                    <View style={{ width: '48%' }}><Shot kind="issue" list={photosOf('issue')} enabled={!!wd} onTake={() => { void shoot('issue') }} onView={() => viewShot('issue')} /></View>
                   </View>
-                  <Text style={{ fontFamily: F.body, fontSize: 12, lineHeight: 17, color: th.grey }}>{t(`Wash khatam hone par gaadi ki ${MIN_PHOTOS} photo zaroori. Shuru mein koi photo nahi.`)}</Text>
                 </View>
               </Group>
             </>

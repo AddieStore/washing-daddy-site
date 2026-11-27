@@ -6,3 +6,5 @@ export { EmptyArt } from './EmptyArt';
 export type { EmptyArtProps } from './EmptyArt';
 export { DoneArt } from './DoneArt';
 export type { DoneArtProps } from './DoneArt';
+export { LoginStoryArt, STORY_N } from './LoginStoryArt';
+export type { LoginStoryArtProps } from './LoginStoryArt';
