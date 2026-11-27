@@ -808,3 +808,12 @@ Object.assign(T, {
   "Alag jagah": "வேறு இடம்",
   "aapse door": "உங்களிடமிருந்து தொலைவில்",
 });
+
+Object.assign(T, {
+  "Photo reject hui": "புகைப்படம் நிராகரிக்கப்பட்டது",
+  "Number plate dikh rahi hai": "நம்பர் பிளேட் தெரிகிறது",
+  "Ek photo mein number plate dikhni chahiye (aage ya peeche)": "ஒரு புகைப்படத்தில் நம்பர் பிளேட் தெரிய வேண்டும் (முன்னால் அல்லது பின்னால்)",
+  "Ek photo mein number plate dikhni chahiye. \"Number plate dikh rahi hai\" tick karo": "ஒரு புகைப்படத்தில் நம்பர் பிளேட் தெரிய வேண்டும். \"நம்பர் பிளேட் தெரிகிறது\" என்பதை டிக் செய்யவும்",
+  "Number plate tick karo": "நம்பர் பிளேட்டை டிக் செய்யவும்",
+  "Gaadi ki 2 photo ho gayi hain": "காரின் 2 புகைப்படங்கள் எடுக்கப்பட்டன",
+});

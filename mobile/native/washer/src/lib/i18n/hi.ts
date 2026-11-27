@@ -814,4 +814,13 @@ Object.assign(HI, {
   "aapse door": "आपसे दूर",
 });
 
+Object.assign(HI, {
+  "Photo reject hui": "फोटो रिजेक्ट हुई",
+  "Number plate dikh rahi hai": "नंबर प्लेट दिख रही है",
+  "Ek photo mein number plate dikhni chahiye (aage ya peeche)": "एक फोटो में नंबर प्लेट दिखनी चाहिए (आगे या पीछे)",
+  "Ek photo mein number plate dikhni chahiye. \"Number plate dikh rahi hai\" tick karo": "एक फोटो में नंबर प्लेट दिखनी चाहिए. \"नंबर प्लेट दिख रही है\" टिक करो",
+  "Number plate tick karo": "नंबर प्लेट टिक करो",
+  "Gaadi ki 2 photo ho gayi hain": "गाड़ी की 2 फोटो हो गई हैं",
+});
+
 export { HI as T, HI_PATTERNS as P };

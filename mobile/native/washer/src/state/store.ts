@@ -24,21 +24,21 @@ import { ui } from '../ui/bus';
 import { registerPushToken, clearPushToken } from '../lib/pushToken';
 import { mirrorCheckIn, mirrorFirstCar, writeCheckOut, startHeartbeat, loadAttendance } from '../backend/attendance';
 import { buildLedger, ledgerWriter } from '../backend/earnings';
+import { CAR_PHOTOS, carGate, carPhotos, mergeReview, placeAfter, reviewAfterRetake } from '../lib/photoRules';
 import { requestPinToken, PIN_MSG, isPin } from '../lib/pinLogin';
 
 const { db, auth } = backend;
-// a wash can only be closed once these photos are taken: 1 before, 2 after of the car (Sunday and a carried interior: also the 5 inside spots)
-export const MIN_BEFORE = 0   // photos are asked only when the wash is closed: 2 of the finished car, none at the start
-export const MIN_PHOTOS = 2
+// a wash can only be closed once these photos are taken: 2 of the finished car, one of them showing the number plate (photo rule v3: no
+// before photo). Sunday and a carried interior: also the 5 inside spots.
+export const MIN_PHOTOS = CAR_PHOTOS
 /** What the photo gate needs. `sunday` means the inside spots are needed too: a Sunday wash, or a Sunday interior carried to today. */
-export function photoNeeds(w: { started_at?: string | null; sunday?: boolean; carried_task?: string; photos: { kind: string; spot?: string }[] }) {
+export function photoNeeds(w: { started_at?: string | null; sunday?: boolean; carried_task?: string; photos: Photo[] }) {
   const sunday = !!w.sunday || !!w.carried_task || isSundayIST(w.started_at);
-  const before = w.photos.filter(p => p.kind === 'before' && !p.spot).length;
-  const car = w.photos.filter(p => p.kind === 'after' && !p.spot).length;
+  const g = carGate(w.photos), car = g.car;
   const have = new Set(w.photos.filter(p => p.spot).map(p => p.spot));
   const missing = sunday ? SPOTS.filter(s => !have.has(s.key)) : [];
   // the voice asks for the inside photos once the car photos are done
-  return { sunday, before, car, missing, nextSpot: car >= MIN_PHOTOS && before >= MIN_BEFORE ? missing[0] || null : null, ok: before >= MIN_BEFORE && car >= MIN_PHOTOS && missing.length === 0 };
+  return { sunday, car, plate: g.plate, rejected: g.rejected, missing, nextSpot: g.ok ? missing[0] || null : null, ok: g.ok && missing.length === 0 };
 };
 import type { Attend } from '../lib/rewards';
 import type { CleanInput } from '../lib/rewards';
@@ -389,8 +389,14 @@ export const Sync = {
     unsubs.push(db.collection('washes').where('washer_id', '==', id).where('date', '==', DAY).onSnapshot(sn => {
       let ch = false; ensureDay();
       sn.docs.forEach(d => {
-        const r = d.data(); if (!r || !r.reg || !carBy(r.reg)) return; if (S.outbox[DAY + '_' + r.reg]) return;
-        const l = W(r.reg);
+        const r = d.data(); if (!r || !r.reg || !carBy(r.reg)) return;
+        const l = W(r.reg), ob = S.outbox[DAY + '_' + r.reg];
+        // the manager's photo review (rejected / plate_ok) is merged even while my own copy waits to be sent, so a stale local photo can never wipe it
+        if (l && (r.photos || r.photo_review)) {
+          if (mergeReview(l, r as Partial<Wash>)) ch = true;
+          if (ob && ob !== l) mergeReview(ob, r as Partial<Wash>);
+        }
+        if (ob) return;
         if (!l || (r.updated_at || '') > (l.updated_at || '')) { S.day!.washes[r.reg] = cleanWash(r); ch = true }
       });
       if (sn.size && !S.day!.started) { S.day!.started = true; ch = true }
@@ -452,6 +458,13 @@ export const Sync = {
         const key = Object.keys(S.outbox)[0]; if (!key) break; const doc = S.outbox[key];
         // a fresh 'scheduled' doc (new round, reset, new phone) must not wipe a wash the server already has
         if (doc.status === 'scheduled' && await this.adopt(key)) continue;
+        // the manager may have reviewed a photo since this copy was made: take that over before it is overwritten
+        if (doc.photos?.some(p => p.kind === 'after')) {
+          try {
+            const g = await db.doc('washes/' + key).get();
+            if (g.exists) { const rv = g.data() as Partial<Wash>; mergeReview(doc, rv); const l = W(doc.reg); if (l && l !== doc) mergeReview(l, rv) }
+          } catch (e) { /* offline: the listener merges it later */ }
+        }
         try { await db.doc('washes/' + key).set(doc); view.netOk = true }
         catch (e: any) {
           if (e && (e.code === 'invalid_argument' || e.code === 'transform_error')) {
@@ -697,6 +710,8 @@ export const act = {
   // Firebase Storage. It is saved in the doc at once with pending_upload: true; Photos.upload swaps in the Storage URL.
   addPhoto(reg: string, kind: Photo['kind'], url: string, spot?: string, file?: string) {
     const cur = W(reg); if (!cur) return;
+    // exactly 2 car photos: a third is only taken to replace one the manager rejected
+    if (kind === 'after' && !spot && carPhotos(cur.photos).length >= MIN_PHOTOS && !cur.photos.some(p => p.kind === 'after' && !p.spot && p.rejected)) { ui.toast(t(`Gaadi ki ${MIN_PHOTOS} photo ho gayi hain`)); return }
     const n = cur.photos.reduce((m, p) => Math.max(m, (p.n ?? -1) + 1), cur.photos.length);
     const fix = lastFix && Date.now() - lastFix.at < 10 * 60e3 ? { lat: lastFix.lat, lng: lastFix.lng } : null;   // optional GPS stamp
     Photos.keep(DAY, reg, n, url, file);
@@ -704,12 +719,15 @@ export const act = {
     mutate(reg, d => {
       if (spot) d.photos = d.photos.filter(p => p.spot !== spot);
       if (d.photos.length >= 20) d.photos.shift();
-      d.photos.push({ kind: spot ? 'inside' : kind, at: isoIST(), url, n, pending_upload: true, ...(spot ? { spot } : {}), ...(fix || {}) });
+      const np: Photo = { kind: spot ? 'inside' : kind, at: isoIST(), url, n, pending_upload: true, ...(spot ? { spot } : {}), ...(fix || {}) };
+      // a retake of a rejected car photo replaces just that one and sends the wash back to the manager
+      if (kind === 'after' && !spot) { if (placeAfter(d.photos, np) === 'replaced') { d.photo_review = reviewAfterRetake(d.photos); d.photo_review_at = np.at } }
+      else d.photos.push(np);
     });
     void Photos.upload(reg, n);
     // the first car photo of the day, with its time, counts for the early-bird reward
     if (kind === 'after' && !spot) noteAttend({ first: isoIST() }, true);
-    ui.toast(t(kind === 'issue' ? 'Problem ki photo customer ko gayi' : kind === 'before' ? 'Pehle ki photo save ho gayi' : 'Photo customer ko gayi'));
+    ui.toast(t(kind === 'issue' ? 'Problem ki photo customer ko gayi' : 'Photo customer ko gayi'));
     // Sunday: once the car photos are done, the voice asks for the next inside photo
     const w = W(reg); const nx = w && kind === 'after' && !spot ? (photoNeeds(w).sunday ? photoNeeds(w).nextSpot : null) : null;
     if (nx) ui.speak(nx.clip);
@@ -719,6 +737,13 @@ export const act = {
     else view.pendingPhotos[reg] = (view.pendingPhotos[reg] || []).filter(p => p.kind !== kind);
     emit();
   },
+  /** the washer says whether this car photo shows the number plate (at least one must, to finish) */
+  setPlate(reg: string, n: number, on: boolean) {
+    mutate(reg, d => { const p = d.photos.find(x => x.n === n && x.kind === 'after' && !x.spot); if (p) p.plate = on });
+    ui.haptic(6);
+  },
+  /** shown just before the camera opens for a car photo */
+  platePrompt() { ui.toast(t('Ek photo mein number plate dikhni chahiye (aage ya peeche)')) },
   delPhoto(reg: string, kind: Photo['kind']) {
     mutate(reg, d => { for (let i = d.photos.length - 1; i >= 0; i--) if (d.photos[i].kind === kind && !d.photos[i].spot) { d.photos.splice(i, 1); break } });
     ui.toast(t('Photo hata di'));
@@ -764,7 +789,7 @@ export const act = {
   },
   needPhoto(reg?: string) {
     const w = reg ? W(reg) : null; const pn = w ? photoNeeds(w) : null; const n = pn ? pn.missing.length : 0;
-    ui.toast(t(pn && pn.before < MIN_BEFORE ? 'Pehle ki photo lo (wash se pehle), phir wash band hogi' : n ? `Gaadi ki ${MIN_PHOTOS} photo aur andar ki ${n} photo baaki hain` : `Kam se kam ${MIN_PHOTOS} baad ki photo lo, phir wash band hogi`)); ui.haptic(14);
+    ui.toast(t(pn && pn.car >= MIN_PHOTOS && !pn.plate ? 'Ek photo mein number plate dikhni chahiye. "Number plate dikh rahi hai" tick karo' : n ? `Gaadi ki ${MIN_PHOTOS} photo aur andar ki ${n} photo baaki hain` : `Kam se kam ${MIN_PHOTOS} baad ki photo lo, phir wash band hogi`)); ui.haptic(14);
   },
   skip(reg: string, reason: string) {
     mutate(reg, d => { d.status = 'skipped'; d.skip_reason = reason });

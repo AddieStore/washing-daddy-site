@@ -11,13 +11,18 @@ export type Car = {
 };
 export type WashStatus = 'scheduled' | 'on_the_way' | 'arrived' | 'washing' | 'done' | 'skipped';
 // url: a Firebase Storage download URL (washphotos/{DATE}_{REG}/{n}.jpg); an inline data URL only while pending_upload is true (offline fallback)
-export type Photo = { kind: 'before' | 'after' | 'issue' | 'inside'; asset_id?: string; url?: string; at: string; spot?: string; n?: number; lat?: number; lng?: number; pending_upload?: boolean };
+// Photo rule v3 (contract 2026-11-27): no before photo. Exactly 2 `after` car photos; `plate` is set by the washer (this photo shows the number
+// plate), `rejected` / `plate_ok` are written by the manager in the admin panel.
+export type Photo = {
+  kind: 'after' | 'issue' | 'inside'; asset_id?: string; url?: string; at: string; spot?: string; n?: number; lat?: number; lng?: number; pending_upload?: boolean;
+  plate?: boolean; rejected?: { at: string; by: string; reason?: string }; plate_ok?: { at: string; by: string };
+};
 export type Wash = {
   date: string; reg: string; car_label: string; washer: { id: string; name: string; photo_url?: string }; washer_id: string;
   status: WashStatus; eta: string;
   on_the_way_at: string | null; arrived_at: string | null; started_at: string | null; finished_at: string | null;
   minutes: number | null; tasks: { key: TaskKey; label: string; done: boolean; done_at: string | null }[];
-  photos: Photo[]; water_litres: number | null; washer_note: string | null; skip_reason: string | null;
+  photos: Photo[]; photo_review?: 'pending' | 'ok' | 'rejected'; photo_review_at?: string; water_litres: number | null; washer_note: string | null; skip_reason: string | null;
   customer_note_seen: boolean; seq: number; updated_at: string;
   // the round as a timeline (lib/slots.ts), the interior add-on, and a late flag: all synced to the customer app and the dashboard
   slot?: number; slot_from?: string; slot_to?: string; interior?: boolean; interior_from?: number | null; extra_minutes?: number;

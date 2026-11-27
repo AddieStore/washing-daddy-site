@@ -803,3 +803,12 @@ Object.assign(T, {
   "Alag jagah": "వేరే చోటు",
   "aapse door": "మీ నుండి దూరం",
 });
+
+Object.assign(T, {
+  "Photo reject hui": "ఫోటో తిరస్కరించబడింది",
+  "Number plate dikh rahi hai": "నంబర్ ప్లేట్ కనిపిస్తోంది",
+  "Ek photo mein number plate dikhni chahiye (aage ya peeche)": "ఒక ఫోటోలో నంబర్ ప్లేట్ కనిపించాలి (ముందు లేదా వెనుక)",
+  "Ek photo mein number plate dikhni chahiye. \"Number plate dikh rahi hai\" tick karo": "ఒక ఫోటోలో నంబర్ ప్లేట్ కనిపించాలి. \"నంబర్ ప్లేట్ కనిపిస్తోంది\" టిక్ చేయండి",
+  "Number plate tick karo": "నంబర్ ప్లేట్ టిక్ చేయండి",
+  "Gaadi ki 2 photo ho gayi hain": "కారు 2 ఫోటోలు తీశారు",
+});
