@@ -3,7 +3,7 @@
    Characters, car and city are drawn here in SVG; every loop runs on the UI thread and rests still with reduced motion. */
 import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Svg, { Circle, Defs, Ellipse, G, LinearGradient as SG, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, G, LinearGradient as SG, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   SharedValue, Easing, FadeIn, FadeOut, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming,
@@ -381,9 +381,10 @@ function SceneWash({ W, H }: { W: number; H: number }) {
       <Stage W={W} H={H}>
         <Animated.View style={[abs(130, GROUND - 96), cSt]}><Car w={220} foam /></Animated.View>
         <View style={abs(14, GROUND - 156)}><Person look={WASHER} pose="gun" h={160} /></View>
-        {[0, 1, 2, 3, 4, 5].map(i => <Drop key={i} x={92} y={GROUND - 128 + (i % 3)} dx={70 + (i % 3) * 8} dy={-4 + (i % 3) * 14} ms={620} delay={i * 100} r={3.6} />)}
+        {[0, 1, 2, 3, 4, 5].map(i => <Drop key={i} x={150} y={GROUND - 88 + (i % 3) * 2} dx={44 + (i % 3) * 8} dy={-6 + (i % 3) * 12} ms={560} delay={i * 90} r={3.2} />)}
         {[0, 1, 2, 3].map(i => <Drop key={'m' + i} x={168 + i * 14} y={GROUND - 100} dx={10} dy={-22 - i * 4} ms={1100} delay={i * 260} r={2.6} />)}
-        <View style={abs(100, GROUND - 22)}><Svg width={30} height={30} viewBox="0 0 40 44"><Path d="M6 10 H30 L28 40 Q28 42 26 42 H10 Q8 42 8 40Z" fill={SAFF} /><Path d="M10 10 Q18 -2 28 10" stroke="#fff" strokeWidth={3} fill="none" /></Svg></View>
+        <Svg width={DW} height={DH} style={abs(0, 0)} pointerEvents="none"><Path d="M114 172 C114 156 124 150 116 134" stroke="#2B2552" strokeWidth={4.4} fill="none" strokeLinecap="round" /><Path d="M114 172 C114 156 124 150 116 134" stroke="#6D6A93" strokeWidth={1.2} fill="none" strokeLinecap="round" /></Svg>
+        <View style={abs(92, GROUND - 32)}><Svg width={44} height={34} viewBox="0 0 44 34"><Path d="M15 9 V5 Q15 2.5 17.5 2.5 H26.5 Q29 2.5 29 5 V9" stroke="#2B2552" strokeWidth={2.6} fill="none" strokeLinecap="round" /><Rect x={2} y={8} width={40} height={25} rx={5.5} fill="#5409DA" /><Rect x={2} y={8} width={40} height={6} rx={3} fill="#7A3CF0" opacity={0.7} /><Rect x={6} y={30} width={5} height={3.4} rx={1.4} fill="#2B2552" /><Rect x={33} y={30} width={5} height={3.4} rx={1.4} fill="#2B2552" /><Circle cx={22} cy={21.5} r={8} fill={SAFF} /><SvgText x={22} y={24.6} fontSize={8.4} fontWeight="800" fill="#1A1033" textAnchor="middle">WD</SvgText></Svg></View>
         <Sparkle x={296} y={50} s={16} delay={400} /><Sparkle x={322} y={96} s={11} delay={900} />
       </Stage>
     </View>
