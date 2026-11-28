@@ -11,6 +11,7 @@ import { FlyHost, primerGate } from '../ui/motion';
 import { useTheme } from '../theme';
 import { useApp, closePage, Page, Tab, appCfg, feature, tabOn, act } from '../state';
 import { Txt } from '../ui/kit';
+import { useNight } from '../ui/city';
 import { GenericArt } from '../art/generic';
 import Home from './Home';
 import Live from './Live';
@@ -146,7 +147,7 @@ function Maintenance({ message }: { message: string }) {
 }
 
 export default function Main() {
-  const ui = useApp(), T = useTheme(), rm = useReduceMotion(), fade = useRef(new Animated.Value(1)).current, tab: Tab = tabAllowed(ui.tab) ? ui.tab : 'home', Screen = SCREEN[tab];
+  const ui = useApp(), night = useNight(), T = useTheme(), rm = useReduceMotion(), fade = useRef(new Animated.Value(1)).current, tab: Tab = tabAllowed(ui.tab) ? ui.tab : 'home', Screen = SCREEN[tab];
   useEffect(() => {
     if (rm) return;
     fade.setValue(0);
@@ -172,7 +173,7 @@ export default function Main() {
           return <Animated.View key={k} style={on ? { flex: 1, opacity: fade } : { display: 'none' }}><S2 /></Animated.View> })}
         {tab !== 'home' && tab !== 'live' ? <Animated.View key={key} style={{ flex: 1, opacity: fade }}><Screen /></Animated.View> : null}
         <TabBar />
-        <StatusBar style={tab === 'home' && !ui.pages.length ? 'dark' : 'light'} />
+        <StatusBar style={tab === 'home' && !ui.pages.length && !night ? 'dark' : 'light'} />
       </Reanimated.View>
       <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#0B0614' }, tabCover.dim]} />
       {ui.pages.map((p, i) => p && <Pushed key={i + ':' + p.k + ('id' in p && p.id ? p.id : '')} p={p} depth={i} cover={coverOf(ui.pages[i + 1]?.k)} />)}

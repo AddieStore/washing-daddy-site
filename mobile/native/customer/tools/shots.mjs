@@ -22,6 +22,8 @@ const browser = await chromium.launch();
 const [VW, VH] = (process.env.VIEW || '390x844').split('x').map(Number);
 const ctx = await browser.newContext({ viewport: { width: VW, height: VH }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
+if (process.env.NIGHT) await page.addInitScript(() => { globalThis.__WD_NIGHT = true; });
+if (process.env.DAY) await page.addInitScript(() => { globalThis.__WD_NIGHT = false; });
 const problems = [];
 page.on('console', (m) => { if (m.type() === 'error') problems.push('console.error: ' + m.text()); });
 page.on('pageerror', (e) => problems.push('pageerror: ' + e.message));

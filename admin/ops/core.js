@@ -76,7 +76,7 @@ async function start() {
   live('payorders', db.collection('payorders').where('created_at', '>=', since), 'payorders');
   unsubs.push(db.collection('catalog').onSnapshot(sn => { const o = {}; sn.docs.forEach(d => { const v = d.data(); if (v && v.kind === 'plan') o[d.id] = v }); S.plans = o; S.loaded.plans = true; emit() }, err('catalog')));
   // support inbox: the customer app's chats (supportchats). A failure here only empties the Support tab, it never marks the page offline.
-  unsubs.push(db.collection('supportchats').orderBy('updated_at', 'desc').limit(150).onSnapshot(sn => { S.support = snapDocs(sn); S.loaded.support = true; emit() }, e => { console.warn('ops supportchats', e); S.loaded.support = 'err'; emit() }));
+  unsubs.push(db.collection('supportchats').onSnapshot(sn => { S.support = snapDocs(sn); S.loaded.support = true; emit() }, e => { console.warn('ops supportchats', e); S.loaded.support = 'err'; emit() }));
   // the monthly round: today's wash docs; re-listen when the day turns
   let day = '';
   const watchDay = () => { const d = today(); if (d === day) return; day = d; if (washUnsub) washUnsub(); washUnsub = db.collection('washes').where('date', '==', d).onSnapshot(sn => { S.washes = snapDocs(sn); S.loaded.washes = true; emit() }, err('washes')) };
@@ -217,7 +217,7 @@ const supportMsgs = id => Object.entries(S.supMsgs[id] || {}).map(([mid, m]) => 
 // live listener on supportchats/{id}/messages while a thread is open. Returns the unsubscribe.
 function supportWatch(id) {
   if (S.demo || !db) return () => {};
-  return db.collection('supportchats').doc(id).collection('messages').onSnapshot(sn => { S.supMsgs[id] = snapDocs(sn); emit() }, e => console.warn('ops support messages', e));
+  return db.collection('supportchats/' + id + '/messages').onSnapshot(sn => { S.supMsgs[id] = snapDocs(sn); emit() }, e => console.warn('ops support messages', e));
 }
 function needChat(id) { const c = S.support[id]; if (!c) throw new Error('That chat is gone.'); return c }
 // opening a chat marks it read (no updated_at bump: the list order stays)
@@ -232,7 +232,7 @@ async function supportReply(id, text) {
   const now = isoIST(), msg = { from: 'agent', text, at: now };
   const patch = { status: 'human', agent: 'Ravi', last_text: text.slice(0, 200), last_from: 'agent', updated_at: now, unread_admin: false };
   if (S.demo) { (S.supMsgs[id] = S.supMsgs[id] || {})['m' + Date.now()] = msg; Object.assign(S.support[id], patch); emit(); return }
-  await db.collection('supportchats').doc(id).collection('messages').add(msg);
+  await db.collection('supportchats/' + id + '/messages').doc().set(msg);   // the live db wrapper has no add() / doc().collection()
   return db.doc('supportchats/' + id).update(patch);
 }
 async function supportEnd(id) {
