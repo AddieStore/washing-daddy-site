@@ -14,6 +14,8 @@
  *         cancel(jobId, why), setEta(jobId, min), addWasher({name, phone, area, photo}), updateWasher(phone, {name, area}),
  *         setPhoto(phone, dataURL), setWasherStatus(phone, 'approved'|'blocked'), setRound(phone, roundId),
  *         customerStatus(phone, 'active'|'new')
+ * Support:  support() chats (needs-you first, newest first), supportNeeds(), supportMsgs(id), supportWatch(id) -> unsubscribe (live thread),
+ *         supportOpen(id) (unread_admin:false), supportReply(id, text), supportEnd(id). Contract: .notes/support-chat.md
  * Utils:  photoFromFile(file) -> data URL (<=100 KB JPEG), km(a,b), ago(iso), fmtTime(iso), rs(n), nice(phone), today()
  */
 (() => {
@@ -49,7 +51,7 @@ function fmtTime(iso) { const t = ms(iso); if (!isFinite(t)) return ''; const d 
 const FRESH_MS = 3 * 60e3;
 
 /* ---------------- state ---------------- */
-const S = { jobs: {}, codes: {}, washers: {}, photos: {}, locs: {}, washes: {}, customers: {}, payorders: {}, plans: {}, pub: {}, loaded: {}, online: false, demo: false };
+const S = { jobs: {}, codes: {}, washers: {}, photos: {}, locs: {}, washes: {}, customers: {}, payorders: {}, plans: {}, pub: {}, support: {}, supMsgs: {}, loaded: {}, online: false, demo: false };
 const subs = new Set(); let tick = null;
 function emit() { if (tick) return; tick = setTimeout(() => { tick = null; subs.forEach(f => { try { f() } catch (e) { console.error(e) } }) }, 30) }
 const on = f => { subs.add(f); return () => subs.delete(f) };
@@ -73,6 +75,8 @@ async function start() {
   unsubs.push(db.collection('washer_public').onSnapshot(sn => { S.pub = snapDocs(sn); S.loaded.pub = true; emit() }, e => console.warn('ops washer_public', e)));
   live('payorders', db.collection('payorders').where('created_at', '>=', since), 'payorders');
   unsubs.push(db.collection('catalog').onSnapshot(sn => { const o = {}; sn.docs.forEach(d => { const v = d.data(); if (v && v.kind === 'plan') o[d.id] = v }); S.plans = o; S.loaded.plans = true; emit() }, err('catalog')));
+  // support inbox: the customer app's chats (supportchats). A failure here only empties the Support tab, it never marks the page offline.
+  unsubs.push(db.collection('supportchats').orderBy('updated_at', 'desc').limit(150).onSnapshot(sn => { S.support = snapDocs(sn); S.loaded.support = true; emit() }, e => { console.warn('ops supportchats', e); S.loaded.support = 'err'; emit() }));
   // the monthly round: today's wash docs; re-listen when the day turns
   let day = '';
   const watchDay = () => { const d = today(); if (d === day) return; day = d; if (washUnsub) washUnsub(); washUnsub = db.collection('washes').where('date', '==', d).onSnapshot(sn => { S.washes = snapDocs(sn); S.loaded.washes = true; emit() }, err('washes')) };
@@ -199,6 +203,42 @@ function kpis() {
     washersOnline: ws.filter(w => w.loc && w.loc.fresh).length, washers: ws.length,
     roundDone: Object.values(S.washes).filter(x => x.status === 'done').length, roundTotal: Object.keys(S.washes).length,
   };
+}
+
+/* ---------------- support chats ---------------- */
+// open/human first ("needs you" before plain open, closed last), newest first inside each group
+const supNeeds = c => c.status !== 'closed' && (c.status === 'human' || c.unread_admin === true);
+function support() {
+  return Object.entries(S.support).map(([id, c]) => ({ id, ...c, needs: supNeeds(c), closed: c.status === 'closed' }))
+    .sort((a, b) => (a.closed - b.closed) || (b.needs - a.needs) || String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+}
+const supportNeeds = () => Object.values(S.support).filter(supNeeds).length;
+const supportMsgs = id => Object.entries(S.supMsgs[id] || {}).map(([mid, m]) => ({ id: mid, ...m })).sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')) || a.id.localeCompare(b.id));
+// live listener on supportchats/{id}/messages while a thread is open. Returns the unsubscribe.
+function supportWatch(id) {
+  if (S.demo || !db) return () => {};
+  return db.collection('supportchats').doc(id).collection('messages').onSnapshot(sn => { S.supMsgs[id] = snapDocs(sn); emit() }, e => console.warn('ops support messages', e));
+}
+function needChat(id) { const c = S.support[id]; if (!c) throw new Error('That chat is gone.'); return c }
+// opening a chat marks it read (no updated_at bump: the list order stays)
+async function supportOpen(id) {
+  const c = S.support[id]; if (!c || c.unread_admin !== true) return;
+  if (S.demo) { c.unread_admin = false; emit(); return }
+  return db.doc('supportchats/' + id).update({ unread_admin: false });
+}
+async function supportReply(id, text) {
+  needChat(id); text = String(text || '').trim().slice(0, 1000);
+  if (!text) throw new Error('Write a message first.');
+  const now = isoIST(), msg = { from: 'agent', text, at: now };
+  const patch = { status: 'human', agent: 'Ravi', last_text: text.slice(0, 200), last_from: 'agent', updated_at: now, unread_admin: false };
+  if (S.demo) { (S.supMsgs[id] = S.supMsgs[id] || {})['m' + Date.now()] = msg; Object.assign(S.support[id], patch); emit(); return }
+  await db.collection('supportchats').doc(id).collection('messages').add(msg);
+  return db.doc('supportchats/' + id).update(patch);
+}
+async function supportEnd(id) {
+  needChat(id); const now = isoIST(), patch = { status: 'closed', closed_at: now, updated_at: now };
+  if (S.demo) { Object.assign(S.support[id], patch); emit(); return }
+  return db.doc('supportchats/' + id).update(patch);
 }
 
 /* ---------------- writes ---------------- */
@@ -410,6 +450,18 @@ function demo() {
   S.payorders.WDP1 = { kind: 'pass', phone: '+919811440004', name: 'Sandeep', status: 'paid', amount: 1499, paid_amount: 1499, created_at: T(1500), paid_at: T(1499), gateway: 'cashfree', paid_gateway: 'cashfree', pay_via: 'Card' };
   S.payorders.WDB9 = { kind: 'booking', phone: '+919811005500', status: 'failed', amount: 399, created_at: T(35), gateway: 'razorpay', lines: [{ name: 'Foam wash', q: 1 }] };
   S.ratings = { B7Q2F0: { stars: 5 } };
+  const SC = (id, o) => { S.support[id] = { phone: '+919811001122', name: '', ticket: '', topic: 'other', topic_label: '', booking_id: '', booking_title: '', status: 'open', agent: '', rating: '', last_text: '', last_from: 'customer', created_at: T(60), updated_at: T(60), unread_admin: false, closed_at: '', ...o } };
+  const SM = (id, list) => { S.supMsgs[id] = {}; list.forEach(([from, text, min], i) => { S.supMsgs[id]['m' + String(i).padStart(2, '0')] = { from, text, at: T(min) } }) };
+  S.support = {}; S.supMsgs = {};
+  SC('SC1', { name: 'Neha Kapoor', phone: '+919811440002', ticket: 'WD-10482', topic: 'late', topic_label: 'My washer is late', booking_id: 'B7Q2K1', booking_title: 'Foam wash + Interior vacuum', status: 'human', last_text: 'It has been 40 minutes. Can you check?', last_from: 'customer', created_at: T(52), updated_at: T(2), unread_admin: true });
+  SM('SC1', [['customer', 'My washer is late', 50], ['bot', 'Sorry about the wait. Your washer is on the way. Want us to check his location?', 50], ['customer', 'Talk to a person', 46], ['agent', 'Namaste ma\'am, this is Ravi. Let me check with him right now.', 40], ['customer', 'It has been 40 minutes. Can you check?', 2]]);
+  SC('SC2', { name: 'Gupta ji', phone: '+919811440003', ticket: 'WD-10479', topic: 'payment', topic_label: 'Payment or refund', booking_id: 'B7Q2C9', booking_title: 'Foam wash (cancelled)', status: 'open', last_text: 'Refunds reach your account in 5 to 7 working days.', last_from: 'bot', created_at: T(130), updated_at: T(125), unread_admin: true });
+  SM('SC2', [['customer', 'Payment or refund', 130], ['bot', 'Which booking is this about?', 130], ['customer', 'The cancelled foam wash. <script>alert(1)</script> & I paid by UPI', 126], ['bot', 'Refunds reach your account in 5 to 7 working days.', 125]]);
+  SC('SC3', { name: 'Sandeep', phone: '+919811440004', ticket: 'WD-10471', topic: 'quality', topic_label: 'Wash quality', booking_id: 'B7Q2F0', booking_title: 'Foam wash', status: 'human', agent: 'Ravi', last_text: 'Thanks, we will send him again tomorrow.', last_from: 'agent', created_at: T(400), updated_at: T(300) });
+  SM('SC3', [['customer', 'Wash quality', 400], ['bot', 'Tell us what went wrong.', 400], ['customer', 'Back seat was not wiped', 395], ['agent', 'Sorry about that. We will send him again tomorrow morning.', 320], ['customer', 'Ok', 310], ['agent', 'Thanks, we will send him again tomorrow.', 300]]);
+  SC('SC4', { name: 'Priya M.', phone: '+919811005500', ticket: 'WD-10460', topic: 'other', topic_label: 'Something else', status: 'closed', agent: 'Ravi', rating: 'good', last_text: 'You are welcome!', last_from: 'agent', created_at: T(2900), updated_at: T(2800), closed_at: T(2800) });
+  SM('SC4', [['customer', 'Something else', 2900], ['bot', 'How can we help?', 2900], ['customer', 'Do you wash on Sunday?', 2890], ['agent', 'Yes, 7 AM to 12 noon.', 2850], ['customer', 'Thanks!', 2840], ['agent', 'You are welcome!', 2800]]);
+  S.loaded.support = true;
   S.pub = { chotte: { id: 'chotte', phone: '+919876500001', jobs_base: 420, rating_base: 4.8, rating_count_base: 150, jobs_app: 0, rating_sum_app: 0, rating_count_app: 0, languages: ['Hindi'], verified: { id: true, police: true, training: false, assessment: false }, since: '2024-06-01', area: 'GH-9 Paschim Vihar' } };
   ['jobs', 'codes', 'washers', 'photos', 'locs', 'customers', 'payorders', 'plans', 'washes'].forEach(k => { S.loaded[k] = true });
   emit();
@@ -480,6 +532,7 @@ function demoNotion(b) {
 }
 
 window.OPS = { db: () => db, S, on, start, stop, demo, job: jobView, jobs, washer: washerView, washers, suggest, monthly, dues, payments, kpis, byRound: washerByRound,
+  support, supportNeeds, supportMsgs, supportWatch, supportOpen, supportReply, supportEnd,
   assign, unassign, savePublic, recountApp, pubTotals, OWNER_PHONE, ensureCode, stage, cancel, setEta, addWasher, updateWasher, setPhoto, setWasherStatus, setRound, customerStatus,
   photoFromFile, notion: NOTION, notionLoad, notionMove, notionHandover, km, ago, fmtTime, rs, nice, today, isoIST, ms, travelMin, STAGE_LABEL, FRESH_MS };
 })();

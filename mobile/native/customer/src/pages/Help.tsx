@@ -74,7 +74,7 @@ export default function Help() {
       </ScrollView>
       <View style={{ padding: 16, paddingBottom: Math.max(ins.bottom, 12) + 4, borderTopWidth: 1, borderTopColor: G.line, backgroundColor: '#fff' }}>
         <Txt size={13} color={G.mute} style={{ marginBottom: 8 }}>Reach out to customer support</Txt>
-        <PrimaryBtn label="Chat with us" onPress={() => act.whatsapp('Hi Washing Daddy, I need help.')} />
+        <PrimaryBtn label="Chat with us" onPress={() => openPage({ k: 'supportIssues' })} />
       </View>
     </View>
   );

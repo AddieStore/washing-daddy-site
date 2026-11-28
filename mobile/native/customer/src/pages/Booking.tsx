@@ -205,9 +205,9 @@ export default function Booking({ id }: { id: string }) {
           </View>
         )}
 
-        <Tap onPress={() => openBookingHelp(j.id)} style={card({ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
+        <Tap onPress={() => openPage({ k: 'supportIssues', bookingId: j.id, title: jobTitle(j) })} style={card({ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 })}>
           <IcoBox><HelpIc size={18} color={G.mute} strokeWidth={1.5} /></IcoBox>
-          <View style={{ flex: 1 }}><Txt weight={500} size={15}>Help with this booking</Txt><Txt size={12} color={G.mute} style={{ marginTop: 2 }}>Chat, call, issues with the wash</Txt></View>
+          <View style={{ flex: 1 }}><Txt weight={500} size={15}>Need help with this booking?</Txt><Txt size={12} color={G.mute} style={{ marginTop: 2 }}>Find your issue or reach out via chat</Txt></View>
           <Chev size={18} color={G.mute} strokeWidth={1.5} />
         </Tap>
       </ScrollView>
