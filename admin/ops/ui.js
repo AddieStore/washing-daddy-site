@@ -243,6 +243,7 @@ function openSheet(kind, id, html) {
   (el.querySelector('[data-focus]') || el.querySelector('.x')).focus();
 }
 function closeSheet(quiet) {
+  if (UI.chatUn) { try { UI.chatUn() } catch (e) {} UI.chatUn = null }
   if (UI.sheetMap) { UI.sheetMap.destroy(); UI.sheetMap = null }
   const had = UI.sheet; UI.sheet = null;
   $('#sheet').hidden = true; $('#sheet').innerHTML = ''; $('#scrim').hidden = true; document.body.classList.remove('noscroll');
@@ -296,6 +297,21 @@ const SH = {
       setHTML(R('jobs', el), js.length ? `<div class="cardlist">${js.map(jobRow).join('')}</div>` : empty('No jobs today.'));
     },
   },
+  chat: {
+    update(el) {
+      const c = OPS.support().find(x => x.id === UI.sheet.id); if (!c) return setHTML(R('chead', el), empty('This chat is gone.'));
+      setHTML(R('chead', el), `<div class="card"><div class="mini" style="margin:0 0 6px">${supPills(c)}${c.ticket ? `<span class="pill">${esc(c.ticket)}</span>` : ''}</div>
+        <b>${esc(c.name || nice(c.phone) || 'Customer')}</b>${c.name && c.phone ? ` <small>${esc(nice(c.phone))}</small>` : ''}
+        <div class="s2">${esc([c.topic_label, c.booking_title].filter(Boolean).join(' · '))}</div>
+        <div class="btns">${contactBtns(c.phone, '', c.name)}${c.status !== 'closed' ? `<button class="btn sm dsoft" type="button" data-act="endchat" data-id="${esc(UI.sheet.id)}">End chat</button>` : ''}</div></div>`);
+      const ms = OPS.supportMsgs(UI.sheet.id), box = R('msgs', el), stick = !box._n || box.scrollHeight - box.scrollTop - box.clientHeight < 60 || ms.length !== box._n;
+      setHTML(box, ms.length ? ms.map(m => `<div class="msg ${m.from === 'customer' ? 'cu' : m.from === 'agent' ? 'ag' : 'bt'}"><div class="bub">${esc(m.text)}</div><small>${m.from === 'bot' ? 'Bot · ' : m.from === 'agent' ? esc(c.agent || 'Ravi') + ' · ' : ''}${esc(whenTs(m.at))}</small></div>`).join('') : empty(OPS.S.supMsgs[UI.sheet.id] ? 'No messages yet.' : 'Loading…'));
+      if (stick) box.scrollTop = box.scrollHeight; box._n = ms.length;
+      const closed = c.status === 'closed', form = R('reply', el);
+      if (form) form.hidden = closed;
+      setHTML(R('cnote', el), closed ? `<div class="note">This chat is closed${c.closed_at ? ' ' + esc(whenTs(c.closed_at)) : ''}${c.rating ? `. Customer rated it: ${c.rating === 'good' ? 'Good' : 'Bad'}` : ''}.</div>` : '');
+    },
+  },
   addw: { update() {} },
   monthly: {
     update(el) {
@@ -310,6 +326,26 @@ const SH = {
     },
   },
 };
+const supPills = c => (c.needs ? '<span class="pill red">Needs you</span>' : '') + (c.closed ? '<span class="pill">Closed</span>' : '');
+function openChat(id) {
+  if (!OPS.S.support[id]) return;
+  openSheet('chat', id, `${shHead('Support chat')}<div data-r="chead"></div><div class="msgs" data-r="msgs" aria-live="polite"></div><div data-r="cnote"></div>
+    <form class="reply" data-r="reply" id="spForm" autocomplete="off" data-id="${esc(id)}"><input class="field" id="spText" maxlength="1000" placeholder="Write a reply" aria-label="Reply" data-focus><button class="btn go" type="submit" id="spGo">Send</button></form>`);
+  UI.chatUn = OPS.supportWatch(id);
+  run(OPS.supportOpen(id));
+}
+async function doEndChat(id) {
+  const c = OPS.S.support[id]; if (!c) return;
+  const v = await ask({ title: 'End this chat?', body: `${esc(c.name || nice(c.phone) || 'The customer')} will see it as Closed${c.ticket ? ' (' + esc(c.ticket) + ')' : ''} and can rate it. They can start a new chat any time.`, ok: 'End chat', cancel: 'Keep open', danger: true });
+  if (v) run(OPS.supportEnd(id), 'Chat ended.');
+}
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'spForm') return; e.preventDefault();
+  const f = e.target, inp = $('#spText'), b = $('#spGo'), text = inp.value.trim(); if (!text || b.disabled) return;
+  b.disabled = true;
+  if (await run(OPS.supportReply(f.dataset.id, text))) { inp.value = ''; inp.focus() }
+  b.disabled = false;
+});
 const statusPill = w => w.status === 'approved' ? '<span class="pill green">Approved</span>' : w.status === 'blocked' ? '<span class="pill red">Blocked</span>' : '<span class="pill amber">Pending approval</span>';
 const leftPill = l => l < 0 ? `<span class="pill red">overdue ${-l} day${l === -1 ? '' : 's'}</span>` : l === 0 ? '<span class="pill amber">ends today</span>' : `<span class="pill ${l <= 7 ? 'amber' : 'green'}">${l} day${l === 1 ? '' : 's'} left</span>`;
 
@@ -474,6 +510,8 @@ document.addEventListener('click', async e => {
   switch (a) {
     case 'sec': return goto(t.dataset.s);
     case 'job': return openJob(id);
+    case 'chat': return openChat(id);
+    case 'endchat': return doEndChat(id);
     case 'assign': return openAssign(id);
     case 'reassign': return openAssign(id);
     case 'washer': return openWasher(ph);
@@ -712,6 +750,18 @@ const SECS = {
       setHTML(R('rbody', m), ROUNDS[UI.rd.tab]());
     },
   },
+  support: {
+    title: 'Support',
+    build: () => `<div class="page-h"><h2>Support</h2></div><div class="note">Chats from the customer app. Reply here and the customer sees it when their chat is open. No push alerts: check this tab for new chats.</div><div class="cardlist" data-r="list"></div>`,
+    update(m = $('#main')) {
+      const l = OPS.support(), L = OPS.S.loaded.support;
+      setHTML(R('list', m), l.length ? l.map(c => `<div class="rowc" role="button" tabindex="0" data-act="chat" data-id="${esc(c.id)}" aria-label="Open chat ${esc(c.ticket || c.name)}" style="${c.needs ? 'box-shadow:inset 4px 0 0 var(--red),var(--sh-card)' : ''}">
+        <span class="avatar sm" aria-hidden="true">${esc(ini(c.name || c.phone))}</span>
+        <div class="gr"><div class="mini" style="margin:0 0 4px">${supPills(c)}${c.ticket ? `<span class="pill">${esc(c.ticket)}</span>` : ''}</div><b>${esc(c.name || nice(c.phone) || 'Customer')}${c.name && c.phone ? ` <small>${esc(nice(c.phone))}</small>` : ''}</b>
+        <span class="s">${esc([c.topic_label, c.booking_title].filter(Boolean).join(' · '))}</span><span class="s sup-last">${c.last_from === 'agent' ? 'You: ' : c.last_from === 'bot' ? 'Bot: ' : ''}${esc(c.last_text)}</span></div>
+        <div class="r"><small>${esc(whenTs(c.updated_at))}</small></div></div>`).join('') : empty(L === 'err' ? 'Could not load chats. The rules for supportchats may not be published yet.' : L ? 'No support chats yet.' : 'Loading…'));
+    },
+  },
   map: {
     title: 'Map',
     build: () => `<div class="page-h"><h2>Map</h2><button class="btn sm ghost" type="button" data-act="fit">Fit all</button></div><div class="map-wrap"><div><div class="mapbox tall" data-r="map"></div>${legend}</div><div class="map-side"><div class="sec"><h3>Washers</h3></div><div class="cardlist" data-r="ws"></div><div class="sec"><h3>Open jobs</h3></div><div class="cardlist" data-r="js"></div></div></div>`,
@@ -724,7 +774,7 @@ const SECS = {
     },
   },
 };
-const NAV = [['live', 'Live', 'live'], ['bookings', 'Bookings', 'list'], ['monthly', 'Monthly', 'users'], ['payments', 'Payments', 'card'], ['washers', 'Washers', 'wash'], ['rounds', 'Rounds', 'list'], ['map', 'Map', 'map']];
+const NAV = [['live', 'Live', 'live'], ['bookings', 'Bookings', 'list'], ['monthly', 'Monthly', 'users'], ['payments', 'Payments', 'card'], ['washers', 'Washers', 'wash'], ['rounds', 'Rounds', 'list'], ['map', 'Map', 'map'], ['support', 'Support', 'chat']];
 
 function goto(sec, noHash) {
   if (!SECS[sec]) sec = 'live';
@@ -737,8 +787,8 @@ function goto(sec, noHash) {
   nav();
 }
 function nav() {
-  const un = OPS.S.loaded.jobs ? OPS.kpis().unassigned : 0;
-  setHTML($('#bar'), `<div class="bar-brand"><div class="logo">${ic('drop', 20)}</div>WD Operations</div>` + NAV.map(([id, l, i]) => `<button type="button" class="${UI.sec === id ? 'on' : ''}" data-act="sec" data-s="${id}" ${UI.sec === id ? 'aria-current="page"' : ''} aria-label="${l}${id === 'live' && un ? ', ' + un + ' unassigned' : ''}">${ic(i, 22)}<span>${l}</span>${id === 'live' && un ? `<span class="nb">${un}</span>` : ''}</button>`).join(''));
+  const un = OPS.S.loaded.jobs ? OPS.kpis().unassigned : 0, sn = OPS.supportNeeds(), nbN = id => id === 'live' ? un : id === 'support' ? sn : 0;
+  setHTML($('#bar'), `<div class="bar-brand"><div class="logo">${ic('drop', 20)}</div>WD Operations</div>` + NAV.map(([id, l, i]) => `<button type="button" class="${UI.sec === id ? 'on' : ''}" data-act="sec" data-s="${id}" ${UI.sec === id ? 'aria-current="page"' : ''} aria-label="${l}${nbN(id) ? ', ' + nbN(id) + (id === 'live' ? ' unassigned' : ' need you') : ''}">${ic(i, 22)}<span>${l}</span>${nbN(id) ? `<span class="nb">${nbN(id)}</span>` : ''}</button>`).join(''));
 }
 function head() {
   const st = $('#status'), off = !DEMO && !OPS.S.online;

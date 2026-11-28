@@ -82,7 +82,7 @@ export type Page =
   | { k: 'money' } | { k: 'refunds' } | { k: 'pass'; id?: string } | { k: 'coupons' } | { k: 'refer' }
   | { k: 'profile' } | { k: 'profileEdit' } | { k: 'addresses'; pick?: boolean } | { k: 'addressMap'; id?: string } | { k: 'addressForm'; id?: string; lat?: number; lng?: number; area?: string }
   | { k: 'help' } | { k: 'helpTopic'; id: string } | { k: 'legal' } | { k: 'legalDoc'; id: string } | { k: 'deleteAccount' } | { k: 'about' }
-  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string } | { k: 'payResult' } | { k: 'parkAlerts' } | { k: 'txn'; id: string } | { k: 'washer'; id?: string; name?: string }
+  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string } | { k: 'payResult' } | { k: 'parkAlerts' } | { k: 'txn'; id: string } | { k: 'supportIssues'; bookingId?: string; title?: string } | { k: 'supportChat'; id: string } | { k: 'washer'; id?: string; name?: string }
   | null;
 export type PageKind = NonNullable<Page>['k'];
 type UI = { tab: Tab; tabNonce: number; ready: boolean; signedIn: boolean; carNonce: number; sim: boolean; v: number; page: Page; pages: Page[] };
