@@ -68,6 +68,8 @@ function Star({ x, y, d }: { x: number; y: number; d: number }) {
 }
 /** the login page paints the story on a light lavender sky that melts into white; splash and primer keep the deep-violet one */
 export const LightCtx = createContext(false);
+// Home shows the story with no sky box and no clouds, so the lavender hero shows through
+export const HomeCtx = createContext(false);
 /** tone 0 = night, 1 = dawn, 2 = morning, 3 = bright day: the sun climbs and the sky warms as the story goes */
 /** slow-moving landmarks of the city, drawn as soft silhouettes: India Gate, a mandir shikhara, a Mughal dome with minarets */
 function Landmarks({ W, h, color, speed }: { W: number; h: number; color: string; speed: number }) {
@@ -107,7 +109,7 @@ function Toran({ W }: { W: number }) {
   );
 }
 export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: number; road?: boolean }) {
-  const light = useContext(LightCtx);
+  const light = useContext(LightCtx), home = useContext(HomeCtx);
   const sky = light ? ['#FFFFFF', '#FFFFFF', '#FAF7FF'] : [['rgba(58,5,153,0)', '#4B12C9', '#6A2BF0'], ['rgba(84,9,218,0)', '#7A3AF2', '#FF9E7A'], ['rgba(110,40,235,0)', '#8E55F5', '#FFC08A'], ['rgba(130,70,245,0)', '#A97BFF', '#FFE2A8']][tone];
   const sunY = [H - 40, H - 70, H - 105, H - 140][tone], sunC = (light ? ['#FFE9A6', '#FFDF8A', '#FFD470', '#FFCB4A'] : ['#CDB8FF', '#FFC58A', '#FFD470', '#FFE49A'])[tone];
   const glow = usePulse(2400);
@@ -115,11 +117,11 @@ export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: num
   const roadX = useLoop(900), roadSt = useAnimatedStyle(() => ({ transform: [{ translateX: -roadX.value * 38 }] }));
   return (
     <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: W, height: H, overflow: 'hidden' }}>
-      <LinearGradient colors={sky as any} locations={[0, 0.45, 1]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+      {home ? null : <LinearGradient colors={sky as any} locations={[0, 0.45, 1]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />}
       {tone === 0 && !light ? Array.from({ length: 14 }, (_, i) => <Star key={i} x={(i * 53 + 17) % W} y={8 + ((i * 37) % 90)} d={i * 40} />) : null}
       <Animated.View style={[abs(W * (0.62 + tone * 0.04) - 70, sunY - 70, { width: 140, height: 140, borderRadius: 70, backgroundColor: sunC }), sunSt]} />
       <View style={abs(W * (0.62 + tone * 0.04) - 38, sunY - 38, { width: 76, height: 76, borderRadius: 38, backgroundColor: sunC, opacity: 0.95 })} />
-      {[0, 1, 2].map(i => <Cloud key={i} x={(i * 140 + 20 + tone * 30) % (W - 60)} y={14 + i * 22} w={64 + i * 18} d={i * 700} />)}
+      {home ? null : [0, 1, 2].map(i => <Cloud key={i} x={(i * 140 + 20 + tone * 30) % (W - 60)} y={14 + i * 22} w={64 + i * 18} d={i * 700} />)}
       <Skyline W={W} h={96} color={light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.10)'} seed={3 + tone} speed={42000} />
       {light ? <Landmarks W={W} h={100} color="rgba(84,9,218,0.09)" speed={60000} /> : null}
       <Skyline W={W} h={70} color={light ? 'rgba(84,9,218,0.14)' : 'rgba(46,10,120,0.55)'} seed={11 + tone} speed={26000} windows={!light && tone < 2} />
@@ -404,8 +406,8 @@ function SceneProof({ W, H }: { W: number; H: number }) {
 
 /* ------------------------------------------------------------------ the story */
 const SCENES = [SceneBook, SceneHub, SceneRide, SceneKeys, SceneWash, SceneProof];
-/* Home plays the same six scenes, wash and proof first, then book, hub, ride, keys */
-export const HOME_ORDER = [4, 5, 0, 1, 2, 3];
+/* Home plays only the wash and proof scenes */
+export const HOME_ORDER = [4, 5];
 export function LoginStory({ W, H = 220, ms = 4600, order, home }: { W: number; H?: number; ms?: number; order?: number[]; home?: boolean }) {
   const ord = order && order.length ? order : SLIDES.map((_, k) => k), N = ord.length;
   const [pos, setI] = useState(0), rm = useReducedMotion();
@@ -413,22 +415,22 @@ export function LoginStory({ W, H = 220, ms = 4600, order, home }: { W: number; 
   const i = ord[pos % N], Scene = SCENES[i];
   // light lavender sky -> the caption block fades to pure white, which is the colour of the login sheet below
   return (
-    <LightCtx.Provider value>
+    <LightCtx.Provider value><HomeCtx.Provider value={!!home}>
       <View style={{ width: W }}>
         <View style={{ width: W, height: H, overflow: 'hidden' }}>
           <Animated.View key={pos} entering={FadeIn.duration(420)} exiting={FadeOut.duration(280)} style={abs(0, 0)}><Scene W={W} H={H} /></Animated.View>
           
         </View>
-        <LinearGradient colors={home ? ['rgba(255,255,255,0)', 'rgba(255,255,255,0)'] : ['#FFFFFF', '#FFFFFF']} style={{ paddingHorizontal: home ? 20 : SP.l + 4, paddingTop: home ? 10 : SP.m, minHeight: home ? 136 : 104, height: home ? 136 : undefined }}>
+        <LinearGradient colors={home ? ['rgba(255,255,255,0)', 'rgba(255,255,255,0)'] : ['#FFFFFF', '#FFFFFF']} style={{ paddingHorizontal: home ? 20 : SP.l + 4, paddingTop: home ? 10 : SP.m, minHeight: home ? 84 : 104, height: home ? 84 : undefined }}>
           <Animated.View key={'t' + pos} entering={FadeIn.duration(420).delay(140)} exiting={FadeOut.duration(200)}>
-            <Txt weight={700} size={26} color="#1A1033" numberOfLines={home ? 1 : undefined} adjustsFontSizeToFit={!!home} style={{ lineHeight: 33 }}>{SLIDES[i].t}</Txt>
-            <Txt size={14} color="#5B5275" numberOfLines={home ? 2 : undefined} style={{ lineHeight: 20, marginTop: 4 }}>{SLIDES[i].s}</Txt>
+            <Txt weight={700} size={home ? 21 : 26} color="#1A1033" numberOfLines={home ? 1 : undefined} adjustsFontSizeToFit={!!home} style={{ lineHeight: home ? 27 : 33 }}>{SLIDES[i].t}</Txt>
+            <Txt size={home ? 13 : 14} color="#5B5275" numberOfLines={home ? 1 : undefined} style={{ lineHeight: home ? 18 : 20, marginTop: home ? 2 : 4 }}>{SLIDES[i].s}</Txt>
           </Animated.View>
-          <View style={{ flexDirection: 'row', gap: 6, marginTop: 12, paddingBottom: 14 }}>
+          <View style={{ flexDirection: 'row', gap: 6, marginTop: home ? 8 : 12, paddingBottom: home ? 6 : 14 }}>
             {ord.map((_, k) => <View key={k} style={{ height: 6, width: k === pos % N ? 22 : 6, borderRadius: 3, backgroundColor: k === pos % N ? '#5409DA' : 'rgba(84,9,218,0.22)' }} />)}
           </View>
         </LinearGradient>
       </View>
-    </LightCtx.Provider>
+    </HomeCtx.Provider></LightCtx.Provider>
   );
 }

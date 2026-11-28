@@ -31,7 +31,6 @@ import { SheetTitle, closeSheet } from '../ui/hosts';
 import { openAddressPicker } from '../sheets/address';
 import { openPassPromo } from '../sheets/money';
 import { MiniMap, EtaChip, OfferCarousel, Offer } from '../ui/home';
-import { SkyClouds } from '../ui/heroRide';
 import { LoginStory, HOME_ORDER } from '../ui/loginStory';
 import { HeroHeadline } from '../ui/heroHeadline';
 import { ParkCard } from '../ui/ParkCard';
@@ -193,13 +192,12 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
         <LinearGradient colors={['#DCCBFF', '#E6DAFF', '#EDE4FF']} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
       {on ? <>
-        <SkyClouds width={W} height={380} />
         <View style={{ paddingHorizontal: SIDE, paddingTop: 4 }}>
           <CoverageBanner />
           <HeroHeadline first={cfg.heroTitle} sub={cfg.heroSub} ink={L.ink} accent={L.accent} subColor={L.mut} />
           <Live />
         </View>
-        <View style={{ marginTop: 4, width: aw, alignSelf: 'center' }}><LoginStory W={aw} H={Math.round(aw * 0.58)} order={HOME_ORDER} home /></View>
+        <View style={{ marginTop: 4, width: aw, alignSelf: 'center' }}><LoginStory W={aw} H={Math.round(aw * 0.4)} order={HOME_ORDER} home /></View>
         {/* the road and city melt into white, so there is no edge above "Book a wash" */}
         <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.92)', '#FFFFFF']} locations={[0, 0.4, 0.8, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 36 }} />
       </> : <View style={{ height: 24 }} />}
