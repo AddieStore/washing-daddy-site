@@ -207,7 +207,7 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
         </View>
         {/* spacer = the rest of the picture and the caption under it */}
         <View style={{ height: SCENE_H + 6 + 112 }} />
-        <View pointerEvents="none" style={{ position: 'absolute', right: SIDE, top: textTop - 20 }}><Live night={night} /></View>
+        <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: textTop + textH + 66, alignItems: 'center' }}><View style={{ transform: [{ scale: 0.88 }] }}><Live night={night} /></View></View>
         {/* the road melts into white, so there is no edge above "Book a wash" */}
       </> : <View style={{ height: 24 }} />}
     </View>
