@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.washingdaddy.customer",
-      "versionCode": 40,
+      "versionCode": 41,
       "adaptiveIcon": {
         "backgroundColor": "#5409DA",
         "foregroundImage": "./assets/android-icon-foreground.png"

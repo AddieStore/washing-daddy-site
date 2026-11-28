@@ -11,8 +11,10 @@ import Animated, {
 import { C, SP } from '../theme';
 import { Txt } from './kit';
 import { RiderArt } from './heroRide';
+import { CityScape, useNight } from './city';
 
 const SAFF = '#FFBA08', DW = 360, DH = 230, GROUND = 200;
+export const HOME_ROAD = 56;   // home hero: pavement 16 + black road 40
 const SLIDES = [
   { t: 'Book in seconds', s: 'Pick a service and a time. Instant or monthly.' },
   { t: 'Washer leaves our hub', s: 'A verified WD Partner from your area is assigned.' },
@@ -109,7 +111,7 @@ function Toran({ W }: { W: number }) {
   );
 }
 export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: number; road?: boolean }) {
-  const light = useContext(LightCtx), home = useContext(HomeCtx);
+  const light = useContext(LightCtx), home = useContext(HomeCtx), night = useNight() && home;
   const sky = light ? ['#FFFFFF', '#FFFFFF', '#FAF7FF'] : [['rgba(58,5,153,0)', '#4B12C9', '#6A2BF0'], ['rgba(84,9,218,0)', '#7A3AF2', '#FF9E7A'], ['rgba(110,40,235,0)', '#8E55F5', '#FFC08A'], ['rgba(130,70,245,0)', '#A97BFF', '#FFE2A8']][tone];
   const sunY = [H - 40, H - 70, H - 105, H - 140][tone], sunC = (light ? ['#FFE9A6', '#FFDF8A', '#FFD470', '#FFCB4A'] : ['#CDB8FF', '#FFC58A', '#FFD470', '#FFE49A'])[tone];
   const glow = usePulse(2400);
@@ -119,20 +121,30 @@ export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: num
     <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: W, height: H, overflow: 'hidden' }}>
       {home ? null : <LinearGradient colors={sky as any} locations={[0, 0.45, 1]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />}
       {tone === 0 && !light ? Array.from({ length: 14 }, (_, i) => <Star key={i} x={(i * 53 + 17) % W} y={8 + ((i * 37) % 90)} d={i * 40} />) : null}
-      <Animated.View style={[abs(W * (0.62 + tone * 0.04) - 70, sunY - 70, { width: 140, height: 140, borderRadius: 70, backgroundColor: sunC }), sunSt]} />
-      <View style={abs(W * (0.62 + tone * 0.04) - 38, sunY - 38, { width: 76, height: 76, borderRadius: 38, backgroundColor: sunC, opacity: 0.95 })} />
+      {home ? null : <Animated.View style={[abs(W * (0.62 + tone * 0.04) - 70, sunY - 70, { width: 140, height: 140, borderRadius: 70, backgroundColor: sunC }), sunSt]} />}
+      {home ? null : <View style={abs(W * (0.62 + tone * 0.04) - 38, sunY - 38, { width: 76, height: 76, borderRadius: 38, backgroundColor: sunC, opacity: 0.95 })} />}
       {home ? null : [0, 1, 2].map(i => <Cloud key={i} x={(i * 140 + 20 + tone * 30) % (W - 60)} y={14 + i * 22} w={64 + i * 18} d={i * 700} />)}
-      <Skyline W={W} h={96} color={light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.10)'} seed={3 + tone} speed={42000} />
-      {light ? <Landmarks W={W} h={100} color="rgba(84,9,218,0.09)" speed={60000} /> : null}
-      <Skyline W={W} h={70} color={light ? 'rgba(84,9,218,0.14)' : 'rgba(46,10,120,0.55)'} seed={11 + tone} speed={26000} windows={!light && tone < 2} />
-      {light ? <Toran W={W} /> : null}
-      <View style={abs(0, H - 36, { width: W, height: 36, backgroundColor: light ? 'transparent' : '#2A0F6B' })}>
-        {light ? <LinearGradient colors={['#D9CBFA', '#F3ECFF']} style={StyleSheet.absoluteFill} /> : null}
-        <View style={{ height: 3, backgroundColor: light ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.28)' }} />
-        {road ? <Animated.View style={[abs(0, 16, { flexDirection: 'row', width: W + 80 }), roadSt]}>
+      {home ? <View pointerEvents="none" style={{ position: 'absolute', left: 0, bottom: HOME_ROAD - 8, width: W, height: 258 }}><CityScape W={W} h={258} night={night} /></View> : null}
+      {home ? null : <Skyline W={W} h={96} color={light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.10)'} seed={3 + tone} speed={42000} />}
+      {light && !home ? <Landmarks W={W} h={100} color="rgba(84,9,218,0.09)" speed={60000} /> : null}
+      {home ? null : <Skyline W={W} h={70} color={light ? 'rgba(84,9,218,0.14)' : 'rgba(46,10,120,0.55)'} seed={11 + tone} speed={home ? 9000 : 26000} windows={!light && tone < 2} />}
+      {light ? (home ? <View style={abs(0, H - HOME_ROAD - GROUND + 6)}><Toran W={W} /></View> : <Toran W={W} />) : null}
+      {home ? (
+        <View style={abs(0, H - HOME_ROAD, { width: W, height: HOME_ROAD })}>
+          <View style={{ height: 16, backgroundColor: night ? '#2A3170' : '#DCD3F0', borderTopWidth: 2, borderTopColor: night ? '#4A53A0' : '#F4EFFF', borderBottomWidth: 3, borderBottomColor: night ? '#161B4A' : '#A99DD0' }} />
+          <View style={{ flex: 1, backgroundColor: night ? '#0B0C18' : '#1F1C27' }} />
+          <Animated.View style={[abs(0, 16 + 19, { flexDirection: 'row', width: W + 80 }), roadSt]}>
+            {Array.from({ length: Math.ceil(W / 38) + 3 }, (_, i) => <View key={i} style={{ width: 24, height: 4, borderRadius: 2, marginRight: 16, backgroundColor: '#FFFFFF' }} />)}
+          </Animated.View>
+        </View>
+      ) : null}
+      {home ? null : <View style={abs(0, H - 36, { width: W, height: 36, backgroundColor: light ? 'transparent' : '#2A0F6B' })}>
+        {light ? <LinearGradient colors={home ? ['#6B45D6', '#3F1FA0'] : ['#D9CBFA', '#F3ECFF']} style={StyleSheet.absoluteFill} /> : null}
+        <View style={{ height: 3, backgroundColor: light ? (home ? '#CDBDF7' : 'rgba(255,255,255,0.7)') : 'rgba(255,255,255,0.28)' }} />
+        {road || home ? <Animated.View style={[abs(0, 16, { flexDirection: 'row', width: W + 80 }), roadSt]}>
           {Array.from({ length: Math.ceil(W / 38) + 3 }, (_, i) => <View key={i} style={{ width: 22, height: 4, borderRadius: 2, marginRight: 16, backgroundColor: light ? '#fff' : 'rgba(255,255,255,0.6)' }} />)}
         </Animated.View> : null}
-      </View>
+      </View>}
     </View>
   );
 }
@@ -189,7 +201,7 @@ function Hand({ x, y, r = 5.4, skin, fingers }: { x: number; y: number; r?: numb
 export function Person({ look, pose, h = 160, delay = 0 }: { look: PersonLook; pose: Pose; h?: number; delay?: number }) {
   const k = h / 160, sway = usePulse(1100, delay), swing = usePulse(pose === 'wave' ? 380 : 700, delay);
   const a = ARM[pose], deg = pose === 'wave' ? [-14, 14] : pose === 'gun' ? [-6, 6] : [-3, 3];
-  const bodySt = useAnimatedStyle(() => ({ transform: [{ translateY: sway.value * -2 }] }));
+  const bodySt = useAnimatedStyle(() => ({ transform: [{ translateY: sway.value * -2 }, { scale: k }] }));   // the animated transform replaces the static one, so the size scale lives here
   const armSt = useAnimatedStyle(() => ({ transform: [{ rotate: interpolate(swing.value, [0, 1], deg) + 'deg' }] }));
   const sleeve = look.shirt, skin = look.skin, dark = shade(sleeve, 0.14), skinD = shade(skin, 0.1), hair = look.hair || '#1A1033';
   return (
@@ -263,8 +275,11 @@ export function Drop({ x, y, dx, dy, ms, delay, r = 4 }: { x: number; y: number;
   return <Animated.View style={[abs(x, y, { width: r * 2, height: r * 1.4, borderRadius: r, backgroundColor: '#BFE6FF' }), st]} />;
 }
 function Stage({ W, H, children }: { W: number; H: number; children: ReactNode }) {
+  const home = useContext(HomeCtx);
   const s = W >= DW ? 1 : W / DW;   // 1:1 whenever the phone is wide enough: scaling the cards makes their text soft
-  return <View style={{ position: 'absolute', left: (W - DW) / 2, top: (H - DH) / 2, width: DW, height: DH, transform: [{ scale: s }] }}>{children}</View>;
+  // Home draws the whole scene as the hero background, so the ground line sits on the road at the bottom and nothing is cropped
+  const top = home ? H - HOME_ROAD - GROUND + 30 : (H - DH) / 2;
+  return <View style={{ position: 'absolute', left: (W - DW) / 2, top, width: DW, height: DH, transform: [{ scale: s }], transformOrigin: home ? '50% 87%' : undefined }}>{children}</View>;
 }
 
 /* ------------------------------------------------------------------ the four scenes */
@@ -408,6 +423,22 @@ function SceneProof({ W, H }: { W: number; H: number }) {
 const SCENES = [SceneBook, SceneHub, SceneRide, SceneKeys, SceneWash, SceneProof];
 /* Home plays only the wash and proof scenes */
 export const HOME_ORDER = [4, 5];
+/** One pager dot: the active one springs open into a saffron pill and fills left to right as the scene plays. */
+function PagerDot({ active, ms }: { active: boolean; ms: number }) {
+  const rm = !!useReducedMotion(), w = useSharedValue(active ? 26 : 7), f = useSharedValue(0);
+  useEffect(() => {
+    w.value = rm ? (active ? 26 : 7) : withSpring(active ? 26 : 7, { damping: 11, stiffness: 150 });
+    f.value = 0;
+    if (active) f.value = rm ? 1 : withTiming(1, { duration: ms, easing: Easing.linear });
+  }, [active, rm, ms]);
+  const box = useAnimatedStyle(() => ({ width: w.value }));
+  const fill = useAnimatedStyle(() => ({ width: `${f.value * 100}%` as any }));
+  return (
+    <Animated.View style={[{ height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: active ? 'rgba(255,186,8,0.30)' : 'rgba(255,186,8,0.38)' }, box]}>
+      <Animated.View style={[{ height: 7, borderRadius: 4, backgroundColor: '#FFBA08' }, fill]} />
+    </Animated.View>
+  );
+}
 export function LoginStory({ W, H = 220, ms = 4600, order, home }: { W: number; H?: number; ms?: number; order?: number[]; home?: boolean }) {
   const ord = order && order.length ? order : SLIDES.map((_, k) => k), N = ord.length;
   const [pos, setI] = useState(0), rm = useReducedMotion();
@@ -421,13 +452,13 @@ export function LoginStory({ W, H = 220, ms = 4600, order, home }: { W: number; 
           <Animated.View key={pos} entering={FadeIn.duration(420)} exiting={FadeOut.duration(280)} style={abs(0, 0)}><Scene W={W} H={H} /></Animated.View>
           
         </View>
-        <LinearGradient colors={home ? ['rgba(255,255,255,0)', 'rgba(255,255,255,0)'] : ['#FFFFFF', '#FFFFFF']} style={{ paddingHorizontal: home ? 20 : SP.l + 4, paddingTop: home ? 10 : SP.m, minHeight: home ? 84 : 104, height: home ? 84 : undefined }}>
+        <LinearGradient colors={home ? ['rgba(255,255,255,0)', 'rgba(255,255,255,0)'] : ['#FFFFFF', '#FFFFFF']} style={{ paddingHorizontal: home ? 20 : SP.l + 4, paddingTop: home ? 30 : SP.m, minHeight: home ? 112 : 104, height: home ? 112 : undefined }}>
           <Animated.View key={'t' + pos} entering={FadeIn.duration(420).delay(140)} exiting={FadeOut.duration(200)}>
             <Txt weight={700} size={home ? 21 : 26} color="#1A1033" numberOfLines={home ? 1 : undefined} adjustsFontSizeToFit={!!home} style={{ lineHeight: home ? 27 : 33 }}>{SLIDES[i].t}</Txt>
             <Txt size={home ? 13 : 14} color="#5B5275" numberOfLines={home ? 1 : undefined} style={{ lineHeight: home ? 18 : 20, marginTop: home ? 2 : 4 }}>{SLIDES[i].s}</Txt>
           </Animated.View>
           <View style={{ flexDirection: 'row', gap: 6, marginTop: home ? 8 : 12, paddingBottom: home ? 6 : 14 }}>
-            {ord.map((_, k) => <View key={k} style={{ height: 6, width: k === pos % N ? 22 : 6, borderRadius: 3, backgroundColor: k === pos % N ? '#5409DA' : 'rgba(84,9,218,0.22)' }} />)}
+            {ord.map((_, k) => <PagerDot key={k} active={k === pos % N} ms={ms} />)}
           </View>
         </LinearGradient>
       </View>

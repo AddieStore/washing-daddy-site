@@ -130,7 +130,7 @@ function Flag({ k, rm }: { k: number; rm: boolean }) {
 }
 
 /* scooter + rider + kit box, drawn once (wheels and flag are separate layers so they can move) */
-function Body() {
+function Body({ parked }: { parked?: boolean }) {
   return (
     <G>
       {/* flag pole, behind the box */}
@@ -171,6 +171,7 @@ function Body() {
       <Path d="M252 76 L272 72" stroke={DARK} strokeWidth={5} strokeLinecap="round" />
       <Path d="M266 74 L272 58" stroke={DARK} strokeWidth={2} strokeLinecap="round" />
       <Ellipse cx={274} cy={54} rx={4} ry={5} fill={DARK} />
+      {!parked ? <>
       {/* legs + shoe */}
       <Path d="M150 98 C172 94 214 98 230 106 C238 111 238 122 231 126 L234 156 L218 156 L214 130 C196 128 168 126 150 120 Z" fill="#2E2645" />
       <Path d="M170 112 C190 112 210 114 224 118" stroke="#40375C" strokeWidth={4} fill="none" strokeLinecap="round" />
@@ -197,6 +198,7 @@ function Body() {
       <Path d="M214 16 C226 14 238 20 240 30 L240 34" stroke="#fff" strokeWidth={2.5} fill="none" strokeLinecap="round" />
       <Path d="M216 18 C226 17 236 22 238 30 L226 30 C224 24 220 20 216 18Z" fill="rgba(255,255,255,0.35)" />
       <Path d="M214 44 C218 46 224 46 230 44" stroke={VD} strokeWidth={2.5} fill="none" strokeLinecap="round" />
+      </> : null}
     </G>
   );
 }
@@ -267,15 +269,15 @@ export const HeroRide = React.memo(function HeroRide({ width }: { width: number 
 
 /* The same washer character on his own (no street), for the live tracking screens and map marker.
    `w` is the drawn width; height is w * 204 / 290. Pass a 0..1 looping `spin` to turn the wheels. */
-export function RiderArt({ w, spin }: { w: number; spin?: SharedValue<number> }) {
+export function RiderArt({ w, spin, parked }: { w: number; spin?: SharedValue<number>; parked?: boolean }) {
   const rm = !!useReducedMotion(), k = w / 290, s0 = useSharedValue(0);
   return (
     <View pointerEvents="none" style={{ width: w, height: 204 * k }}>
       <View style={{ position: 'absolute', left: -10 * k, top: 0, width: VB_W * k, height: VB_H * k }}>
         <Wheel cx={118} cy={176} k={k} spin={spin || s0} />
         <Wheel cx={270} cy={176} k={k} spin={spin || s0} />
-        <Svg width={VB_W * k} height={VB_H * k} viewBox={`0 0 ${VB_W} ${VB_H}`}><Body /></Svg>
-        <Flag k={k} rm={rm || w < 120} />
+        <Svg width={VB_W * k} height={VB_H * k} viewBox={`0 0 ${VB_W} ${VB_H}`}><Body parked={parked} /></Svg>
+        {parked ? null : <Flag k={k} rm={rm || w < 120} />}
       </View>
     </View>
   );
