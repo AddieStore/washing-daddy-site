@@ -184,16 +184,16 @@ function Live({ night }: { night?: boolean }) {
     </View>
   );
 }
-const SCENE_H = 312;   // the story's own height from the top of its sky strip to the bottom of the road (loginStory DH + road)
+const SCENE_H = 214;   // the story's own height from the top of its sky strip to the bottom of the road (loginStory DH + road)
 function Hero({ W, y }: { W: number; y: Animated.Value }) {
   const ins = useInsets(), cfg = homeConfig(), on = section('hero'), st = Math.max(ins.top, 24), aw = Math.min(W, 520);
   // the picture is the background of the whole hero: it starts under the status bar and the text sits on its sky, so there is no empty band above it
   const night = useNight(), [textH, setTextH] = useState(150);
-  const textTop = st + 74, sceneH = textTop + textH + SCENE_H + 6;
+  const textTop = st + 70, sceneH = textTop + textH + SCENE_H + 6;
   return (
     <View style={{ backgroundColor: L.bg, overflow: 'hidden', paddingTop: textTop }}>
       {/* light lavender field; pulling down stretches it so no gap shows */}
-      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 80, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 112 }}>
         <LinearGradient colors={night ? ['#040A36', '#0A1A74', '#1B3FC4'] : ['#D3BFFF', '#E3D6FF', '#EFE7FF']} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
       {on ? <>
@@ -209,7 +209,6 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
         <View style={{ height: SCENE_H + 6 + 112 }} />
         <View pointerEvents="none" style={{ position: 'absolute', right: SIDE, top: textTop - 20 }}><Live night={night} /></View>
         {/* the road melts into white, so there is no edge above "Book a wash" */}
-        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.75)', '#FFFFFF']} locations={[0, 0.5, 1]} style={{ position: 'absolute', left: 0, right: 0, top: sceneH, height: 32 }} />
       </> : <View style={{ height: 24 }} />}
     </View>
   );
