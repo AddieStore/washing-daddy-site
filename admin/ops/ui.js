@@ -832,7 +832,7 @@ async function signedIn(u) {
   if (!u) return showGate();
   try { await OPS.start() } catch (e) {
     console.warn(e); try { OPS.stop && OPS.stop() } catch (x) {} try { WDAuth.signOut() } catch (x) {}
-    return showGate(e && e.owner === false ? `${nice(u.phoneNumber || (WDAuth.phone && WDAuth.phone()))} is not an owner number.` : e && e.nodb ? "Couldn't connect. Check the internet." : "Couldn't load. Check the internet and sign in again.");
+    return showGate(e && e.owner === false ? `${nice(u.phoneNumber || (WDAuth.phone && WDAuth.phone()))} is not an owner number.` : e && e.nodb ? "Couldn't connect. Check the internet." : "Couldn't load. Check the internet and sign in again." + (e && (e.code || e.message) ? ' [' + String(e.code || e.message).slice(0, 80) + ']' : ''));
   }
   try { OPSB.start(); OPSB.on(() => { if (UI.sec === 'rounds') SECS.rounds.update(); if (UI.sheet && UI.sheet.kind === 'wash') SH.wash.update($('#sheet')) }) } catch (e) { console.warn(e) }
   $('#who').textContent = nice(u.phoneNumber); $('#gate').hidden = true; show();
