@@ -128,9 +128,9 @@ export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: num
       <Skyline W={W} h={70} color={light ? 'rgba(84,9,218,0.14)' : 'rgba(46,10,120,0.55)'} seed={11 + tone} speed={26000} windows={!light && tone < 2} />
       {light ? (home ? <View style={abs(0, H - 36 - GROUND + 2)}><Toran W={W} /></View> : <Toran W={W} />) : null}
       <View style={abs(0, H - 36, { width: W, height: 36, backgroundColor: light ? 'transparent' : '#2A0F6B' })}>
-        {light ? <LinearGradient colors={['#D9CBFA', '#F3ECFF']} style={StyleSheet.absoluteFill} /> : null}
-        <View style={{ height: 3, backgroundColor: light ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.28)' }} />
-        {road ? <Animated.View style={[abs(0, 16, { flexDirection: 'row', width: W + 80 }), roadSt]}>
+        {light ? <LinearGradient colors={home ? ['#6B45D6', '#3F1FA0'] : ['#D9CBFA', '#F3ECFF']} style={StyleSheet.absoluteFill} /> : null}
+        <View style={{ height: 3, backgroundColor: light ? (home ? '#CDBDF7' : 'rgba(255,255,255,0.7)') : 'rgba(255,255,255,0.28)' }} />
+        {road || home ? <Animated.View style={[abs(0, 16, { flexDirection: 'row', width: W + 80 }), roadSt]}>
           {Array.from({ length: Math.ceil(W / 38) + 3 }, (_, i) => <View key={i} style={{ width: 22, height: 4, borderRadius: 2, marginRight: 16, backgroundColor: light ? '#fff' : 'rgba(255,255,255,0.6)' }} />)}
         </Animated.View> : null}
       </View>
@@ -412,6 +412,22 @@ function SceneProof({ W, H }: { W: number; H: number }) {
 const SCENES = [SceneBook, SceneHub, SceneRide, SceneKeys, SceneWash, SceneProof];
 /* Home plays only the wash and proof scenes */
 export const HOME_ORDER = [4, 5];
+/** One pager dot: the active one springs open into a saffron pill and fills left to right as the scene plays. */
+function PagerDot({ active, ms }: { active: boolean; ms: number }) {
+  const rm = !!useReducedMotion(), w = useSharedValue(active ? 26 : 7), f = useSharedValue(0);
+  useEffect(() => {
+    w.value = rm ? (active ? 26 : 7) : withSpring(active ? 26 : 7, { damping: 11, stiffness: 150 });
+    f.value = 0;
+    if (active) f.value = rm ? 1 : withTiming(1, { duration: ms, easing: Easing.linear });
+  }, [active, rm, ms]);
+  const box = useAnimatedStyle(() => ({ width: w.value }));
+  const fill = useAnimatedStyle(() => ({ width: `${f.value * 100}%` as any }));
+  return (
+    <Animated.View style={[{ height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: active ? 'rgba(255,186,8,0.30)' : 'rgba(255,186,8,0.38)' }, box]}>
+      <Animated.View style={[{ height: 7, borderRadius: 4, backgroundColor: '#FFBA08' }, fill]} />
+    </Animated.View>
+  );
+}
 export function LoginStory({ W, H = 220, ms = 4600, order, home }: { W: number; H?: number; ms?: number; order?: number[]; home?: boolean }) {
   const ord = order && order.length ? order : SLIDES.map((_, k) => k), N = ord.length;
   const [pos, setI] = useState(0), rm = useReducedMotion();
@@ -425,13 +441,13 @@ export function LoginStory({ W, H = 220, ms = 4600, order, home }: { W: number; 
           <Animated.View key={pos} entering={FadeIn.duration(420)} exiting={FadeOut.duration(280)} style={abs(0, 0)}><Scene W={W} H={H} /></Animated.View>
           
         </View>
-        <LinearGradient colors={home ? ['rgba(255,255,255,0)', 'rgba(255,255,255,0)'] : ['#FFFFFF', '#FFFFFF']} style={{ paddingHorizontal: home ? 20 : SP.l + 4, paddingTop: home ? 10 : SP.m, minHeight: home ? 84 : 104, height: home ? 84 : undefined }}>
+        <LinearGradient colors={home ? ['rgba(255,255,255,0)', 'rgba(255,255,255,0)'] : ['#FFFFFF', '#FFFFFF']} style={{ paddingHorizontal: home ? 20 : SP.l + 4, paddingTop: home ? 30 : SP.m, minHeight: home ? 112 : 104, height: home ? 112 : undefined }}>
           <Animated.View key={'t' + pos} entering={FadeIn.duration(420).delay(140)} exiting={FadeOut.duration(200)}>
             <Txt weight={700} size={home ? 21 : 26} color="#1A1033" numberOfLines={home ? 1 : undefined} adjustsFontSizeToFit={!!home} style={{ lineHeight: home ? 27 : 33 }}>{SLIDES[i].t}</Txt>
             <Txt size={home ? 13 : 14} color="#5B5275" numberOfLines={home ? 1 : undefined} style={{ lineHeight: home ? 18 : 20, marginTop: home ? 2 : 4 }}>{SLIDES[i].s}</Txt>
           </Animated.View>
           <View style={{ flexDirection: 'row', gap: 6, marginTop: home ? 8 : 12, paddingBottom: home ? 6 : 14 }}>
-            {ord.map((_, k) => <View key={k} style={{ height: 6, width: k === pos % N ? 22 : 6, borderRadius: 3, backgroundColor: k === pos % N ? '#5409DA' : 'rgba(84,9,218,0.22)' }} />)}
+            {ord.map((_, k) => <PagerDot key={k} active={k === pos % N} ms={ms} />)}
           </View>
         </LinearGradient>
       </View>

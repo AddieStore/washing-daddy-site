@@ -174,12 +174,12 @@ function Live() {
   const blink = useAnimatedStyle(() => ({ opacity: bl.value }));
   const ring = useAnimatedStyle(() => ({ opacity: 0.7 * (1 - p.value), transform: [{ scale: 1 + 1.6 * p.value }] }));
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 24, paddingLeft: 8, paddingRight: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.94)', shadowColor: '#1A1033', shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 24, paddingLeft: 8, paddingRight: 10, borderRadius: 12, backgroundColor: '#1A1033', shadowColor: '#1A1033', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
       <View style={{ width: 7, height: 7 }}>
         <Reanimated.View style={[{ position: 'absolute', width: 7, height: 7, borderRadius: 4, backgroundColor: '#22C55E' }, ring]} />
         <Reanimated.View style={[{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#22C55E' }, blink]} />
       </View>
-      <Txt weight={600} size={11} color="#1A1033" style={{ lineHeight: 14 }}>Washers near you</Txt>
+      <Txt weight={600} size={11} color="#FFFFFF" style={{ lineHeight: 14 }}>Washers near you</Txt>
     </View>
   );
 }
@@ -192,7 +192,7 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
   return (
     <View style={{ backgroundColor: L.bg, overflow: 'hidden', paddingTop: textTop }}>
       {/* light lavender field; pulling down stretches it so no gap shows */}
-      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 80, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
         <LinearGradient colors={['#D3BFFF', '#E3D6FF', '#EFE7FF']} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
       {on ? <>
@@ -204,10 +204,10 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
           <HeroHeadline first={cfg.heroTitle} sub={cfg.heroSub} ink={L.ink} accent={L.accent} subColor={L.mut} />
         </View>
         {/* spacer = the rest of the picture and the caption under it */}
-        <View style={{ height: SCENE_H + 6 + 84 }} />
-        <View pointerEvents="none" style={{ position: 'absolute', right: 14, top: textTop + 70 }}><Live /></View>
+        <View style={{ height: SCENE_H + 6 + 112 }} />
+        <View pointerEvents="none" style={{ position: 'absolute', right: SIDE, top: textTop - 30 }}><Live /></View>
         {/* the road melts into white, so there is no edge above "Book a wash" */}
-        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.92)', '#FFFFFF']} locations={[0, 0.4, 0.8, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 36 }} />
+        <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.75)', '#FFFFFF']} locations={[0, 0.5, 1]} style={{ position: 'absolute', left: 0, right: 0, top: sceneH, height: 32 }} />
       </> : <View style={{ height: 24 }} />}
     </View>
   );

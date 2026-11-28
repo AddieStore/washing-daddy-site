@@ -3,11 +3,12 @@
 // being pressure-washed). The top fades into the page background (the `bg` prop); the company line sits on the dark road strip.
 import React, { useId, useState } from 'react';
 import { Text, View } from 'react-native';
-import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { F } from '../theme';
 import { TAB_BAR_H } from './motion';
 import { Car, Person, Sparkle, WASHER } from './loginStory';
+import { RiderArt } from './heroRide';
 
 const W = 400;
 const H = 226;
@@ -251,8 +252,9 @@ function Kit({ w }: { w: number }) {
       {/* WD box */}
       <Rect x={4} y={22} width={30} height={32} rx={5} fill="#5409DA" />
       <Rect x={4} y={22} width={30} height={7} rx={3.5} fill="#6B2BF0" />
-      <Circle cx={19} cy={40} r={8} fill="#FFFFFF" />
-      <Path d="M13.5 36.5 L16 44 L19 38.5 L22 44 L24.5 36.5" stroke="#5409DA" strokeWidth={2.2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Rect x={8} y={33} width={22} height={13} rx={3.5} fill="#FFFFFF" />
+      <SvgText x={19} y={43.6} fontSize={11.5} fontFamily={F.b700} fontWeight="700" fill="#5409DA" textAnchor="middle">WD</SvgText>
+      <Rect x={8} y={49} width={22} height={1.6} rx={0.8} fill="#FFBA08" />
       {/* bucket with foam */}
       <Path d="M40 36 H62 L60 54 Q60 56 58 56 H44 Q42 56 42 54Z" fill="#FFBA08" />
       <Path d="M40 36 H62 L61.6 40 H40.4Z" fill="#E9A400" />
@@ -267,16 +269,19 @@ function Kit({ w }: { w: number }) {
 
 /** The home-screen pair on the road: a clean car, our washer beside it giving a thumbs-up, and his kit. k = screen px per art unit. */
 function ThumbsUp({ k, base }: { k: number; base: number }) {
-  const carW = 136 * k, carH = carW * 90 / 220, perH = 112 * k, kitW = 50 * k;
+  const carW = 120 * k, carH = carW * 90 / 220, perH = 134 * k, kitW = 58 * k, scW = 112 * k;
   const bottom = base * k;
   return (
     <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }}>
-      <View style={{ position: 'absolute', left: 14 * k, top: bottom - carH + 2 * k }}><Car w={carW} shine /></View>
-      <View style={{ position: 'absolute', left: 26 * k, top: bottom - carH - 8 * k, width: 0, height: 0 }}>
+      <View style={{ position: 'absolute', left: 6 * k, top: bottom - carH + 2 * k }}><Car w={carW} shine /></View>
+      <View style={{ position: 'absolute', left: 20 * k, top: bottom - carH - 8 * k, width: 0, height: 0 }}>
         <Sparkle x={0} y={0} s={13 * k} delay={0} />
       </View>
-      <View style={{ position: 'absolute', left: 166 * k, top: bottom - perH + 4 * k }}><Person look={WASHER} pose="thumb" h={perH} delay={200} /></View>
-      <View style={{ position: 'absolute', left: 244 * k, top: bottom - kitW * 0.86 + 1 * k }}><Kit w={kitW} /></View>
+      {/* a pale halo so the washer reads clearly against the skyline */}
+      <View style={{ position: 'absolute', left: 150 * k, top: bottom - perH - 2 * k, width: 78 * k, height: 78 * k, borderRadius: 40 * k, backgroundColor: 'rgba(255,248,225,0.88)' }} />
+      <View style={{ position: 'absolute', left: 152 * k, top: bottom - perH + 4 * k }}><Person look={WASHER} pose="thumb" h={perH} delay={200} /></View>
+      <View style={{ position: 'absolute', left: 218 * k, top: bottom - kitW * 0.86 + 1 * k }}><Kit w={kitW} /></View>
+      <View style={{ position: 'absolute', left: 282 * k, top: bottom - 204 * scW / 290 + 3 * k }}><RiderArt w={scW} /></View>
       <View style={{ position: 'absolute', left: 118 * k, top: bottom - carH - 14 * k }}><Sparkle x={0} y={0} s={11 * k} delay={500} /></View>
     </View>
   );
