@@ -101,7 +101,7 @@ function HeroBand({ top, width, greeting, name }: { top: number; width: number; 
      </View>
       {/* just below the (solid black) road the lavender of the hero fades to plain white: no black here, no line */}
       <LinearGradient pointerEvents="none" colors={dark ? ['#1E1633', 'rgba(28,28,31,1)'] : [SKY, '#EEE7FF', '#F8F5FF', '#FFFFFF']}
-        locations={dark ? [0, 1] : [0, 0.4, 0.75, 1]} style={{ height: 72 }} />
+        locations={dark ? [0, 1] : [0, 0.4, 0.75, 1]} style={{ height: 26 }} />
     </View>
   );
 }
