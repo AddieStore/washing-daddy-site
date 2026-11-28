@@ -184,7 +184,7 @@ function Live({ night }: { night?: boolean }) {
     </View>
   );
 }
-const SCENE_H = 256;   // the story's own height from the top of its sky strip to the bottom of the road (loginStory DH + road)
+const SCENE_H = 312;   // the story's own height from the top of its sky strip to the bottom of the road (loginStory DH + road)
 function Hero({ W, y }: { W: number; y: Animated.Value }) {
   const ins = useInsets(), cfg = homeConfig(), on = section('hero'), st = Math.max(ins.top, 24), aw = Math.min(W, 520);
   // the picture is the background of the whole hero: it starts under the status bar and the text sits on its sky, so there is no empty band above it
