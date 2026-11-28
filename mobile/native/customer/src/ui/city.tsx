@@ -1,6 +1,5 @@
-/* The city behind the Home hero is Ravi's reference artwork: a coloured day skyline (red and orange towers, a wooded mountain, trees)
-   and a night skyline with every window lit. The day picture has its sky removed so the lavender hero shows through; both slide slowly
-   sideways (each tile is mirrored so the loop has no seam), with birds by day and twinkling stars at night. */
+/* The city behind the Home hero is painted in code (tools/gen_city.py): a coloured day skyline (red and orange towers, a wooded mountain, trees)
+   and a night skyline with every window lit. Both are seamless tiles that slide slowly sideways, with birds by day and twinkling stars at night. */
 import { useEffect, useMemo, useState } from 'react';
 import { Image, View } from 'react-native';
 import Svg, { Circle, Defs, Path, RadialGradient, Stop } from 'react-native-svg';
@@ -17,7 +16,7 @@ export function useNight(): boolean {
 function rng(seed: number) { let s = seed; return () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296 } }
 
 const DAY = require('../../assets/img/city-day.webp'), NIGHT = require('../../assets/img/city-night.webp');
-const DAY_AR = 736 / 753, NIGHT_AR = 735 / 669;
+const DAY_AR = 1200 / 640, NIGHT_AR = 1200 / 640;
 
 function Twinkle({ children, ms, delay }: { children: any; ms: number; delay: number }) {
   const rm = !!useReducedMotion(), v = useSharedValue(1);
@@ -26,15 +25,15 @@ function Twinkle({ children, ms, delay }: { children: any; ms: number; delay: nu
   return <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0 }, st]}>{children}</Animated.View>;
 }
 
-/** the picture, four tiles wide (normal, mirrored, normal, mirrored) sliding left by two tiles forever */
+/** the painted city (seamless, made by tools/gen_city.py), three tiles wide, sliding left by one tile forever */
 function CityPhoto({ W, h, night }: { W: number; h: number; night: boolean }) {
   const rm = !!useReducedMotion(), p = useSharedValue(0), tw = Math.round(h * (night ? NIGHT_AR : DAY_AR));
-  useEffect(() => { if (rm) return; p.value = 0; p.value = withRepeat(withTiming(1, { duration: (tw * 2) / (night ? 5 : 6) * 1000, easing: Easing.linear }), -1, false); return () => cancelAnimation(p) }, [rm, tw, night]);
-  const st = useAnimatedStyle(() => ({ transform: [{ translateX: -p.value * tw * 2 }] }));
-  const tile = (k: number) => <Image key={k} source={night ? NIGHT : DAY} resizeMode="stretch" style={{ width: tw, height: h, transform: [{ scaleX: k % 2 ? -1 : 1 }] }} />;
+  useEffect(() => { if (rm) return; p.value = 0; p.value = withRepeat(withTiming(1, { duration: tw / (night ? 5 : 6) * 1000, easing: Easing.linear }), -1, false); return () => cancelAnimation(p) }, [rm, tw, night]);
+  const st = useAnimatedStyle(() => ({ transform: [{ translateX: -p.value * tw }] }));
+  const tile = (k: number) => <Image key={k} source={night ? NIGHT : DAY} resizeMode="stretch" style={{ width: tw, height: h }} />;
   return (
     <View pointerEvents="none" style={{ position: 'absolute', left: 0, bottom: 0, width: W, height: h, overflow: 'hidden' }}>
-      <Animated.View style={[{ flexDirection: 'row', width: tw * 6, height: h }, st]}>{[0, 1, 2, 3, 4, 5].map(tile)}</Animated.View>
+      <Animated.View style={[{ flexDirection: 'row', width: tw * 3, height: h }, st]}>{[0, 1, 2].map(tile)}</Animated.View>
     </View>
   );
 }
