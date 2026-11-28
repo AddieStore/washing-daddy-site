@@ -189,7 +189,7 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
   const ins = useInsets(), cfg = homeConfig(), on = section('hero'), st = Math.max(ins.top, 24), aw = Math.min(W, 520);
   // the picture is the background of the whole hero: it starts under the status bar and the text sits on its sky, so there is no empty band above it
   const night = useNight(), [textH, setTextH] = useState(150);
-  const textTop = st + 74, sceneH = textTop + textH + SCENE_H + 6;
+  const textTop = st + 70, sceneH = textTop + textH + SCENE_H + 6;
   return (
     <View style={{ backgroundColor: L.bg, overflow: 'hidden', paddingTop: textTop }}>
       {/* light lavender field; pulling down stretches it so no gap shows */}
