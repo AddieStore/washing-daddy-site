@@ -76,7 +76,7 @@ async function start() {
   live('payorders', db.collection('payorders').where('created_at', '>=', since), 'payorders');
   unsubs.push(db.collection('catalog').onSnapshot(sn => { const o = {}; sn.docs.forEach(d => { const v = d.data(); if (v && v.kind === 'plan') o[d.id] = v }); S.plans = o; S.loaded.plans = true; emit() }, err('catalog')));
   // support inbox: the customer app's chats (supportchats). A failure here only empties the Support tab, it never marks the page offline.
-  unsubs.push(db.collection('supportchats').orderBy('updated_at', 'desc').limit(150).onSnapshot(sn => { S.support = snapDocs(sn); S.loaded.support = true; emit() }, e => { console.warn('ops supportchats', e); S.loaded.support = 'err'; emit() }));
+  unsubs.push(db.collection('supportchats').onSnapshot(sn => { S.support = snapDocs(sn); S.loaded.support = true; emit() }, e => { console.warn('ops supportchats', e); S.loaded.support = 'err'; emit() }));
   // the monthly round: today's wash docs; re-listen when the day turns
   let day = '';
   const watchDay = () => { const d = today(); if (d === day) return; day = d; if (washUnsub) washUnsub(); washUnsub = db.collection('washes').where('date', '==', d).onSnapshot(sn => { S.washes = snapDocs(sn); S.loaded.washes = true; emit() }, err('washes')) };
