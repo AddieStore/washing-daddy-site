@@ -122,10 +122,11 @@ export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: num
       <Animated.View style={[abs(W * (0.62 + tone * 0.04) - 70, sunY - 70, { width: 140, height: 140, borderRadius: 70, backgroundColor: sunC }), sunSt]} />
       <View style={abs(W * (0.62 + tone * 0.04) - 38, sunY - 38, { width: 76, height: 76, borderRadius: 38, backgroundColor: sunC, opacity: 0.95 })} />
       {home ? null : [0, 1, 2].map(i => <Cloud key={i} x={(i * 140 + 20 + tone * 30) % (W - 60)} y={14 + i * 22} w={64 + i * 18} d={i * 700} />)}
+      {home ? <Skyline W={W} h={Math.min(H * 0.62, 300)} color="rgba(84,9,218,0.045)" seed={21} speed={80000} /> : null}
       <Skyline W={W} h={96} color={light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.10)'} seed={3 + tone} speed={42000} />
       {light ? <Landmarks W={W} h={100} color="rgba(84,9,218,0.09)" speed={60000} /> : null}
       <Skyline W={W} h={70} color={light ? 'rgba(84,9,218,0.14)' : 'rgba(46,10,120,0.55)'} seed={11 + tone} speed={26000} windows={!light && tone < 2} />
-      {light ? <Toran W={W} /> : null}
+      {light ? (home ? <View style={abs(0, H - 36 - GROUND + 2)}><Toran W={W} /></View> : <Toran W={W} />) : null}
       <View style={abs(0, H - 36, { width: W, height: 36, backgroundColor: light ? 'transparent' : '#2A0F6B' })}>
         {light ? <LinearGradient colors={['#D9CBFA', '#F3ECFF']} style={StyleSheet.absoluteFill} /> : null}
         <View style={{ height: 3, backgroundColor: light ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.28)' }} />
@@ -189,7 +190,7 @@ function Hand({ x, y, r = 5.4, skin, fingers }: { x: number; y: number; r?: numb
 export function Person({ look, pose, h = 160, delay = 0 }: { look: PersonLook; pose: Pose; h?: number; delay?: number }) {
   const k = h / 160, sway = usePulse(1100, delay), swing = usePulse(pose === 'wave' ? 380 : 700, delay);
   const a = ARM[pose], deg = pose === 'wave' ? [-14, 14] : pose === 'gun' ? [-6, 6] : [-3, 3];
-  const bodySt = useAnimatedStyle(() => ({ transform: [{ translateY: sway.value * -2 }] }));
+  const bodySt = useAnimatedStyle(() => ({ transform: [{ translateY: sway.value * -2 }, { scale: k }] }));   // the animated transform replaces the static one, so the size scale lives here
   const armSt = useAnimatedStyle(() => ({ transform: [{ rotate: interpolate(swing.value, [0, 1], deg) + 'deg' }] }));
   const sleeve = look.shirt, skin = look.skin, dark = shade(sleeve, 0.14), skinD = shade(skin, 0.1), hair = look.hair || '#1A1033';
   return (
@@ -263,8 +264,11 @@ export function Drop({ x, y, dx, dy, ms, delay, r = 4 }: { x: number; y: number;
   return <Animated.View style={[abs(x, y, { width: r * 2, height: r * 1.4, borderRadius: r, backgroundColor: '#BFE6FF' }), st]} />;
 }
 function Stage({ W, H, children }: { W: number; H: number; children: ReactNode }) {
+  const home = useContext(HomeCtx);
   const s = W >= DW ? 1 : W / DW;   // 1:1 whenever the phone is wide enough: scaling the cards makes their text soft
-  return <View style={{ position: 'absolute', left: (W - DW) / 2, top: (H - DH) / 2, width: DW, height: DH, transform: [{ scale: s }] }}>{children}</View>;
+  // Home draws the whole scene as the hero background, so the ground line sits on the road at the bottom and nothing is cropped
+  const top = home ? H - 36 - GROUND : (H - DH) / 2;
+  return <View style={{ position: 'absolute', left: (W - DW) / 2, top, width: DW, height: DH, transform: [{ scale: s }], transformOrigin: home ? '50% 87%' : undefined }}>{children}</View>;
 }
 
 /* ------------------------------------------------------------------ the four scenes */

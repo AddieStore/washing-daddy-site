@@ -1,12 +1,13 @@
 // Bottom of every page: a full-width, flat, grainy Delhi skyline drawn in react-native-svg (India Gate style arch, a domed
 // Mughal monument, a Qutub-style tower, palms, bushes, distant blue towers, a metro on pillars, birds, clouds and a small car
 // being pressure-washed). The top fades into the page background (the `bg` prop); the company line sits on the dark road strip.
-import React, { useId } from 'react';
+import React, { useId, useState } from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { F } from '../theme';
 import { TAB_BAR_H } from './motion';
+import { Car, Person, Sparkle, WASHER } from './loginStory';
 
 const W = 400;
 const H = 226;
@@ -241,53 +242,43 @@ function Metro({ x0 }: { x0: number }) {
 }
 
 /** Small white hatchback, side view, with a pressure-washer spraying the roof/bonnet. */
-function WashScene({ x }: { x: number }) {
-  const by = GY + 21; // wheel base line (on the road)
+/** The cleaner's kit: the violet WD box, a saffron bucket of foam and a brush, drawn in the same flat style as the home-screen story. */
+function Kit({ w }: { w: number }) {
+  const h = w * 0.86;
   return (
-    <G>
-      <Ellipse cx={x + 36} cy={by + 1.5} rx={40} ry={3.4} fill="#14161C" opacity={0.55} />
-      {/* body */}
-      <Path d={`M${x} ${by - 6} V${by - 14} Q${x} ${by - 17} ${x + 4} ${by - 18} L${x + 17} ${by - 20} L${x + 26} ${by - 31} Q${x + 28} ${by - 33} ${x + 33} ${by - 33} H${x + 53} Q${x + 58} ${by - 33} ${x + 61} ${by - 28} L${x + 67} ${by - 19} L${x + 73} ${by - 17} Q${x + 76} ${by - 16} ${x + 76} ${by - 12} V${by - 6}Z`} fill="#F7F9FB" />
-      <Path d={`M${x} ${by - 9} H${x + 76} V${by - 6} H${x} Z`} fill="#CBD3DD" />
-      {/* windows */}
-      <Path d={`M${x + 22} ${by - 20} L${x + 29} ${by - 29.5} H${x + 40} V${by - 20}Z`} fill="#8FD0E4" />
-      <Path d={`M${x + 43} ${by - 20} V${by - 29.5} H${x + 53} Q${x + 56} ${by - 29.5} ${x + 58} ${by - 26} L${x + 62} ${by - 20}Z`} fill="#8FD0E4" />
-      <Rect x={x + 41} y={by - 30} width={1.4} height={11} fill="#F7F9FB" />
-      <Rect x={x + 33} y={by - 17} width={4} height={1.2} rx={0.6} fill="#9AA5B4" />
-      <Rect x={x + 50} y={by - 17} width={4} height={1.2} rx={0.6} fill="#9AA5B4" />
-      <Rect x={x + 1} y={by - 14} width={4.5} height={3.4} rx={1} fill="#F6C945" />
-      <Rect x={x + 71} y={by - 14} width={4.5} height={3.4} rx={1} fill="#E4573F" />
-      {/* foam */}
-      <G fill="#FFFFFF" opacity={0.95}>
-        <Circle cx={x + 33} cy={by - 33.5} r={3} /><Circle cx={x + 38} cy={by - 35} r={3.4} /><Circle cx={x + 44} cy={by - 34} r={2.8} />
-        <Circle cx={x + 49} cy={by - 34.5} r={2.4} /><Circle cx={x + 14} cy={by - 19.5} r={2.2} /><Circle cx={x + 20} cy={by - 21} r={2.6} />
-      </G>
-      {/* wheels */}
-      {[x + 16, x + 60].map((wx, i) => (
-        <G key={i}>
-          <Circle cx={wx} cy={by - 5} r={7.2} fill="#1B1D24" />
-          <Circle cx={wx} cy={by - 5} r={3.6} fill="#B5BECB" />
-          <Circle cx={wx} cy={by - 5} r={1.2} fill="#1B1D24" />
-        </G>
-      ))}
-      {/* pressure-washer unit with hose and wand, right of the car */}
-      <Rect x={x + 84} y={by - 14} width={13} height={13} rx={2.4} fill="#F2B73A" />
-      <Rect x={x + 84} y={by - 14} width={13} height={3.2} rx={1.6} fill="#D99A1F" />
-      <Circle cx={x + 90.5} cy={by - 6} r={2.6} fill="#2D2F38" />
-      <Circle cx={x + 86} cy={by + 1} r={1.8} fill="#1B1D24" /><Circle cx={x + 95} cy={by + 1} r={1.8} fill="#1B1D24" />
-      <Path d={`M${x + 84} ${by - 9} C${x + 78} ${by - 9} ${x + 80} ${by - 22} ${x + 74} ${by - 40}`} stroke="#3E4352" strokeWidth={1.6} fill="none" strokeLinecap="round" />
-      <Path d={`M${x + 74} ${by - 40} L${x + 62} ${by - 46}`} stroke="#E4573F" strokeWidth={2} strokeLinecap="round" />
-      {/* spray fan */}
-      <G stroke="#FFFFFF" strokeLinecap="round" fill="none">
-        <Path d={`M${x + 61} ${by - 46.5} L${x + 48} ${by - 38}`} strokeWidth={1} opacity={0.95} />
-        <Path d={`M${x + 61} ${by - 46.5} L${x + 49} ${by - 41.5}`} strokeWidth={0.9} opacity={0.8} />
-        <Path d={`M${x + 61} ${by - 46.5} L${x + 50} ${by - 35.5}`} strokeWidth={0.9} opacity={0.8} />
-      </G>
-      <G fill="#FFFFFF" opacity={0.85}>
-        <Circle cx={x + 55} cy={by - 44} r={0.9} /><Circle cx={x + 52} cy={by - 41} r={0.8} /><Circle cx={x + 47} cy={by - 44} r={0.8} />
-        <Circle cx={x + 44.5} cy={by - 38.5} r={0.9} /><Circle cx={x + 54} cy={by - 38.5} r={0.7} />
-      </G>
-    </G>
+    <Svg width={w} height={h} viewBox="0 0 70 60">
+      <Ellipse cx={34} cy={57} rx={32} ry={2.6} fill="#14161C" opacity={0.5} />
+      {/* WD box */}
+      <Rect x={4} y={22} width={30} height={32} rx={5} fill="#5409DA" />
+      <Rect x={4} y={22} width={30} height={7} rx={3.5} fill="#6B2BF0" />
+      <Circle cx={19} cy={40} r={8} fill="#FFFFFF" />
+      <Path d="M13.5 36.5 L16 44 L19 38.5 L22 44 L24.5 36.5" stroke="#5409DA" strokeWidth={2.2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      {/* bucket with foam */}
+      <Path d="M40 36 H62 L60 54 Q60 56 58 56 H44 Q42 56 42 54Z" fill="#FFBA08" />
+      <Path d="M40 36 H62 L61.6 40 H40.4Z" fill="#E9A400" />
+      <Circle cx={45} cy={33} r={5} fill="#FFFFFF" /><Circle cx={52} cy={30} r={6.4} fill="#FFFFFF" /><Circle cx={58.5} cy={33.5} r={4.6} fill="#FFFFFF" />
+      <Circle cx={50} cy={27} r={2.4} fill="#EDE5FF" opacity={0.9} /><Circle cx={56} cy={25.5} r={1.8} fill="#EDE5FF" opacity={0.9} />
+      {/* brush leaning on the box */}
+      <Path d="M30 24 L38 4" stroke="#7B5434" strokeWidth={2.4} strokeLinecap="round" />
+      <Rect x={33} y={0.5} width={12} height={5.2} rx={2.2} fill="#2B1B66" transform="rotate(20 39 3)" />
+    </Svg>
+  );
+}
+
+/** The home-screen pair on the road: a clean car, our washer beside it giving a thumbs-up, and his kit. k = screen px per art unit. */
+function ThumbsUp({ k, base }: { k: number; base: number }) {
+  const carW = 136 * k, carH = carW * 90 / 220, perH = 112 * k, kitW = 50 * k;
+  const bottom = base * k;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }}>
+      <View style={{ position: 'absolute', left: 14 * k, top: bottom - carH + 2 * k }}><Car w={carW} shine /></View>
+      <View style={{ position: 'absolute', left: 26 * k, top: bottom - carH - 8 * k, width: 0, height: 0 }}>
+        <Sparkle x={0} y={0} s={13 * k} delay={0} />
+      </View>
+      <View style={{ position: 'absolute', left: 166 * k, top: bottom - perH + 4 * k }}><Person look={WASHER} pose="thumb" h={perH} delay={200} /></View>
+      <View style={{ position: 'absolute', left: 244 * k, top: bottom - kitW * 0.86 + 1 * k }}><Kit w={kitW} /></View>
+      <View style={{ position: 'absolute', left: 118 * k, top: bottom - carH - 14 * k }}><Sparkle x={0} y={0} s={11 * k} delay={500} /></View>
+    </View>
   );
 }
 
@@ -295,12 +286,13 @@ function WashScene({ x }: { x: number }) {
  *  `tabs`: leave room for the floating tab bar underneath (tab screens). */
 export function Footer({ bg = '#FFFFFF', bleed = 0, tabs = true, extraBottom = 0 }: { bg?: string; bleed?: number; tabs?: boolean; extraBottom?: number }) {
   const insets = useSafeAreaInsets();
+  const [kw, setKw] = useState(0);
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   const spacer = (tabs ? TAB_BAR_H + Math.max(insets.bottom, 0) : 0) + extraBottom;
   return (
     <View style={{ marginTop: 24, marginHorizontal: -bleed, backgroundColor: bg }}>
       <View style={{ width: '100%', backgroundColor: ROAD }}>
-      <View style={{ width: '100%', aspectRatio: W / H }} accessibilityRole="text">
+      <View onLayout={e => setKw(e.nativeEvent.layout.width)} style={{ width: '100%', aspectRatio: W / H }} accessibilityRole="text">
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice">
             <Defs>
@@ -337,7 +329,6 @@ export function Footer({ bg = '#FFFFFF', bleed = 0, tabs = true, extraBottom = 0
             <Rect x={0} y={GY + 7} width={W} height={H - GY - 7} fill={ROAD} />
             <Rect x={0} y={GY + 7} width={W} height={2} fill="#3A3F4D" />
             {[0, 1, 2, 3, 4, 5, 6].map((i) => <Rect key={i} x={20 + i * 60} y={GY + 12} width={26} height={1.6} rx={0.8} fill="#E7E1CF" opacity={0.28} />)}
-            <G transform={`translate(${10 * (1 - 1.22)} ${(GY + 21) * (1 - 1.22)}) scale(1.22)`}><WashScene x={10} /></G>
             {/* grain */}
             <G>
               {GRAIN.map((g, i) => <Circle key={i} cx={g.x} cy={g.y} r={g.r} fill={g.light ? '#FFFFFF' : '#10202A'} opacity={g.o} />)}
@@ -346,6 +337,7 @@ export function Footer({ bg = '#FFFFFF', bleed = 0, tabs = true, extraBottom = 0
             <Rect x={0} y={0} width={W} height={92} fill={`url(#fade${id})`} />
           </Svg>
         </View>
+        {kw > 0 ? <ThumbsUp k={kw / W} base={GY + 20} /> : null}
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', paddingBottom: 9, paddingHorizontal: 12 }}>
           <Text style={{ fontFamily: F.b700, fontSize: 15, color: '#FFFFFF', letterSpacing: 0.2, textAlign: 'center' }}>Washing Daddy Private Limited</Text>
           <Text style={{ fontFamily: F.body, fontSize: 12, color: '#C9CEDA', marginTop: 1, textAlign: 'center' }}>© 2026 All rights reserved · Made in India</Text>

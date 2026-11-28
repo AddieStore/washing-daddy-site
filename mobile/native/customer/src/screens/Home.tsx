@@ -174,31 +174,39 @@ function Live() {
   const blink = useAnimatedStyle(() => ({ opacity: bl.value }));
   const ring = useAnimatedStyle(() => ({ opacity: 0.7 * (1 - p.value), transform: [{ scale: 1 + 1.6 * p.value }] }));
   return (
-    <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, height: 30, paddingLeft: 10, paddingRight: 12, borderRadius: 15, backgroundColor: '#17112A', marginTop: 12 }}>
-      <View style={{ width: 8, height: 8 }}>
-        <Reanimated.View style={[{ position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' }, ring]} />
-        <Reanimated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' }, blink]} />
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 24, paddingLeft: 8, paddingRight: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.94)', shadowColor: '#1A1033', shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
+      <View style={{ width: 7, height: 7 }}>
+        <Reanimated.View style={[{ position: 'absolute', width: 7, height: 7, borderRadius: 4, backgroundColor: '#22C55E' }, ring]} />
+        <Reanimated.View style={[{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#22C55E' }, blink]} />
       </View>
-      <Txt weight={600} size={12} color="#fff" style={{ lineHeight: 16 }}>Washers riding near you</Txt>
+      <Txt weight={600} size={11} color="#1A1033" style={{ lineHeight: 14 }}>Washers near you</Txt>
     </View>
   );
 }
+const SCENE_H = 236;   // the story's own height from the top of its sky strip to the bottom of the road (loginStory DH + road)
 function Hero({ W, y }: { W: number; y: Animated.Value }) {
   const ins = useInsets(), cfg = homeConfig(), on = section('hero'), st = Math.max(ins.top, 24), aw = Math.min(W, 520);
+  // the picture is the background of the whole hero: it starts under the status bar and the text sits on its sky, so there is no empty band above it
+  const [textH, setTextH] = useState(150);
+  const textTop = st + 74, sceneH = textTop + textH + SCENE_H + 6;
   return (
-    <View style={{ backgroundColor: L.bg, overflow: 'hidden', paddingTop: st + 74 }}>
+    <View style={{ backgroundColor: L.bg, overflow: 'hidden', paddingTop: textTop }}>
       {/* light lavender field; pulling down stretches it so no gap shows */}
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 0, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
-        <LinearGradient colors={['#DCCBFF', '#E6DAFF', '#EDE4FF']} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <LinearGradient colors={['#D3BFFF', '#E3D6FF', '#EFE7FF']} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
       {on ? <>
-        <View style={{ paddingHorizontal: SIDE, paddingTop: 4 }}>
+        <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, alignItems: 'center' }}>
+          <View style={{ width: aw }}><LoginStory W={aw} H={sceneH} order={HOME_ORDER} home /></View>
+        </View>
+        <View onLayout={e => { const h = Math.round(e.nativeEvent.layout.height); if (h > 40 && Math.abs(h - textH) > 1) setTextH(h) }} style={{ paddingHorizontal: SIDE, paddingTop: 4 }}>
           <CoverageBanner />
           <HeroHeadline first={cfg.heroTitle} sub={cfg.heroSub} ink={L.ink} accent={L.accent} subColor={L.mut} />
-          <Live />
         </View>
-        <View style={{ marginTop: 4, width: aw, alignSelf: 'center' }}><LoginStory W={aw} H={Math.round(aw * 0.4)} order={HOME_ORDER} home /></View>
-        {/* the road and city melt into white, so there is no edge above "Book a wash" */}
+        {/* spacer = the rest of the picture and the caption under it */}
+        <View style={{ height: SCENE_H + 6 + 84 }} />
+        <View pointerEvents="none" style={{ position: 'absolute', right: 14, top: textTop + 70 }}><Live /></View>
+        {/* the road melts into white, so there is no edge above "Book a wash" */}
         <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.92)', '#FFFFFF']} locations={[0, 0.4, 0.8, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 36 }} />
       </> : <View style={{ height: 24 }} />}
     </View>
