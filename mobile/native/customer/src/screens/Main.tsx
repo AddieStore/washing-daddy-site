@@ -40,6 +40,8 @@ import Bookings from '../pages/Bookings';
 import Booking from '../pages/Booking';
 import Rate from '../pages/Rate';
 import Txn from '../pages/Txn';
+import SupportIssues from '../pages/SupportIssues';
+import SupportChat from '../pages/SupportChat';
 import Orders from '../pages/Orders';
 import Washer from '../pages/Washer';
 import PayResult from '../pages/PayResult';
@@ -83,6 +85,8 @@ function PageView({ p }: { p: NonNullable<Page> }): React.ReactElement {
     case 'booking': return <Booking id={p.id} />;
     case 'rate': return <Rate id={p.id} />;
     case 'txn': return <Txn id={p.id} />;
+    case 'supportIssues': return <SupportIssues bookingId={p.bookingId} title={p.title} />;
+    case 'supportChat': return <SupportChat id={p.id} />;
     case 'orders': return <Orders />;
     case 'washer': return <Washer id={p.id} name={p.name} />;
     case 'payResult': return <PayResult />;

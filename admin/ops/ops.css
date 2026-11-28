@@ -301,3 +301,18 @@ html.embed .hdr,html.embed .bar,html.embed .demo-bar{display:none!important}
 html.embed .app{padding-left:0!important;padding-top:0!important}
 html.embed body{background:transparent}
 html.embed main{padding-bottom:32px!important}
+
+/* support inbox + thread */
+.s2{font-size:13px;color:var(--ink2);margin-top:2px;overflow-wrap:anywhere}
+.sup-last{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.msgs{display:flex;flex-direction:column;gap:8px;margin:12px 0;max-height:46vh;overflow-y:auto;padding:4px 2px}
+.msg{display:flex;flex-direction:column;max-width:82%;align-items:flex-start}
+.msg .bub{padding:9px 13px;border-radius:16px;font-size:14px;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--tint);color:var(--ink)}
+.msg small{font-size:11px;color:var(--grey);margin:3px 4px 0}
+.msg.cu .bub{background:var(--card);box-shadow:var(--sh-card);border-bottom-left-radius:5px}
+.msg.bt .bub{background:var(--grey-t);color:var(--ink2);border-bottom-left-radius:5px}
+.msg.ag{align-self:flex-end;align-items:flex-end}
+.msg.ag .bub{background:var(--violet);color:#fff;border-bottom-right-radius:5px}
+.reply{display:flex;gap:8px;position:sticky;bottom:0;background:var(--page);padding:8px 0 4px}
+.reply[hidden]{display:none}
+.reply .field{flex:1;min-width:0}
