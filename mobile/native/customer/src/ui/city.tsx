@@ -44,7 +44,7 @@ function Birds({ W, h }: { W: number; h: number }) {
   const st = useAnimatedStyle(() => ({ transform: [{ translateX: -40 + p.value * (W + 80) }, { translateY: Math.sin(p.value * 6.28) * 6 }] }));
   const wing = useAnimatedStyle(() => ({ transform: [{ scaleY: 0.55 + f.value * 0.7 }] }));
   return (
-    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: h * 0.05 }, st]}>
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: h * 0.3 }, st]}>
       {[[0, 0, 1], [16, 9, 0.8], [30, -4, 0.7]].map(([x, y, sc], i) => (
         <Animated.View key={i} style={[{ position: 'absolute', left: x, top: y }, wing]}><Svg width={14 * sc} height={7 * sc} viewBox="0 0 14 7"><Path d="M0 6 Q4 -1 7 4 Q10 -1 14 6" stroke="#3B2A5B" strokeWidth={1.4} fill="none" strokeLinecap="round" /></Svg></Animated.View>
       ))}
@@ -70,9 +70,9 @@ export function NightSky({ W, h }: { W: number; h: number }) {
       <Svg width={W} height={h}>
         <Defs><RadialGradient id="moonG" cx="0.5" cy="0.5" rx="0.5" ry="0.5"><Stop offset="0" stopColor="#FFF3C4" stopOpacity={0.55} /><Stop offset="1" stopColor="#FFF3C4" stopOpacity={0} /></RadialGradient></Defs>
         {stars.map((s, i) => <Circle key={i} cx={s.x} cy={s.y} r={s.s * 0.6} fill="#FFFFFF" opacity={0.55} />)}
-        <Circle cx={W * 0.84} cy={h * 0.4} r={46} fill="url(#moonG)" />
-        <Circle cx={W * 0.84} cy={h * 0.4} r={15} fill="#FFF3C4" />
-        <Circle cx={W * 0.84 - 4} cy={h * 0.4 + 3} r={2.6} fill="#E6D492" opacity={0.7} /><Circle cx={W * 0.84 + 3} cy={h * 0.4 - 4} r={1.8} fill="#E6D492" opacity={0.6} />
+        <Circle cx={W * 0.84} cy={h * 0.46} r={46} fill="url(#moonG)" />
+        <Circle cx={W * 0.84} cy={h * 0.46} r={15} fill="#FFF3C4" />
+        <Circle cx={W * 0.84 - 4} cy={h * 0.46 + 3} r={2.6} fill="#E6D492" opacity={0.7} /><Circle cx={W * 0.84 + 3} cy={h * 0.46 - 4} r={1.8} fill="#E6D492" opacity={0.6} />
       </Svg>
       {stars.filter(s => s.big).map((s, i) => <Twinkle key={i} ms={1800 + i * 300} delay={i * 260}><Svg width={W} height={h}><Path d={`M${s.x} ${s.y - 4}L${s.x + 1} ${s.y - 1}L${s.x + 4} ${s.y}L${s.x + 1} ${s.y + 1}L${s.x} ${s.y + 4}L${s.x - 1} ${s.y + 1}L${s.x - 4} ${s.y}L${s.x - 1} ${s.y - 1}Z`} fill="#FFFFFF" /></Svg></Twinkle>)}
     </View>

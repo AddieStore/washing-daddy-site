@@ -124,11 +124,11 @@ export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: num
       {home ? null : <Animated.View style={[abs(W * (0.62 + tone * 0.04) - 70, sunY - 70, { width: 140, height: 140, borderRadius: 70, backgroundColor: sunC }), sunSt]} />}
       {home ? null : <View style={abs(W * (0.62 + tone * 0.04) - 38, sunY - 38, { width: 76, height: 76, borderRadius: 38, backgroundColor: sunC, opacity: 0.95 })} />}
       {home ? null : [0, 1, 2].map(i => <Cloud key={i} x={(i * 140 + 20 + tone * 30) % (W - 60)} y={14 + i * 22} w={64 + i * 18} d={i * 700} />)}
-      {home ? <View pointerEvents="none" style={{ position: 'absolute', left: 0, bottom: HOME_ROAD - 8, width: W, height: 258 }}><CityScape W={W} h={258} night={night} /></View> : null}
+      {home ? <View pointerEvents="none" style={{ position: 'absolute', left: 0, bottom: HOME_ROAD - 8, width: W, height: 185 }}><CityScape W={W} h={185} night={night} /></View> : null}
       {home ? null : <Skyline W={W} h={96} color={light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.10)'} seed={3 + tone} speed={42000} />}
       {light && !home ? <Landmarks W={W} h={100} color="rgba(84,9,218,0.09)" speed={60000} /> : null}
       {home ? null : <Skyline W={W} h={70} color={light ? 'rgba(84,9,218,0.14)' : 'rgba(46,10,120,0.55)'} seed={11 + tone} speed={home ? 9000 : 26000} windows={!light && tone < 2} />}
-      {light ? (home ? <View style={abs(0, H - HOME_ROAD - GROUND + 6)}><Toran W={W} /></View> : <Toran W={W} />) : null}
+      {light && !home ? <Toran W={W} /> : null}
       {home ? (
         <View style={abs(0, H - HOME_ROAD, { width: W, height: HOME_ROAD })}>
           <View style={{ height: 16, backgroundColor: night ? '#2A3170' : '#DCD3F0', borderTopWidth: 2, borderTopColor: night ? '#4A53A0' : '#F4EFFF', borderBottomWidth: 3, borderBottomColor: night ? '#161B4A' : '#A99DD0' }} />
