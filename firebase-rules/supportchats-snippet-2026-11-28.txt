@@ -1,0 +1,23 @@
+    // In-app support chat. supportchats/{id} (one per conversation) and supportchats/{id}/messages/{mid}.
+    // The customer reads and writes only his own; the owner (admin) reads and answers all. Washers have no access.
+    // The customer cannot set 'agent', cannot reopen a closed chat, and cannot post as the agent.
+    match /supportchats/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.phone == me());
+      allow create: if signedIn() && d().phone == me() && d().status == 'open'
+        && d().keys().hasOnly(['phone', 'name', 'ticket', 'topic', 'topic_label', 'booking_id', 'booking_title', 'status', 'agent', 'rating', 'last_text', 'last_from', 'created_at', 'updated_at', 'unread_admin'])
+        && str(d().ticket, 20) && str(d().topic, 20) && optStr(d(), 'name', 80) && optStr(d(), 'topic_label', 60)
+        && optStr(d(), 'booking_id', 60) && optStr(d(), 'booking_title', 120) && optStr(d(), 'agent', 40);
+      allow update: if isAdmin() || (signedIn() && resource.data.phone == me()
+        && d().diff(resource.data).affectedKeys().hasOnly(['last_text', 'last_from', 'updated_at', 'status', 'unread_admin', 'rating', 'closed_at'])
+        && d().status in ['open', 'human', 'closed'] && (resource.data.status != 'closed' || d().status == 'closed')
+        && (!('rating' in d()) || d().rating in ['', 'good', 'bad']));
+      allow delete: if isAdmin();
+
+      match /messages/{mid} {
+        allow read: if isAdmin() || (signedIn() && get(/databases/$(database)/documents/supportchats/$(id)).data.phone == me());
+        allow create: if isAdmin() || (signedIn() && get(/databases/$(database)/documents/supportchats/$(id)).data.phone == me()
+          && d().keys().hasOnly(['from', 'text', 'at', 'buttons', 'pick'])
+          && d().from in ['customer', 'bot'] && str(d().text, 1000) && str(d().at, 40) && optStr(d(), 'pick', 20));
+        allow update, delete: if isAdmin();
+      }
+    }
