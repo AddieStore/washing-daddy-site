@@ -1316,9 +1316,96 @@ export async function loadInterest(): Promise<void> {
   try { const r: any = await server.call('wd-waitlist', { lat: c.lat, lng: c.lng, peek: true }); if (r && typeof r.near === 'number') { INTEREST = { key: spotKey(c.lat, c.lng), near: r.near }; emit() } } catch (e) {}
 }
 
+/* ---------------- SUPPORT CHAT ----------------
+   In-app help: the customer opens a chat (optionally about one booking), the app answers the first message with a fixed reply and
+   buttons, and the owner takes over from the ops page. Data (read the contract in .notes/support-chat.md):
+   supportchats/{id} {phone,name,ticket,topic,topic_label,booking_id,booking_title,status:'open'|'human'|'closed',agent,rating,
+                      last_text,last_from,updated_at,created_at,unread_admin,closed_at}
+   supportchats/{id}/messages/{mid} {from:'customer'|'bot'|'agent', text, at, buttons?:[{id,label}], pick?} */
+export type SupButton = { id: string; label: string };
+export type SupMsg = { id: string; from: 'customer' | 'bot' | 'agent'; text: string; at: string; buttons?: SupButton[]; pick?: string };
+export type SupChat = { id: string; ticket: string; topic: string; topicLabel: string; bookingId: string; bookingTitle: string; status: 'open' | 'human' | 'closed'; agent: string; rating: '' | 'good' | 'bad'; lastText: string; lastFrom: string; updatedAt: string; createdAt: string };
+export const SUPPORT_TOPICS: { id: string; label: string; reply: string }[] = [
+  { id: 'missed', label: 'Car not washed or missed', reply: 'We are sorry your car was missed. A missed wash is carried to the next day. Please tell us which day it was, and we will check with your washer.' },
+  { id: 'quality', label: 'Quality of the wash', reply: 'Sorry the wash was not up to the mark. Tell us which part was missed. You can also ask for a re-wash from the Daily tab of My bookings.' },
+  { id: 'washer', label: 'Washer behaviour', reply: 'We are sorry about this. Please tell us what happened and which day, and we will look into it right away.' },
+  { id: 'payment', label: 'Payment or wallet problem', reply: 'If money was taken but your booking or WD Money did not update, it usually fixes itself within a few minutes. You can see every payment under Profile, then Transactions. Tell us the reference number if it still looks wrong.' },
+  { id: 'other', label: 'Something else', reply: 'Tell us what you need and we will help.' },
+];
+let SUP_CHATS: SupChat[] = [], SUP_MSGS: Record<string, SupMsg[]> = {}, SUP_UNSUB: Unsub | null = null;
+export const supportChats = (): SupChat[] => SUP_CHATS;
+export const supportChat = (id: string): SupChat | null => SUP_CHATS.find(c => c.id === id) || null;
+export const supportMsgs = (id: string): SupMsg[] => SUP_MSGS[id] || [];
+const supLive = () => !!(DB && AUTH && realAcct() && AUTH.phone());
+const supChatOf = (id: string, d: any): SupChat => ({ id, ticket: String(d.ticket || ''), topic: String(d.topic || ''), topicLabel: String(d.topic_label || ''), bookingId: String(d.booking_id || ''), bookingTitle: String(d.booking_title || ''),
+  status: d.status === 'human' || d.status === 'closed' ? d.status : 'open', agent: String(d.agent || ''), rating: d.rating === 'good' || d.rating === 'bad' ? d.rating : '', lastText: String(d.last_text || ''), lastFrom: String(d.last_from || ''), updatedAt: String(d.updated_at || ''), createdAt: String(d.created_at || '') });
+const supSort = () => { SUP_CHATS = SUP_CHATS.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) };
+function supPatch(id: string, p: Partial<SupChat>) { SUP_CHATS = SUP_CHATS.map(c => (c.id === id ? { ...c, ...p } : c)); supSort(); emitSoon() }
+/** listen to this customer's chats (called with the other money listeners) */
+function watchSupport() {
+  if (SUP_UNSUB) { try { SUP_UNSUB() } catch (e) {} SUP_UNSUB = null }
+  if (!supLive()) return;
+  SUP_UNSUB = DB!.collection('supportchats').where('phone', '==', AUTH!.phone()!).onSnapshot((ds: any) => { SUP_CHATS = ds.map((g: any) => supChatOf(g.id, g.data())); supSort(); emitSoon() }, (e: any) => console.warn('supportchats', e));
+}
+async function supSay(id: string, m: { from: SupMsg['from']; text: string; buttons?: SupButton[]; pick?: string }, patch: { status?: SupChat['status']; unreadAdmin?: boolean } = {}) {
+  const msg: SupMsg = { id: newId('M'), at: nowIST(), ...m };
+  if (!supLive()) SUP_MSGS[id] = [...(SUP_MSGS[id] || []), msg];
+  supPatch(id, { lastText: msg.text, lastFrom: msg.from, updatedAt: msg.at, ...(patch.status ? { status: patch.status } : {}) });
+  if (!supLive()) return;
+  const body: any = { from: msg.from, text: msg.text.slice(0, 1000), at: msg.at }; if (msg.buttons) body.buttons = msg.buttons; if (msg.pick) body.pick = msg.pick;
+  await DB!.doc(`supportchats/${id}/messages/${msg.id}`).set(body);
+  await DB!.doc('supportchats/' + id).update({ last_text: msg.text.slice(0, 200), last_from: msg.from, updated_at: msg.at, ...(patch.status ? { status: patch.status } : {}), ...(m.from === 'customer' || patch.unreadAdmin ? { unread_admin: true } : {}) });
+}
+const SUP_BUTTONS: SupButton[] = [{ id: 'solved', label: 'That solved it' }, { id: 'human', label: 'Talk to a person' }];
+const SUPPORT_ACTS = {
+  /** start a chat; returns its id. The app answers the topic straight away. */
+  async supportOpen(topicId: string, booking?: { id: string; title: string }): Promise<string> {
+    const t = SUPPORT_TOPICS.find(x => x.id === topicId) || SUPPORT_TOPICS[SUPPORT_TOPICS.length - 1];
+    const id = newId('SC'), at = nowIST(), ticket = 'TK' + Math.random().toString(36).slice(2, 10).toUpperCase();
+    const chat: SupChat = { id, ticket, topic: t.id, topicLabel: t.label, bookingId: booking ? booking.id : '', bookingTitle: booking ? booking.title.slice(0, 120) : '', status: 'open', agent: '', rating: '', lastText: '', lastFrom: '', updatedAt: at, createdAt: at };
+    SUP_CHATS = [chat, ...SUP_CHATS]; SUP_MSGS[id] = []; emitSoon();
+    if (supLive()) await DB!.doc('supportchats/' + id).set({ phone: AUTH!.phone(), name: (S.acct ? A().name : '') || '', ticket, topic: t.id, topic_label: t.label, booking_id: chat.bookingId, booking_title: chat.bookingTitle, status: 'open', agent: '', rating: '', last_text: '', last_from: '', created_at: at, updated_at: at, unread_admin: false });
+    await supSay(id, { from: 'bot', text: 'Hello! Welcome to Washing Daddy support. I am here to assist you.' });
+    await supSay(id, { from: 'bot', text: t.reply, buttons: SUP_BUTTONS });
+    return id;
+  },
+  /** the customer types a message; the owner answers from the ops page */
+  async supportSend(id: string, text: string) {
+    const c = supportChat(id), txt = text.trim().slice(0, 1000); if (!c || !txt || c.status === 'closed') return;
+    await supSay(id, { from: 'customer', text: txt }, { unreadAdmin: true });
+  },
+  /** quick-reply buttons: solved -> close; human -> hand over to the owner */
+  async supportPick(id: string, buttonId: string) {
+    const c = supportChat(id); if (!c || c.status === 'closed') return;
+    const b = SUP_BUTTONS.find(x => x.id === buttonId); if (!b) return;
+    await supSay(id, { from: 'customer', text: b.label, pick: b.id });
+    if (b.id === 'human') await supSay(id, { from: 'bot', text: 'Thank you. A person from Washing Daddy will join this chat soon. You can write your message here while you wait.' }, { status: 'human', unreadAdmin: true });
+    else await act.supportEnd(id);
+  },
+  async supportEnd(id: string) {
+    const c = supportChat(id); if (!c || c.status === 'closed') return;
+    supPatch(id, { status: 'closed' });
+    if (supLive()) await DB!.doc('supportchats/' + id).update({ status: 'closed', closed_at: nowIST(), updated_at: nowIST() }).catch((e: any) => console.warn('supportEnd', e));
+  },
+  async supportRate(id: string, rating: 'good' | 'bad') {
+    supPatch(id, { rating });
+    if (supLive()) await DB!.doc('supportchats/' + id).update({ rating }).catch((e: any) => console.warn('supportRate', e));
+    toast('Thanks for the feedback');
+  },
+  /** live messages of one chat while its page is open; returns the unsubscribe */
+  supportWatch(id: string): () => void {
+    if (!supLive()) return () => {};
+    const u = DB!.collection(`supportchats/${id}/messages`).onSnapshot((ds: any) => {
+      SUP_MSGS[id] = ds.map((g: any) => { const d = g.data(); return { id: g.id, from: d.from === 'agent' ? 'agent' : d.from === 'bot' ? 'bot' : 'customer', text: String(d.text || ''), at: String(d.at || ''), buttons: Array.isArray(d.buttons) ? d.buttons : undefined, pick: d.pick } as SupMsg }).sort((a: SupMsg, b: SupMsg) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
+      emitSoon();
+    }, (e: any) => console.warn('supportmsgs', e));
+    return () => { try { u() } catch (e) {} };
+  },
+};
 const failed = () => new Error(`That didn't go through. Call or WhatsApp us on ${showPhone(SUPPORT.phone)}.`);
 export const act = {
   ...PX_ACTS,
+  ...SUPPORT_ACTS,
   /* --- sign-in --- */
   /** Sends the sign-in code. WhatsApp first (n8n workflow 15); SMS when asked, or by itself when WhatsApp is not live yet, the
    *  number is not on WhatsApp, or it is an admin number. Resolves to the channel the code actually went out on. */
