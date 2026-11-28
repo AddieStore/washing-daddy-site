@@ -432,8 +432,9 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow write: if false;
     }
+    // Customers may read their OWN payment orders (any status) for the Transactions page; only the server writes them.
     match /payorders/{id} {
-      allow read: if isAdmin();
+      allow read: if isAdmin() || (signedIn() && resource.data.phone == me());
       allow write: if false;
     }
 
