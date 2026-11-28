@@ -22,6 +22,7 @@ import {
 import { Pressable3 as P3, FadeUp, AddButton, CartBar, Shimmer, useSkeleton, loaderPending, primerGate, setOrigin, SPRING, TAB_BAR_H } from '../ui/motion';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withDelay, withRepeat, withSequence, cancelAnimation, useReducedMotion, Easing as REasing } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { NightSky, useNight } from '../ui/city';
 import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient as SvgLG, Stop } from 'react-native-svg';
 import { SvcArt, PausedVeil } from '../pages/parts';
 import { artFor, ArtBoundary } from '../art';
@@ -140,7 +141,7 @@ function HeaderContent({ dark }: { dark: boolean }) {
   );
 }
 function Header({ y }: { y: Animated.Value }) {
-  const ins = useInsets(), top = Math.max(ins.top, 24), [scrolled, setScrolled] = useState(false);
+  const ins = useInsets(), top = Math.max(ins.top, 24), [scrolled, setScrolled] = useState(false), night = useNight();
   useEffect(() => {
     const id = y.addListener(({ value }) => setScrolled(s => (s !== value > 30 ? value > 30 : s)));
     return () => y.removeListener(id);
@@ -150,7 +151,7 @@ function Header({ y }: { y: Animated.Value }) {
   return (
     <View style={{ position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30, paddingTop: top }}>
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#FFFFFF', opacity: bg, borderBottomWidth: 1, borderBottomColor: L.line }} />
-      <Animated.View pointerEvents={scrolled ? 'none' : 'auto'} style={{ opacity: light }}><HeaderContent dark /></Animated.View>
+      <Animated.View pointerEvents={scrolled ? 'none' : 'auto'} style={{ opacity: light }}><HeaderContent dark={!night} /></Animated.View>
       <Animated.View pointerEvents={scrolled ? 'auto' : 'none'} style={{ position: 'absolute', left: 0, right: 0, top: top, opacity: bg }}><HeaderContent dark /></Animated.View>
     </View>
   );
@@ -168,13 +169,13 @@ function Scallop({ W, color = '#fff' }: { W: number; color?: string }) {
   let d = `M0 14 `; for (let i = 0; i < n; i++) d += `A${r} ${r * 0.62} 0 0 1 ${(i + 1) * 2 * r} 14 `; d += `L${W} 20 L0 20 Z`;
   return <Svg width={W} height={20} style={{ position: 'absolute', left: 0, bottom: -1 }}><Path d={d} fill={color} /></Svg>;
 }
-function Live() {
+function Live({ night }: { night?: boolean }) {
   const rm = !!useReducedMotion() || !useActive(), p = useSharedValue(0), bl = useSharedValue(1);
   useEffect(() => { if (!rm) { p.value = withRepeat(withTiming(1, { duration: 1400, easing: REasing.out(REasing.quad) }), -1, false); bl.value = withRepeat(withSequence(withTiming(0.15, { duration: 520, easing: REasing.inOut(REasing.quad) }), withTiming(1, { duration: 520, easing: REasing.inOut(REasing.quad) })), -1, false) } return () => { cancelAnimation(p); cancelAnimation(bl) } }, [rm]);
   const blink = useAnimatedStyle(() => ({ opacity: bl.value }));
   const ring = useAnimatedStyle(() => ({ opacity: 0.7 * (1 - p.value), transform: [{ scale: 1 + 1.6 * p.value }] }));
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 24, paddingLeft: 8, paddingRight: 10, borderRadius: 12, backgroundColor: '#1A1033', shadowColor: '#1A1033', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 24, paddingLeft: 8, paddingRight: 10, borderRadius: 12, backgroundColor: night ? 'rgba(255,255,255,0.16)' : '#1A1033', borderWidth: night ? 1 : 0, borderColor: 'rgba(255,255,255,0.28)', shadowColor: '#1A1033', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
       <View style={{ width: 7, height: 7 }}>
         <Reanimated.View style={[{ position: 'absolute', width: 7, height: 7, borderRadius: 4, backgroundColor: '#22C55E' }, ring]} />
         <Reanimated.View style={[{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#22C55E' }, blink]} />
@@ -187,25 +188,26 @@ const SCENE_H = 256;   // the story's own height from the top of its sky strip t
 function Hero({ W, y }: { W: number; y: Animated.Value }) {
   const ins = useInsets(), cfg = homeConfig(), on = section('hero'), st = Math.max(ins.top, 24), aw = Math.min(W, 520);
   // the picture is the background of the whole hero: it starts under the status bar and the text sits on its sky, so there is no empty band above it
-  const [textH, setTextH] = useState(150);
+  const night = useNight(), [textH, setTextH] = useState(150);
   const textTop = st + 74, sceneH = textTop + textH + SCENE_H + 6;
   return (
     <View style={{ backgroundColor: L.bg, overflow: 'hidden', paddingTop: textTop }}>
       {/* light lavender field; pulling down stretches it so no gap shows */}
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -400, bottom: 80, transform: [{ translateY: y.interpolate({ inputRange: [-400, 0, 400], outputRange: [-60, 0, 120], extrapolate: 'clamp' }) }] }}>
-        <LinearGradient colors={['#D3BFFF', '#E3D6FF', '#EFE7FF']} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
+        <LinearGradient colors={night ? ['#040A36', '#0A1A74', '#1B3FC4'] : ['#D3BFFF', '#E3D6FF', '#EFE7FF']} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
       </Animated.View>
       {on ? <>
+        {night ? <NightSky W={W} h={sceneH * 0.7} /> : null}
         <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, alignItems: 'center' }}>
           <View style={{ width: aw }}><LoginStory W={aw} H={sceneH} order={HOME_ORDER} home /></View>
         </View>
         <View onLayout={e => { const h = Math.round(e.nativeEvent.layout.height); if (h > 40 && Math.abs(h - textH) > 1) setTextH(h) }} style={{ paddingHorizontal: SIDE, paddingTop: 4 }}>
           <CoverageBanner />
-          <HeroHeadline first={cfg.heroTitle} sub={cfg.heroSub} ink={L.ink} accent={L.accent} subColor={L.mut} />
+          <HeroHeadline first={cfg.heroTitle} sub={cfg.heroSub} ink={night ? '#FFFFFF' : L.ink} accent={night ? '#B9A0FF' : L.accent} subColor={night ? '#C7CCF2' : L.mut} />
         </View>
         {/* spacer = the rest of the picture and the caption under it */}
         <View style={{ height: SCENE_H + 6 + 112 }} />
-        <View pointerEvents="none" style={{ position: 'absolute', right: SIDE, top: textTop - 20 }}><Live /></View>
+        <View pointerEvents="none" style={{ position: 'absolute', right: SIDE, top: textTop - 20 }}><Live night={night} /></View>
         {/* the road melts into white, so there is no edge above "Book a wash" */}
         <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.75)', '#FFFFFF']} locations={[0, 0.5, 1]} style={{ position: 'absolute', left: 0, right: 0, top: sceneH, height: 32 }} />
       </> : <View style={{ height: 24 }} />}

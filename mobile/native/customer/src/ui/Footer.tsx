@@ -269,15 +269,17 @@ function Kit({ w }: { w: number }) {
 
 /** The home-screen pair on the road: a clean car, our washer beside it giving a thumbs-up, and his kit. k = screen px per art unit. */
 function ThumbsUp({ k, base }: { k: number; base: number }) {
-  const perH = 134 * k, scW = 150 * k;
+  const carW = 136 * k, carH = carW * 90 / 220, perH = 128 * k, scW = 104 * k;
   const bottom = base * k;
   return (
     <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }}>
-      {/* a pale halo so the washer reads clearly against the skyline */}
-      <View style={{ position: 'absolute', left: 92 * k, top: bottom - perH - 2 * k, width: 78 * k, height: 78 * k, borderRadius: 40 * k, backgroundColor: 'rgba(255,248,225,0.88)' }} />
-      <View style={{ position: 'absolute', left: 94 * k, top: bottom - perH + 4 * k }}><Person look={WASHER} pose="thumb" h={perH} delay={200} /></View>
-      <View style={{ position: 'absolute', left: 190 * k, top: bottom - 204 * scW / 290 + 3 * k }}><RiderArt w={scW} /></View>
-      <View style={{ position: 'absolute', left: 168 * k, top: bottom - perH - 6 * k }}><Sparkle x={0} y={0} s={12 * k} delay={400} /></View>
+      <View style={{ position: 'absolute', left: 14 * k, top: bottom - carH + 2 * k }}><Car w={carW} shine /></View>
+      <View style={{ position: 'absolute', left: 26 * k, top: bottom - carH - 8 * k, width: 0, height: 0 }}><Sparkle x={0} y={0} s={13 * k} delay={0} /></View>
+      {/* the scooter stands parked with nobody on it; the washer stands in the bottom right corner giving a thumbs-up */}
+      <View style={{ position: 'absolute', left: 168 * k, top: bottom - 204 * scW / 290 + 3 * k }}><RiderArt w={scW} parked /></View>
+      <View style={{ position: 'absolute', left: 286 * k, top: bottom - perH - 30 * k, width: 74 * k, height: 74 * k, borderRadius: 37 * k, backgroundColor: 'rgba(255,248,225,0.85)' }} />
+      <View style={{ position: 'absolute', left: 288 * k, top: bottom - perH + 4 * k }}><Person look={WASHER} pose="thumb" h={perH} delay={200} /></View>
+      <View style={{ position: 'absolute', left: 118 * k, top: bottom - carH - 14 * k }}><Sparkle x={0} y={0} s={11 * k} delay={500} /></View>
     </View>
   );
 }

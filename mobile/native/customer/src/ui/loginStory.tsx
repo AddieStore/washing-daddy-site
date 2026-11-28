@@ -11,6 +11,7 @@ import Animated, {
 import { C, SP } from '../theme';
 import { Txt } from './kit';
 import { RiderArt } from './heroRide';
+import { CityScape, useNight } from './city';
 
 const SAFF = '#FFBA08', DW = 360, DH = 230, GROUND = 200;
 export const HOME_ROAD = 56;   // home hero: pavement 16 + black road 40
@@ -110,7 +111,7 @@ function Toran({ W }: { W: number }) {
   );
 }
 export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: number; road?: boolean }) {
-  const light = useContext(LightCtx), home = useContext(HomeCtx);
+  const light = useContext(LightCtx), home = useContext(HomeCtx), night = useNight() && home;
   const sky = light ? ['#FFFFFF', '#FFFFFF', '#FAF7FF'] : [['rgba(58,5,153,0)', '#4B12C9', '#6A2BF0'], ['rgba(84,9,218,0)', '#7A3AF2', '#FF9E7A'], ['rgba(110,40,235,0)', '#8E55F5', '#FFC08A'], ['rgba(130,70,245,0)', '#A97BFF', '#FFE2A8']][tone];
   const sunY = [H - 40, H - 70, H - 105, H - 140][tone], sunC = (light ? ['#FFE9A6', '#FFDF8A', '#FFD470', '#FFCB4A'] : ['#CDB8FF', '#FFC58A', '#FFD470', '#FFE49A'])[tone];
   const glow = usePulse(2400);
@@ -120,18 +121,18 @@ export function Backdrop({ W, H, tone, road }: { W: number; H: number; tone: num
     <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: W, height: H, overflow: 'hidden' }}>
       {home ? null : <LinearGradient colors={sky as any} locations={[0, 0.45, 1]} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />}
       {tone === 0 && !light ? Array.from({ length: 14 }, (_, i) => <Star key={i} x={(i * 53 + 17) % W} y={8 + ((i * 37) % 90)} d={i * 40} />) : null}
-      <Animated.View style={[abs(W * (0.62 + tone * 0.04) - 70, sunY - 70, { width: 140, height: 140, borderRadius: 70, backgroundColor: sunC }), sunSt]} />
-      <View style={abs(W * (0.62 + tone * 0.04) - 38, sunY - 38, { width: 76, height: 76, borderRadius: 38, backgroundColor: sunC, opacity: 0.95 })} />
+      {home ? null : <Animated.View style={[abs(W * (0.62 + tone * 0.04) - 70, sunY - 70, { width: 140, height: 140, borderRadius: 70, backgroundColor: sunC }), sunSt]} />}
+      {home ? null : <View style={abs(W * (0.62 + tone * 0.04) - 38, sunY - 38, { width: 76, height: 76, borderRadius: 38, backgroundColor: sunC, opacity: 0.95 })} />}
       {home ? null : [0, 1, 2].map(i => <Cloud key={i} x={(i * 140 + 20 + tone * 30) % (W - 60)} y={14 + i * 22} w={64 + i * 18} d={i * 700} />)}
-      {home ? <Skyline W={W} h={Math.min(H * 0.62, 300)} color="rgba(84,9,218,0.07)" seed={21} speed={30000} /> : null}
-      <Skyline W={W} h={96} color={light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.10)'} seed={3 + tone} speed={home ? 18000 : 42000} />
-      {light ? <Landmarks W={W} h={100} color="rgba(84,9,218,0.09)" speed={60000} /> : null}
-      <Skyline W={W} h={70} color={light ? 'rgba(84,9,218,0.14)' : 'rgba(46,10,120,0.55)'} seed={11 + tone} speed={home ? 9000 : 26000} windows={!light && tone < 2} />
+      {home ? <View pointerEvents="none" style={{ position: 'absolute', left: 0, bottom: HOME_ROAD - 8, width: W, height: Math.min(H * 0.6, 320) }}><CityScape W={W} h={Math.min(H * 0.6, 320)} night={night} /></View> : null}
+      {home ? null : <Skyline W={W} h={96} color={light ? 'rgba(84,9,218,0.06)' : 'rgba(255,255,255,0.10)'} seed={3 + tone} speed={42000} />}
+      {light && !home ? <Landmarks W={W} h={100} color="rgba(84,9,218,0.09)" speed={60000} /> : null}
+      {home ? null : <Skyline W={W} h={70} color={light ? 'rgba(84,9,218,0.14)' : 'rgba(46,10,120,0.55)'} seed={11 + tone} speed={home ? 9000 : 26000} windows={!light && tone < 2} />}
       {light ? (home ? <View style={abs(0, H - HOME_ROAD - GROUND + 6)}><Toran W={W} /></View> : <Toran W={W} />) : null}
       {home ? (
         <View style={abs(0, H - HOME_ROAD, { width: W, height: HOME_ROAD })}>
-          <View style={{ height: 16, backgroundColor: '#DCD3F0', borderTopWidth: 2, borderTopColor: '#F4EFFF', borderBottomWidth: 3, borderBottomColor: '#A99DD0' }} />
-          <View style={{ flex: 1, backgroundColor: '#1F1C27' }} />
+          <View style={{ height: 16, backgroundColor: night ? '#2A3170' : '#DCD3F0', borderTopWidth: 2, borderTopColor: night ? '#4A53A0' : '#F4EFFF', borderBottomWidth: 3, borderBottomColor: night ? '#161B4A' : '#A99DD0' }} />
+          <View style={{ flex: 1, backgroundColor: night ? '#0B0C18' : '#1F1C27' }} />
           <Animated.View style={[abs(0, 16 + 19, { flexDirection: 'row', width: W + 80 }), roadSt]}>
             {Array.from({ length: Math.ceil(W / 38) + 3 }, (_, i) => <View key={i} style={{ width: 24, height: 4, borderRadius: 2, marginRight: 16, backgroundColor: '#FFFFFF' }} />)}
           </Animated.View>
