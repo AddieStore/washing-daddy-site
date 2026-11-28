@@ -175,7 +175,7 @@ function Live({ night }: { night?: boolean }) {
   const blink = useAnimatedStyle(() => ({ opacity: bl.value }));
   const ring = useAnimatedStyle(() => ({ opacity: 0.7 * (1 - p.value), transform: [{ scale: 1 + 1.6 * p.value }] }));
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 24, paddingLeft: 8, paddingRight: 10, borderRadius: 12, backgroundColor: night ? 'rgba(255,255,255,0.16)' : '#1A1033', borderWidth: night ? 1 : 0, borderColor: 'rgba(255,255,255,0.28)', shadowColor: '#1A1033', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 24, paddingLeft: 8, paddingRight: 10, borderRadius: 12, backgroundColor: night ? '#12195E' : '#1A1033', borderWidth: night ? 1 : 0, borderColor: 'rgba(255,255,255,0.28)', shadowColor: '#1A1033', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
       <View style={{ width: 7, height: 7 }}>
         <Reanimated.View style={[{ position: 'absolute', width: 7, height: 7, borderRadius: 4, backgroundColor: '#22C55E' }, ring]} />
         <Reanimated.View style={[{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#22C55E' }, blink]} />
@@ -207,7 +207,7 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
         </View>
         {/* spacer = the rest of the picture and the caption under it */}
         <View style={{ height: SCENE_H + 6 + 112 }} />
-        <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: textTop + textH + 66, alignItems: 'center' }}><View style={{ transform: [{ scale: 0.88 }] }}><Live night={night} /></View></View>
+        <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: textTop + textH + 66, alignItems: 'center' }}><Live night={night} /></View>
         {/* the road melts into white, so there is no edge above "Book a wash" */}
       </> : <View style={{ height: 24 }} />}
     </View>

@@ -390,7 +390,7 @@ function SceneWash({ W, H }: { W: number; H: number }) {
   );
 }
 function SceneProof({ W, H }: { W: number; H: number }) {
-  const car = usePop(100, true), stars = [usePop(1300), usePop(1450), usePop(1600), usePop(1750), usePop(1900)];
+  const home = useContext(HomeCtx), car = usePop(100, true), stars = [usePop(1300), usePop(1450), usePop(1600), usePop(1750), usePop(1900)];
   const cSt = useAnimatedStyle(() => ({ opacity: car.value, transform: [{ translateY: (1 - car.value) * 16 }] }));
   const s0 = useAnimatedStyle(() => ({ opacity: stars[0].value, transform: [{ scale: 0.3 + stars[0].value * 0.7 }] })), s1 = useAnimatedStyle(() => ({ opacity: stars[1].value, transform: [{ scale: 0.3 + stars[1].value * 0.7 }] })),
     s2 = useAnimatedStyle(() => ({ opacity: stars[2].value, transform: [{ scale: 0.3 + stars[2].value * 0.7 }] })), s3 = useAnimatedStyle(() => ({ opacity: stars[3].value, transform: [{ scale: 0.3 + stars[3].value * 0.7 }] })),
@@ -403,9 +403,9 @@ function SceneProof({ W, H }: { W: number; H: number }) {
         <Animated.View style={[abs(14, GROUND - 96), cSt]}><Car w={220} shine /></Animated.View>
         <Sparkle x={52} y={GROUND - 112} s={18} delay={0} /><Sparkle x={140} y={GROUND - 124} s={24} delay={320} /><Sparkle x={216} y={GROUND - 74} s={14} delay={640} />
         <View style={abs(246, GROUND - 156)}><Person look={WASHER} pose="thumb" h={160} delay={200} /></View>
-        <Card x={12} y={8} delay={800} w={176}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{ width: 52, height: 40, borderRadius: 9, backgroundColor: '#EDE5FF', overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 3 }}><Car w={44} shine /></View>
+        <Card x={home ? 100 : 12} y={home ? 8 : 8} delay={800} w={home ? 160 : 176}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: home ? 8 : 10 }}>
+            <View style={{ width: home ? 38 : 52, height: home ? 32 : 40, borderRadius: 9, backgroundColor: '#EDE5FF', overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 3 }}><Car w={home ? 34 : 44} shine /></View>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><Tick s={14} /><Txt weight={600} size={11} color="#1A1033" numberOfLines={1} style={{ lineHeight: 14 }}>Wash done</Txt></View>
               <View style={{ flexDirection: 'row', gap: 2, marginTop: 5 }}>
