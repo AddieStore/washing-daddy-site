@@ -403,7 +403,7 @@ function SceneProof({ W, H }: { W: number; H: number }) {
         <Animated.View style={[abs(14, GROUND - 96), cSt]}><Car w={220} shine /></Animated.View>
         <Sparkle x={52} y={GROUND - 112} s={18} delay={0} /><Sparkle x={140} y={GROUND - 124} s={24} delay={320} /><Sparkle x={216} y={GROUND - 74} s={14} delay={640} />
         <View style={abs(246, GROUND - 156)}><Person look={WASHER} pose="thumb" h={160} delay={200} /></View>
-        <Card x={home ? 100 : 12} y={home ? 8 : 8} delay={800} w={home ? 160 : 176}>
+        <Card x={home ? 100 : 12} y={home ? 48 : 8} delay={800} w={home ? 160 : 176}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: home ? 8 : 10 }}>
             <View style={{ width: home ? 38 : 52, height: home ? 32 : 40, borderRadius: 9, backgroundColor: '#EDE5FF', overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 3 }}><Car w={home ? 34 : 44} shine /></View>
             <View style={{ flex: 1 }}>
