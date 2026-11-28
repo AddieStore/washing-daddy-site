@@ -9,7 +9,7 @@ import { Footer } from '../ui/Footer';
 import { Back, Camera, Help as HelpIc, Pin } from '../ui/icons';
 import { FadeUp, Shimmer } from '../ui/motion';
 import { JobRider, showsRider, showsCode, StartCode } from '../ui/JobRider';
-import { carryNote, washNotices, A, car, doc, history7, liveHead, activeStage, feature, useApp, act, bookingsView, jobTitle, canRate, openPage, closePage, toast, Job } from '../state';
+import { carryNote, washNotices, A, car, doc, history7, liveHead, activeStage, feature, useApp, act, bookingsView, jobTitle, canRate, dayStars, openPage, closePage, toast, Job } from '../state';
 import { sheets } from '../sheets';
 import { dayPhotos } from '../sheets/DaySheet';
 import { src as imgSrc } from '../img';
@@ -102,7 +102,7 @@ export function JobCard({ j, onPress }: { j: Job; onPress: () => void }) {
             </View>
           ) : showsRider(j) ? (
             <View style={{ marginTop: 10 }}><JobRider j={j} compact />{showsCode(j) ? <StartCode j={j} compact /> : null}</View>
-          ) : null}
+          ) : feature('ratings') ? <Txt size={12} color={G.mute} style={{ marginTop: 8 }}>You can rate this service once the wash is done.</Txt> : null}
         </View>
       ) : (
         <Txt size={12} color={G.mute} style={{ marginTop: 8 }}>{j.pay === 'refunded' ? `${inr(j.total)} refunded to WD Money` : 'Cancelled'}</Txt>
@@ -218,6 +218,12 @@ function DailyCard({ r }: { r: DailyRow }) {
       <Txt size={13} color={G.sub} style={{ marginTop: 4 }}>{r.note || r.label}</Txt>
       {facts.length ? <Txt size={12} color={G.mute} style={{ marginTop: 8, ...TNUM }}>{facts.join('  •  ')}</Txt> : null}
       {r.tasks ? <Txt size={12} color={G.mute} style={{ marginTop: 4 }} numberOfLines={2}>{r.tasks}</Txt> : null}
+      {done && feature('ratings') ? (
+        <View style={{ borderTopWidth: 1, borderColor: G.line, marginTop: 10, paddingTop: 8, minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Txt size={13} color={G.sub}>{dayStars(r.date) ? 'Your rating' : 'Rate this wash'}</Txt>
+          <Stars n={dayStars(r.date)} size={22} gap={6} onPick={n => act.rateDayOn(r.date, n)} />
+        </View>
+      ) : null}
       <PhotoFan items={thumbs} />
     </Tap>
   );
