@@ -183,7 +183,7 @@ function Live() {
     </View>
   );
 }
-const SCENE_H = 236;   // the story's own height from the top of its sky strip to the bottom of the road (loginStory DH + road)
+const SCENE_H = 256;   // the story's own height from the top of its sky strip to the bottom of the road (loginStory DH + road)
 function Hero({ W, y }: { W: number; y: Animated.Value }) {
   const ins = useInsets(), cfg = homeConfig(), on = section('hero'), st = Math.max(ins.top, 24), aw = Math.min(W, 520);
   // the picture is the background of the whole hero: it starts under the status bar and the text sits on its sky, so there is no empty band above it
@@ -205,7 +205,7 @@ function Hero({ W, y }: { W: number; y: Animated.Value }) {
         </View>
         {/* spacer = the rest of the picture and the caption under it */}
         <View style={{ height: SCENE_H + 6 + 112 }} />
-        <View pointerEvents="none" style={{ position: 'absolute', right: SIDE, top: textTop - 30 }}><Live /></View>
+        <View pointerEvents="none" style={{ position: 'absolute', right: SIDE, top: textTop - 20 }}><Live /></View>
         {/* the road melts into white, so there is no edge above "Book a wash" */}
         <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.75)', '#FFFFFF']} locations={[0, 0.5, 1]} style={{ position: 'absolute', left: 0, right: 0, top: sceneH, height: 32 }} />
       </> : <View style={{ height: 24 }} />}
