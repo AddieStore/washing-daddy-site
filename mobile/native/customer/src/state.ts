@@ -144,7 +144,7 @@ export const fmtPhone = (p: string) => p.replace(/(\d{5})(\d+)/, '$1 $2');
 export { maskPlate, planOf, regOf, chipText, activeStage, startTxt, startOf, canPause, isPaused, extras, weekPlan, LABEL, TASK_LABEL, TASK_SUB, STAGES };
 
 /* ---------- wash data ---------- */
-let REMOTE: Record<string, WashDoc[]> = {}, REQS: Record<string, any[]> = {}, DOCS: Record<string, WashDoc> = {}, RATED: Record<string, { stars: number; tag?: string }> = {}, DISMISSED: Record<string, boolean> = {};
+let REMOTE: Record<string, WashDoc[]> = {}, REQS: Record<string, any[]> = {}, DOCS: Record<string, WashDoc> = {}, RATED: Record<string, { stars: number; tag?: string }> = {}, DISMISSED: Record<string, boolean> = {}, RATED_DAYS: Record<string, number> = {};
 let SIM: { carId: string; doc: WashDoc; t?: any } | null = null;
 export const syncLive = () => !!DB && realAcct();
 export function doc(c: Car = car()): WashDoc {
@@ -175,6 +175,8 @@ export function carryNote(c: Car = car(), d: WashDoc = doc(c)): string | null {
 }
 /** the daily rating already given for today's wash (ratings/{DATE}_{REG}) */
 export const ratedToday = (c: Car = car()) => RATED[c.id] || null;
+/** stars the customer gave for one morning wash (ratings/{DATE}_{REG}); 0 = not rated yet */
+export const dayStars = (date: string, c: Car = car()) => RATED_DAYS[date + '_' + regOf(c)] || (date === iso(TODAY) ? RATED[c.id]?.stars || 0 : 0);
 export const canRateToday = (c: Car = car()) => { const d = doc(c); return (realAcct() || !REAL) && !!d.remote && d.status === 'done' && !RATED[c.id] };
 
 /* ---------- view helpers (what each screen draws) ---------- */
@@ -449,6 +451,7 @@ function subscribeCar() {
     if (car().id === id && !SIM) { emitSoon(); toastStatus(id) }
   }, e => console.warn('washes', e)));
   unsubs.push(DB.doc(`ratings/${iso(TODAY)}_${reg}`).onSnapshot((g: any) => { const was = !!RATED[id]; if (g.exists) RATED[id] = { stars: +g.data().stars || 0, tag: g.data().tag }; else delete RATED[id]; if (was !== !!RATED[id] && car().id === id) emitSoon() }, () => {}));
+  unsubs.push(DB.collection('ratings').where('reg', '==', reg).onSnapshot((docs: any) => { const next: Record<string, number> = {}; docs.forEach((g: any) => { const d = g.data(); if (d && d.date) next[d.date + '_' + reg] = +d.stars || 0 }); Object.keys(RATED_DAYS).forEach(k => { if (k.endsWith('_' + reg)) delete RATED_DAYS[k] }); Object.assign(RATED_DAYS, next); if (car().id === id) emitSoon() }, () => {}));
   unsubs.push(DB.collection('requests').where('reg', '==', reg).onSnapshot(docs => { const next = docs.map(d => ({ id: d.id, ...d.data() })); if (snapSame('reqs:' + id, next)) return; REQS[id] = next; if (car().id === id) emitSoon() }, () => {}));
 }
 function toastStatus(id: string) {
@@ -475,7 +478,7 @@ function watchCarPhotos() {
     if (t && v) t.photoCut = v.startsWith('data:image/webp');   // only cut-outs are saved as WebP (firestore.rules allows no extra field)
     if (t && v && t.photo !== v) { t.photo = v; commit() } }, () => {})) });
 }
-function stopSync() { stop(unsubs); stop(photoUnsubs); stop(moneyUnsubs); subscribeCoupons(null); subFor = null; if (acctUnsub) { try { acctUnsub() } catch (e) {} acctUnsub = null } REMOTE = {}; REQS = {}; DOCS = {}; RATED = {}; DISMISSED = {}; lastStatus = {}; for (const k in snapSeen) delete snapSeen[k]; AUTOPAY_PAYS = [] }
+function stopSync() { stop(unsubs); stop(photoUnsubs); stop(moneyUnsubs); subscribeCoupons(null); subFor = null; if (acctUnsub) { try { acctUnsub() } catch (e) {} acctUnsub = null } REMOTE = {}; REQS = {}; DOCS = {}; RATED = {}; RATED_DAYS = {}; DISMISSED = {}; lastStatus = {}; for (const k in snapSeen) delete snapSeen[k]; AUTOPAY_PAYS = [] }
 function renderAll() { if (!SIM) DOCS = {}; subscribeCar(); emit() }
 
 /* ---------- boot ---------- */
@@ -1476,7 +1479,14 @@ export const act = {
     A().requests.unshift({ id: 'R' + Date.now(), carId: c.id, spots, open: true, at: iso(TODAY) }); commit();
   },
   closeReq(id: string) { const r = A().requests.find(x => x.id === id); if (r) r.open = false; commit(); toast('Marked as fixed') },
-  // ratings/{date_REG}
+  // ratings/{date_REG} for any earlier or today's morning wash that was done
+  rateDayOn(date: string, n: number) {
+    const c = car(), key = date + '_' + regOf(c), was = RATED_DAYS[key];
+    if (date > iso(TODAY)) { toast('You can rate once the wash is done'); return }
+    RATED_DAYS[key] = n; commit(); haptic();
+    if (DB && realAcct()) DB.doc(`ratings/${key}`).set({ reg: regOf(c), date, stars: n, at: nowIST() }).catch(() => { if (was) RATED_DAYS[key] = was; else delete RATED_DAYS[key]; emitSoon(); toast("Couldn't save your rating. Try again.") });
+    toast(n >= 4 ? `${c.washer || 'Your washer'} will see your ${n} stars` : 'Sorry. We will look into it.');
+  },
   rate(n: number, tag?: string) {
     const c = car(); c.rating = n; if (!(DB && realAcct())) RATED[c.id] = { stars: n, tag }; commit(); haptic();
     if (DB && realAcct()) { RATED[c.id] = { stars: n, tag }; DB.doc(`ratings/${iso(TODAY)}_${regOf(c)}`).set({ reg: regOf(c), date: iso(TODAY), stars: n, ...(tag ? { tag } : {}), at: nowIST() }).catch(() => { delete RATED[c.id]; emitSoon(); toast("Couldn't save your rating. Try again.") }); }
@@ -1646,7 +1656,7 @@ export const act = {
 
 // a guest can browse and fill the cart; these need a real account, so they open sign-in instead
 const GUEST_BLOCKED = ['addCar', 'carPhoto', 'pause', 'resume', 'note', 'removeNote', 'issue', 'closeReq', 'rate', 'payPlan', 'cancelAutopay', 'switchPlan', 'tip', 'checkoutCart', 'book',
-  'cancelBooking', 'bookServices', 'togglePref', 'setName', 'deleteAccount', 'placeOrder', 'cancelJob', 'rescheduleJob', 'rateJob', 'saveAddress', 'deleteAddress',
+  'cancelBooking', 'bookServices', 'togglePref', 'setName', 'deleteAccount', 'placeOrder', 'cancelJob', 'rescheduleJob', 'rateJob', 'rateDayOn', 'saveAddress', 'deleteAddress',
   'saveProfile', 'topUp', 'claimGift', 'buyPass', 'shareReferral', 'findFriends', 'requestDeletion'] as const;
 // booking or paying for a service needs a spot inside a service circle (assertServed). Wrapped before the guest check below,
 // so a guest is sent to log in first and the area is checked after.
