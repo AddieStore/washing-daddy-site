@@ -74,6 +74,7 @@ export default function Profile() {
             {feature('wallet') ? tile('Money', tic(Wallet), () => openPage({ k: 'money' }), inr(Math.floor(bal))) : null}
             {tile('Help & Support', tic(Help), () => openPage({ k: 'help' }))}
           </FadeUp>
+          <FadeUp index={2} style={{ marginTop: 12 }}>{tile('Transactions', tic(Plan), () => openPage({ k: 'orders' }))}</FadeUp>
 
           <Buttons placement="profile" side={0} top={12} />
 

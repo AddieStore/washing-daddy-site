@@ -82,7 +82,7 @@ export type Page =
   | { k: 'money' } | { k: 'refunds' } | { k: 'pass'; id?: string } | { k: 'coupons' } | { k: 'refer' }
   | { k: 'profile' } | { k: 'profileEdit' } | { k: 'addresses'; pick?: boolean } | { k: 'addressMap'; id?: string } | { k: 'addressForm'; id?: string; lat?: number; lng?: number; area?: string }
   | { k: 'help' } | { k: 'helpTopic'; id: string } | { k: 'legal' } | { k: 'legalDoc'; id: string } | { k: 'deleteAccount' } | { k: 'about' }
-  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string } | { k: 'payResult' } | { k: 'parkAlerts' } | { k: 'txn'; id: string } | { k: 'washer'; id?: string; name?: string }
+  | { k: 'bookings' } | { k: 'booking'; id: string } | { k: 'rate'; id: string } | { k: 'payResult' } | { k: 'parkAlerts' } | { k: 'txn'; id: string } | { k: 'orders' } | { k: 'washer'; id?: string; name?: string }
   | null;
 export type PageKind = NonNullable<Page>['k'];
 type UI = { tab: Tab; tabNonce: number; ready: boolean; signedIn: boolean; carNonce: number; sim: boolean; v: number; page: Page; pages: Page[] };
@@ -830,6 +830,21 @@ async function cashfreeAny(sessionId: string, orderId: string) {
   if (!PAYWEB_AVAILABLE) throw Object.assign(new Error('payment'), { failed: true });
   await cashfreeWebCheckout(sessionId, orderId);
 }
+type RzpPending = { orderId: string; r: any; at: string };
+const rzpList = (): RzpPending[] => ((S as any).rzpPending as RzpPending[]) || [];
+function rememberRzp(orderId: string, r: any) { if (!orderId) return; (S as any).rzpPending = [...rzpList().filter(x => x.orderId !== orderId), { orderId, r, at: nowIST() }].slice(-5); commit() }
+function forgetRzp(orderId: string) { (S as any).rzpPending = rzpList().filter(x => x.orderId !== orderId); commit() }
+let retrying = false;
+/** a Razorpay payment the app could not confirm (app closed, no signal): confirm it now. The server checks Razorpay's signature itself. */
+async function retryPendingRzp() {
+  if (retrying || !server || !rzpList().length) return; retrying = true;
+  try {
+    for (const p of rzpList()) {
+      try { const k: any = await server.call('wd-rzp-confirm', { orderId: p.orderId, ...p.r }); if (k && (k.paid || k.duplicate)) { forgetRzp(p.orderId); toast('Your payment is confirmed.') } }
+      catch (e: any) { if (String((e && e.message) || '').match(/signature|unknown order|invalid/i)) forgetRzp(p.orderId) }
+    }
+  } finally { retrying = false }
+}
 async function payWith13(endpoint: string, body: object, c: PayCtx, force?: 'cashfree'): Promise<PayResult> {
   const base = { kind: c.kind, title: c.title, amount: c.amount, at: nowIST() };
   const again = (how?: 'cashfree') => () => { closePage(); payWith13(endpoint, body, c, how).then(finishPay).catch(e => toast(errOf(e) || "That didn't go through.")) };
@@ -845,8 +860,10 @@ async function payWith13(endpoint: string, body: object, c: PayCtx, force?: 'cas
       r = null;   // Razorpay's page did not load: same order on Cashfree
     }
     if (r) {
+      rememberRzp(String(j.orderId || ''), r);   // kept on the phone until the server confirms, and retried at the next app start
       try {
         const k: any = await server!.call('wd-rzp-confirm', { orderId: j.orderId, ...r });
+        if (k && k.paid) forgetRzp(String(j.orderId || ''));
         return { ...base, ...ids(j), ...ids(k), status: k.paid ? 'paid' : 'pending', gateway: 'Razorpay', ref: r.razorpay_payment_id };
       } catch (e: any) {
         // the payment went through on Razorpay but we could not confirm it yet: Razorpay's webhook will
@@ -923,6 +940,11 @@ function demoDebit(amt: number, note: string) {   // promo first (it expires soo
 }
 
 /* ---- real-mode sync of the read-only money docs, addresses and bookings ---- */
+/** every payment order of this customer, any status (payorders, read-only; the server writes them) */
+export type OrderRow = { id: string; at: string; kind: string; title: string; status: 'paid' | 'pending' | 'failed' | 'cancelled' | 'refunded'; total: number; walletPart: number; toPay: number; payId: string; bookingId: string; why: string };
+let ORDERS: OrderRow[] = [];
+export const orders = (): OrderRow[] => ORDERS;
+const orderStatus = (s: string): OrderRow['status'] => (s === 'paid' || s === 'failed' || s === 'cancelled' || s === 'refunded' ? s : 'pending');
 let moneyUnsubs: Unsub[] = [], RATINGS: Record<string, { stars: number; review?: string }> = {};
 const jobStatus = (d: any): JobStatus => ({ new: d.washer_id ? 'assigned' : 'upcoming', scheduled: 'upcoming', declined: 'upcoming', on_the_way: 'on_the_way', doing: 'in_progress', done: 'done', cancelled: 'cancelled' } as Record<string, JobStatus>)[d.status] || 'upcoming';
 function fromOndemand(id: string, d: any): Job {
@@ -1010,6 +1032,13 @@ function watchMoney() {
   const ph = AUTH.phone()!, P = () => px(), q = (c: string, f: string) => DB.collection(c).where(f, '==', ph), warn = (w: string) => (e: any) => console.warn(w, e);
   moneyUnsubs.push(DB.doc('wallets/' + ph).onSnapshot(g => { const d = g.exists ? g.data() : {}; const cash = +d.cash || 0, promo = +d.promo || 0; if (P().wallet.cash === cash && P().wallet.promo === promo) return; P().wallet.cash = cash; P().wallet.promo = promo; emitSoon() }, warn('wallet')));
   moneyUnsubs.push(q('walletledger', 'phone').onSnapshot(ds => { const next = ds.map(s => { const d = s.data(); return { id: s.id, at: d.at || '', kind: d.kind, amt: +d.amt || 0, note: d.note || '', bucket: d.bucket === 'promo' ? 'promo' : 'cash', expires: d.expires || null } }); if (snapSame('ledger', next)) return; P().wallet.ledger = next as any; emitSoon() }, warn('ledger')));
+  moneyUnsubs.push(q('payorders', 'phone').onSnapshot(ds => {
+    ORDERS = ds.map(s => { const d = s.data(), names = Array.isArray(d.lines) ? d.lines.map((l: any) => l && l.name).filter(Boolean).join(', ') : '';
+      return { id: s.id, at: d.paid_at || d.created_at || '', kind: String(d.kind || ''), title: d.kind === 'wallet_topup' ? 'Add money to WD Money' : d.kind === 'pass' ? String(d.plan_name || 'WD Pass') : d.kind === 'booking' ? (names || 'Booking') : String(d.plan_name || d.title || 'Payment'),
+        status: orderStatus(String(d.status || '')), total: +d.total || +d.amount || 0, walletPart: +d.wallet_use || 0, toPay: +d.amount || 0, payId: String(d.rzp_payment_id || d.cf_payment_id || ''), bookingId: String(d.booking_id || ''), why: String(d.error || '') } as OrderRow }).sort((a, b) => b.at.localeCompare(a.at));
+    emitSoon();
+  }, warn('payorders')));
+  retryPendingRzp();
   moneyUnsubs.push(q('refunds', 'phone').onSnapshot(ds => { const next = ds.map(s => { const d = s.data(); return { id: s.id, at: d.at || '', amt: +d.amt || 0, status: d.status || 'initiated', to: d.to === 'wallet' ? 'wallet' : 'source', what: d.what || '', bookingId: d.booking_id, eta: d.eta } }); if (snapSame('refunds', next)) return; P().refunds = next as any; emitSoon() }, warn('refunds')));
   moneyUnsubs.push(q('passes', 'phone').onSnapshot(ds => { const next = ds.map(s => { const d = s.data(); return { id: s.id, plan: d.plan, visitsTotal: +d.visits_total || 0, visitsLeft: +d.visits_left || 0, boughtAt: d.bought_at || '', validTill: d.valid_till || '', status: d.status || 'active' } }); if (snapSame('passes', next)) return; P().passes = next; emitSoon() }, warn('passes')));
   moneyUnsubs.push(DB.doc('referrals/' + ph).onSnapshot(g => { const d = g.exists ? g.data() : {}; const next = { completed: +d.completed || 0, earned: +d.earned || 0, pending: +d.pending || 0, ledger: Array.isArray(d.ledger) ? d.ledger : [] }; if (snapSame('referral', next)) return; P().referral = next; emitSoon() }, warn('referral')));
