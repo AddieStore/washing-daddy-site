@@ -217,7 +217,7 @@ const supportMsgs = id => Object.entries(S.supMsgs[id] || {}).map(([mid, m]) => 
 // live listener on supportchats/{id}/messages while a thread is open. Returns the unsubscribe.
 function supportWatch(id) {
   if (S.demo || !db) return () => {};
-  return db.collection('supportchats').doc(id).collection('messages').onSnapshot(sn => { S.supMsgs[id] = snapDocs(sn); emit() }, e => console.warn('ops support messages', e));
+  return db.collection('supportchats/' + id + '/messages').onSnapshot(sn => { S.supMsgs[id] = snapDocs(sn); emit() }, e => console.warn('ops support messages', e));
 }
 function needChat(id) { const c = S.support[id]; if (!c) throw new Error('That chat is gone.'); return c }
 // opening a chat marks it read (no updated_at bump: the list order stays)
@@ -232,7 +232,7 @@ async function supportReply(id, text) {
   const now = isoIST(), msg = { from: 'agent', text, at: now };
   const patch = { status: 'human', agent: 'Ravi', last_text: text.slice(0, 200), last_from: 'agent', updated_at: now, unread_admin: false };
   if (S.demo) { (S.supMsgs[id] = S.supMsgs[id] || {})['m' + Date.now()] = msg; Object.assign(S.support[id], patch); emit(); return }
-  await db.collection('supportchats').doc(id).collection('messages').add(msg);
+  await db.collection('supportchats/' + id + '/messages').doc().set(msg);   // the live db wrapper has no add() / doc().collection()
   return db.doc('supportchats/' + id).update(patch);
 }
 async function supportEnd(id) {
